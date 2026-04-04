@@ -1,0 +1,22 @@
+{
+  "name": "vars",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "mobile": "yarn workspace @vars/mobile start",
+    "admin": "yarn workspace @vars/admin dev",
+    "db:migrate": "supabase db push",
+    "db:reset": "supabase db reset",
+    "db:types": "supabase gen types typescript --local > packages/shared/src/database.types.ts"
+  },
+  "devDependencies": {
+    "supabase": "^1.200.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
