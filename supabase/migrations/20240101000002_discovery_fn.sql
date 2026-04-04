@@ -1,7 +1,9 @@
 -- ============================================================
 -- VARS Migration 003: Vendor Discovery RPC (PostGIS)
 -- get_nearby_vendors(lat, lng, category_slug, radius_km)
--- Returns vendor cards sorted by distance, only online/verified vendors.
+-- Returns vendor cards sorted by distance, only verified vendors.
+-- badge_verified: all returned vendors have kyc_status='verified' → TRUE
+-- badge_new: created within last 30 days
 -- Called via supabase.rpc('get_nearby_vendors', {...})
 -- ============================================================
 
@@ -52,9 +54,8 @@ AS $$
       v.total_reviews,
       v.badge_vars_choice,
       v.badge_top_rated,
-      v.badge_verified,
-      v.badge_new,
-      v.kyc_status
+      TRUE                                        AS badge_verified,  -- all returned vendors are kyc_status='verified'
+      (v.created_at > NOW() - INTERVAL '30 days') AS badge_new
     FROM vendors v
     WHERE
       v.kyc_status = 'verified'
@@ -81,7 +82,7 @@ AS $$
     vb.id,
     vb.full_name,
     vb.bio,
-    vb.avatar_url,
+    vb.profile_photo_url,
     vb.base_location_lat,
     vb.base_location_lng,
     ROUND(vb.distance_km::numeric, 1)::double precision AS distance_km,
