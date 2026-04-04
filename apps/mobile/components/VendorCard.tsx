@@ -16,8 +16,8 @@ export interface VendorCardData {
   profile_photo_url: string | null;
   distance_km: number;
   is_online: boolean;
-  rating: number;
-  review_count: number;
+  avg_rating: number;
+  total_reviews: number;
   badge_vars_choice: boolean;
   badge_top_rated: boolean;
   badge_verified: boolean;
@@ -78,9 +78,9 @@ export function VendorCard({ vendor, returnTo }: Props) {
           <View style={styles.ratingRow}>
             <Text style={styles.star}>★</Text>
             <Text style={styles.ratingText}>
-              {vendor.rating.toFixed(1)}
-              {vendor.review_count > 0 && (
-                <Text style={styles.reviewCount}> ({vendor.review_count})</Text>
+              {vendor.avg_rating.toFixed(1)}
+              {vendor.total_reviews > 0 && (
+                <Text style={styles.reviewCount}> ({vendor.total_reviews})</Text>
               )}
             </Text>
           </View>
