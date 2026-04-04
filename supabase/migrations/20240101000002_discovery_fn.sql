@@ -17,7 +17,7 @@ RETURNS TABLE (
   id                UUID,
   full_name         TEXT,
   bio               TEXT,
-  avatar_url        TEXT,
+  profile_photo_url TEXT,
   base_location_lat DOUBLE PRECISION,
   base_location_lng DOUBLE PRECISION,
   distance_km       DOUBLE PRECISION,
@@ -40,7 +40,7 @@ AS $$
       v.id,
       v.full_name,
       v.bio,
-      v.avatar_url,
+      v.profile_photo_url,
       ST_Y(v.base_location::geometry) AS base_location_lat,
       ST_X(v.base_location::geometry) AS base_location_lng,
       ST_Distance(

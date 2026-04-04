@@ -13,7 +13,7 @@ export interface VendorCardData {
   id: string;
   full_name: string;
   bio: string | null;
-  avatar_url: string | null;
+  profile_photo_url: string | null;
   distance_km: number;
   is_online: boolean;
   rating: number;
@@ -45,8 +45,8 @@ export function VendorCard({ vendor, returnTo }: Props) {
     >
       {/* Avatar */}
       <View style={styles.avatarWrap}>
-        {vendor.avatar_url ? (
-          <Image source={{ uri: vendor.avatar_url }} style={styles.avatar} />
+        {vendor.profile_photo_url ? (
+          <Image source={{ uri: vendor.profile_photo_url }} style={styles.avatar} />
         ) : (
           <View style={[styles.avatar, styles.avatarFallback]}>
             <Text style={styles.avatarInitial}>
