@@ -74,8 +74,7 @@ AS $$
     FROM vendor_services vs
     JOIN services s ON s.id = vs.service_id
     JOIN service_categories sc ON sc.id = s.category_id
-    WHERE vs.is_available = true
-      AND (category_slug IS NULL OR sc.slug = category_slug)
+    WHERE (category_slug IS NULL OR sc.slug = category_slug)
     GROUP BY vs.vendor_id
   )
   SELECT
