@@ -1,18 +1,286 @@
-// Notifications screen placeholder — full implementation in Phase 10
-import { View, Text, StyleSheet } from 'react-native';
+// ============================================================
+// VARS — Notifications Screen (Phase 10)
+// Reads from notifications table (recipient_id = current user).
+// Marks individual or all as read.
+// Deep-links to booking screen via data.screen or booking_id.
+// Realtime subscription for live badge updates.
+// ============================================================
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  ActivityIndicator, RefreshControl, ScrollView,
+  StyleSheet, Text, TouchableOpacity, View,
+} from 'react-native';
+import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 
-export default function NotificationsScreen() {
+// ── Types ───────────────────────────────────────────────────
+interface AppNotification {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  is_read: boolean;
+  booking_id: string | null;
+  data: Record<string, any>;
+  created_at: string;
+}
+
+// ── Notification type → icon ─────────────────────────────────
+const TYPE_ICON: Record<string, string> = {
+  booking_pending:        '⏳',
+  booking_accepted:       '✅',
+  booking_declined:       '✕',
+  booking_expired:        '⏱',
+  booking_cancelled:      '✕',
+  payment_authorized:     '💳',
+  payment_released:       '💸',
+  payment_settled:        '💰',
+  vendor_on_way:          '🚗',
+  vendor_arrived:         '📍',
+  service_rendered:       '🎉',
+  booking_completed:      '⭐',
+  kyc_approved:           '✅',
+  kyc_rejected:           '⚠️',
+  dispute_raised:         '⚠️',
+  dispute_resolved:       '✅',
+  phone_revealed:         '📞',
+};
+
+function typeIcon(type: string): string {
+  return TYPE_ICON[type] ?? '🔔';
+}
+
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1)   return 'just now';
+  if (mins < 60)  return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24)   return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7)   return `${days}d ago`;
+  return new Date(iso).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' });
+}
+
+// Navigate to the right screen based on notification data
+function resolveDeepLink(notif: AppNotification): string | null {
+  if (notif.data?.screen) return notif.data.screen;
+  if (notif.booking_id)   return `/live/${notif.booking_id}`;
+  return null;
+}
+
+// ── Notification row ─────────────────────────────────────────
+function NotifRow({
+  notif, onPress,
+}: {
+  notif: AppNotification;
+  onPress: (n: AppNotification) => void;
+}) {
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Alerts</Text>
-      <Text style={styles.sub}>Phase 10</Text>
+    <TouchableOpacity
+      style={[s.row, !notif.is_read && s.rowUnread]}
+      onPress={() => onPress(notif)}
+      activeOpacity={0.75}
+    >
+      <View style={[s.iconWrap, !notif.is_read && s.iconWrapUnread]}>
+        <Text style={s.icon}>{typeIcon(notif.type)}</Text>
+      </View>
+      <View style={s.content}>
+        <View style={s.topRow}>
+          <Text style={[s.title, !notif.is_read && s.titleUnread]} numberOfLines={1}>{notif.title}</Text>
+          <Text style={s.time}>{timeAgo(notif.created_at)}</Text>
+        </View>
+        <Text style={s.body} numberOfLines={2}>{notif.body}</Text>
+      </View>
+      {!notif.is_read && <View style={s.unreadDot} />}
+    </TouchableOpacity>
+  );
+}
+
+// ── Root component ───────────────────────────────────────────
+export default function NotificationsScreen() {
+  const insets = useSafeAreaInsets();
+  const { user } = useAuth();
+
+  const [notifs, setNotifs]     = useState<AppNotification[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const unreadCount = notifs.filter((n) => !n.is_read).length;
+
+  const load = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('notifications')
+      .select('id, type, title, body, is_read, booking_id, data, created_at')
+      .eq('recipient_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(60);
+
+    setNotifs((data ?? []) as AppNotification[]);
+    setLoading(false);
+    setRefreshing(false);
+  }, [user]);
+
+  useEffect(() => { load(); }, [load]);
+
+  // Realtime — new notifications arrive live
+  useEffect(() => {
+    if (!user) return;
+    const ch = supabase
+      .channel(`notifs:${user.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'notifications',
+        filter: `recipient_id=eq.${user.id}`,
+      }, (payload) => {
+        setNotifs((prev) => [payload.new as AppNotification, ...prev]);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [user]);
+
+  const markRead = async (notif: AppNotification) => {
+    if (!notif.is_read) {
+      await supabase.from('notifications').update({ is_read: true }).eq('id', notif.id);
+      setNotifs((prev) => prev.map((n) => n.id === notif.id ? { ...n, is_read: true } : n));
+    }
+    const link = resolveDeepLink(notif);
+    if (link) router.push(link as any);
+  };
+
+  const markAllRead = async () => {
+    if (!user || unreadCount === 0) return;
+    await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('recipient_id', user.id)
+      .eq('is_read', false);
+    setNotifs((prev) => prev.map((n) => ({ ...n, is_read: true })));
+  };
+
+  // Group by date
+  const groups: { label: string; items: AppNotification[] }[] = [];
+  const today     = new Date().toDateString();
+  const yesterday = new Date(Date.now() - 86400000).toDateString();
+
+  for (const n of notifs) {
+    const ds = new Date(n.created_at).toDateString();
+    const label = ds === today ? 'Today' : ds === yesterday ? 'Yesterday'
+      : new Date(n.created_at).toLocaleDateString('en-NG', { weekday: 'long', day: 'numeric', month: 'short' });
+    const last = groups[groups.length - 1];
+    if (last?.label === label) { last.items.push(n); }
+    else { groups.push({ label, items: [n] }); }
+  }
+
+  if (loading) return <View style={s.centered}><ActivityIndicator color={Colors.primary} size="large" /></View>;
+
+  return (
+    <View style={[s.container, { paddingTop: insets.top }]}>
+      {/* Header */}
+      <View style={s.header}>
+        <View style={s.headerLeft}>
+          <Text style={s.headerTitle}>Alerts</Text>
+          {unreadCount > 0 && (
+            <View style={s.badge}>
+              <Text style={s.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+            </View>
+          )}
+        </View>
+        {unreadCount > 0 && (
+          <TouchableOpacity onPress={markAllRead}>
+            <Text style={s.markAllText}>Mark all read</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={Colors.primary} />
+        }
+        contentContainerStyle={{ paddingBottom: 40 }}
+      >
+        {notifs.length === 0 ? (
+          <View style={s.empty}>
+            <Text style={s.emptyEmoji}>🔔</Text>
+            <Text style={s.emptyTitle}>All clear</Text>
+            <Text style={s.emptyBody}>You're up to date. Booking updates, payment confirmations and more will appear here.</Text>
+          </View>
+        ) : (
+          groups.map((g) => (
+            <View key={g.label}>
+              <Text style={s.groupLabel}>{g.label}</Text>
+              {g.items.map((n) => (
+                <NotifRow key={n.id} notif={n} onPress={markRead} />
+              ))}
+            </View>
+          ))
+        )}
+      </ScrollView>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.background },
-  title: { fontSize: 24, fontWeight: '700', color: Colors.text },
-  sub: { fontSize: 15, color: Colors.textSecondary, marginTop: 8 },
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: Colors.background },
+  centered:  { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.background },
+
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingVertical: 14,
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: Colors.text },
+  badge: {
+    backgroundColor: Colors.error, borderRadius: 10,
+    paddingHorizontal: 7, paddingVertical: 2, minWidth: 20, alignItems: 'center',
+  },
+  badgeText: { fontSize: 11, fontWeight: '800', color: '#FFF' },
+  markAllText: { fontSize: 14, fontWeight: '600', color: Colors.primary },
+
+  groupLabel: {
+    fontSize: 12, fontWeight: '700', color: Colors.textMuted,
+    textTransform: 'uppercase', letterSpacing: 0.5,
+    paddingHorizontal: 20, paddingTop: 20, paddingBottom: 6,
+  },
+
+  row: {
+    flexDirection: 'row', alignItems: 'flex-start',
+    paddingHorizontal: 16, paddingVertical: 14,
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
+    backgroundColor: Colors.background,
+    gap: 12,
+  },
+  rowUnread: { backgroundColor: Colors.primaryLight },
+
+  iconWrap: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: Colors.surface,
+    alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0,
+  },
+  iconWrapUnread: { backgroundColor: Colors.primary + '20' },
+  icon: { fontSize: 20 },
+
+  content: { flex: 1 },
+  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 3 },
+  title: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary, flex: 1, marginRight: 8 },
+  titleUnread: { fontWeight: '800', color: Colors.text },
+  time: { fontSize: 11, color: Colors.textMuted, marginTop: 1, flexShrink: 0 },
+  body: { fontSize: 13, color: Colors.textSecondary, lineHeight: 18 },
+
+  unreadDot: {
+    width: 8, height: 8, borderRadius: 4,
+    backgroundColor: Colors.primary,
+    marginTop: 4, flexShrink: 0,
+  },
+
+  empty: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 40 },
+  emptyEmoji: { fontSize: 48, marginBottom: 16 },
+  emptyTitle: { fontSize: 20, fontWeight: '700', color: Colors.text, marginBottom: 8 },
+  emptyBody: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
 });
