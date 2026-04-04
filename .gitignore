@@ -1,0 +1,15 @@
+# Supabase CLI temp files
+supabase/.temp/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Node
+node_modules/
+.yarn/cache/
+
+# OS
+.DS_Store
+Thumbs.db
