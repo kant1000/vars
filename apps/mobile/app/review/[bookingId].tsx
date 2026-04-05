@@ -66,7 +66,7 @@ export default function ReviewScreen() {
 
     if (error) {
       if (error.code === '23505') {
-        Alert.alert('Already reviewed', 'You've already left a review for this booking.');
+        Alert.alert('Already reviewed', "You've already left a review for this booking.");
         router.back();
       } else {
         Alert.alert('Error', error.message);
