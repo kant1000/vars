@@ -4,7 +4,6 @@
 // ============================================================
 import { adminClient } from './supabase';
 import { cookies } from 'next/headers';
-import { createServerClient } from '@supabase/supabase-js';
 
 export async function requireAdmin() {
   // Read session from cookie (set by Supabase Auth in the browser)
