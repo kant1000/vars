@@ -34,7 +34,9 @@
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
         "RECEIVE_BOOT_COMPLETED",
-        "VIBRATE"
+        "VIBRATE",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
       ]
     },
     "web": {
@@ -65,7 +67,11 @@
     "extra": {
       "router": {
         "origin": false
+      },
+      "eas": {
+        "projectId": "e7b18395-9c2e-40d9-b667-63d030784790"
       }
-    }
+    },
+    "owner": "kant01"
   }
 }
