@@ -1,0 +1,5 @@
+{
+  "installCommand": "yarn workspace @vars/admin install --frozen-lockfile",
+  "buildCommand": "yarn workspace @vars/admin build",
+  "framework": "nextjs"
+}
