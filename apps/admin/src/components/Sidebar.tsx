@@ -13,7 +13,9 @@ export default function Sidebar() {
   const path = usePathname();
   return (
     <aside className="sidebar">
-      <div className="sidebar-logo">VARS</div>
+      <div className="sidebar-logo">
+        <img src="/admin-sidebar.svg" alt="VARS" style={{ height: 28, width: 'auto' }} />
+      </div>
       {NAV.map((n) => (
         <Link
           key={n.href}
