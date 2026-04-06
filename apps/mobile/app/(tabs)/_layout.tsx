@@ -1,10 +1,11 @@
 // ============================================================
-// VARS — Bottom Tab Navigator (Phase 5)
+// VARS — Bottom Tab Navigator
 // Tabs: Discover, Bookings, Alerts, Profile
 // ============================================================
 import { Tabs } from 'expo-router';
 import { Platform } from 'react-native';
 import { Colors } from '@/constants/colors';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function TabLayout() {
   return (
@@ -25,19 +26,43 @@ export default function TabLayout() {
     >
       <Tabs.Screen
         name="index"
-        options={{ title: 'Discover', tabBarLabel: 'Discover' }}
+        options={{
+          title: 'Discover',
+          tabBarLabel: 'Discover',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="search-outline" size={size} color={color} />
+          ),
+        }}
       />
       <Tabs.Screen
         name="bookings"
-        options={{ title: 'Bookings', tabBarLabel: 'Bookings' }}
+        options={{
+          title: 'Bookings',
+          tabBarLabel: 'Bookings',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="calendar-outline" size={size} color={color} />
+          ),
+        }}
       />
       <Tabs.Screen
         name="notifications"
-        options={{ title: 'Alerts', tabBarLabel: 'Alerts' }}
+        options={{
+          title: 'Alerts',
+          tabBarLabel: 'Alerts',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="notifications-outline" size={size} color={color} />
+          ),
+        }}
       />
       <Tabs.Screen
         name="profile"
-        options={{ title: 'Profile', tabBarLabel: 'Profile' }}
+        options={{
+          title: 'Profile',
+          tabBarLabel: 'Profile',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person-outline" size={size} color={color} />
+          ),
+        }}
       />
     </Tabs>
   );
