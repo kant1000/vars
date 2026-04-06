@@ -1,10 +1,8 @@
 // ============================================================
-// VARS — Onboarding Splash Screens (§4.1)
-// 3 screens: full bleed background, minimal text overlay
-// Screen 1: "Beauty at your door"
-// Screen 2: "Find someone near you"
-// Screen 3: "Book, pay, relax" → CTA: "Get Started"
-// After screen 3: location permission → home screen
+// VARS — Onboarding Screens (V2 Brand Direction)
+// 3 swipeable screens with Doré-style illustrations
+// White bg, black ink, blue CTA accent only
+// Shows once on first launch, never again
 // ============================================================
 
 import React, { useRef, useState } from 'react';
@@ -17,32 +15,32 @@ import {
   FlatList,
   ViewToken,
   StatusBar,
+  Image,
 } from 'react-native';
 import { router } from 'expo-router';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Colors } from '@/constants/colors';
 
 const { width, height } = Dimensions.get('window');
 
 const SLIDES = [
   {
     id: '1',
+    image: require('../assets/images/onboarding1.png'),
     headline: 'Beauty at your door.',
     sub: 'Top-rated professionals. Your space, your time.',
-    bg: Colors.primary,
   },
   {
     id: '2',
+    image: require('../assets/images/onboarding2.png'),
     headline: 'Find someone near you.',
     sub: 'VARS knows where fresh is.',
-    bg: '#0060CC',
   },
   {
     id: '3',
+    image: require('../assets/images/onboarding3.png'),
     headline: 'Book, pay, relax.',
     sub: 'Your payment is held securely until your service is done.',
-    bg: '#004BA0',
     isCta: true,
   },
 ] as const;
@@ -60,12 +58,8 @@ export default function OnboardingScreen() {
   ).current;
 
   const handleGetStarted = async () => {
-    // Request location permission — required before home screen loads (§4.1)
     await Location.requestForegroundPermissionsAsync();
-
-    // Mark onboarding complete so we never show it again
     await AsyncStorage.setItem('vars_onboarding_done', '1');
-
     router.replace('/(tabs)');
   };
 
@@ -77,28 +71,27 @@ export default function OnboardingScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <FlatList
         ref={flatListRef}
         data={SLIDES}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        // Per spec §4.2: swipe between tabs disabled — same principle here;
-        // but onboarding swipe is intentional UX
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <View style={[styles.slide, { backgroundColor: item.bg }]}>
-            {/* Full bleed background placeholder — replace with actual images */}
-            <View style={styles.bgOverlay} />
+          <View style={styles.slide}>
+            {/* Full bleed illustration */}
+            <Image
+              source={item.image}
+              style={styles.illustration}
+              resizeMode="cover"
+            />
 
+            {/* Bottom content panel */}
             <View style={styles.content}>
-              {/* VARS wordmark */}
-              <Text style={styles.wordmark}>VARS</Text>
-
-              {/* Headline */}
               <Text style={styles.headline}>{item.headline}</Text>
               <Text style={styles.sub}>{item.sub}</Text>
 
@@ -140,67 +133,66 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.primary,
+    backgroundColor: '#FFFFFF',
   },
   slide: {
     width,
     height,
-    justifyContent: 'flex-end',
+    backgroundColor: '#FFFFFF',
   },
-  bgOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.15)',
+  illustration: {
+    width,
+    height: height * 0.62,
   },
   content: {
+    flex: 1,
     paddingHorizontal: 32,
-    paddingBottom: 100,
-  },
-  wordmark: {
-    fontWeight: '800',
-    fontSize: 36,
-    color: '#FFFFFF',
-    letterSpacing: -1,
-    marginBottom: 24,
+    paddingTop: 32,
+    paddingBottom: 48,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'space-between',
   },
   headline: {
-    fontSize: 34,
+    fontSize: 30,
     fontWeight: '700',
-    color: '#FFFFFF',
-    lineHeight: 42,
-    marginBottom: 12,
+    color: '#1A1A1A',
+    lineHeight: 38,
+    letterSpacing: -0.5,
   },
   sub: {
-    fontSize: 17,
-    color: 'rgba(255,255,255,0.85)',
+    fontSize: 16,
+    color: '#555555',
     lineHeight: 24,
-    marginBottom: 40,
+    marginTop: 8,
   },
   ctaButton: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#0A7AFF',
     borderRadius: 14,
     paddingVertical: 18,
     alignItems: 'center',
+    marginTop: 24,
   },
   ctaText: {
-    color: Colors.primary,
+    color: '#FFFFFF',
     fontSize: 17,
     fontWeight: '700',
   },
   nextButton: {
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.6)',
+    borderColor: '#1A1A1A',
     borderRadius: 14,
     paddingVertical: 18,
     alignItems: 'center',
+    marginTop: 24,
   },
   nextText: {
-    color: '#FFFFFF',
+    color: '#1A1A1A',
     fontSize: 17,
     fontWeight: '600',
   },
   dots: {
     position: 'absolute',
-    bottom: 60,
+    bottom: 24,
     alignSelf: 'center',
     flexDirection: 'row',
     gap: 8,
@@ -211,10 +203,10 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   dotActive: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#0A7AFF',
     width: 20,
   },
   dotInactive: {
-    backgroundColor: 'rgba(255,255,255,0.4)',
+    backgroundColor: '#D0D0D0',
   },
 });
