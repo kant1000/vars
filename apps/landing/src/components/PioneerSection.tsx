@@ -104,9 +104,9 @@ export default function PioneerSection({ initialSpots }: Props) {
               Be one of the first<br />50 VARS vendors.
             </h2>
             <p className="pioneer-sub">
-              We&apos;re launching with a tight group of exceptional vendors across
-              Lagos. Pioneers get zero commission for their first 3 bookings and
-              a permanent badge that builds trust with every customer.
+              Pioneers get a permanent badge that builds trust with every customer,
+              and keep 100% of their first 3 bookings. After that, the standard
+              platform fee applies.
             </p>
 
             {/* Live spots counter */}
@@ -143,14 +143,6 @@ export default function PioneerSection({ initialSpots }: Props) {
               <li className="pioneer-perk">
                 <span className="perk-icon">1</span>
                 Priority ranking in search results at launch
-              </li>
-              <li className="pioneer-perk">
-                <span className="perk-icon">+</span>
-                Direct WhatsApp support from the founding team
-              </li>
-              <li className="pioneer-perk">
-                <span className="perk-icon">&#10003;</span>
-                Free professional profile setup assistance
               </li>
             </ul>
           </div>
