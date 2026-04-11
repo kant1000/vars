@@ -11,29 +11,25 @@ async function getPioneerSpotsRemaining(): Promise<number> {
   if (!supabaseUrl || !serviceKey) return PIONEER_MAX;
 
   try {
-    const headers = {
-      apikey: serviceKey,
-      Authorization: `Bearer ${serviceKey}`,
-    };
-
-    const [vendorsRes, leadsRes] = await Promise.all([
-      fetch(`${supabaseUrl}/rest/v1/vendors?pioneer=eq.true&select=id`, {
-        headers: { ...headers, 'Prefer': 'count=exact', Range: '0-0' },
+    // Count from vendor_leads only — all pioneers register here first.
+    // Converted leads stay (converted = TRUE, pioneer = TRUE) so the
+    // count never double-counts full vendor accounts.
+    const res = await fetch(
+      `${supabaseUrl}/rest/v1/vendor_leads?pioneer=eq.true&select=id`,
+      {
+        headers: {
+          apikey: serviceKey,
+          Authorization: `Bearer ${serviceKey}`,
+          Prefer: 'count=exact',
+          Range: '0-0',
+        },
         next: { revalidate: 60 },
-      }),
-      fetch(`${supabaseUrl}/rest/v1/vendor_leads?pioneer=eq.true&select=id`, {
-        headers: { ...headers, 'Prefer': 'count=exact', Range: '0-0' },
-        next: { revalidate: 60 },
-      }),
-    ]);
-
-    const vendorCount = parseInt(
-      vendorsRes.headers.get('content-range')?.split('/')[1] ?? '0', 10
+      }
     );
     const leadCount = parseInt(
-      leadsRes.headers.get('content-range')?.split('/')[1] ?? '0', 10
+      res.headers.get('content-range')?.split('/')[1] ?? '0', 10
     );
-    return Math.max(0, PIONEER_MAX - (vendorCount + leadCount));
+    return Math.max(0, PIONEER_MAX - leadCount);
   } catch {
     return PIONEER_MAX;
   }

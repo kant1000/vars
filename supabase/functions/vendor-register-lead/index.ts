@@ -27,17 +27,15 @@ Deno.serve(async (req: Request) => {
 
   // ── GET: return current pioneer spot count ──────────────────
   if (req.method === 'GET') {
-    const { count: pioneerVendorCount } = await supabase
-      .from('vendors')
-      .select('id', { count: 'exact', head: true })
-      .eq('pioneer', true);
-
+    // Count from vendor_leads only — all pioneers register here first.
+    // Converted leads stay in the table (converted = TRUE) so the count
+    // remains accurate without double-counting full vendor accounts.
     const { count: pioneerLeadCount } = await supabase
       .from('vendor_leads')
       .select('id', { count: 'exact', head: true })
       .eq('pioneer', true);
 
-    const spotsUsed = (pioneerVendorCount ?? 0) + (pioneerLeadCount ?? 0);
+    const spotsUsed = pioneerLeadCount ?? 0;
     const spotsRemaining = Math.max(0, PIONEER_MAX - spotsUsed);
 
     return jsonResponse({ spots_remaining: spotsRemaining, spots_total: PIONEER_MAX });
@@ -76,19 +74,15 @@ Deno.serve(async (req: Request) => {
       return errorResponse('Invalid email address');
     }
 
-    // Count current pioneer vendors (verified pioneers, not leads)
-    const { count: pioneerVendorCount } = await supabase
-      .from('vendors')
-      .select('id', { count: 'exact', head: true })
-      .eq('pioneer', true);
-
-    // Count pioneer leads already submitted
+    // Count from vendor_leads only — all pioneers register here first.
+    // Converted leads remain with pioneer = TRUE so the count never
+    // double-counts full vendor accounts.
     const { count: pioneerLeadCount } = await supabase
       .from('vendor_leads')
       .select('id', { count: 'exact', head: true })
       .eq('pioneer', true);
 
-    const spotsUsed = (pioneerVendorCount ?? 0) + (pioneerLeadCount ?? 0);
+    const spotsUsed = pioneerLeadCount ?? 0;
     const spotsRemaining = Math.max(0, PIONEER_MAX - spotsUsed);
     const isPioneer = spotsRemaining > 0;
 
