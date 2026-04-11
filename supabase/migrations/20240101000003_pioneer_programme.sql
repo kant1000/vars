@@ -22,7 +22,7 @@ COMMENT ON COLUMN vendors.pioneer_bookings_completed IS 'Counts completed bookin
 -- Full vendor onboarding happens in-app after download.
 -- --------------------------------------------------------
 CREATE TABLE IF NOT EXISTS vendor_leads (
-  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   full_name       TEXT NOT NULL,
   email           TEXT NOT NULL,
   phone           TEXT NOT NULL,
