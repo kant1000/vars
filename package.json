@@ -9,6 +9,7 @@
   "scripts": {
     "mobile": "yarn workspace @vars/mobile start",
     "admin": "yarn workspace @vars/admin dev",
+    "landing": "yarn workspace @vars/landing dev",
     "db:migrate": "supabase db push",
     "db:reset": "supabase db reset",
     "db:types": "supabase gen types typescript --local > packages/shared/src/database.types.ts"

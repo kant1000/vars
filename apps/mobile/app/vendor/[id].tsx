@@ -55,6 +55,7 @@ interface VendorProfile {
   base_location_text: string | null;
   badge_vars_choice: boolean;
   badge_top_rated: boolean;
+  pioneer: boolean;
   services: VendorService[];
   portfolio: PortfolioPhoto[];
   reviews: Review[];
@@ -102,7 +103,7 @@ export default function VendorProfileScreen() {
     // Parallel fetches
     const [vendorRes, servicesRes, portfolioRes, reviewsRes, favRes] = await Promise.all([
       supabase.from('vendors')
-        .select('id, full_name, bio, profile_photo_url, avg_rating, total_reviews, is_online, base_location_text, badge_vars_choice, badge_top_rated')
+        .select('id, full_name, bio, profile_photo_url, avg_rating, total_reviews, is_online, base_location_text, badge_vars_choice, badge_top_rated, pioneer')
         .eq('id', id)
         .single(),
 
@@ -255,6 +256,7 @@ export default function VendorProfileScreen() {
 
           {/* Badges */}
           <View style={styles.badgeRow}>
+            {vendor.pioneer && <Badge label="★ Pioneer" color="#B8860B" />}
             {vendor.badge_vars_choice && <Badge label="VARS Choice" color={Colors.badgeVarsChoice} />}
             {vendor.badge_top_rated && <Badge label="Top Rated" color={Colors.badgeTopRated} />}
             <Badge label="Verified" color={Colors.badgeVerified} />

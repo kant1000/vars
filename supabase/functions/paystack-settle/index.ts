@@ -133,10 +133,10 @@ async function settleBooking(
     return;
   }
 
-  // Fetch vendor recipient code
+  // Fetch vendor recipient code + pioneer fields
   const { data: vendor } = await supabase
     .from('vendors')
-    .select('full_name, paystack_recipient_code, push_token')
+    .select('full_name, paystack_recipient_code, push_token, pioneer, pioneer_bookings_completed')
     .eq('id', booking.vendor_id)
     .single();
 
@@ -145,7 +145,17 @@ async function settleBooking(
     throw new Error('Vendor payment details not configured');
   }
 
-  const { vendorAmountKobo, varsCommissionKobo } = calculateSettlement(booking.service_price_kobo);
+  // Pioneer commission logic: first 3 completed bookings get 100% (no platform cut)
+  const isPioneerBooking =
+    vendor.pioneer === true && vendor.pioneer_bookings_completed < 3;
+
+  const vendorAmountKobo = isPioneerBooking
+    ? booking.service_price_kobo
+    : calculateSettlement(booking.service_price_kobo).vendorAmountKobo;
+  const varsCommissionKobo = isPioneerBooking
+    ? 0
+    : calculateSettlement(booking.service_price_kobo).varsCommissionKobo;
+
   const transferRef = generateReference('VARS_TRF');
 
   // Mark booking as completed first (optimistic update)
@@ -188,10 +198,22 @@ async function settleBooking(
       .update({ paystack_transfer_code: transfer.transfer_code })
       .eq('id', payout?.id);
 
+    // Increment pioneer counter after successful transfer
+    if (isPioneerBooking) {
+      await supabase
+        .from('vendors')
+        .update({ pioneer_bookings_completed: vendor.pioneer_bookings_completed + 1 })
+        .eq('id', booking.vendor_id);
+      console.log(
+        `Pioneer booking ${bookingId}: 100% to vendor, ` +
+        `pioneer_bookings_completed now ${vendor.pioneer_bookings_completed + 1}/3`
+      );
+    }
+
     console.log(
       `Transfer initiated: ${transfer.transfer_code} — ` +
       `₦${formatNaira(vendorAmountKobo)} to vendor ${booking.vendor_id} ` +
-      `(VARS commission: ₦${formatNaira(varsCommissionKobo)})`
+      `(VARS commission: ₦${formatNaira(varsCommissionKobo)}${isPioneerBooking ? ' — Pioneer waiver' : ''})`
     );
   } catch (err) {
     // Transfer failed — update payout to failed, alert ops
