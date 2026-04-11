@@ -116,7 +116,7 @@ Deno.serve(async (req: Request) => {
 
     if (insertError) {
       console.error('vendor_leads insert error:', insertError);
-      return errorResponse(`DB error: ${insertError.message} (code: ${insertError.code})`, 500);
+      return errorResponse('Registration failed — please try again', 500);
     }
 
     // Return updated spots remaining after this registration
