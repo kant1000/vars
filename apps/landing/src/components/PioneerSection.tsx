@@ -240,7 +240,7 @@ export default function PioneerSection({ initialSpots }: Props) {
                       <option value="" disabled>Select a service type</option>
                       <option value="barbing">Barbing</option>
                       <option value="hair_styling">Hair styling</option>
-                      <option value="makeovers">Makeovers / makeup</option>
+                      <option value="makeovers">Makeovers (makeup, pedicure &amp; more)</option>
                       <option value="other">Other</option>
                     </select>
                   </div>

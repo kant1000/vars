@@ -177,7 +177,7 @@ export default async function HomePage() {
               className="founder-quote"
               style={{ color: 'rgba(255,255,255,0.9)' }}
             >
-              I built VARS because I believe the most talented barbers and stylists
+              I built VARS because I believe the most talented stylists
               in Lagos deserve a business, not just a hustle. VARS is the platform
               that gives them one.
             </h2>
