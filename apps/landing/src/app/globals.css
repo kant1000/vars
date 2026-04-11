@@ -214,6 +214,8 @@ section { width: 100%; }
   width: 100%;
   max-width: 360px;
   border-radius: 24px;
+  -webkit-mask-image: radial-gradient(ellipse at center, black 45%, transparent 78%);
+  mask-image: radial-gradient(ellipse at center, black 45%, transparent 78%);
 }
 
 .hero-illus-placeholder {
