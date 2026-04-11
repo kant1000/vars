@@ -87,7 +87,7 @@ export default function PioneerSection({ initialSpots }: Props) {
         setSpots(data.spots_remaining);
       }
     } catch (err) {
-      setError(`Failed: ${err instanceof Error ? err.message : String(err)}`);
+      setError(`Failed: ${err instanceof Error ? err.message : String(err)} | URL: ${EDGE_URL || 'EMPTY'}`);
     } finally {
       setSubmitting(false);
     }
