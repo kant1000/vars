@@ -168,6 +168,26 @@ section { width: 100%; }
   transform: translateY(-1px);
 }
 
+.btn-coming-soon {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.08);
+  border: 1.5px solid rgba(255,255,255,0.2);
+  border-radius: 12px;
+  padding: 16px 28px;
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.55);
+  cursor: default;
+  letter-spacing: 0.01em;
+}
+.btn-coming-soon::before {
+  content: '◎';
+  font-size: 14px;
+  color: rgba(255,255,255,0.3);
+}
+
 .btn-ghost {
   background: transparent;
   color: var(--white);
@@ -196,6 +216,19 @@ section { width: 100%; }
   filter: invert(1);
   opacity: 0.92;
   border-radius: 24px;
+}
+
+.hero-illus-placeholder {
+  width: 320px;
+  height: 380px;
+  border-radius: 24px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 64px;
+  color: rgba(255,255,255,0.12);
 }
 
 /* ── How it works ─────────────────────────────────────────── */
