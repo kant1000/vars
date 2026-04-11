@@ -245,17 +245,36 @@ export default function PioneerSection({ initialSpots }: Props) {
                     </select>
                   </div>
                   <div className="form-group">
-                    <label className="form-label" htmlFor="location">City / area you operate in</label>
-                    <input
+                    <label className="form-label" htmlFor="location">Area you operate in</label>
+                    <select
                       id="location"
                       name="location"
-                      type="text"
-                      className="form-input"
-                      placeholder="e.g. Lekki, Lagos"
+                      className="form-select"
                       value={form.location}
                       onChange={handleChange}
                       required
-                    />
+                    >
+                      <option value="" disabled>Select your area</option>
+                      <option value="Victoria Island">Victoria Island</option>
+                      <option value="Lekki">Lekki</option>
+                      <option value="Ikoyi">Ikoyi</option>
+                      <option value="Ajah">Ajah</option>
+                      <option value="Surulere">Surulere</option>
+                      <option value="Yaba">Yaba</option>
+                      <option value="Ikeja">Ikeja</option>
+                      <option value="Gbagada">Gbagada</option>
+                      <option value="Ogba">Ogba</option>
+                      <option value="Maryland">Maryland</option>
+                      <option value="Magodo">Magodo</option>
+                      <option value="Mushin">Mushin</option>
+                      <option value="Festac">Festac</option>
+                      <option value="Isolo">Isolo</option>
+                      <option value="Ikorodu">Ikorodu</option>
+                      <option value="Alimosho">Alimosho</option>
+                      <option value="Agege">Agege</option>
+                      <option value="Oshodi">Oshodi</option>
+                      <option value="Other">Other</option>
+                    </select>
                   </div>
 
                   {error && <p className="form-error">{error}</p>}

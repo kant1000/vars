@@ -97,7 +97,8 @@ section { width: 100%; }
   background: var(--black);
   display: flex;
   align-items: center;
-  padding: 120px 0 80px;
+  /* padding-top offsets the fixed nav; equal bottom keeps content truly centred */
+  padding: 72px 0;
 }
 
 .hero-inner {

@@ -43,7 +43,7 @@ export default async function HomePage() {
       {/* ── Nav ─────────────────────────────────────────────── */}
       <nav>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/landing.png" alt="VARS" style={{ height: 32, width: 'auto' }} />
+        <img src="/logo-white.svg" alt="VARS" style={{ height: 28, width: 'auto' }} />
         <a href="#vendors" className="nav-cta">Join as a vendor</a>
       </nav>
 
@@ -54,12 +54,13 @@ export default async function HomePage() {
             <div>
               <span className="hero-eyebrow">Now in Lagos</span>
               <h1>
-                Beauty at<br />
-                your door.
+                Your skill deserves<br />
+                more than a salary.
               </h1>
               <p className="hero-sub">
-                Book verified barbers, stylists, and makeup artists who come to you —
-                wherever you are in Lagos. No travel, no waiting rooms.
+                VARS connects barbers, hairstylists, makeup artists, and more
+                directly to clients nearby. Work for yourself. Get paid securely.
+                Build your reputation.
               </p>
               <div className="hero-actions">
                 <span className="btn-coming-soon">
@@ -82,47 +83,6 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* ── How it works ──────────────────────────────────────── */}
-      <section className="how-section section-light">
-        <div className="container">
-          <span className="section-label">How it works</span>
-          <h2 className="section-title">Three taps. Done.</h2>
-          <p className="section-sub">
-            From search to session, the whole experience is built around your time.
-          </p>
-
-          <div className="steps-grid">
-            <div className="step-card">
-              <div className="step-number">1</div>
-              <div className="step-title">Find someone near you</div>
-              <p className="step-body">
-                Browse verified vendors by service, location, and rating.
-                Every profile includes real reviews and portfolio photos.
-              </p>
-            </div>
-            <div className="step-card">
-              <div className="step-number">2</div>
-              <div className="step-title">Book & pay securely</div>
-              <p className="step-body">
-                Pick a time, confirm your location, and pay through the app.
-                Your money is held in escrow until the service is complete.
-              </p>
-            </div>
-            <div className="step-card">
-              <div className="step-number">3</div>
-              <div className="step-title">Relax while they come to you</div>
-              <p className="step-body">
-                Track your vendor in real time. No rushing, no traffic,
-                no waiting rooms. Your home is your salon.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Pioneer section (client component) ───────────────── */}
-      <PioneerSection initialSpots={spotsRemaining} />
 
       {/* ── Why VARS (for vendors) ─────────────────────────────── */}
       <section className="why-section section-light" id="why">
@@ -165,6 +125,47 @@ export default async function HomePage() {
               <p className="benefit-body">
                 Customers pay upfront. Funds are held securely and released to you
                 once the service is confirmed complete.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Pioneer section (client component) ───────────────── */}
+      <PioneerSection initialSpots={spotsRemaining} />
+
+      {/* ── How it works ──────────────────────────────────────── */}
+      <section className="how-section section-light">
+        <div className="container">
+          <span className="section-label">How it works</span>
+          <h2 className="section-title">Three taps. Done.</h2>
+          <p className="section-sub">
+            From search to session, the whole experience is built around your time.
+          </p>
+
+          <div className="steps-grid">
+            <div className="step-card">
+              <div className="step-number">1</div>
+              <div className="step-title">Find someone near you</div>
+              <p className="step-body">
+                Browse verified vendors by service, location, and rating.
+                Every profile includes real reviews and portfolio photos.
+              </p>
+            </div>
+            <div className="step-card">
+              <div className="step-number">2</div>
+              <div className="step-title">Book &amp; pay securely</div>
+              <p className="step-body">
+                Pick a time, confirm your location, and pay through the app.
+                Your money is held in escrow until the service is complete.
+              </p>
+            </div>
+            <div className="step-card">
+              <div className="step-number">3</div>
+              <div className="step-title">Relax while they come to you</div>
+              <p className="step-body">
+                Track your vendor in real time. No rushing, no traffic,
+                no waiting rooms. Your home is your salon.
               </p>
             </div>
           </div>
