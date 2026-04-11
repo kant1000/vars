@@ -43,7 +43,7 @@ export default async function HomePage() {
       {/* ── Nav ─────────────────────────────────────────────── */}
       <nav>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.svg" alt="VARS" style={{ height: 26, width: 'auto' }} />
+        <img src="/logo-splash.png" alt="VARS" style={{ height: 32, width: 'auto' }} />
         <a href="#vendors" className="nav-cta">Join as a vendor</a>
       </nav>
 
