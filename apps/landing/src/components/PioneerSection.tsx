@@ -86,8 +86,8 @@ export default function PioneerSection({ initialSpots }: Props) {
       if (typeof data.spots_remaining === 'number') {
         setSpots(data.spots_remaining);
       }
-    } catch {
-      setError('Network error — please check your connection and try again.');
+    } catch (err) {
+      setError(`Failed: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setSubmitting(false);
     }
