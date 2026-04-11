@@ -71,11 +71,13 @@ export default async function HomePage() {
               </div>
             </div>
 
-            {/* Illustration placeholder — designer asset coming */}
             <div className="hero-illus">
-              <div className="hero-illus-placeholder">
-                <span>✦</span>
-              </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/landing.png"
+                alt="VARS — beauty at your door"
+                className="hero-illus-img"
+              />
             </div>
           </div>
         </div>
