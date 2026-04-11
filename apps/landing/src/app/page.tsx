@@ -42,7 +42,8 @@ export default async function HomePage() {
     <>
       {/* ── Nav ─────────────────────────────────────────────── */}
       <nav>
-        <span className="nav-logo">VARS</span>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.svg" alt="VARS" style={{ height: 26, width: 'auto' }} />
         <a href="#vendors" className="nav-cta">Join as a vendor</a>
       </nav>
 
@@ -61,26 +62,20 @@ export default async function HomePage() {
                 wherever you are in Lagos. No travel, no waiting rooms.
               </p>
               <div className="hero-actions">
-                <a
-                  href="https://play.google.com/store/apps/details?id=com.vars.app"
-                  className="btn-primary"
-                >
-                  Download the app
-                </a>
+                <span className="btn-coming-soon">
+                  Coming to iOS &amp; Android
+                </span>
                 <a href="#vendors" className="btn-ghost">
                   I&apos;m a vendor
                 </a>
               </div>
             </div>
 
-            {/* Illustration (onboarding3 — inverted) */}
+            {/* Illustration placeholder — designer asset coming */}
             <div className="hero-illus">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/onboarding3.png"
-                alt="VARS — beauty at your door"
-                className="hero-illus-img"
-              />
+              <div className="hero-illus-placeholder">
+                <span>✦</span>
+              </div>
             </div>
           </div>
         </div>
@@ -187,9 +182,9 @@ export default async function HomePage() {
               that gives them one.
             </h2>
             <div className="founder-attr">
-              <div className="founder-avatar">K</div>
+              <div className="founder-avatar">S</div>
               <div className="founder-name">
-                <strong>Kant</strong>
+                <strong>Seyi Ibitoye</strong>
                 <span>Founder, VARS</span>
               </div>
             </div>
@@ -257,7 +252,7 @@ export default async function HomePage() {
           <strong>VARS</strong> &nbsp;·&nbsp; Beauty at your door.
         </p>
         <p>
-          <a href="mailto:hello@bookwithvars.com">hello@bookwithvars.com</a>
+          <a href="mailto:support@bookwithvars.com">support@bookwithvars.com</a>
           &nbsp;&nbsp;·&nbsp;&nbsp;
           <a href="/privacy">Privacy</a>
           &nbsp;&nbsp;·&nbsp;&nbsp;
