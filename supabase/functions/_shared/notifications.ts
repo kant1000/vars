@@ -263,6 +263,13 @@ export function msg_vendor_autoAccepted(clientFirstName: string, service: string
   };
 }
 
+export function msg_vendor_serviceRenderReminder(clientFirstName: string) {
+  return {
+    title: 'Did the service wrap up?',
+    body: `Your appointment with ${clientFirstName} should be done. Mark it complete to release your payment.`,
+  };
+}
+
 export function msg_vendor_cancelledFullRefund(date: string, time: string) {
   return {
     title: 'Booking cancelled',

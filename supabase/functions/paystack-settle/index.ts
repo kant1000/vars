@@ -25,6 +25,7 @@ import {
   sendNotification,
   msg_paymentReleased,
   msg_vendor_paymentReleased,
+  msg_vendor_serviceRenderReminder,
   formatNaira,
 } from '../_shared/notifications.ts';
 
@@ -55,27 +56,69 @@ Deno.serve(async (req: Request) => {
 
     // --------------------------------------------------------
     // CRON MODE: auto-release bookings 1hr after scheduled end
+    //            + send one reminder push to vendors still on 'arrived'
     // --------------------------------------------------------
     if (isCronCall) {
-      const now = new Date().toISOString();
+      const now = new Date();
+      const nowIso = now.toISOString();
 
+      // 1. Settle due bookings
       const { data: dueBookings } = await supabase
         .from('bookings')
         .select('id, user_id, vendor_id, service_price_kobo, paystack_reference')
         .eq('status', 'service_rendered')
-        .lte('auto_release_at', now);
-
-      if (!dueBookings || dueBookings.length === 0) {
-        return jsonResponse({ settled: 0 });
-      }
+        .lte('auto_release_at', nowIso);
 
       let settledCount = 0;
-      for (const booking of dueBookings) {
+      for (const booking of (dueBookings ?? [])) {
         await settleBooking(supabase, booking.id, 'auto_release');
         settledCount++;
       }
 
-      return jsonResponse({ settled: settledCount });
+      // 2. Remind vendors who are still on 'arrived' past their service end + 15min
+      //    Fetch bookings that started at least 45 min ago (30min min service + 15min buffer)
+      //    then filter precisely using service_duration_blocks.
+      const fortyFiveMinsAgo = new Date(now.getTime() - 45 * 60 * 1000).toISOString();
+      const { data: arrivedBookings } = await supabase
+        .from('bookings')
+        .select('id, vendor_id, scheduled_at, service_duration_blocks, profiles(full_name, push_token), vendors(push_token)')
+        .eq('status', 'arrived')
+        .lt('scheduled_at', fortyFiveMinsAgo);
+
+      let remindedCount = 0;
+      for (const b of (arrivedBookings ?? [])) {
+        const scheduledEnd = new Date(
+          new Date(b.scheduled_at).getTime() + (b.service_duration_blocks as number) * 30 * 60 * 1000
+        );
+        const reminderAt = new Date(scheduledEnd.getTime() + 15 * 60 * 1000);
+        if (now < reminderAt) continue; // too early
+
+        // Idempotency: only send once per booking
+        const { data: existing } = await supabase
+          .from('notifications')
+          .select('id')
+          .eq('booking_id', b.id)
+          .eq('type', 'service_rendered_reminder')
+          .maybeSingle();
+        if (existing) continue;
+
+        const clientFirstName = ((b as any).profiles?.full_name ?? 'your client').split(' ')[0];
+        const msg = msg_vendor_serviceRenderReminder(clientFirstName);
+        await sendNotification({
+          recipientId: b.vendor_id,
+          recipientType: 'vendor',
+          type: 'service_rendered_reminder',
+          title: msg.title,
+          body: msg.body,
+          bookingId: b.id,
+          pushToken: (b as any).vendors?.push_token ?? null,
+          data: { bookingId: b.id, screen: '/vendor-tabs' },
+        });
+        remindedCount++;
+      }
+
+      console.log(`paystack-settle cron: settled=${settledCount}, reminded=${remindedCount}`);
+      return jsonResponse({ settled: settledCount, reminded: remindedCount });
     }
 
     // --------------------------------------------------------

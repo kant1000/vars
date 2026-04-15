@@ -94,7 +94,7 @@ vars/
 
 - **Discovery** — browse vendors by category (Barbing / Hair Styling / Makeovers); filter by distance from their current location using PostGIS
 - **Booking flow** — 3-step: pick service → pick date & time slot → review & pay
-- **Paystack checkout** — opens in an in-app WebView; payment held in escrow
+- **Paystack checkout** — opens in an in-app WebView; card is charged immediately and funds held in VARS's Paystack balance (escrow) until the vendor is paid
 - **Live tracking** — real-time map showing vendor location while en route; phone number revealed 15 minutes before appointment
 - **Confirm & settle** — customer taps "Confirm service done" to release escrow; auto-releases 1 hour after the scheduled booking end time if no action taken
 - **Reviews** — 1–5 star rating + comment after completion
@@ -149,10 +149,26 @@ Six migration files build up the schema incrementally:
 ### Booking Status Flow
 
 ```
-pending → accepted → on_way → arrived → service_rendered → completed
-                                                          ↘ cancelled
-                                                          ↘ disputed
-                                                          ↘ expired
+pending ──── (1hr no response) ──────────────────────────────────────► expired
+   │
+   ├── (user/vendor cancel) ────────────────────────────────────────► cancelled
+   │
+   ▼
+accepted
+   │
+   ├── (user/vendor cancel) ────────────────────────────────────────► cancelled
+   │
+   ▼
+on_way → arrived
+                │
+                ├── (user dispute) ──────────────────────────────────► disputed
+                │
+                ▼
+         service_rendered
+                │
+                ├── (user confirm / auto-release 1hr after sched. end) ► completed
+                │
+                └── (user dispute) ──────────────────────────────────► disputed
 ```
 
 ---
@@ -164,9 +180,9 @@ All functions live in `supabase/functions/` and run on Deno.
 | Function | Method | Purpose |
 |---|---|---|
 | `paystack-initialize` | POST | Validates booking request, initialises Paystack transaction, returns `access_code` |
-| `paystack-webhook` | POST | Handles Paystack events: creates booking on `charge.success`, auto-accepts if conditions met, creates transport buffers |
-| `paystack-capture` | POST | Vendor accepts a pending booking — captures the Paystack authorisation |
-| `paystack-release` | POST | Vendor declines or booking expires — voids the authorisation |
+| `paystack-webhook` | POST | Handles Paystack events: creates booking on `charge.success` (card already charged), auto-accepts if conditions met, creates transport buffers for auto-accepted bookings only |
+| `paystack-capture` | POST | Vendor accepts a pending booking — updates booking status to `accepted` (no Paystack action needed; payment already charged) |
+| `paystack-release` | POST | Vendor declines or booking expires — issues a full Paystack refund to the customer |
 | `paystack-settle` | POST | Customer confirms service done, or 1-hr auto-release fires after scheduled end — initiates Paystack transfer to vendor (80/20 split; Pioneer vendors: 100%) |
 | `paystack-cancel` | POST | Customer cancels — tiered refund (0–15 min: 15% fee; 15 min–1 hr: 50% fee; within 1 hr of service: non-refundable); releases transport buffers |
 | `paystack-verify-bank` | POST | Verifies vendor bank account via Paystack during onboarding |
@@ -229,9 +245,10 @@ Paystack Checkout (WebView)
         │
         ▼
 paystack-webhook
+  • Card is charged at this point — funds move to VARS Paystack balance (escrow)
   • Creates booking record (sets auto_release_at = scheduled_end + 1hr)
-  • Creates 2× transport buffer blocks after booking end
-  • If auto-accept conditions met → status = accepted, 5-min grace window opens
+  • If auto-accept conditions met → status = accepted, 5-min grace window opens,
+    2× transport buffer blocks inserted after booking end
   • Otherwise → status = pending, vendor has 1 hour to accept
         │
    ┌────┴──────┐
@@ -240,7 +257,9 @@ Vendor       Expires
 accepts     (1 hr)
    │           │
 paystack-  paystack-
-capture    release (full refund)
+capture    release
+(status →  (full refund
+ accepted)  to customer)
    │
    ├── User cancels (paystack-cancel)
    │     • Tiered fee: 0–15 min = 15%, 15 min–1 hr before service = 50%,
@@ -311,14 +330,14 @@ When a booking is auto-accepted, the system automatically inserts `transport_buf
 
 ### Vendor Calendar States
 
-| State | Colour | Meaning |
-|---|---|---|
-| *(default / no record)* | White border | Available — customers can book |
-| `unavailable` | Red | Blocked — customers cannot book |
-| `auto_accept` | Gold ⚡ | Available + instant confirm |
-| `transport_buffer` | Grey 🚗 | System-reserved travel buffer (read-only) |
+| DB state | UI label | Colour | Meaning |
+|---|---|---|---|
+| *(no record)* | Available | White border | Open — customers can book |
+| `unavailable` | Blocked | Red | Closed — customers cannot book |
+| `auto_accept` | Auto-accept | Gold ⚡ | Open + instant confirm |
+| `transport_buffer` | Buffer | Grey 🚗 | System-reserved travel time (read-only, not tappable) |
 
-Tapping a slot cycles: available → blocked → auto-accept → back to available.
+Tapping a slot cycles through the three user-controlled states: Available → Blocked → Auto-accept → Available. Transport buffer slots cannot be toggled.
 
 ---
 
@@ -341,11 +360,15 @@ The admin panel never needs to action a clean pass. The queue stays focused on p
 
 The cancel button is available on the live booking screen while the booking is `pending` or `accepted`. **Once the vendor marks "I'm on my way" (`on_way`), cancellation is locked out** — the customer's only recourse from that point is a dispute.
 
-| Time of cancellation | Fee | Vendor share |
+Rules are evaluated in priority order (top wins):
+
+| Condition | Fee | Vendor share |
 |---|---|---|
-| 0–15 min after booking | 15% of price | 5% vendor / 10% VARS |
-| 15 min – 1 hr before service | 50% of price | 20% vendor / 30% VARS |
 | Within 1 hr of service start | Non-refundable (100%) | 70% vendor / 30% VARS |
+| Within 15 min of booking | 15% of price | 5% vendor / 10% VARS |
+| All other cases | 50% of price | 20% vendor / 30% VARS |
+
+Example: cancel 20 min after booking but 3 hours before service → 50% fee (not within 1hr of service, not within 15min of booking).
 
 Transport buffer blocks are deleted on cancellation, freeing the vendor's calendar.
 
@@ -380,6 +403,8 @@ A scheduled cron fires every 15 minutes. Any `service_rendered` booking where `a
 - `auto_release_at` = `scheduled_at + (duration_blocks × 30min) + 1hr`
 - Standard 80/20 settlement — functionally identical to a user confirmation
 - User and vendor notified
+
+**Dependency:** auto-release only fires once the vendor has marked the booking as `service_rendered`. If the vendor never taps "Service rendered," `auto_release_at` is irrelevant and the funds remain in escrow. To avoid this, 15 minutes after the scheduled service end time the same cron sends a one-time push notification to the vendor reminding them to mark the job complete. The vendor's jobs screen also shows a persistent in-app banner for any `arrived` booking past its scheduled end time.
 
 ---
 

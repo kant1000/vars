@@ -268,6 +268,12 @@ function ActiveCard({
   const [cancelling, setCancelling] = useState(false);
   const action = FLOW_ACTIONS[booking.status];
 
+  // Show "time's up" banner when arrived and past scheduled end
+  const scheduledEnd = new Date(
+    new Date(booking.scheduled_at).getTime() + booking.service_duration_blocks * 30 * 60 * 1000
+  );
+  const isPastEnd = booking.status === 'arrived' && new Date() > scheduledEnd;
+
   const advance = async () => {
     if (!action) return;
     setActing(true);
@@ -343,6 +349,13 @@ function ActiveCard({
       )}
       {booking.phone_revealed && booking.customer_phone && (
         <Text style={c.phoneReveal}>📞 {booking.customer_phone}</Text>
+      )}
+      {isPastEnd && (
+        <View style={c.renderReminderBanner}>
+          <Text style={c.renderReminderText}>
+            💰 Service time has passed — mark it done to release your payment.
+          </Text>
+        </View>
       )}
       {action && (
         <TouchableOpacity
@@ -819,6 +832,14 @@ const c = StyleSheet.create({
   waitingText: { fontSize: 12, color: Colors.primary, lineHeight: 17 },
 
   btnDisabled: { opacity: 0.5 },
+
+  // Service-rendered reminder banner
+  renderReminderBanner: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: 10, padding: 10, marginTop: 4,
+    borderWidth: 1, borderColor: '#D97706',
+  },
+  renderReminderText: { fontSize: 13, color: '#92400E', fontWeight: '600', lineHeight: 18 },
 
   // Vendor cancel button on active cards
   vendorCancelBtn: {
