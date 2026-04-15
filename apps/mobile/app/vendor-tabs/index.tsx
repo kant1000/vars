@@ -27,7 +27,7 @@ const LOCATION_UPDATE_INTERVAL_MS = 5 * 60_000; // every 5 min while online
 
 // ── Types ───────────────────────────────────────────────────
 type BookingStatus =
-  | 'pending' | 'accepted' | 'vendor_on_way' | 'vendor_arrived'
+  | 'pending' | 'accepted' | 'on_way' | 'arrived'
   | 'service_rendered' | 'completed' | 'cancelled' | 'expired';
 
 interface VendorBooking {
@@ -252,9 +252,9 @@ function PendingCard({
 
 // ── Active job card ──────────────────────────────────────────
 const FLOW_ACTIONS: Partial<Record<BookingStatus, { label: string; next: BookingStatus; color: string }>> = {
-  accepted:         { label: "I'm on my way",    next: 'vendor_on_way',    color: Colors.statusOnWay },
-  vendor_on_way:    { label: "I've arrived",      next: 'vendor_arrived',   color: Colors.statusArrived },
-  vendor_arrived:   { label: 'Service rendered',  next: 'service_rendered', color: Colors.primary },
+  accepted:  { label: "I'm on my way",   next: 'on_way',           color: Colors.statusOnWay },
+  on_way:    { label: "I've arrived",    next: 'arrived',           color: Colors.statusArrived },
+  arrived:   { label: 'Service rendered', next: 'service_rendered', color: Colors.primary },
 };
 
 function ActiveCard({ booking, onUpdated }: { booking: VendorBooking; onUpdated: () => void }) {
@@ -265,8 +265,8 @@ function ActiveCard({ booking, onUpdated }: { booking: VendorBooking; onUpdated:
     if (!action) return;
     setActing(true);
     const update: Record<string, any> = { status: action.next };
-    if (action.next === 'vendor_on_way')    update.on_way_at = new Date().toISOString();
-    if (action.next === 'vendor_arrived')   update.arrived_at = new Date().toISOString();
+    if (action.next === 'on_way')    update.on_way_at = new Date().toISOString();
+    if (action.next === 'arrived')   update.arrived_at = new Date().toISOString();
     if (action.next === 'service_rendered') update.service_rendered_at = new Date().toISOString();
 
     const { error } = await supabase.from('bookings').update(update).eq('id', booking.id);
@@ -277,8 +277,8 @@ function ActiveCard({ booking, onUpdated }: { booking: VendorBooking; onUpdated:
 
   const statusColors: Partial<Record<BookingStatus, string>> = {
     accepted:         Colors.statusAccepted,
-    vendor_on_way:    Colors.statusOnWay,
-    vendor_arrived:   Colors.statusArrived,
+    on_way:           Colors.statusOnWay,
+    arrived:          Colors.statusArrived,
     service_rendered: Colors.primary,
   };
   const dot = statusColors[booking.status] ?? Colors.primary;
@@ -568,7 +568,7 @@ export default function VendorJobsScreen() {
     new Date(b.auto_accept_grace_expires_at) > new Date()
   );
   const active   = bookings.filter((b) =>
-    ['accepted','vendor_on_way','vendor_arrived','service_rendered'].includes(b.status) &&
+    ['accepted','on_way','arrived','service_rendered'].includes(b.status) &&
     !graceBookings.some((g) => g.id === b.id)
   );
   const upcoming = bookings.filter((b) => b.status === 'accepted' && new Date(b.scheduled_at) > new Date() && !graceBookings.some((g) => g.id === b.id));

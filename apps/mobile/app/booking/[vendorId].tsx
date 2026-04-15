@@ -181,7 +181,7 @@ function Step2({
       .from('bookings')
       .select('scheduled_at, service_duration_blocks')
       .eq('vendor_id', vendorId)
-      .in('status', ['pending', 'accepted', 'vendor_on_way', 'vendor_arrived'])
+      .in('status', ['pending', 'accepted', 'on_way', 'arrived'])
       .gte('scheduled_at', dayStart.toISOString())
       .lt('scheduled_at', dayEnd.toISOString());
 

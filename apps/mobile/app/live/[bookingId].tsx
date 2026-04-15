@@ -25,7 +25,7 @@ const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
 // ── Types ───────────────────────────────────────────────────
 type BookingStatus =
-  | 'pending' | 'accepted' | 'vendor_on_way' | 'vendor_arrived'
+  | 'pending' | 'accepted' | 'on_way' | 'arrived'
   | 'service_rendered' | 'completed' | 'cancelled' | 'expired' | 'disputed';
 
 interface BookingData {
@@ -55,8 +55,8 @@ interface BookingData {
 const STATUS_CONFIG: Record<BookingStatus, { label: string; color: string; emoji: string }> = {
   pending:          { label: 'Awaiting vendor',      color: Colors.statusPending,   emoji: '⏳' },
   accepted:         { label: 'Booking confirmed',    color: Colors.statusAccepted,  emoji: '✅' },
-  vendor_on_way:    { label: 'Vendor on their way',  color: Colors.statusOnWay,     emoji: '🚗' },
-  vendor_arrived:   { label: 'Vendor has arrived',   color: Colors.statusArrived,   emoji: '📍' },
+  on_way:           { label: 'Vendor on their way',  color: Colors.statusOnWay,     emoji: '🚗' },
+  arrived:          { label: 'Vendor has arrived',   color: Colors.statusArrived,   emoji: '📍' },
   service_rendered: { label: 'Service complete',     color: Colors.primary,         emoji: '🎉' },
   completed:        { label: 'All done',             color: Colors.statusCompleted, emoji: '⭐' },
   cancelled:        { label: 'Cancelled',            color: Colors.statusCancelled, emoji: '✕' },
@@ -65,7 +65,7 @@ const STATUS_CONFIG: Record<BookingStatus, { label: string; color: string; emoji
 };
 
 const STATUS_ORDER: BookingStatus[] = [
-  'pending', 'accepted', 'vendor_on_way', 'vendor_arrived', 'service_rendered', 'completed',
+  'pending', 'accepted', 'on_way', 'arrived', 'service_rendered', 'completed',
 ];
 
 // ── Helpers ─────────────────────────────────────────────────
@@ -350,7 +350,7 @@ export default function LiveScreen() {
   }
 
   const cfg = STATUS_CONFIG[booking.status] ?? STATUS_CONFIG.pending;
-  const showMap = ['vendor_on_way', 'vendor_arrived'].includes(booking.status)
+  const showMap = ['on_way', 'arrived'].includes(booking.status)
     && booking.vendor_live_lat != null && booking.vendor_live_lng != null;
 
   const minsUntil = minutesUntil(booking.scheduled_at);
@@ -360,7 +360,7 @@ export default function LiveScreen() {
     && minsUntil > 0 && minsUntil <= 30;
 
   const canConfirm = booking.status === 'service_rendered';
-  const canDispute = ['accepted', 'vendor_on_way', 'vendor_arrived', 'service_rendered'].includes(booking.status);
+  const canDispute = ['accepted', 'on_way', 'arrived', 'service_rendered'].includes(booking.status);
   const isTerminal = ['completed', 'cancelled', 'expired'].includes(booking.status);
 
   return (

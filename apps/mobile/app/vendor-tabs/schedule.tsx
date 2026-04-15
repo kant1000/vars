@@ -117,8 +117,11 @@ export default function ScheduleScreen() {
 
   const slots = generateSlots(selectedDay);
 
-  const getBlockForSlot = (slotIso: string): CalendarBlock | undefined =>
-    blocks.find((b) => b.start_time === slotIso);
+  // Compare via epoch ms — Supabase returns "+00:00" format, JS toISOString() returns "Z" format
+  const getBlockForSlot = (slotIso: string): CalendarBlock | undefined => {
+    const target = new Date(slotIso).getTime();
+    return blocks.find((b) => new Date(b.start_time).getTime() === target);
+  };
 
   const handleToggle = async (slot: Date) => {
     if (!vendorId || toggling) return;
