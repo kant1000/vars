@@ -1,7 +1,9 @@
 // ============================================================
-// VARS — Vendor Jobs Dashboard (Phase 9)
+// VARS — Vendor Jobs Dashboard
 // Sections:
+//   • Zone confirmation modal (daily prompt when auto-accept enabled)
 //   • Incoming requests (pending) — accept/decline + 2hr countdown
+//   • Auto-accepted bookings in grace period — cancel within 5 min
 //   • Active jobs (accepted/on_way/arrived/service_rendered) — flow buttons
 //   • Upcoming (future accepted bookings)
 //   • Past jobs
@@ -9,13 +11,16 @@
 // ============================================================
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Alert, RefreshControl,
+  ActivityIndicator, Alert, Modal, RefreshControl,
   ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
+import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
+
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
@@ -36,6 +41,17 @@ interface VendorBooking {
   customer_name: string;
   customer_phone: string | null;
   phone_revealed: boolean;
+  auto_accepted: boolean;
+  auto_accept_grace_expires_at: string | null;
+  grace_cancelled: boolean;
+}
+
+interface ZoneStatus {
+  zone_configured: boolean;
+  auto_accept_enabled: boolean;
+  confirmed_today: boolean;
+  needs_confirmation: boolean;
+  zone: { lat: number; lng: number; radius_km: number } | null;
 }
 
 // ── Helpers ─────────────────────────────────────────────────
@@ -73,7 +89,88 @@ function useCountdown(expiryIso: string | null) {
   const h = Math.floor(secs / 3600);
   const m = Math.floor((secs % 3600) / 60);
   const s = secs % 60;
-  return secs <= 0 ? 'Expired' : `${h > 0 ? `${h}h ` : ''}${m}m ${String(s).padStart(2, '0')}s`;
+  return { display: secs <= 0 ? 'Expired' : `${h > 0 ? `${h}h ` : ''}${m}m ${String(s).padStart(2, '0')}s`, expired: secs <= 0 };
+}
+
+// ── Grace period card (auto-accepted, 5-min cancel window) ──
+function GraceCard({
+  booking, sessionToken, onUpdated,
+}: {
+  booking: VendorBooking;
+  sessionToken: string;
+  onUpdated: () => void;
+}) {
+  const [cancelling, setCancelling] = useState(false);
+  const { display, expired } = useCountdown(booking.auto_accept_grace_expires_at);
+
+  const handleGraceCancel = async () => {
+    Alert.alert(
+      'Cancel this booking?',
+      'This will cancel the booking and refund the customer in full. You won\'t be penalised.',
+      [
+        { text: 'Keep booking', style: 'cancel' },
+        {
+          text: 'Cancel booking',
+          style: 'destructive',
+          onPress: async () => {
+            setCancelling(true);
+            try {
+              const res = await fetch(`${SUPABASE_URL}/functions/v1/vendor-cancel-grace`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${sessionToken}`,
+                },
+                body: JSON.stringify({ booking_id: booking.id }),
+              });
+              if (!res.ok) {
+                const d = await res.json();
+                Alert.alert('Error', d.error ?? 'Could not cancel.');
+              } else {
+                onUpdated();
+              }
+            } catch {
+              Alert.alert('Error', 'Could not reach server.');
+            } finally {
+              setCancelling(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  return (
+    <View style={[c.card, c.graceCard]}>
+      <View style={c.cardHeader}>
+        <Text style={c.graceBadge}>⚡ Auto-accepted</Text>
+        {!expired && (
+          <Text style={c.graceCountdown}>{display} to cancel</Text>
+        )}
+      </View>
+      <Text style={c.customerName}>{booking.customer_name}</Text>
+      <Text style={c.serviceName}>{booking.service_name}</Text>
+      <Text style={c.meta}>{fmtDateTime(booking.scheduled_at)} · {fmtDuration(booking.service_duration_blocks)}</Text>
+      {booking.user_location_address && (
+        <Text style={c.meta} numberOfLines={1}>📍 {booking.user_location_address}</Text>
+      )}
+      <View style={c.priceRow}>
+        <Text style={c.earning}>You earn: <Text style={c.earningAmount}>{fmtPrice(vendorEarning(booking.service_price_kobo))}</Text></Text>
+      </View>
+      {!expired && (
+        <TouchableOpacity
+          style={[c.graceCancelBtn, cancelling && c.btnDisabled]}
+          onPress={handleGraceCancel}
+          disabled={cancelling}
+        >
+          {cancelling
+            ? <ActivityIndicator color={Colors.error} size="small" />
+            : <Text style={c.graceCancelText}>Cancel (no penalty)</Text>
+          }
+        </TouchableOpacity>
+      )}
+    </View>
+  );
 }
 
 // ── Pending booking card ─────────────────────────────────────
@@ -87,7 +184,7 @@ function PendingCard({
   const [acting, setActing] = useState(false);
   // 2-hour window from booking creation
   const expiry = new Date(new Date(booking.created_at).getTime() + 2 * 60 * 60 * 1000).toISOString();
-  const countdown = useCountdown(expiry);
+  const { display: countdown } = useCountdown(expiry);
 
   const handle = async (action: 'accept' | 'decline') => {
     setActing(true);
@@ -234,6 +331,70 @@ function BookingRow({ booking }: { booking: VendorBooking }) {
   );
 }
 
+// ── Zone confirmation modal ──────────────────────────────────
+function ZoneConfirmModal({
+  visible, zone, sessionToken, onConfirmed, onDismiss,
+}: {
+  visible: boolean;
+  zone: { lat: number; lng: number; radius_km: number } | null;
+  sessionToken: string;
+  onConfirmed: () => void;
+  onDismiss: () => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+
+  const handleConfirm = async () => {
+    setConfirming(true);
+    try {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/vendor-confirm-zone`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${sessionToken}` },
+      });
+      if (res.ok) onConfirmed();
+      else {
+        const d = await res.json();
+        Alert.alert('Error', d.error ?? 'Could not confirm zone.');
+      }
+    } catch {
+      Alert.alert('Error', 'Could not reach server.');
+    } finally {
+      setConfirming(false);
+    }
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade">
+      <View style={zm.overlay}>
+        <View style={zm.sheet}>
+          <Text style={zm.icon}>⚡</Text>
+          <Text style={zm.title}>Confirm your zone?</Text>
+          <Text style={zm.body}>
+            {zone
+              ? `Your auto-accept zone is set to a ${zone.radius_km} km radius around your pin. Confirm to activate auto-accept for today.`
+              : 'Confirm your operating zone for today to activate auto-accept.'}
+          </Text>
+          <TouchableOpacity
+            style={[zm.confirmBtn, confirming && zm.btnDisabled]}
+            onPress={handleConfirm}
+            disabled={confirming}
+          >
+            {confirming
+              ? <ActivityIndicator color="#FFF" />
+              : <Text style={zm.confirmBtnText}>Yes, I'm in my zone</Text>
+            }
+          </TouchableOpacity>
+          <TouchableOpacity style={zm.changeBtn} onPress={() => { onDismiss(); router.push('/vendor-zone-setup'); }}>
+            <Text style={zm.changeBtnText}>Change zone</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={zm.dismissBtn} onPress={onDismiss}>
+            <Text style={zm.dismissBtnText}>Not today</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 // ── Root component ───────────────────────────────────────────
 export default function VendorJobsScreen() {
   const insets = useSafeAreaInsets();
@@ -244,6 +405,7 @@ export default function VendorJobsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [isOnline, setIsOnline] = useState(false);
   const [togglingOnline, setTogglingOnline] = useState(false);
+  const [zoneModal, setZoneModal] = useState<ZoneStatus | null>(null);
 
   const load = useCallback(async () => {
     const { data } = await supabase
@@ -251,6 +413,7 @@ export default function VendorJobsScreen() {
       .select(`
         id, status, service_name, service_price_kobo, service_duration_blocks,
         scheduled_at, user_location_address, created_at, phone_revealed,
+        auto_accepted, auto_accept_grace_expires_at, grace_cancelled,
         profiles(full_name, phone_number)
       `)
       .order('scheduled_at', { ascending: true })
@@ -263,6 +426,7 @@ export default function VendorJobsScreen() {
       .select(`
         id, status, service_name, service_price_kobo, service_duration_blocks,
         scheduled_at, user_location_address, created_at, phone_revealed,
+        auto_accepted, auto_accept_grace_expires_at, grace_cancelled,
         profiles(full_name, phone_number)
       `)
       .in('status', ['completed', 'cancelled', 'expired'])
@@ -281,6 +445,9 @@ export default function VendorJobsScreen() {
       customer_name: b.profiles?.full_name ?? 'Customer',
       customer_phone: b.profiles?.phone_number ?? null,
       phone_revealed: b.phone_revealed,
+      auto_accepted: b.auto_accepted ?? false,
+      auto_accept_grace_expires_at: b.auto_accept_grace_expires_at ?? null,
+      grace_cancelled: b.grace_cancelled ?? false,
     });
 
     setBookings([...(data ?? []).map(toBooking), ...(history ?? []).map(toBooking)]);
@@ -288,13 +455,36 @@ export default function VendorJobsScreen() {
     setRefreshing(false);
   }, []);
 
-  // Fetch vendor online status
+  // Fetch vendor online status + zone confirmation check
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data } = await supabase.from('vendors').select('is_online').eq('id', user.id).single();
-      if (data) setIsOnline(data.is_online);
+      const { data } = await supabase
+        .from('vendors')
+        .select('is_online, auto_accept_enabled, auto_accept_zone_confirmed_date, auto_accept_zone_lat, auto_accept_zone_lng, auto_accept_zone_radius_km, auto_accept_paused_due_to_drift')
+        .eq('id', user.id)
+        .single();
+      if (data) {
+        setIsOnline(data.is_online);
+        // Show zone confirmation modal if auto-accept is on but not confirmed today
+        const today = new Date().toISOString().slice(0, 10);
+        const zoneConfigured = data.auto_accept_zone_lat != null;
+        const confirmedToday = data.auto_accept_zone_confirmed_date === today;
+        if (zoneConfigured && data.auto_accept_enabled && !confirmedToday) {
+          setZoneModal({
+            zone_configured: true,
+            auto_accept_enabled: true,
+            confirmed_today: false,
+            needs_confirmation: true,
+            zone: {
+              lat: data.auto_accept_zone_lat,
+              lng: data.auto_accept_zone_lng,
+              radius_km: data.auto_accept_zone_radius_km,
+            },
+          });
+        }
+      }
     })();
   }, []);
 
@@ -320,8 +510,19 @@ export default function VendorJobsScreen() {
   };
 
   const pending  = bookings.filter((b) => b.status === 'pending');
-  const active   = bookings.filter((b) => ['accepted','vendor_on_way','vendor_arrived','service_rendered'].includes(b.status));
-  const upcoming = bookings.filter((b) => b.status === 'accepted' && new Date(b.scheduled_at) > new Date());
+  // Grace bookings: auto-accepted, still within 5-min grace, not yet cancelled
+  const graceBookings = bookings.filter((b) =>
+    b.status === 'accepted' &&
+    b.auto_accepted &&
+    !b.grace_cancelled &&
+    b.auto_accept_grace_expires_at != null &&
+    new Date(b.auto_accept_grace_expires_at) > new Date()
+  );
+  const active   = bookings.filter((b) =>
+    ['accepted','vendor_on_way','vendor_arrived','service_rendered'].includes(b.status) &&
+    !graceBookings.some((g) => g.id === b.id)
+  );
+  const upcoming = bookings.filter((b) => b.status === 'accepted' && new Date(b.scheduled_at) > new Date() && !graceBookings.some((g) => g.id === b.id));
   // Remove from active if scheduled far in future (show only today's jobs)
   const todayActive = active.filter((b) => {
     const d = new Date(b.scheduled_at);
@@ -334,6 +535,17 @@ export default function VendorJobsScreen() {
 
   return (
     <View style={[c.container, { paddingTop: insets.top }]}>
+      {/* Zone confirmation modal */}
+      {zoneModal && (
+        <ZoneConfirmModal
+          visible={!!zoneModal}
+          zone={zoneModal.zone}
+          sessionToken={session?.access_token ?? ''}
+          onConfirmed={() => setZoneModal(null)}
+          onDismiss={() => setZoneModal(null)}
+        />
+      )}
+
       {/* Header */}
       <View style={c.header}>
         <Text style={c.headerTitle}>My Jobs</Text>
@@ -358,6 +570,20 @@ export default function VendorJobsScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={Colors.primary} />
         }
       >
+        {/* Auto-accepted — grace period */}
+        {graceBookings.length > 0 && (
+          <Section title={`Auto-accepted (${graceBookings.length})`} urgent>
+            {graceBookings.map((b) => (
+              <GraceCard
+                key={b.id}
+                booking={b}
+                sessionToken={session?.access_token ?? ''}
+                onUpdated={load}
+              />
+            ))}
+          </Section>
+        )}
+
         {/* Incoming requests */}
         {pending.length > 0 && (
           <Section title={`Incoming requests (${pending.length})`} urgent>
@@ -489,6 +715,17 @@ const c = StyleSheet.create({
 
   btnDisabled: { opacity: 0.5 },
 
+  // Grace period card
+  graceCard: { borderColor: '#D4A017', borderWidth: 1.5 },
+  graceBadge: { fontSize: 12, fontWeight: '700', color: '#A07010', flex: 1 },
+  graceCountdown: { fontSize: 12, fontWeight: '700', color: Colors.error, fontVariant: ['tabular-nums'] },
+  graceCancelBtn: {
+    marginTop: 8, height: 42, borderRadius: 10,
+    borderWidth: 1.5, borderColor: Colors.error,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  graceCancelText: { fontSize: 14, fontWeight: '700', color: Colors.error },
+
   // Rows
   row: {
     flexDirection: 'row', alignItems: 'center',
@@ -501,4 +738,35 @@ const c = StyleSheet.create({
   empty: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 40 },
   emptyTitle: { fontSize: 20, fontWeight: '700', color: Colors.text, marginBottom: 8 },
   emptyBody: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
+});
+
+// Zone modal styles
+const zm = StyleSheet.create({
+  overlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center', justifyContent: 'flex-end',
+  },
+  sheet: {
+    backgroundColor: Colors.background,
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    padding: 28, width: '100%', alignItems: 'center', gap: 8,
+  },
+  icon:  { fontSize: 36, marginBottom: 4 },
+  title: { fontSize: 20, fontWeight: '800', color: Colors.text, textAlign: 'center' },
+  body:  { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 8 },
+  confirmBtn: {
+    width: '100%', height: 54, backgroundColor: '#D4A017',
+    borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+  },
+  btnDisabled: { opacity: 0.5 },
+  confirmBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
+  changeBtn: {
+    width: '100%', height: 48,
+    borderWidth: 1.5, borderColor: Colors.border,
+    borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+    marginTop: 4,
+  },
+  changeBtnText: { fontSize: 15, fontWeight: '700', color: Colors.textSecondary },
+  dismissBtn: { paddingVertical: 12 },
+  dismissBtnText: { fontSize: 14, color: Colors.textMuted },
 });

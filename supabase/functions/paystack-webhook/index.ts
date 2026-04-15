@@ -15,12 +15,30 @@ import { verifyWebhookSignature, PaystackClient } from '../_shared/paystack.ts';
 import {
   sendNotification,
   msg_paymentAuthorized,
+  msg_autoAccepted,
   msg_vendor_newBooking,
+  msg_vendor_autoAccepted,
   msg_vendor_paymentReleased,
   formatDate,
   formatTime,
   formatNaira,
 } from '../_shared/notifications.ts';
+
+// ── Haversine distance (km) ─────────────────────────────────
+function haversineKm(
+  lat1: number, lng1: number,
+  lat2: number, lng2: number
+): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+    Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method !== 'POST') {
@@ -121,7 +139,24 @@ async function handleChargeSuccess(
   // Build PostGIS point from lat/lng
   const userLocationPoint = `POINT(${user_location_lng} ${user_location_lat})`;
 
-  // Create the booking record
+  // ── Check auto-accept conditions ──────────────────────────
+  const scheduledStr = scheduled_at as string;
+  const userLat = user_location_lat as number;
+  const userLng = user_location_lng as number;
+
+  const autoAcceptResult = await checkAutoAccept(
+    supabase,
+    vendor_id as string,
+    scheduledStr,
+    service_duration_blocks as number,
+    userLat,
+    userLng
+  );
+
+  // ── Create the booking record ──────────────────────────────
+  const now = new Date();
+  const graceExpiry = new Date(now.getTime() + 5 * 60 * 1000); // +5 min
+
   const { data: booking, error: bookingError } = await supabase
     .from('bookings')
     .insert({
@@ -134,11 +169,17 @@ async function handleChargeSuccess(
       scheduled_at,
       user_location: userLocationPoint,
       user_location_address: user_location_address ?? null,
-      status: 'pending',
+      status: autoAcceptResult.shouldAutoAccept ? 'accepted' : 'pending',
       paystack_reference: reference,
       paystack_authorization_code: (data.authorization as Record<string, unknown>)?.authorization_code ?? null,
       payment_captured: false,
-      // Auto-release window: vendor must accept within 2 hours
+      // Auto-accept fields
+      auto_accepted: autoAcceptResult.shouldAutoAccept,
+      auto_accept_grace_expires_at: autoAcceptResult.shouldAutoAccept
+        ? graceExpiry.toISOString()
+        : null,
+      // Timestamps
+      accepted_at: autoAcceptResult.shouldAutoAccept ? now.toISOString() : null,
     })
     .select('id, vendor_id, user_id')
     .single();
@@ -148,50 +189,227 @@ async function handleChargeSuccess(
     throw new Error('Booking creation failed');
   }
 
-  console.log(`Booking created: ${booking.id}`);
+  console.log(`Booking created: ${booking.id} (auto_accept=${autoAcceptResult.shouldAutoAccept})`);
 
-  // Fetch vendor and user details for notifications
+  // ── Create transport buffer blocks if auto-accepted ────────
+  if (autoAcceptResult.shouldAutoAccept) {
+    await createTransportBuffers(
+      supabase,
+      vendor_id as string,
+      booking.id,
+      scheduledStr,
+      service_duration_blocks as number
+    );
+  }
+
+  // ── Fetch vendor and user details for notifications ────────
   const [{ data: vendor }, { data: profile }] = await Promise.all([
     supabase.from('vendors').select('full_name, push_token').eq('id', vendor_id).single(),
     supabase.from('profiles').select('full_name, push_token').eq('id', user_id).single(),
   ]);
 
-  const scheduledStr = scheduled_at as string;
+  const clientFirstName = (profile?.full_name ?? 'Client').split(' ')[0];
+  const vendorName = vendor?.full_name ?? 'Your vendor';
 
-  // Notify user: payment authorized, vendor has 2 hours
-  if (profile) {
-    const msg = msg_paymentAuthorized(vendor?.full_name ?? 'Your vendor');
-    await sendNotification({
-      recipientId: user_id as string,
-      recipientType: 'user',
-      type: 'payment_authorized',
-      title: msg.title,
-      body: msg.body,
-      bookingId: booking.id,
-      pushToken: profile.push_token,
-      data: { bookingId: booking.id },
-    });
+  if (autoAcceptResult.shouldAutoAccept) {
+    // Auto-accept: user sees instant confirmation
+    if (profile) {
+      const msg = msg_autoAccepted(vendorName, formatDate(scheduledStr), formatTime(scheduledStr));
+      await sendNotification({
+        recipientId: user_id as string,
+        recipientType: 'user',
+        type: 'booking_auto_accepted',
+        title: msg.title,
+        body: msg.body,
+        bookingId: booking.id,
+        pushToken: profile.push_token,
+        data: { bookingId: booking.id, autoAccepted: true },
+      });
+    }
+    // Vendor: auto-accepted with 5-min grace notice
+    if (vendor) {
+      const msg = msg_vendor_autoAccepted(
+        clientFirstName,
+        service_name as string,
+        formatDate(scheduledStr),
+        formatTime(scheduledStr)
+      );
+      await sendNotification({
+        recipientId: vendor_id as string,
+        recipientType: 'vendor',
+        type: 'booking_auto_accepted',
+        title: msg.title,
+        body: msg.body,
+        bookingId: booking.id,
+        pushToken: vendor.push_token,
+        data: { bookingId: booking.id, autoAccepted: true, graceExpiresAt: graceExpiry.toISOString() },
+      });
+    }
+  } else {
+    // Normal flow: user waits up to 2 hours
+    if (profile) {
+      const msg = msg_paymentAuthorized(vendorName);
+      await sendNotification({
+        recipientId: user_id as string,
+        recipientType: 'user',
+        type: 'payment_authorized',
+        title: msg.title,
+        body: msg.body,
+        bookingId: booking.id,
+        pushToken: profile.push_token,
+        data: { bookingId: booking.id },
+      });
+    }
+    if (vendor) {
+      const msg = msg_vendor_newBooking(
+        clientFirstName,
+        service_name as string,
+        formatDate(scheduledStr),
+        formatTime(scheduledStr)
+      );
+      await sendNotification({
+        recipientId: vendor_id as string,
+        recipientType: 'vendor',
+        type: 'new_booking_request',
+        title: msg.title,
+        body: msg.body,
+        bookingId: booking.id,
+        pushToken: vendor.push_token,
+        data: { bookingId: booking.id },
+      });
+    }
+  }
+}
+
+// ── Auto-accept condition checker ────────────────────────────
+async function checkAutoAccept(
+  supabase: ReturnType<typeof createAdminClient>,
+  vendorId: string,
+  scheduledAt: string,
+  durationBlocks: number,
+  userLat: number,
+  userLng: number
+): Promise<{ shouldAutoAccept: boolean; reason?: string }> {
+  // Fetch vendor auto-accept settings
+  const { data: vendor } = await supabase
+    .from('vendors')
+    .select(`
+      auto_accept_enabled,
+      auto_accept_paused_due_to_drift,
+      auto_accept_zone_confirmed_date,
+      auto_accept_zone_lat,
+      auto_accept_zone_lng,
+      auto_accept_zone_radius_km
+    `)
+    .eq('id', vendorId)
+    .single();
+
+  if (!vendor?.auto_accept_enabled) {
+    return { shouldAutoAccept: false, reason: 'auto_accept not enabled' };
+  }
+  if (vendor.auto_accept_paused_due_to_drift) {
+    return { shouldAutoAccept: false, reason: 'vendor drifted from zone' };
   }
 
-  // Notify vendor: new booking request (2-hour response window)
-  if (vendor) {
-    const clientFirstName = (profile?.full_name ?? 'Client').split(' ')[0];
-    const msg = msg_vendor_newBooking(
-      clientFirstName,
-      service_name as string,
-      formatDate(scheduledStr),
-      formatTime(scheduledStr)
-    );
-    await sendNotification({
-      recipientId: vendor_id as string,
-      recipientType: 'vendor',
-      type: 'new_booking_request',
-      title: msg.title,
-      body: msg.body,
-      bookingId: booking.id,
-      pushToken: vendor.push_token,
-      data: { bookingId: booking.id },
-    });
+  // Zone must be confirmed today
+  const today = new Date().toISOString().slice(0, 10);
+  if (vendor.auto_accept_zone_confirmed_date !== today) {
+    return { shouldAutoAccept: false, reason: 'zone not confirmed today' };
+  }
+
+  // Zone must be configured
+  if (
+    vendor.auto_accept_zone_lat == null ||
+    vendor.auto_accept_zone_lng == null ||
+    vendor.auto_accept_zone_radius_km == null
+  ) {
+    return { shouldAutoAccept: false, reason: 'zone not configured' };
+  }
+
+  // Condition 2: user must be within zone radius
+  const userDistanceKm = haversineKm(
+    userLat, userLng,
+    vendor.auto_accept_zone_lat,
+    vendor.auto_accept_zone_lng
+  );
+  if (userDistanceKm > vendor.auto_accept_zone_radius_km) {
+    return { shouldAutoAccept: false, reason: `user ${userDistanceKm.toFixed(1)}km outside zone (radius ${vendor.auto_accept_zone_radius_km}km)` };
+  }
+
+  // Condition 1: the booked time slot must have block_state = 'auto_accept'
+  const slotStart = new Date(scheduledAt);
+  const slotEnd = new Date(slotStart.getTime() + durationBlocks * 30 * 60 * 1000);
+
+  // Check if ALL 30-min blocks of the booking duration are auto_accept
+  const { data: calendarBlocks } = await supabase
+    .from('vendor_calendar')
+    .select('block_state')
+    .eq('vendor_id', vendorId)
+    .lt('start_time', slotEnd.toISOString())
+    .gt('end_time', slotStart.toISOString());
+
+  // Any unavailable or transport_buffer block prevents auto-accept
+  const blockers = (calendarBlocks ?? []).filter(
+    (b) => b.block_state === 'unavailable' || b.block_state === 'transport_buffer'
+  );
+  if (blockers.length > 0) {
+    return { shouldAutoAccept: false, reason: 'slot blocked (unavailable or transport_buffer)' };
+  }
+
+  // At least one auto_accept block must cover the start of the slot
+  const { data: autoBlocks } = await supabase
+    .from('vendor_calendar')
+    .select('start_time, end_time, block_state')
+    .eq('vendor_id', vendorId)
+    .eq('block_state', 'auto_accept')
+    .lte('start_time', slotStart.toISOString())
+    .gt('end_time', slotStart.toISOString());
+
+  if (!autoBlocks || autoBlocks.length === 0) {
+    return { shouldAutoAccept: false, reason: 'slot not marked as auto_accept' };
+  }
+
+  console.log(`Auto-accept: all conditions met for vendor ${vendorId}, slot ${scheduledAt}`);
+  return { shouldAutoAccept: true };
+}
+
+// ── Transport buffer creator ─────────────────────────────────
+// Creates two 30-min blocks before and after a confirmed booking
+// to give the vendor travel buffer time.
+async function createTransportBuffers(
+  supabase: ReturnType<typeof createAdminClient>,
+  vendorId: string,
+  bookingId: string,
+  scheduledAt: string,
+  durationBlocks: number
+): Promise<void> {
+  const bookingStart = new Date(scheduledAt);
+  const bookingEnd = new Date(bookingStart.getTime() + durationBlocks * 30 * 60 * 1000);
+
+  const bufferBefore = {
+    vendor_id: vendorId,
+    start_time: new Date(bookingStart.getTime() - 30 * 60 * 1000).toISOString(),
+    end_time: bookingStart.toISOString(),
+    block_state: 'transport_buffer',
+    transport_buffer_source_booking_id: bookingId,
+  };
+  const bufferAfter = {
+    vendor_id: vendorId,
+    start_time: bookingEnd.toISOString(),
+    end_time: new Date(bookingEnd.getTime() + 30 * 60 * 1000).toISOString(),
+    block_state: 'transport_buffer',
+    transport_buffer_source_booking_id: bookingId,
+  };
+
+  const { error } = await supabase
+    .from('vendor_calendar')
+    .insert([bufferBefore, bufferAfter]);
+
+  if (error) {
+    // Log but don't fail — transport buffers are advisory
+    console.error(`Failed to create transport buffers for booking ${bookingId}:`, error);
+  } else {
+    console.log(`Transport buffers created for booking ${bookingId}`);
   }
 }
 

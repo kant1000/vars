@@ -148,7 +148,7 @@ function Step2({
 }: {
   vendorId: string;
   service: ServiceOption;
-  onConfirm: (slot: Date) => void;
+  onConfirm: (slot: Date, isAutoAccept: boolean) => void;
 }) {
   // Generate next 14 days (excluding today before current time)
   const today = new Date();
@@ -160,7 +160,7 @@ function Step2({
   });
 
   const [selectedDay, setSelectedDay] = useState<Date>(days[0]);
-  const [slots, setSlots] = useState<{ time: Date; available: boolean }[]>([]);
+  const [slots, setSlots] = useState<{ time: Date; available: boolean; autoAccept: boolean }[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
 
   const loadSlots = useCallback(async (day: Date) => {
@@ -168,10 +168,10 @@ function Step2({
     const dayStart = new Date(day); dayStart.setHours(8, 0, 0, 0);
     const dayEnd = new Date(day); dayEnd.setHours(22, 0, 0, 0);
 
-    // Fetch vendor unavailability blocks
-    const { data: unavail } = await supabase
-      .from('vendor_unavailability')
-      .select('start_time, end_time')
+    // Fetch vendor calendar blocks
+    const { data: calBlocks } = await supabase
+      .from('vendor_calendar')
+      .select('start_time, end_time, block_state')
       .eq('vendor_id', vendorId)
       .lt('start_time', dayEnd.toISOString())
       .gt('end_time', dayStart.toISOString());
@@ -186,7 +186,7 @@ function Step2({
       .lt('scheduled_at', dayEnd.toISOString());
 
     // Build 30-min slots from 08:00–22:00
-    const generated: { time: Date; available: boolean }[] = [];
+    const generated: { time: Date; available: boolean; autoAccept: boolean }[] = [];
     let cursor = new Date(dayStart);
     const now = new Date();
 
@@ -195,16 +195,26 @@ function Step2({
       const slotEnd = addMinutes(slotStart, service.duration_blocks * BLOCK_MINS);
 
       let available = true;
+      let autoAccept = false;
 
       // Past slots
       if (slotStart <= now) { available = false; }
 
-      // Conflicts with vendor unavailability
+      // Conflicts with calendar blocks (unavailable or transport_buffer = blocked)
       if (available) {
-        for (const u of unavail ?? []) {
-          const uStart = new Date(u.start_time), uEnd = new Date(u.end_time);
-          if (slotStart < uEnd && slotEnd > uStart) { available = false; break; }
+        for (const b of calBlocks ?? []) {
+          if (b.block_state !== 'unavailable' && b.block_state !== 'transport_buffer') continue;
+          const bStart = new Date(b.start_time), bEnd = new Date(b.end_time);
+          if (slotStart < bEnd && slotEnd > bStart) { available = false; break; }
         }
+      }
+
+      // Check if slot start is auto_accept
+      if (available) {
+        autoAccept = (calBlocks ?? []).some((b) => {
+          if (b.block_state !== 'auto_accept') return false;
+          return slotStart >= new Date(b.start_time) && slotStart < new Date(b.end_time);
+        });
       }
 
       // Conflicts with existing bookings
@@ -219,7 +229,7 @@ function Step2({
       // Don't show slot if service would run past end of day
       if (slotEnd > dayEnd) { available = false; }
 
-      generated.push({ time: slotStart, available });
+      generated.push({ time: slotStart, available, autoAccept });
       cursor = addMinutes(cursor, BLOCK_MINS);
     }
 
@@ -250,6 +260,13 @@ function Step2({
         })}
       </ScrollView>
 
+      {/* Auto-accept legend if any slots show it */}
+      {slots.some((sl) => sl.available && sl.autoAccept) && (
+        <View style={s.autoAcceptLegend}>
+          <Text style={s.autoAcceptLegendText}>⚡ Instant confirm — no waiting</Text>
+        </View>
+      )}
+
       {/* Time slots */}
       {loadingSlots ? (
         <View style={s.centered}><ActivityIndicator color={Colors.primary} /></View>
@@ -258,14 +275,25 @@ function Step2({
           {slots.map((slot) => (
             <TouchableOpacity
               key={slot.time.toISOString()}
-              style={[s.slot, !slot.available && s.slotUnavailable]}
-              onPress={() => slot.available && onConfirm(slot.time)}
+              style={[
+                s.slot,
+                !slot.available && s.slotUnavailable,
+                slot.available && slot.autoAccept && s.slotAutoAccept,
+              ]}
+              onPress={() => slot.available && onConfirm(slot.time, slot.autoAccept)}
               disabled={!slot.available}
               activeOpacity={0.8}
             >
-              <Text style={[s.slotText, !slot.available && s.slotTextUnavailable]}>
+              <Text style={[
+                s.slotText,
+                !slot.available && s.slotTextUnavailable,
+                slot.available && slot.autoAccept && s.slotTextAutoAccept,
+              ]}>
                 {fmtTime(slot.time)}
               </Text>
+              {slot.available && slot.autoAccept && (
+                <Text style={s.slotAutoIcon}>⚡</Text>
+              )}
             </TouchableOpacity>
           ))}
         </View>
@@ -276,11 +304,12 @@ function Step2({
 
 // ── Step 3: Review & pay ─────────────────────────────────────
 function Step3({
-  vendorId, service, slot, onPay, paying,
+  vendorId, service, slot, isAutoAccept, onPay, paying,
 }: {
   vendorId: string;
   service: ServiceOption;
   slot: Date;
+  isAutoAccept: boolean;
   onPay: (address: string, notes: string) => void;
   paying: boolean;
 }) {
@@ -332,10 +361,11 @@ function Step3({
           />
         </View>
 
-        <View style={s.infoBox}>
-          <Text style={s.infoText}>
-            Payment is held securely by VARS until your service is complete.
-            Your vendor has 2 hours to accept this booking.
+        <View style={[s.infoBox, isAutoAccept && s.infoBoxAutoAccept]}>
+          <Text style={[s.infoText, isAutoAccept && s.infoTextAutoAccept]}>
+            {isAutoAccept
+              ? '⚡ This slot is instant-confirm. Your booking will be confirmed immediately after payment.'
+              : 'Payment is held securely by VARS until your service is complete. Your vendor has 2 hours to accept this booking.'}
           </Text>
         </View>
       </ScrollView>
@@ -376,6 +406,7 @@ export default function BookingFlow() {
   const [step, setStep] = useState(1);
   const [service, setService] = useState<ServiceOption | null>(null);
   const [slot, setSlot] = useState<Date | null>(null);
+  const [slotIsAutoAccept, setSlotIsAutoAccept] = useState(false);
   const [paying, setPaying] = useState(false);
   const [paystackUrl, setPaystackUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -385,8 +416,9 @@ export default function BookingFlow() {
     setStep(2);
   };
 
-  const handleSelectSlot = (s: Date) => {
+  const handleSelectSlot = (s: Date, isAutoAccept: boolean) => {
     setSlot(s);
+    setSlotIsAutoAccept(isAutoAccept);
     setStep(3);
   };
 
@@ -468,6 +500,7 @@ export default function BookingFlow() {
           vendorId={vendorId!}
           service={service}
           slot={slot}
+          isAutoAccept={slotIsAutoAccept}
           onPay={handlePay}
           paying={paying}
         />
@@ -546,8 +579,17 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   slotUnavailable: { borderColor: Colors.border, backgroundColor: Colors.surface },
+  slotAutoAccept: { borderColor: '#D4A017', backgroundColor: '#FFF8E6' },
   slotText: { fontSize: 13, fontWeight: '700', color: Colors.primary },
   slotTextUnavailable: { color: Colors.textMuted },
+  slotTextAutoAccept: { color: '#A07010' },
+  slotAutoIcon: { fontSize: 9, color: '#D4A017', marginTop: 1 },
+  autoAcceptLegend: {
+    marginHorizontal: 16, marginBottom: 8, marginTop: 4,
+    backgroundColor: '#FFF8E6', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6,
+    borderWidth: 1, borderColor: '#D4A01730',
+  },
+  autoAcceptLegendText: { fontSize: 12, color: '#A07010', fontWeight: '600' },
 
   // Review
   summaryCard: {
@@ -571,7 +613,9 @@ const s = StyleSheet.create({
   infoBox: {
     backgroundColor: Colors.primaryLight, borderRadius: 12, padding: 14,
   },
+  infoBoxAutoAccept: { backgroundColor: '#FFF8E6' },
   infoText: { fontSize: 13, color: Colors.primary, lineHeight: 19, fontWeight: '500' },
+  infoTextAutoAccept: { color: '#A07010' },
 
   // Pay button
   payWrap: {

@@ -32,7 +32,7 @@ Deno.serve(async (req: Request) => {
 
     const supabase = createAdminClient();
 
-    // 1. Fetch the vendor service with vendor details
+    // 1. Fetch the vendor service with vendor details + auto-accept zone
     const { data: vendorService, error: vsError } = await supabase
       .from('vendor_services')
       .select(`
@@ -41,7 +41,12 @@ Deno.serve(async (req: Request) => {
         duration_blocks,
         is_bookable,
         service:services(id, name, is_bookable_v1),
-        vendor:vendors(id, full_name, email, is_active, is_suspended, is_online)
+        vendor:vendors(
+          id, full_name, email, is_active, is_suspended, is_online,
+          auto_accept_enabled, auto_accept_paused_due_to_drift,
+          auto_accept_zone_confirmed_date, auto_accept_zone_lat,
+          auto_accept_zone_lng, auto_accept_zone_radius_km
+        )
       `)
       .eq('id', vendor_service_id)
       .single();
@@ -79,15 +84,18 @@ Deno.serve(async (req: Request) => {
       return errorResponse('This time slot is no longer available');
     }
 
-    // Check vendor unavailability
-    const { data: unavailable } = await supabase
-      .from('vendor_unavailability')
-      .select('id')
+    // Check vendor calendar — unavailable and transport_buffer blocks block bookings
+    const { data: calendarBlocks } = await supabase
+      .from('vendor_calendar')
+      .select('id, block_state')
       .eq('vendor_id', vendorService.vendor.id)
       .lt('start_time', slotEnd.toISOString())
       .gt('end_time', scheduledDate.toISOString());
 
-    if (unavailable && unavailable.length > 0) {
+    const blocked = (calendarBlocks ?? []).some(
+      (b) => b.block_state === 'unavailable' || b.block_state === 'transport_buffer'
+    );
+    if (blocked) {
       return errorResponse('Vendor is unavailable at this time');
     }
 
@@ -117,13 +125,24 @@ Deno.serve(async (req: Request) => {
       },
     });
 
+    // Check if this slot is likely to be auto-accepted (hint for UX)
+    const vendor = vendorService.vendor as any;
+    const today = new Date().toISOString().slice(0, 10);
+    const zoneConfirmedToday = vendor.auto_accept_zone_confirmed_date === today;
+    const autoAcceptLikely =
+      vendor.auto_accept_enabled &&
+      !vendor.auto_accept_paused_due_to_drift &&
+      zoneConfirmedToday;
+
     return jsonResponse({
       access_code: transaction.access_code,
       reference: transaction.reference,
       amount_kobo: vendorService.price_kobo,
+      // UX hint: whether this booking will likely be auto-accepted
+      auto_accept_likely: autoAcceptLikely,
       // Summary card data for Step 3 review screen
       booking_preview: {
-        vendor_name: vendorService.vendor.full_name,
+        vendor_name: vendor.full_name,
         service_name: vendorService.service.name,
         price_kobo: vendorService.price_kobo,
         duration_blocks: vendorService.duration_blocks,

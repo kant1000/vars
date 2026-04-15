@@ -241,6 +241,28 @@ export function msg_vendor_verificationFailed(reason: string) {
   };
 }
 
+// Auto-accept messages
+export function msg_autoAccepted(vendorName: string, date: string, time: string) {
+  return {
+    title: 'Booking confirmed',
+    body: `Your booking with ${vendorName} is confirmed for ${date} at ${time}. No waiting — you're all set.`,
+  };
+}
+
+export function msg_bookingCancelledByVendor(date: string, time: string) {
+  return {
+    title: 'Booking cancelled',
+    body: `Your booking for ${date} at ${time} was cancelled by your vendor. You've been fully refunded.`,
+  };
+}
+
+export function msg_vendor_autoAccepted(clientFirstName: string, service: string, date: string, time: string) {
+  return {
+    title: 'Auto-accepted booking',
+    body: `Auto-accepted: ${service} for ${clientFirstName} on ${date} at ${time}. You have 5 minutes to cancel if needed.`,
+  };
+}
+
 /** Format kobo to naira string with commas e.g. 350000 → "3,500" */
 export function formatNaira(kobo: number): string {
   return (kobo / 100).toLocaleString('en-NG', { maximumFractionDigits: 0 });
