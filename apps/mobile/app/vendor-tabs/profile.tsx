@@ -85,13 +85,13 @@ export default function VendorProfileScreen() {
 
         {/* Auto-Accept Zone */}
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Auto-Accept</Text>
+          <Text style={[s.sectionTitle, s.sectionTitleGold]}>⚡ Auto-Accept</Text>
 
           {loading ? (
-            <ActivityIndicator color={Colors.primary} style={{ margin: 16 }} />
+            <ActivityIndicator color="#D4A017" style={{ margin: 16 }} />
           ) : (
             <TouchableOpacity
-              style={s.settingRow}
+              style={[s.settingRow, s.settingRowGold]}
               onPress={() => router.push('/vendor-zone-setup')}
               activeOpacity={0.7}
             >
@@ -104,7 +104,7 @@ export default function VendorProfileScreen() {
                   </Text>
                 </View>
               </View>
-              <Text style={s.chevron}>›</Text>
+              <Text style={s.editLabel}>Edit ›</Text>
             </TouchableOpacity>
           )}
 
@@ -159,18 +159,24 @@ const s = StyleSheet.create({
     fontSize: 12, fontWeight: '700', color: Colors.textMuted,
     textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12,
   },
+  sectionTitleGold: { color: '#A07010' },
 
   settingRow: {
     flexDirection: 'row', alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
+  settingRowGold: {
+    backgroundColor: '#FFF8E6', borderRadius: 12, paddingHorizontal: 14,
+    borderWidth: 1, borderColor: '#D4A01730', borderBottomWidth: 1,
+    borderBottomColor: '#D4A01730',
+  },
   settingLeft: { flex: 1 },
   settingLabel: { fontSize: 15, fontWeight: '600', color: Colors.text },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 3 },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
   statusText: { fontSize: 13 },
-  chevron: { fontSize: 20, color: Colors.textMuted },
+  editLabel: { fontSize: 13, fontWeight: '700', color: '#A07010' },
 
   confirmBanner: {
     marginTop: 10, padding: 12,
