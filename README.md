@@ -339,6 +339,8 @@ The admin panel never needs to action a clean pass. The queue stays focused on p
 
 ### User-Initiated Cancellation (`paystack-cancel`)
 
+The cancel button is available on the live booking screen while the booking is `pending` or `accepted`. **Once the vendor marks "I'm on my way" (`on_way`), cancellation is locked out** — the customer's only recourse from that point is a dispute.
+
 | Time of cancellation | Fee | Vendor share |
 |---|---|---|
 | 0–15 min after booking | 15% of price | 5% vendor / 10% VARS |
