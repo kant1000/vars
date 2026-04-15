@@ -44,8 +44,11 @@ Deno.serve(async (req: Request) => {
 
     if (bookingError || !booking) return errorResponse('Booking not found', 404);
 
-    // Can only dispute bookings in service_rendered state (escrow held)
-    if (booking.status !== 'service_rendered') {
+    // Dispute is available once the vendor is en route or beyond.
+    // This covers the case where vendor marks on_way then disappears —
+    // at that point the customer can't cancel (locked out) so needs dispute as recourse.
+    const disputeableStatuses = ['on_way', 'arrived', 'service_rendered'];
+    if (!disputeableStatuses.includes(booking.status)) {
       return errorResponse(`Cannot dispute booking with status: ${booking.status}`);
     }
 
@@ -82,10 +85,10 @@ Deno.serve(async (req: Request) => {
 
     if (disputeError) {
       console.error('dispute-raise: failed to insert dispute', disputeError);
-      // Rollback booking status
+      // Rollback booking to its original status
       await supabase
         .from('bookings')
-        .update({ status: 'service_rendered' })
+        .update({ status: booking.status })
         .eq('id', booking_id);
       return errorResponse('Failed to create dispute', 500);
     }

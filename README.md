@@ -96,7 +96,7 @@ vars/
 - **Booking flow** — 3-step: pick service → pick date & time slot → review & pay
 - **Paystack checkout** — opens in an in-app WebView; card is charged immediately and funds held in VARS's Paystack balance (escrow) until the vendor is paid
 - **Live tracking** — real-time map showing vendor location while en route; phone number revealed 15 minutes before appointment
-- **Confirm & settle** — customer taps "Confirm service done" to release escrow; auto-releases 1 hour after the scheduled booking end time if no action taken
+- **Confirm & settle** — customer taps "Confirm service done" to release escrow; once the vendor marks the service done, escrow auto-releases 1 hour after the scheduled booking end time if the customer takes no action
 - **Reviews** — 1–5 star rating + comment after completion
 - **Disputes** — raise an issue from the live screen; escrow freezes immediately pending admin review
 
@@ -159,16 +159,17 @@ accepted
    ├── (user/vendor cancel) ────────────────────────────────────────► cancelled
    │
    ▼
-on_way → arrived
-                │
-                ├── (user dispute) ──────────────────────────────────► disputed
-                │
-                ▼
-         service_rendered
-                │
-                ├── (user confirm / auto-release 1hr after sched. end) ► completed
-                │
-                └── (user dispute) ──────────────────────────────────► disputed
+on_way ── (user dispute) ──────────────────────────────────────────── ► disputed
+   │
+   ▼
+arrived ── (user dispute) ─────────────────────────────────────────── ► disputed
+   │
+   ▼
+service_rendered
+   │
+   ├── (user confirm / auto-release 1hr after sched. end) ──────────► completed
+   │
+   └── (user dispute) ──────────────────────────────────────────────► disputed
 ```
 
 ---
@@ -262,8 +263,8 @@ capture    release
  accepted)  to customer)
    │
    ├── User cancels (paystack-cancel)
-   │     • Tiered fee: 0–15 min = 15%, 15 min–1 hr before service = 50%,
-   │       within 1 hr of service = non-refundable (100%)
+   │     • Tiered fee: within 1hr of service = non-refundable (100%),
+   │       within 15min of booking = 15%, all other cases = 50%
    │     • Transport buffers deleted
    │
    ├── Vendor cancels (vendor-cancel-booking)
