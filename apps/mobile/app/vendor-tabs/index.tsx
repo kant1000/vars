@@ -23,7 +23,7 @@ import { Colors } from '@/constants/colors';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
-const LOCATION_UPDATE_INTERVAL_MS = 60_000; // every 60 s while online
+const LOCATION_UPDATE_INTERVAL_MS = 5 * 60_000; // every 5 min while online
 
 // ── Types ───────────────────────────────────────────────────
 type BookingStatus =
