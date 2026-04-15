@@ -263,6 +263,48 @@ export function msg_vendor_autoAccepted(clientFirstName: string, service: string
   };
 }
 
+export function msg_vendor_cancelledFullRefund(date: string, time: string) {
+  return {
+    title: 'Booking cancelled',
+    body: `Your booking for ${date} at ${time} has been cancelled by your vendor. You've been fully refunded — no charges applied.`,
+  };
+}
+
+export function msg_vendor_selfCancelled(clientFirstName: string, service: string) {
+  return {
+    title: 'Booking cancelled',
+    body: `You cancelled the ${service} booking for ${clientFirstName}. The client has been fully refunded.`,
+  };
+}
+
+export function msg_disputeRaised_user() {
+  return {
+    title: 'Dispute raised',
+    body: `Your dispute has been escalated to the VARS team. We'll review the details and respond within 24 hours.`,
+  };
+}
+
+export function msg_disputeRaised_vendor(clientFirstName: string) {
+  return {
+    title: 'Dispute raised',
+    body: `${clientFirstName} has raised a dispute on this booking. Payment is on hold while the VARS team reviews.`,
+  };
+}
+
+export function msg_disputeResolved_userRefunded(amount: string) {
+  return {
+    title: 'Dispute resolved',
+    body: `Your dispute has been resolved in your favour. ₦${amount} will be returned to you shortly.`,
+  };
+}
+
+export function msg_disputeResolved_vendorPaid(amount: string) {
+  return {
+    title: 'Dispute resolved',
+    body: `Your dispute has been resolved in your favour. ₦${amount} is on its way to your account.`,
+  };
+}
+
 /** Format kobo to naira string with commas e.g. 350000 → "3,500" */
 export function formatNaira(kobo: number): string {
   return (kobo / 100).toLocaleString('en-NG', { maximumFractionDigits: 0 });

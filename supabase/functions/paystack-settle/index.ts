@@ -2,7 +2,8 @@
 // VARS — paystack-settle
 // Triggered when:
 //   (a) User confirms "Service complete" OR
-//   (b) 2-hour auto-release fires after "Service Rendered"
+//   (b) Auto-release fires 1 hour after the scheduled booking end time OR
+//   (c) Admin resolves a dispute in the vendor's favour
 //
 // Per spec §8 Step 3:
 //   "Paystack Transfer API executes split. Vendor share goes to their
@@ -35,13 +36,25 @@ Deno.serve(async (req: Request) => {
     const supabase = createAdminClient();
     const isCronCall = req.headers.get('x-vars-cron-secret') === Deno.env.get('CRON_SECRET');
     const authHeader = req.headers.get('Authorization');
+    // Admin dashboard uses service role key for dispute resolution
+    const isAdminCall = authHeader === `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`;
 
     if (!authHeader && !isCronCall) {
       return errorResponse('Missing authorization', 401);
     }
 
     // --------------------------------------------------------
-    // CRON MODE: auto-release all bookings past 2hr window
+    // ADMIN MODE: dispute resolved — pay vendor
+    // --------------------------------------------------------
+    if (isAdminCall) {
+      const { booking_id } = await req.json();
+      if (!booking_id) return errorResponse('Missing booking_id');
+      await settleBooking(supabase, booking_id, 'user_confirmed');
+      return jsonResponse({ success: true, booking_id, status: 'completed' });
+    }
+
+    // --------------------------------------------------------
+    // CRON MODE: auto-release bookings 1hr after scheduled end
     // --------------------------------------------------------
     if (isCronCall) {
       const now = new Date().toISOString();

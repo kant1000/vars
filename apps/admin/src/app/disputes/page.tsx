@@ -33,6 +33,30 @@ function fmtPrice(kobo: number) {
   return `₦${Math.round(kobo / 100).toLocaleString('en-NG')}`;
 }
 
+/** How long ago the dispute was raised, and SLA urgency. */
+function SlaTimer({ raisedAt }: { raisedAt: string }) {
+  const hoursOpen = (Date.now() - new Date(raisedAt).getTime()) / (1000 * 60 * 60);
+  const h = Math.floor(hoursOpen);
+  const m = Math.floor((hoursOpen - h) * 60);
+
+  // SLA: 24 hours. Warn at 18h, critical at 24h.
+  const isWarning  = hoursOpen >= 18 && hoursOpen < 24;
+  const isCritical = hoursOpen >= 24;
+
+  const colour = isCritical ? '#dc2626' : isWarning ? '#d97706' : 'var(--text2)';
+  const label  = isCritical
+    ? `⚠ SLA breached — open ${h}h ${m}m`
+    : isWarning
+    ? `⏰ SLA warning — open ${h}h ${m}m`
+    : `Open ${h}h ${m}m`;
+
+  return (
+    <span style={{ fontSize: 12, fontWeight: 600, color: colour, marginLeft: 8 }}>
+      {label}
+    </span>
+  );
+}
+
 export default async function DisputesPage({ searchParams }: Props) {
   const status = searchParams.status ?? 'open';
   const page   = Number(searchParams.page ?? 1);
@@ -73,6 +97,7 @@ export default async function DisputesPage({ searchParams }: Props) {
                 <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--text2)' }}>
                   {new Date(d.created_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </span>
+                {d.status !== 'resolved' && <SlaTimer raisedAt={d.created_at} />}
               </div>
               {d.resolution && (
                 <span className={`badge ${d.resolution === 'refund_user' ? 'badge-pending' : d.resolution === 'pay_vendor' ? 'badge-verified' : 'badge-active'}`}>

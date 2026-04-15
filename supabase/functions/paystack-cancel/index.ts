@@ -76,6 +76,12 @@ Deno.serve(async (req: Request) => {
       })
       .eq('id', booking_id);
 
+    // Release transport buffer blocks tied to this booking
+    await supabase
+      .from('vendor_calendar')
+      .delete()
+      .eq('transport_buffer_source_booking_id', booking_id);
+
     const paystack = new PaystackClient(Deno.env.get('PAYSTACK_SECRET_KEY')!);
 
     // 2. Process Paystack refund (partial or none depending on tier)

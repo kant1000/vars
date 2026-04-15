@@ -37,31 +37,36 @@ export default function VendorActions({ vendor }: { vendor: any }) {
 
   return (
     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-      {vendor.kyc_status === 'pending' && (
+      {/* Youverify auto-approves clean passes — admin only sees rejected/flagged cases.
+          Manual override available if Youverify was incorrect or context warrants it. */}
+      {vendor.kyc_status === 'rejected' && (
         <>
           <button
             className="btn btn-success"
             disabled={loading}
-            onClick={() => act({ kyc_status: 'verified' })}
+            onClick={() => act({ kyc_status: 'verified', is_active: true })}
+            title="Override Youverify rejection — manually approve this vendor"
           >
-            Approve
+            Override & approve
           </button>
           <button
-            className="btn btn-danger"
+            className="btn btn-ghost"
             disabled={loading}
-            onClick={() => act({ kyc_status: 'rejected' })}
+            onClick={() => act({ kyc_status: 'pending' })}
+            title="Send vendor back to re-submit KYC"
           >
-            Reject
+            Reset KYC
           </button>
         </>
       )}
-      {vendor.kyc_status === 'rejected' && (
+      {vendor.cancellation_flagged && (
         <button
           className="btn btn-ghost"
           disabled={loading}
-          onClick={() => act({ kyc_status: 'pending' })}
+          onClick={() => act({ cancellation_flagged: false })}
+          title="Acknowledge and clear the cancellation flag"
         >
-          Reset KYC
+          Clear flag
         </button>
       )}
       <button

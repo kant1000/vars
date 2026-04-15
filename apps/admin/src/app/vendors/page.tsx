@@ -16,7 +16,7 @@ async function getVendors(status: string, page: number, q: string) {
   const db = adminClient();
   let query = db
     .from('vendors')
-    .select('id, full_name, phone_number, kyc_status, avg_rating, total_reviews, badge_vars_choice, badge_top_rated, created_at, is_online')
+    .select('id, full_name, phone_number, kyc_status, avg_rating, total_reviews, badge_vars_choice, badge_top_rated, created_at, is_online, cancellation_flagged')
     .order('created_at', { ascending: false })
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
 
@@ -28,13 +28,15 @@ async function getVendors(status: string, page: number, q: string) {
 }
 
 export default async function VendorsPage({ searchParams }: Props) {
-  const status = searchParams.status ?? 'pending';
+  // Default to 'rejected' — Youverify auto-approves clean passes, so admin only needs
+  // to see flagged/rejected KYC cases. Switch to 'all' or 'verified' via filters.
+  const status = searchParams.status ?? 'rejected';
   const page   = Number(searchParams.page ?? 1);
   const q      = searchParams.q ?? '';
   const { vendors, total } = await getVendors(status, page, q);
   const pages = Math.ceil(total / PAGE_SIZE);
 
-  const KYC_TABS = ['all', 'pending', 'verified', 'rejected'];
+  const KYC_TABS = ['rejected', 'all', 'pending', 'verified'];
 
   return (
     <>
@@ -67,14 +69,15 @@ export default async function VendorsPage({ searchParams }: Props) {
           </thead>
           <tbody>
             {vendors.length === 0 && (
-              <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--text2)', padding: '32px' }}>No vendors found.</td></tr>
+              <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--text2)', padding: '32px' }}>No vendors found. Youverify auto-approves clean passes — only flagged or rejected cases appear here by default.</td></tr>
             )}
             {vendors.map((v: any) => (
               <tr key={v.id}>
                 <td>
                   <div style={{ fontWeight: 700 }}>{v.full_name}</div>
-                  {v.badge_vars_choice && <span className="badge badge-active" style={{ marginTop: 2 }}>VARS Choice</span>}
-                  {v.badge_top_rated  && <span className="badge badge-verified" style={{ marginTop: 2, marginLeft: 4 }}>Top Rated</span>}
+                  {v.badge_vars_choice    && <span className="badge badge-active" style={{ marginTop: 2 }}>VARS Choice</span>}
+                  {v.badge_top_rated      && <span className="badge badge-verified" style={{ marginTop: 2, marginLeft: 4 }}>Top Rated</span>}
+                  {v.cancellation_flagged && <span className="badge badge-pending" style={{ marginTop: 2, marginLeft: 4 }}>⚠ Cancellations</span>}
                 </td>
                 <td>{v.phone_number}</td>
                 <td>

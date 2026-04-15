@@ -96,14 +96,14 @@ vars/
 - **Booking flow** — 3-step: pick service → pick date & time slot → review & pay
 - **Paystack checkout** — opens in an in-app WebView; payment held in escrow
 - **Live tracking** — real-time map showing vendor location while en route; phone number revealed 15 minutes before appointment
-- **Confirm & settle** — customer taps "Confirm service done" to release escrow; auto-releases after 2 hours if no action
+- **Confirm & settle** — customer taps "Confirm service done" to release escrow; auto-releases 1 hour after the scheduled booking end time if no action taken
 - **Reviews** — 1–5 star rating + comment after completion
-- **Disputes** — raise an issue at any point; held for admin review
+- **Disputes** — raise an issue from the live screen; escrow freezes immediately pending admin review
 
 ### For Vendors
 
-- **Onboarding** — multi-step: profile → services → portfolio → KYC (Youverify) → pending approval
-- **Jobs dashboard** — incoming requests with 2-hour accept window; active jobs with flow buttons (On My Way → Arrived → Service Rendered); history
+- **Onboarding** — multi-step: profile → services → portfolio → KYC (Youverify) → instant activation on clean pass
+- **Jobs dashboard** — incoming requests with 1-hour accept window; active jobs with flow buttons (On My Way → Arrived → Service Rendered); cancel button for accepted/in-progress bookings; history
 - **Schedule management** — 30-minute slot calendar (14-day view); three-state tap cycle: available → blocked → auto-accept
 - **Auto-Accept** — geographic zone system for instant booking confirmation (see below)
 - **Earnings** — per-booking breakdown; Paystack automatic payout (80% revenue share)
@@ -111,9 +111,8 @@ vars/
 
 ### Admin
 
-- Vendor approval and suspension
-- KYC review
-- Dispute resolution
+- **Vendors** — defaults to rejected KYC queue (Youverify handles clean passes automatically). Override-approve or reset flagged cases. Vendors with 3+ cancellations in 30 days are auto-flagged for review.
+- **Disputes** — SLA timer per dispute (warns at 18h, critical at 24h). Resolve by releasing escrow to vendor or refunding customer.
 - Pioneer lead management
 
 ---
@@ -130,6 +129,7 @@ Six migration files build up the schema incrementally:
 | `003_pioneer_programme` | Pioneer leads table |
 | `004_pioneer_lead_conversion` | Lead → vendor conversion helpers |
 | `005_auto_accept` | Auto-Accept fields, `vendor_calendar` table, transport buffer support |
+| `006_vendor_cancellation_flag` | `cancellation_flagged` column on vendors; auto-set at 3+ cancellations in 30 days |
 
 ### Key Tables
 
@@ -167,16 +167,18 @@ All functions live in `supabase/functions/` and run on Deno.
 | `paystack-webhook` | POST | Handles Paystack events: creates booking on `charge.success`, auto-accepts if conditions met, creates transport buffers |
 | `paystack-capture` | POST | Vendor accepts a pending booking — captures the Paystack authorisation |
 | `paystack-release` | POST | Vendor declines or booking expires — voids the authorisation |
-| `paystack-settle` | POST | Customer confirms service done (or 2-hr auto-release) — initiates Paystack transfer to vendor |
-| `paystack-cancel` | POST | Customer cancels — refund with sliding cancellation fee |
+| `paystack-settle` | POST | Customer confirms service done, or 1-hr auto-release fires after scheduled end — initiates Paystack transfer to vendor (80/20 split; Pioneer vendors: 100%) |
+| `paystack-cancel` | POST | Customer cancels — tiered refund (0–15 min: 15% fee; 15 min–1 hr: 50% fee; within 1 hr of service: non-refundable); releases transport buffers |
 | `paystack-verify-bank` | POST | Verifies vendor bank account via Paystack during onboarding |
+| `vendor-cancel-booking` | POST | Vendor cancels an accepted/in-progress booking — full refund to customer, transport buffers released, rolling 30-day cancellation count incremented, flags vendor at 3+ |
+| `vendor-cancel-grace` | POST | Vendor cancels an auto-accepted booking within the 5-minute grace period (penalty-free, full refund) |
+| `dispute-raise` | POST | User raises a dispute — booking status set to `disputed` (freezes auto-release), inserts into `disputes`, notifies both parties |
 | `vendor-kyc-init` | POST | Initiates Youverify KYC session |
-| `vendor-kyc-webhook` | POST | Receives Youverify result, updates `kyc_status` |
+| `vendor-kyc-webhook` | POST | Receives Youverify result — clean pass: `kyc_status = verified` + `is_active = true` (instant activation); failure: `kyc_status = rejected`, appears in admin queue |
 | `vendor-register-lead` | POST | Captures a pioneer programme lead |
 | `vendor-set-zone` | POST | Saves vendor's auto-accept geographic zone |
 | `vendor-confirm-zone` | GET/POST | GET: returns zone status; POST: marks zone confirmed for today |
 | `vendor-update-location` | POST | Updates vendor's current location; detects zone drift |
-| `vendor-cancel-grace` | POST | Vendor cancels an auto-accepted booking within the 5-minute grace period (penalty-free, full refund) |
 
 ---
 
@@ -227,24 +229,44 @@ Paystack Checkout (WebView)
         │
         ▼
 paystack-webhook
-  • Creates booking record
-  • If auto-accept conditions met → status = accepted, grace window opens
-  • Otherwise → status = pending, vendor has 2 hours to accept
+  • Creates booking record (sets auto_release_at = scheduled_end + 1hr)
+  • Creates 2× transport buffer blocks after booking end
+  • If auto-accept conditions met → status = accepted, 5-min grace window opens
+  • Otherwise → status = pending, vendor has 1 hour to accept
         │
-   ┌────┴─────┐
-   │          │
-Vendor      Expires
-accepts     (2 hrs)
-   │          │
+   ┌────┴──────┐
+   │           │
+Vendor       Expires
+accepts     (1 hr)
+   │           │
 paystack-  paystack-
-capture    release
+capture    release (full refund)
    │
-Service completed
+   ├── User cancels (paystack-cancel)
+   │     • Tiered fee: 0–15 min = 15%, 15 min–1 hr before service = 50%,
+   │       within 1 hr of service = non-refundable (100%)
+   │     • Transport buffers deleted
    │
-   ▼
+   ├── Vendor cancels (vendor-cancel-booking)
+   │     • Full refund, no fee
+   │     • Transport buffers deleted
+   │     • Cancellation count incremented (flagged at 3+ in 30 days)
+   │
+   ├── User disputes (dispute-raise)
+   │     • Booking → 'disputed' (escrow frozen; auto-release will NOT fire)
+   │     • Admin resolves: pay vendor OR refund user
+   │
+Service completed → status = service_rendered
+   │
+   ├── User confirms (paystack-settle / user_confirmed)
+   │
+   └── Auto-release fires at auto_release_at (paystack-settle / auto_release)
+         • 1 hour after scheduled booking END time
+         • Same 80/20 split as manual confirm
+
 paystack-settle
-  • Releases escrow
-  • Initiates Paystack transfer (80% to vendor)
+  • Initiates Paystack transfer (80% to vendor, 20% VARS commission)
+  • Pioneer vendors: 100% for first 3 completed bookings
 ```
 
 ---
@@ -279,11 +301,13 @@ After an auto-accepted booking is created, the vendor has a **5-minute grace win
 
 ### Transport Buffers
 
-When a booking is auto-accepted, the system automatically inserts `transport_buffer` blocks into `vendor_calendar` for the 30 minutes before and after the booking. These blocks prevent back-to-back bookings from being accepted with no travel time. They are:
+When a booking is auto-accepted, the system automatically inserts `transport_buffer` blocks into `vendor_calendar` for the **two 30-minute slots immediately after** the booking ends. These blocks prevent back-to-back bookings with no travel time. They are:
+- **After-only** — no buffer is inserted before the booking (vendor may have come from anywhere)
+- Two consecutive 30-minute blocks immediately after the booking's last slot
+- Clamped to working hours — only created if they end by 22:00
 - Read-only (cannot be toggled by the vendor)
-- Clamped to working hours (08:00–22:00)
 - Skipped if a block already exists in that slot
-- Deleted automatically if the booking is grace-cancelled
+- Deleted automatically if the booking is cancelled (by user, vendor, or grace-cancel)
 
 ### Vendor Calendar States
 
@@ -295,6 +319,65 @@ When a booking is auto-accepted, the system automatically inserts `transport_buf
 | `transport_buffer` | Grey 🚗 | System-reserved travel buffer (read-only) |
 
 Tapping a slot cycles: available → blocked → auto-accept → back to available.
+
+---
+
+## Vendor KYC & Approval
+
+Vendors complete identity verification via the **Youverify SDK** during onboarding.
+
+- **Clean pass** — `vendor-kyc-webhook` sets `kyc_status = verified` AND `is_active = true` in a single update. The vendor goes live **instantly**, no admin action required.
+- **Rejection / flagged** — `kyc_status = rejected`. The case surfaces in the admin Vendors panel (which defaults to the rejected queue). Admin can:
+  - **Override & approve** — manually set `kyc_status = verified, is_active = true`
+  - **Reset KYC** — send vendor back to pending for re-submission
+
+The admin panel never needs to action a clean pass. The queue stays focused on problem cases only.
+
+---
+
+## Cancellations, Disputes & Expiry
+
+### User-Initiated Cancellation (`paystack-cancel`)
+
+| Time of cancellation | Fee | Vendor share |
+|---|---|---|
+| 0–15 min after booking | 15% of price | 5% vendor / 10% VARS |
+| 15 min – 1 hr before service | 50% of price | 20% vendor / 30% VARS |
+| Within 1 hr of service start | Non-refundable (100%) | 70% vendor / 30% VARS |
+
+Transport buffer blocks are deleted on cancellation, freeing the vendor's calendar.
+
+### Vendor-Initiated Cancellation (`vendor-cancel-booking`)
+
+- Full refund to customer — no fee applied
+- Transport buffer blocks deleted
+- Rolling 30-day cancellation count queried; if ≥ 3, `cancellation_flagged = true` on vendor record
+- Admin reviews flagged vendors and can clear the flag after investigation
+
+### Disputes (`dispute-raise`)
+
+1. User taps "Something's wrong" from the live booking screen
+2. Booking status set to `disputed` — **escrow is frozen** (the auto-release cron only queries `service_rendered`, so disputed bookings are skipped)
+3. A `disputes` record is inserted and both parties are notified
+4. Admin resolves via the Disputes panel (SLA: 24 hours, warns at 18h):
+   - **Release to Vendor** — calls `paystack-settle` to complete the standard 80/20 payout
+   - **Refund to User** — calls `paystack-release` to issue a full refund
+5. Both parties notified of the outcome
+
+### Vendor No-Response Expiry (`paystack-release` cron)
+
+A scheduled cron runs every hour. Any `pending` booking older than **1 hour** is expired:
+- Booking marked `expired`
+- Full Paystack refund issued to user
+- User notified and pointed back to vendor feed for the same category
+- Vendor notified (timeout only, not manual decline)
+
+### Auto-Release (`paystack-settle` cron)
+
+A scheduled cron fires every 15 minutes. Any `service_rendered` booking where `auto_release_at ≤ now` is settled:
+- `auto_release_at` = `scheduled_at + (duration_blocks × 30min) + 1hr`
+- Standard 80/20 settlement — functionally identical to a user confirmation
+- User and vendor notified
 
 ---
 

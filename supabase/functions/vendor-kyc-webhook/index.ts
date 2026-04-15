@@ -81,10 +81,14 @@ Deno.serve(async (req: Request) => {
 
   const newKycStatus = isVerified ? 'verified' : 'rejected';
 
-  // Update vendor kyc_status
+  // Update vendor: clean pass → also set is_active so vendor goes live immediately.
+  // Rejected → is_active stays false; case appears in admin panel for review.
   const { error: updateErr } = await adminClient
     .from('vendors')
-    .update({ kyc_status: newKycStatus })
+    .update(isVerified
+      ? { kyc_status: 'verified', is_active: true }
+      : { kyc_status: 'rejected' }
+    )
     .eq('id', vendorId);
 
   if (updateErr) {

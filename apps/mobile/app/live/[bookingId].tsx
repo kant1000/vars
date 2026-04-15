@@ -149,14 +149,28 @@ function DisputeModal({
   const submit = async () => {
     if (reason.trim().length < 10) return;
     setSubmitting(true);
-    await supabase.from('disputes').insert({
-      booking_id: bookingId,
-      raised_by: 'user',
-      reason: reason.trim(),
-    });
-    setSubmitting(false);
+    try {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/dispute-raise`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${sessionToken}`,
+        },
+        body: JSON.stringify({ booking_id: bookingId, reason: reason.trim() }),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        Alert.alert('Error', d.error ?? 'Could not raise dispute. Please try again.');
+        return;
+      }
+    } catch {
+      Alert.alert('Error', 'Could not reach server. Please check your connection.');
+      return;
+    } finally {
+      setSubmitting(false);
+    }
     onClose();
-    Alert.alert('Dispute raised', 'Our team will review this within 24 hours.');
+    Alert.alert('Dispute raised', 'Our team will review this within 24 hours. Payment is held until resolved.');
   };
 
   return (

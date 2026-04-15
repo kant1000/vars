@@ -27,22 +27,40 @@ Deno.serve(async (req: Request) => {
     // Check if this is a cron/system call (no auth header) or vendor decline (with auth)
     const authHeader = req.headers.get('Authorization');
     const isCronCall = req.headers.get('x-vars-cron-secret') === Deno.env.get('CRON_SECRET');
+    // Admin dashboard uses service role key for dispute refund resolution
+    const isAdminCall = authHeader === `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`;
 
     if (!authHeader && !isCronCall) {
       return errorResponse('Missing authorization', 401);
     }
 
     // --------------------------------------------------------
-    // CRON MODE: expire all pending bookings past 2-hour window
+    // ADMIN MODE: dispute resolved — refund customer
+    // --------------------------------------------------------
+    if (isAdminCall) {
+      const { booking_id } = await req.json();
+      if (!booking_id) return errorResponse('Missing booking_id');
+      const { data: booking } = await supabase
+        .from('bookings')
+        .select('id, user_id, vendor_id, paystack_reference, service_price_kobo')
+        .eq('id', booking_id)
+        .single();
+      if (!booking) return errorResponse('Booking not found', 404);
+      await expireBooking(supabase, booking, 'decline');
+      return jsonResponse({ success: true, booking_id, status: 'refunded' });
+    }
+
+    // --------------------------------------------------------
+    // CRON MODE: expire all pending bookings past 1-hour window
     // --------------------------------------------------------
     if (isCronCall) {
-      const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+      const oneHourAgo = new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString();
 
       const { data: expiredBookings } = await supabase
         .from('bookings')
         .select('id, user_id, vendor_id, paystack_reference, service_price_kobo')
         .eq('status', 'pending')
-        .lt('created_at', twoHoursAgo);
+        .lt('created_at', oneHourAgo);
 
       if (!expiredBookings || expiredBookings.length === 0) {
         return jsonResponse({ expired: 0 });

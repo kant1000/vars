@@ -157,6 +157,12 @@ async function handleChargeSuccess(
   const now = new Date();
   const graceExpiry = new Date(now.getTime() + 5 * 60 * 1000); // +5 min
 
+  // auto_release_at = scheduled end time + 1 hour (fixed wall-clock, not relative to service_rendered)
+  const scheduledEnd = new Date(
+    new Date(scheduledStr).getTime() + (service_duration_blocks as number) * 30 * 60 * 1000
+  );
+  const autoReleaseAt = new Date(scheduledEnd.getTime() + 60 * 60 * 1000);
+
   const { data: booking, error: bookingError } = await supabase
     .from('bookings')
     .insert({
@@ -173,6 +179,8 @@ async function handleChargeSuccess(
       paystack_reference: reference,
       paystack_authorization_code: (data.authorization as Record<string, unknown>)?.authorization_code ?? null,
       payment_captured: false,
+      // auto_release fires 1 hour after the scheduled booking end time
+      auto_release_at: autoReleaseAt.toISOString(),
       // Auto-accept fields
       auto_accepted: autoAcceptResult.shouldAutoAccept,
       auto_accept_grace_expires_at: autoAcceptResult.shouldAutoAccept
@@ -374,11 +382,11 @@ async function checkAutoAccept(
 }
 
 // ── Transport buffer creator ─────────────────────────────────
-// Creates 30-min blocks before and after a confirmed booking.
+// Creates two 30-min blocks immediately after the confirmed booking ends.
 // Rules:
-//   • Before buffer: only if booking doesn't start at the first slot (08:00)
-//   • After buffer: only if booking doesn't end at the last slot (22:00)
-//   • Skip either buffer if a calendar block already exists at that time
+//   • Both blocks are AFTER the booking only (no before-buffer)
+//   • Skip a block if it would end after 22:00 (outside working hours)
+//   • Skip a block if a calendar entry already exists at that start time
 async function createTransportBuffers(
   supabase: ReturnType<typeof createAdminClient>,
   vendorId: string,
@@ -389,28 +397,28 @@ async function createTransportBuffers(
   const bookingStart = new Date(scheduledAt);
   const bookingEnd = new Date(bookingStart.getTime() + durationBlocks * 30 * 60 * 1000);
 
-  const beforeStart = new Date(bookingStart.getTime() - 30 * 60 * 1000);
-  const afterEnd    = new Date(bookingEnd.getTime() + 30 * 60 * 1000);
-
-  // Working hours: 08:00 and 22:00 (local — stored as UTC so use hour only)
+  // Working hours boundary relative to the booking's day (UTC)
   const dayOf = (d: Date) => {
     const base = new Date(d);
     base.setUTCHours(0, 0, 0, 0);
     return base;
   };
-  const workStart = (d: Date) => new Date(dayOf(d).getTime() + 8  * 60 * 60 * 1000);
-  const workEnd   = (d: Date) => new Date(dayOf(d).getTime() + 22 * 60 * 60 * 1000);
+  const workEnd = (d: Date) => new Date(dayOf(d).getTime() + 22 * 60 * 60 * 1000);
+
+  // Two consecutive 30-min after-buffers
+  const buf1Start = bookingEnd;
+  const buf1End   = new Date(bookingEnd.getTime() + 30 * 60 * 1000);
+  const buf2Start = buf1End;
+  const buf2End   = new Date(buf1End.getTime() + 30 * 60 * 1000);
 
   const candidates: { start: Date; end: Date }[] = [];
 
-  // Before buffer — skip if it would start before 08:00
-  if (beforeStart >= workStart(beforeStart)) {
-    candidates.push({ start: beforeStart, end: bookingStart });
+  // Add each block only if it fits within working hours
+  if (buf1End <= workEnd(buf1End)) {
+    candidates.push({ start: buf1Start, end: buf1End });
   }
-
-  // After buffer — skip if it would end after 22:00
-  if (afterEnd <= workEnd(afterEnd)) {
-    candidates.push({ start: bookingEnd, end: afterEnd });
+  if (buf2End <= workEnd(buf2End)) {
+    candidates.push({ start: buf2Start, end: buf2End });
   }
 
   if (candidates.length === 0) return;

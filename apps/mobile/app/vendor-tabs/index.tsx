@@ -257,8 +257,15 @@ const FLOW_ACTIONS: Partial<Record<BookingStatus, { label: string; next: Booking
   arrived:   { label: 'Service rendered', next: 'service_rendered', color: Colors.primary },
 };
 
-function ActiveCard({ booking, onUpdated }: { booking: VendorBooking; onUpdated: () => void }) {
+function ActiveCard({
+  booking, sessionToken, onUpdated,
+}: {
+  booking: VendorBooking;
+  sessionToken: string;
+  onUpdated: () => void;
+}) {
   const [acting, setActing] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const action = FLOW_ACTIONS[booking.status];
 
   const advance = async () => {
@@ -273,6 +280,43 @@ function ActiveCard({ booking, onUpdated }: { booking: VendorBooking; onUpdated:
     if (error) Alert.alert('Error', error.message);
     else onUpdated();
     setActing(false);
+  };
+
+  const handleCancel = () => {
+    Alert.alert(
+      'Cancel this booking?',
+      'The customer will receive a full refund. Your cancellation count will be tracked.',
+      [
+        { text: 'Keep booking', style: 'cancel' },
+        {
+          text: 'Cancel booking',
+          style: 'destructive',
+          onPress: async () => {
+            setCancelling(true);
+            try {
+              const res = await fetch(`${SUPABASE_URL}/functions/v1/vendor-cancel-booking`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${sessionToken}`,
+                },
+                body: JSON.stringify({ booking_id: booking.id }),
+              });
+              if (!res.ok) {
+                const d = await res.json();
+                Alert.alert('Error', d.error ?? 'Could not cancel booking.');
+              } else {
+                onUpdated();
+              }
+            } catch {
+              Alert.alert('Error', 'Could not reach server.');
+            } finally {
+              setCancelling(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const statusColors: Partial<Record<BookingStatus, string>> = {
@@ -312,8 +356,20 @@ function ActiveCard({ booking, onUpdated }: { booking: VendorBooking; onUpdated:
       )}
       {booking.status === 'service_rendered' && (
         <View style={c.waitingBox}>
-          <Text style={c.waitingText}>Waiting for customer to confirm. Payment auto-releases in 2 hours.</Text>
+          <Text style={c.waitingText}>Waiting for customer to confirm. Payment auto-releases 1 hour after the scheduled end time.</Text>
         </View>
+      )}
+      {['accepted', 'on_way', 'arrived'].includes(booking.status) && (
+        <TouchableOpacity
+          style={[c.vendorCancelBtn, cancelling && c.btnDisabled]}
+          onPress={handleCancel}
+          disabled={cancelling}
+        >
+          {cancelling
+            ? <ActivityIndicator color={Colors.error} size="small" />
+            : <Text style={c.vendorCancelText}>Cancel booking</Text>
+          }
+        </TouchableOpacity>
       )}
     </View>
   );
@@ -651,7 +707,7 @@ export default function VendorJobsScreen() {
         {todayActive.length > 0 && (
           <Section title="Active today">
             {todayActive.map((b) => (
-              <ActiveCard key={b.id} booking={b} onUpdated={load} />
+              <ActiveCard key={b.id} booking={b} sessionToken={session?.access_token ?? ''} onUpdated={load} />
             ))}
           </Section>
         )}
@@ -763,6 +819,13 @@ const c = StyleSheet.create({
   waitingText: { fontSize: 12, color: Colors.primary, lineHeight: 17 },
 
   btnDisabled: { opacity: 0.5 },
+
+  // Vendor cancel button on active cards
+  vendorCancelBtn: {
+    marginTop: 4, height: 38, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  vendorCancelText: { fontSize: 13, fontWeight: '600', color: Colors.error },
 
   // Grace period card
   graceCard: { borderColor: '#D4A017', borderWidth: 1.5 },
