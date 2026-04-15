@@ -38,8 +38,12 @@ const TYPE_ICON: Record<string, string> = {
   payment_authorized:     '💳',
   payment_released:       '💸',
   payment_settled:        '💰',
-  vendor_on_way:          '🚗',
-  vendor_arrived:         '📍',
+  vendor_on_way:          '🚗',  // legacy compat
+  on_way:                 '🚗',
+  vendor_arrived:         '📍',  // legacy compat
+  arrived:                '📍',
+  vendor_cancelled:       '✕',
+  vendor_self_cancelled:  '✕',
   service_rendered:       '🎉',
   booking_completed:      '⭐',
   kyc_approved:           '✅',
@@ -47,6 +51,12 @@ const TYPE_ICON: Record<string, string> = {
   dispute_raised:         '⚠️',
   dispute_resolved:       '✅',
   phone_revealed:         '📞',
+  cancel_0_15:            '✕',
+  cancel_15_60:           '✕',
+  cancel_non_refundable:  '✕',
+  user_cancelled_with_fee:'💸',
+  vendor_declines:        '✕',
+  booking_expired:        '⏱',
 };
 
 function typeIcon(type: string): string {

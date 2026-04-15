@@ -17,7 +17,7 @@ import { signOut } from '@/lib/auth';
 import { pickAndUploadImage } from '@/lib/storage';
 import { Colors } from '@/constants/colors';
 
-type BookingStatus = 'pending'|'accepted'|'vendor_on_way'|'vendor_arrived'|'service_rendered'|'completed'|'cancelled'|'expired';
+type BookingStatus = 'pending'|'accepted'|'on_way'|'arrived'|'service_rendered'|'completed'|'cancelled'|'expired'|'disputed';
 
 interface PastBooking {
   id: string;
@@ -37,11 +37,15 @@ function fmtDate(iso: string) {
 }
 
 const STATUS_COLOR: Partial<Record<BookingStatus, string>> = {
-  completed:  Colors.statusCompleted,
-  cancelled:  Colors.statusCancelled,
-  expired:    Colors.statusExpired,
-  pending:    Colors.statusPending,
-  accepted:   Colors.statusAccepted,
+  completed:        Colors.statusCompleted,
+  cancelled:        Colors.statusCancelled,
+  expired:          Colors.statusExpired,
+  pending:          Colors.statusPending,
+  accepted:         Colors.statusAccepted,
+  on_way:           Colors.statusOnWay,
+  arrived:          Colors.statusArrived,
+  service_rendered: Colors.primary,
+  disputed:         Colors.statusDisputed,
 };
 
 export default function ProfileScreen() {

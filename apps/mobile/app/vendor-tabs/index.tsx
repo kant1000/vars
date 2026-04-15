@@ -188,8 +188,8 @@ function PendingCard({
   onUpdated: () => void;
 }) {
   const [acting, setActing] = useState(false);
-  // 2-hour window from booking creation
-  const expiry = new Date(new Date(booking.created_at).getTime() + 2 * 60 * 60 * 1000).toISOString();
+  // 1-hour window from booking creation (server enforces this via paystack-capture)
+  const expiry = new Date(new Date(booking.created_at).getTime() + 1 * 60 * 60 * 1000).toISOString();
   const { display: countdown } = useCountdown(expiry);
 
   const handle = async (action: 'accept' | 'decline') => {

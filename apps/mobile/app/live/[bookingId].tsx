@@ -3,8 +3,8 @@
 // Route: /live/[bookingId]
 // Real-time booking status tracker for the customer.
 // Supabase Realtime subscription on bookings + vendors (live_location).
-// Status flow: pending → accepted → vendor_on_way → vendor_arrived
-//              → service_rendered → completed
+// Status flow: pending → accepted → on_way → arrived
+//              → service_rendered → completed | cancelled | expired | disputed
 // Phone reveal 15 min before scheduled_at once booking is accepted.
 // "Confirm service rendered" → calls paystack-settle edge fn.
 // ============================================================
@@ -229,6 +229,7 @@ export default function LiveScreen() {
   const [booking, setBooking] = useState<BookingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [confirming, setConfirming] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [disputeVisible, setDisputeVisible] = useState(false);
   const mapRef = useRef<MapView>(null);
 
@@ -327,6 +328,46 @@ export default function LiveScreen() {
     return () => { supabase.removeChannel(channel); };
   }, [booking?.vendor_id]);
 
+  const cancelBooking = () => {
+    if (!session || !booking) return;
+    // Cancellation is only permitted while pending or accepted — not once vendor is on their way
+    if (!['pending', 'accepted'].includes(booking.status)) return;
+
+    Alert.alert(
+      'Cancel booking?',
+      'A cancellation fee may apply depending on timing. Check the policy in your booking.',
+      [
+        { text: 'Keep booking', style: 'cancel' },
+        {
+          text: 'Cancel',
+          style: 'destructive',
+          onPress: async () => {
+            setCancelling(true);
+            try {
+              const res = await fetch(`${SUPABASE_URL}/functions/v1/paystack-cancel`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({ booking_id: booking.id }),
+              });
+              if (!res.ok) {
+                const d = await res.json();
+                Alert.alert('Error', d.error ?? 'Could not cancel. Please try again.');
+              }
+              // Status update comes via Realtime
+            } catch {
+              Alert.alert('Error', 'Could not reach server. Please check your connection.');
+            } finally {
+              setCancelling(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const confirmServiceRendered = async () => {
     if (!session || !booking) return;
     setConfirming(true);
@@ -374,8 +415,10 @@ export default function LiveScreen() {
     && minsUntil > 0 && minsUntil <= 30;
 
   const canConfirm = booking.status === 'service_rendered';
-  const canDispute = ['accepted', 'on_way', 'arrived', 'service_rendered'].includes(booking.status);
-  const isTerminal = ['completed', 'cancelled', 'expired'].includes(booking.status);
+  // Customer can only cancel before vendor departs — once on_way or later it's locked
+  const canCancel  = ['pending', 'accepted'].includes(booking.status);
+  const canDispute = ['on_way', 'arrived', 'service_rendered'].includes(booking.status);
+  const isTerminal = ['completed', 'cancelled', 'expired', 'disputed'].includes(booking.status);
 
   return (
     <View style={[s.container, { paddingTop: insets.top }]}>
@@ -473,6 +516,18 @@ export default function LiveScreen() {
               {confirming
                 ? <ActivityIndicator color="#FFF" />
                 : <Text style={s.confirmBtnText}>Confirm service done</Text>
+              }
+            </TouchableOpacity>
+          )}
+          {canCancel && (
+            <TouchableOpacity
+              style={[s.cancelBtn, cancelling && s.btnDisabled]}
+              onPress={cancelBooking}
+              disabled={cancelling}
+            >
+              {cancelling
+                ? <ActivityIndicator color={Colors.error} size="small" />
+                : <Text style={s.cancelBtnText}>Cancel booking</Text>
               }
             </TouchableOpacity>
           )}
@@ -576,6 +631,11 @@ const s = StyleSheet.create({
   },
   confirmBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
   btnDisabled: { backgroundColor: Colors.textMuted },
+  cancelBtn: {
+    height: 44, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: Colors.error, borderRadius: 12,
+  },
+  cancelBtnText: { fontSize: 14, color: Colors.error, fontWeight: '700' },
   disputeBtn: {
     height: 44, alignItems: 'center', justifyContent: 'center',
   },
