@@ -50,7 +50,7 @@ Deno.serve(async (req: Request) => {
     if (isAdminCall) {
       const { booking_id } = await req.json();
       if (!booking_id) return errorResponse('Missing booking_id');
-      await settleBooking(supabase, booking_id, 'user_confirmed');
+      await settleBooking(supabase, booking_id, 'admin_dispute');
       return jsonResponse({ success: true, booking_id, status: 'completed' });
     }
 
@@ -159,7 +159,7 @@ Deno.serve(async (req: Request) => {
 async function settleBooking(
   supabase: ReturnType<typeof createAdminClient>,
   bookingId: string,
-  trigger: 'user_confirmed' | 'auto_release'
+  trigger: 'user_confirmed' | 'auto_release' | 'admin_dispute'
 ) {
   // Idempotency: check booking hasn't already been settled
   const { data: booking } = await supabase

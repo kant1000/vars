@@ -254,7 +254,7 @@ async function handleChargeSuccess(
       });
     }
   } else {
-    // Normal flow: user waits up to 2 hours
+    // Normal flow: vendor has 1 hour to accept
     if (profile) {
       const msg = msg_paymentAuthorized(vendorName);
       await sendNotification({

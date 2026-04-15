@@ -54,7 +54,14 @@ Deno.serve(async (req: Request) => {
       return errorResponse(`Cannot cancel booking with status: ${booking.status}`);
     }
 
-    // 1. Mark booking cancelled by vendor
+    // 1. Release transport buffer blocks (before status update so calendar is
+    //    freed atomically with the cancellation)
+    await supabase
+      .from('vendor_calendar')
+      .delete()
+      .eq('transport_buffer_source_booking_id', booking_id);
+
+    // 2. Mark booking cancelled by vendor
     await supabase
       .from('bookings')
       .update({
@@ -67,12 +74,6 @@ Deno.serve(async (req: Request) => {
         cancellation_refund_amount_kobo: booking.service_price_kobo,
       })
       .eq('id', booking_id);
-
-    // 2. Release transport buffer blocks tied to this booking
-    await supabase
-      .from('vendor_calendar')
-      .delete()
-      .eq('transport_buffer_source_booking_id', booking_id);
 
     // 3. Full refund to user
     if (booking.paystack_reference) {
