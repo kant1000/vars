@@ -59,10 +59,10 @@ Deno.serve(async (req: Request) => {
 
   const supabase = createAdminClient();
 
-  // Verify this user is a vendor
+  // Verify this user is a vendor and fetch current zone centre
   const { data: vendor } = await supabase
     .from('vendors')
-    .select('id')
+    .select('id, auto_accept_zone_lat, auto_accept_zone_lng')
     .eq('id', user.id)
     .single();
 
@@ -82,8 +82,14 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  // Reset daily confirmation when zone changes (force re-confirm today)
-  update.auto_accept_zone_confirmed_date = null;
+  // Reset daily confirmation ONLY when the pin location actually changed.
+  // Just adjusting the radius doesn't invalidate today's confirmation.
+  const PIN_EPSILON = 0.0001; // ~11m — treat smaller moves as noise
+  const latChanged = Math.abs((vendor.auto_accept_zone_lat ?? 0) - lat) > PIN_EPSILON;
+  const lngChanged = Math.abs((vendor.auto_accept_zone_lng ?? 0) - lng) > PIN_EPSILON;
+  if (latChanged || lngChanged) {
+    update.auto_accept_zone_confirmed_date = null;
+  }
 
   const { error } = await supabase
     .from('vendors')

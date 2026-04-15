@@ -11,18 +11,19 @@
 // ============================================================
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Alert, Modal, RefreshControl,
+  ActivityIndicator, Alert, AppState, Modal, RefreshControl,
   ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Location from 'expo-location';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
-
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
+
+const LOCATION_UPDATE_INTERVAL_MS = 60_000; // every 60 s while online
 
 // ── Types ───────────────────────────────────────────────────
 type BookingStatus =
@@ -102,6 +103,11 @@ function GraceCard({
 }) {
   const [cancelling, setCancelling] = useState(false);
   const { display, expired } = useCountdown(booking.auto_accept_grace_expires_at);
+
+  // Auto-refresh when grace period expires so the card is removed
+  useEffect(() => {
+    if (expired) onUpdated();
+  }, [expired]);
 
   const handleGraceCancel = async () => {
     Alert.alert(
@@ -348,7 +354,10 @@ function ZoneConfirmModal({
     try {
       const res = await fetch(`${SUPABASE_URL}/functions/v1/vendor-confirm-zone`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${sessionToken}` },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${sessionToken}`,
+        },
       });
       if (res.ok) onConfirmed();
       else {
@@ -508,6 +517,46 @@ export default function VendorJobsScreen() {
     }
     setTogglingOnline(false);
   };
+
+  // ── Periodic location updates for zone drift detection ────
+  // Fires every 60 s while the vendor is marked online.
+  // Stops automatically when vendor goes offline or app backgrounds.
+  useEffect(() => {
+    if (!isOnline || !session) return;
+
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+
+    const sendLocation = async () => {
+      const { status } = await Location.getForegroundPermissionsAsync();
+      if (status !== 'granted') return;
+      try {
+        const loc = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        await fetch(`${SUPABASE_URL}/functions/v1/vendor-update-location`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            lat: loc.coords.latitude,
+            lng: loc.coords.longitude,
+          }),
+        });
+      } catch {
+        // Non-critical — skip this tick silently
+      }
+    };
+
+    // Send immediately on going online, then every interval
+    sendLocation();
+    intervalId = setInterval(sendLocation, LOCATION_UPDATE_INTERVAL_MS);
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [isOnline, session]);
 
   const pending  = bookings.filter((b) => b.status === 'pending');
   // Grace bookings: auto-accepted, still within 5-min grace, not yet cancelled

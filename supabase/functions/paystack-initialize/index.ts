@@ -126,13 +126,28 @@ Deno.serve(async (req: Request) => {
     });
 
     // Check if this slot is likely to be auto-accepted (hint for UX)
+    // All three conditions must hold: vendor settings OK + specific slot is auto_accept
     const vendor = vendorService.vendor as any;
     const today = new Date().toISOString().slice(0, 10);
     const zoneConfirmedToday = vendor.auto_accept_zone_confirmed_date === today;
-    const autoAcceptLikely =
+    const vendorSettingsOk =
       vendor.auto_accept_enabled &&
       !vendor.auto_accept_paused_due_to_drift &&
       zoneConfirmedToday;
+
+    let autoAcceptLikely = false;
+    if (vendorSettingsOk) {
+      // Confirm the specific slot has at least one auto_accept block covering it
+      const { data: autoBlock } = await supabase
+        .from('vendor_calendar')
+        .select('id')
+        .eq('vendor_id', vendorService.vendor.id)
+        .eq('block_state', 'auto_accept')
+        .lte('start_time', scheduledDate.toISOString())
+        .gt('end_time', scheduledDate.toISOString())
+        .maybeSingle();
+      autoAcceptLikely = !!autoBlock;
+    }
 
     return jsonResponse({
       access_code: transaction.access_code,

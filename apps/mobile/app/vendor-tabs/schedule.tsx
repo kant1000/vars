@@ -100,12 +100,13 @@ export default function ScheduleScreen() {
     const dayStart = new Date(selectedDay); dayStart.setHours(0, 0, 0, 0);
     const dayEnd   = new Date(selectedDay); dayEnd.setHours(23, 59, 59, 999);
 
+    // Use overlap query so blocks that span midnight are not missed
     const { data } = await supabase
       .from('vendor_calendar')
       .select('id, start_time, end_time, block_state')
       .eq('vendor_id', vendorId)
-      .gte('start_time', dayStart.toISOString())
       .lt('start_time', dayEnd.toISOString())
+      .gt('end_time', dayStart.toISOString())
       .order('start_time');
 
     setBlocks(data ?? []);

@@ -301,7 +301,7 @@ const s = StyleSheet.create({
   infoText:  { fontSize: 13, color: '#7A6000', lineHeight: 20 },
 
   saveBtn: {
-    height: 56, backgroundColor: Colors.primary,
+    height: 56, backgroundColor: '#D4A017',
     borderRadius: 14, alignItems: 'center', justifyContent: 'center',
   },
   btnDisabled: { opacity: 0.5 },

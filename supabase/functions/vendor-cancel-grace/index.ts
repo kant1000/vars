@@ -4,16 +4,17 @@
 // the 5-minute grace period, penalty-free.
 //
 // On success:
-//   - Booking status → 'cancelled'
-//   - grace_cancelled = TRUE
-//   - Calls paystack-release to refund the user
+//   - Booking status → 'cancelled', grace_cancelled = TRUE
+//   - Full Paystack refund issued directly via PaystackClient
 //   - Sends cancellation notification to user
+//   - Removes transport buffer blocks for this booking
 //
 // POST body: { booking_id }
 // ============================================================
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient, createAuthClient } from '../_shared/supabase.ts';
+import { PaystackClient } from '../_shared/paystack.ts';
 import {
   sendNotification,
   msg_bookingCancelledByVendor,
@@ -53,7 +54,7 @@ Deno.serve(async (req: Request) => {
       auto_accepted, auto_accept_grace_expires_at,
       grace_cancelled,
       service_name, scheduled_at,
-      paystack_reference, paystack_authorization_code,
+      paystack_reference,
       service_price_kobo
     `)
     .eq('id', body.booking_id)
@@ -93,7 +94,7 @@ Deno.serve(async (req: Request) => {
     return errorResponse('Booking already cancelled during grace period', 409);
   }
 
-  // Cancel the booking and mark as grace-cancelled
+  // ── Cancel the booking ────────────────────────────────────
   const { error: cancelError } = await supabase
     .from('bookings')
     .update({
@@ -113,26 +114,31 @@ Deno.serve(async (req: Request) => {
     return errorResponse('Failed to cancel booking', 500);
   }
 
-  // Release / refund the user via paystack-release internal call
-  const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
-  const SERVICE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-
-  const releaseRes = await fetch(`${SUPABASE_URL}/functions/v1/paystack-release`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${SERVICE_KEY}`,
-    },
-    body: JSON.stringify({ booking_id: booking.id, reason: 'grace_cancel' }),
-  });
-
-  if (!releaseRes.ok) {
-    // Log but don't fail — cancellation is already recorded
-    const releaseData = await releaseRes.json().catch(() => ({}));
-    console.error('Grace cancel: paystack-release failed:', releaseData);
+  // ── Refund via Paystack directly ──────────────────────────
+  // Note: we do NOT call paystack-release because that function
+  // only handles 'pending' bookings (vendor decline / expiry).
+  // Auto-accepted bookings are 'accepted', so we refund directly.
+  if (booking.paystack_reference) {
+    try {
+      const paystack = new PaystackClient(Deno.env.get('PAYSTACK_SECRET_KEY')!);
+      await paystack.refundTransaction({
+        transaction: booking.paystack_reference,
+        merchant_note: `Grace period cancel — booking ${booking.id}, full refund`,
+      });
+      console.log(`Grace cancel: Paystack refund issued for booking ${booking.id}`);
+    } catch (err) {
+      // Booking is already marked cancelled — log for manual follow-up
+      console.error(`Grace cancel: Paystack refund failed for booking ${booking.id}:`, err);
+    }
   }
 
-  // Notify user
+  // ── Remove transport buffer blocks for this booking ───────
+  await supabase
+    .from('vendor_calendar')
+    .delete()
+    .eq('transport_buffer_source_booking_id', booking.id);
+
+  // ── Notify user ───────────────────────────────────────────
   const { data: userProfile } = await supabase
     .from('profiles')
     .select('push_token')

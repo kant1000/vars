@@ -374,8 +374,11 @@ async function checkAutoAccept(
 }
 
 // ── Transport buffer creator ─────────────────────────────────
-// Creates two 30-min blocks before and after a confirmed booking
-// to give the vendor travel buffer time.
+// Creates 30-min blocks before and after a confirmed booking.
+// Rules:
+//   • Before buffer: only if booking doesn't start at the first slot (08:00)
+//   • After buffer: only if booking doesn't end at the last slot (22:00)
+//   • Skip either buffer if a calendar block already exists at that time
 async function createTransportBuffers(
   supabase: ReturnType<typeof createAdminClient>,
   vendorId: string,
@@ -386,30 +389,63 @@ async function createTransportBuffers(
   const bookingStart = new Date(scheduledAt);
   const bookingEnd = new Date(bookingStart.getTime() + durationBlocks * 30 * 60 * 1000);
 
-  const bufferBefore = {
-    vendor_id: vendorId,
-    start_time: new Date(bookingStart.getTime() - 30 * 60 * 1000).toISOString(),
-    end_time: bookingStart.toISOString(),
-    block_state: 'transport_buffer',
-    transport_buffer_source_booking_id: bookingId,
-  };
-  const bufferAfter = {
-    vendor_id: vendorId,
-    start_time: bookingEnd.toISOString(),
-    end_time: new Date(bookingEnd.getTime() + 30 * 60 * 1000).toISOString(),
-    block_state: 'transport_buffer',
-    transport_buffer_source_booking_id: bookingId,
-  };
+  const beforeStart = new Date(bookingStart.getTime() - 30 * 60 * 1000);
+  const afterEnd    = new Date(bookingEnd.getTime() + 30 * 60 * 1000);
 
-  const { error } = await supabase
-    .from('vendor_calendar')
-    .insert([bufferBefore, bufferAfter]);
+  // Working hours: 08:00 and 22:00 (local — stored as UTC so use hour only)
+  const dayOf = (d: Date) => {
+    const base = new Date(d);
+    base.setUTCHours(0, 0, 0, 0);
+    return base;
+  };
+  const workStart = (d: Date) => new Date(dayOf(d).getTime() + 8  * 60 * 60 * 1000);
+  const workEnd   = (d: Date) => new Date(dayOf(d).getTime() + 22 * 60 * 60 * 1000);
 
+  const candidates: { start: Date; end: Date }[] = [];
+
+  // Before buffer — skip if it would start before 08:00
+  if (beforeStart >= workStart(beforeStart)) {
+    candidates.push({ start: beforeStart, end: bookingStart });
+  }
+
+  // After buffer — skip if it would end after 22:00
+  if (afterEnd <= workEnd(afterEnd)) {
+    candidates.push({ start: bookingEnd, end: afterEnd });
+  }
+
+  if (candidates.length === 0) return;
+
+  // For each candidate buffer slot, check if a block already exists
+  const inserts: Record<string, unknown>[] = [];
+  for (const { start, end } of candidates) {
+    const { data: existing } = await supabase
+      .from('vendor_calendar')
+      .select('id')
+      .eq('vendor_id', vendorId)
+      .eq('start_time', start.toISOString())
+      .maybeSingle();
+
+    if (!existing) {
+      inserts.push({
+        vendor_id: vendorId,
+        start_time: start.toISOString(),
+        end_time: end.toISOString(),
+        block_state: 'transport_buffer',
+        transport_buffer_source_booking_id: bookingId,
+      });
+    }
+  }
+
+  if (inserts.length === 0) {
+    console.log(`Transport buffers for booking ${bookingId}: slots already occupied, skipped.`);
+    return;
+  }
+
+  const { error } = await supabase.from('vendor_calendar').insert(inserts);
   if (error) {
-    // Log but don't fail — transport buffers are advisory
     console.error(`Failed to create transport buffers for booking ${bookingId}:`, error);
   } else {
-    console.log(`Transport buffers created for booking ${bookingId}`);
+    console.log(`Transport buffers created for booking ${bookingId} (${inserts.length} block(s))`);
   }
 }
 
