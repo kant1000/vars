@@ -101,9 +101,14 @@ export default function VendorLoginScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <TouchableOpacity style={styles.back} onPress={() => router.back()}>
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
+        <View style={styles.topRow}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Text style={styles.backText}>← Back</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.replace('/auth/login')}>
+            <Text style={styles.customerLinkText}>CUSTOMER LOGIN  ›</Text>
+          </TouchableOpacity>
+        </View>
 
         <Text style={styles.wordmark}>VARS</Text>
         <Text style={styles.title}>
@@ -205,8 +210,9 @@ export default function VendorLoginScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   scroll: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 60, paddingBottom: 40 },
-  back: { marginBottom: 32 },
+  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 },
   backText: { fontSize: 16, color: Colors.primary, fontWeight: '500' },
+  customerLinkText: { fontSize: 13, fontWeight: '700', letterSpacing: 1.2, color: Colors.text },
   wordmark: { fontSize: 36, fontWeight: '800', color: Colors.primary, letterSpacing: -1, marginBottom: 8 },
   title: { fontSize: 26, fontWeight: '700', color: Colors.text, marginBottom: 6 },
   sub: { fontSize: 16, color: Colors.textSecondary, marginBottom: 32 },

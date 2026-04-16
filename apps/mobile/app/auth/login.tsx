@@ -243,6 +243,11 @@ export default function LoginScreen() {
         <Text style={styles.terms}>
           By continuing, you agree to VARS' Terms of Service and Privacy Policy.
         </Text>
+
+        {/* Vendor portal cross-link */}
+        <TouchableOpacity onPress={() => router.push('/auth/vendor-login')} style={styles.vendorLink}>
+          <Text style={styles.vendorLinkText}>STYLIST LOGIN  ›</Text>
+        </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -407,5 +412,16 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textAlign: 'center',
     lineHeight: 18,
+  },
+  vendorLink: {
+    alignItems: 'center',
+    marginTop: 28,
+    paddingBottom: 8,
+  },
+  vendorLinkText: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    color: Colors.text,
   },
 });
