@@ -96,13 +96,22 @@ export default function OnboardingScreen() {
               <Text style={styles.sub}>{item.sub}</Text>
 
               {item.isCta ? (
-                <TouchableOpacity
-                  style={styles.ctaButton}
-                  onPress={handleGetStarted}
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.ctaText}>Get Started</Text>
-                </TouchableOpacity>
+                <>
+                  <TouchableOpacity
+                    style={styles.ctaButton}
+                    onPress={handleGetStarted}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.ctaText}>Get Started</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.stylistLink}
+                    onPress={() => router.replace('/auth/vendor-login')}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.stylistLinkText}>STYLIST LOGIN  ›</Text>
+                  </TouchableOpacity>
+                </>
               ) : (
                 <TouchableOpacity
                   style={styles.nextButton}
@@ -189,6 +198,16 @@ const styles = StyleSheet.create({
     color: '#1A1A1A',
     fontSize: 17,
     fontWeight: '600',
+  },
+  stylistLink: {
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  stylistLinkText: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    color: '#1A1A1A',
   },
   dots: {
     position: 'absolute',
