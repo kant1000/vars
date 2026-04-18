@@ -93,18 +93,23 @@ vars/
 ### For Customers
 
 - **Discovery** — browse vendors by category (Barbing / Hair Styling / Makeovers); filter by distance from their current location using PostGIS
-- **Booking flow** — 3-step: pick service → pick date & time slot → review & pay
-- **Paystack checkout** — opens in an in-app WebView; card is charged immediately and funds held in VARS's Paystack balance (escrow) until the vendor is paid
-- **Live tracking** — real-time map showing vendor location while en route; phone number revealed 15 minutes before appointment
-- **Confirm & settle** — customer taps "Confirm service done" to release escrow; once the vendor marks the service done, escrow auto-releases 1 hour after the scheduled booking end time if the customer takes no action
+- **Booking flow** — 3-step: pick service → pick date & time slot → review access details + pay
+  - Step 3 (review): customer enters building name, floor, flat number, gate code; all inputs are silently filtered (no `@` signs, no sequences of 7+ digits)
+  - Step 3 (pay): MapView thumbnail confirms customer location before the pay button activates; Paystack checkout opens in-app WebView
+- **Booking detail screen** — unified screen for all booking states; status timeline with timestamps; live vendor tracking map while `on_way`; action buttons change per status (cancel, confirm service, dispute)
+- **Paystack checkout** — card charged immediately; funds held in VARS Paystack balance (escrow) until vendor is paid
+- **Live tracking** — map polls vendor GPS every 30 seconds while en route; phone number and full access details revealed 15 minutes before appointment
+- **Confirm & settle** — customer taps "Confirm service done" to release escrow; auto-releases 1 hour after the scheduled booking end time if the customer takes no action
 - **Reviews** — 1–5 star rating + comment after completion
-- **Disputes** — raise an issue from the live screen; escrow freezes immediately pending admin review
+- **Disputes** — raise an issue from the booking detail screen; escrow freezes immediately pending admin review
 
 ### For Vendors
 
 - **Onboarding** — multi-step: profile → services → portfolio → KYC (Youverify) → instant activation on clean pass
 - **Jobs dashboard** — incoming requests with 1-hour accept window; active jobs with flow buttons (On My Way → Arrived → Service Rendered); cancel button for accepted/in-progress bookings; history
-- **Schedule management** — 30-minute slot calendar (14-day view); three-state tap cycle: available → blocked → auto-accept
+- **Schedule management** — Calendar/List toggle (persisted); calendar shows 14-day grid with booked slot overlays (client name, service, status dot); list view shows all upcoming bookings; tapping any booking opens a detail bottom sheet
+  - Bottom sheet: customer location map thumbnail, access details (revealed 15 min before appointment), accept/decline/on-way/arrived/service-rendered action buttons
+  - Auto-accept grace banner: amber countdown + "Cancel penalty-free" button for auto-accepted bookings within the 5-minute window
 - **Auto-Accept** — geographic zone system for instant booking confirmation (see below)
 - **Earnings** — per-booking breakdown; Paystack automatic payout (80% revenue share)
 - **Pioneer programme** — pre-launch lead capture and conversion flow
@@ -119,7 +124,7 @@ vars/
 
 ## Database Schema
 
-Six migration files build up the schema incrementally:
+Thirteen migration files build up the schema incrementally:
 
 | Migration | Contents |
 |---|---|
@@ -130,6 +135,11 @@ Six migration files build up the schema incrementally:
 | `004_pioneer_lead_conversion` | Lead → vendor conversion helpers |
 | `005_auto_accept` | Auto-Accept fields, `vendor_calendar` table, transport buffer support |
 | `006_vendor_cancellation_flag` | `cancellation_flagged` column on vendors; auto-set at 3+ cancellations in 30 days |
+| `007_disputes_schema_fixes` | Disputes table refinements |
+| `008_portfolio_photos_v2` | Portfolio photo schema updates |
+| `010_system_alerts` | `system_alerts` table + `check_cron_health()` for cron monitoring |
+| `011_booking_access_details` | `access_building`, `access_floor`, `access_flat`, `access_code`, `user_location_lat`, `user_location_lng` on bookings |
+| `012_disputes_rename_statement` | Rename `disputes.statement` → `disputes.reason` to align with edge functions and admin panel |
 
 ### Key Tables
 
@@ -139,7 +149,7 @@ Six migration files build up the schema incrementally:
 | `vendors` | Vendor accounts with KYC, ratings, zone settings |
 | `services` | Master service catalogue |
 | `vendor_services` | A vendor's offered services with price and duration |
-| `bookings` | All bookings; holds Paystack reference and escrow state |
+| `bookings` | All bookings; holds Paystack reference, escrow state, access details (`access_building/floor/flat/code`), and customer location (`user_location_lat/lng`) |
 | `vendor_calendar` | Per-slot availability with state: `unavailable` / `auto_accept` / `transport_buffer` |
 | `reviews` | Star ratings + comments |
 | `disputes` | Customer-raised issues |
@@ -195,7 +205,7 @@ All functions live in `supabase/functions/` and run on Deno.
 | `vendor-register-lead` | POST | Captures a pioneer programme lead |
 | `vendor-set-zone` | POST | Saves vendor's auto-accept geographic zone |
 | `vendor-confirm-zone` | GET/POST | GET: returns zone status; POST: marks zone confirmed for today |
-| `vendor-update-location` | POST | Updates vendor's current location; detects zone drift |
+| `vendor-update-location` | POST | Called every 60s by vendor app while `on_way`; writes `vendor_current_lat/lng` to vendors table for customer live tracking map; also detects zone drift |
 
 ---
 
@@ -211,6 +221,7 @@ All functions live in `supabase/functions/` and run on Deno.
 | Customer profile | `/(tabs)/profile` |
 | Vendor public profile | `/vendor/[id]` |
 | Booking flow (3 steps) | `/booking/[vendorId]` |
+| Booking detail | `/booking/detail/[bookingId]` |
 | Live booking tracker | `/live/[bookingId]` |
 | Leave a review | `/review/[bookingId]` |
 
