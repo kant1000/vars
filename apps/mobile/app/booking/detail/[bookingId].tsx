@@ -4,7 +4,7 @@
 // Deep-linked from all customer push notifications.
 // Shows full booking state, timeline, summary, and actions.
 // ============================================================
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator, KeyboardAvoidingView, Modal, Platform,
   Pressable, RefreshControl, ScrollView,
@@ -51,6 +51,7 @@ interface BookingDetail {
   expired_at: string | null;
   // Payment
   paystack_reference: string | null;
+  vendor_id: string;
 }
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -204,6 +205,95 @@ function LocationMap({ lat, lng }: { lat: number; lng: number }) {
   );
 }
 
+// ── Live tracking map (on_way status) ────────────────────────
+function LiveTrackingMap({
+  vendorId, clientLat, clientLng,
+}: {
+  vendorId: string;
+  clientLat: number;
+  clientLng: number;
+}) {
+  const mapRef = useRef<MapView>(null);
+  const [vendorCoords, setVendorCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  const fetchVendorLocation = useCallback(async () => {
+    const { data } = await supabase
+      .from('vendors')
+      .select('vendor_current_lat, vendor_current_lng')
+      .eq('id', vendorId)
+      .single();
+    if (data?.vendor_current_lat && data?.vendor_current_lng) {
+      setVendorCoords({ lat: data.vendor_current_lat, lng: data.vendor_current_lng });
+      setLastUpdated(new Date());
+    }
+  }, [vendorId]);
+
+  // Fetch immediately, then every 30s
+  useEffect(() => {
+    fetchVendorLocation();
+    const interval = setInterval(fetchVendorLocation, 30_000);
+    return () => clearInterval(interval);
+  }, [fetchVendorLocation]);
+
+  // Fit both markers into view once vendor coords arrive
+  useEffect(() => {
+    if (!vendorCoords) return;
+    mapRef.current?.fitToCoordinates(
+      [
+        { latitude: vendorCoords.lat, longitude: vendorCoords.lng },
+        { latitude: clientLat, longitude: clientLng },
+      ],
+      { edgePadding: { top: 60, right: 60, bottom: 60, left: 60 }, animated: true },
+    );
+  }, [vendorCoords, clientLat, clientLng]);
+
+  const midLat = vendorCoords ? (vendorCoords.lat + clientLat) / 2 : clientLat;
+  const midLng = vendorCoords ? (vendorCoords.lng + clientLng) / 2 : clientLng;
+
+  return (
+    <View>
+      <View style={s.liveHeader}>
+        <View style={s.liveDot} />
+        <Text style={s.liveLabel}>Live · updates every 30s</Text>
+        {lastUpdated && (
+          <Text style={s.liveUpdated}>
+            {lastUpdated.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit', hour12: true })}
+          </Text>
+        )}
+      </View>
+      <MapView
+        ref={mapRef}
+        style={s.liveMap}
+        provider={PROVIDER_DEFAULT}
+        initialRegion={{ latitude: midLat, longitude: midLng, latitudeDelta: 0.02, longitudeDelta: 0.02 }}
+        scrollEnabled zoomEnabled rotateEnabled={false} pitchEnabled={false}
+      >
+        {/* Client location */}
+        <Marker
+          coordinate={{ latitude: clientLat, longitude: clientLng }}
+          title="Your location"
+          pinColor={Colors.primary}
+        />
+        {/* Vendor location */}
+        {vendorCoords && (
+          <Marker
+            coordinate={{ latitude: vendorCoords.lat, longitude: vendorCoords.lng }}
+            title="Your vendor"
+            pinColor="#22C55E"
+          />
+        )}
+      </MapView>
+      {!vendorCoords && (
+        <View style={s.liveLoadingOverlay}>
+          <ActivityIndicator color={Colors.primary} />
+          <Text style={s.liveLoadingText}>Locating your vendor…</Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
 // ── Main screen ───────────────────────────────────────────────
 export default function BookingDetailScreen() {
   const { bookingId } = useLocalSearchParams<{ bookingId: string }>();
@@ -267,7 +357,7 @@ export default function BookingDetailScreen() {
     const { data, error } = await supabase
       .from('bookings')
       .select(`
-        id, status, service_name, service_duration_blocks, service_price_kobo,
+        id, status, vendor_id, service_name, service_duration_blocks, service_price_kobo,
         scheduled_at, paystack_reference,
         user_location_address, user_location_lat, user_location_lng,
         access_building, access_floor, access_flat, access_code,
@@ -281,6 +371,7 @@ export default function BookingDetailScreen() {
     if (!error && data) {
       setBooking({
         ...data,
+        vendor_id: (data as any).vendor_id,
         vendor_name: (data as any).vendors?.full_name ?? 'Vendor',
         vendor_phone: (data as any).vendors?.phone_number ?? null,
       } as BookingDetail);
@@ -356,17 +447,29 @@ export default function BookingDetailScreen() {
           </View>
         </View>
 
-        {/* Location */}
+        {/* Location — live map for on_way, static thumbnail otherwise */}
         {hasMap && (
           <View style={s.section}>
-            <Text style={s.sectionTitle}>Location</Text>
-            <LocationMap lat={booking.user_location_lat!} lng={booking.user_location_lng!} />
-            {booking.user_location_address ? (
-              <View style={s.addressRow}>
-                <Text style={s.addressIcon}>📍</Text>
-                <Text style={s.addressText}>{booking.user_location_address}</Text>
-              </View>
-            ) : null}
+            <Text style={s.sectionTitle}>
+              {booking.status === 'on_way' ? 'Vendor tracking' : 'Location'}
+            </Text>
+            {booking.status === 'on_way' ? (
+              <LiveTrackingMap
+                vendorId={booking.vendor_id}
+                clientLat={booking.user_location_lat!}
+                clientLng={booking.user_location_lng!}
+              />
+            ) : (
+              <>
+                <LocationMap lat={booking.user_location_lat!} lng={booking.user_location_lng!} />
+                {booking.user_location_address ? (
+                  <View style={s.addressRow}>
+                    <Text style={s.addressIcon}>📍</Text>
+                    <Text style={s.addressText}>{booking.user_location_address}</Text>
+                  </View>
+                ) : null}
+              </>
+            )}
           </View>
         )}
 
@@ -623,4 +726,22 @@ const s = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 12,
     fontSize: 15, color: Colors.text, minHeight: 100,
   },
+
+  // Live tracking map
+  liveHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    marginBottom: 8,
+  },
+  liveDot: {
+    width: 8, height: 8, borderRadius: 4,
+    backgroundColor: '#22C55E',
+  },
+  liveLabel: { fontSize: 13, fontWeight: '600', color: '#22C55E', flex: 1 },
+  liveUpdated: { fontSize: 12, color: Colors.textMuted },
+  liveMap: { width: '100%', height: 260, borderRadius: 14, overflow: 'hidden' },
+  liveLoadingOverlay: {
+    position: 'absolute', top: 32, left: 0, right: 0,
+    alignItems: 'center', gap: 8,
+  },
+  liveLoadingText: { fontSize: 13, color: Colors.textMuted, fontWeight: '500' },
 });
