@@ -51,16 +51,16 @@ Deno.serve(async (req: Request) => {
     }
 
     // --------------------------------------------------------
-    // CRON MODE: expire all pending bookings past 1-hour window
+    // CRON MODE: expire all pending bookings past 2-hour window
     // --------------------------------------------------------
     if (isCronCall) {
-      const oneHourAgo = new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString();
+      const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
 
       const { data: expiredBookings } = await supabase
         .from('bookings')
         .select('id, user_id, vendor_id, paystack_reference, service_price_kobo')
         .eq('status', 'pending')
-        .lt('created_at', oneHourAgo);
+        .lt('created_at', twoHoursAgo);
 
       if (!expiredBookings || expiredBookings.length === 0) {
         return jsonResponse({ expired: 0 });

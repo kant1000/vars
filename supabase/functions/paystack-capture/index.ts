@@ -52,10 +52,10 @@ Deno.serve(async (req: Request) => {
       return errorResponse(`Cannot accept booking with status: ${booking.status}`);
     }
 
-    // Check the 1-hour response window hasn't expired
+    // Check the 2-hour response window hasn't expired
     const createdAt = new Date(booking.created_at);
-    const oneHourLater = new Date(createdAt.getTime() + 1 * 60 * 60 * 1000);
-    if (new Date() > oneHourLater) {
+    const twoHoursLater = new Date(createdAt.getTime() + 2 * 60 * 60 * 1000);
+    if (new Date() > twoHoursLater) {
       // Auto-expire: should have been handled by cron, but guard here too
       await supabase
         .from('bookings')
