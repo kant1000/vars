@@ -14,6 +14,7 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Location from 'expo-location';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
@@ -467,6 +468,28 @@ export default function ScheduleScreen() {
       loadListBookings();
     }
   }, [vendorId, viewMode, loadListBookings]);
+
+  // ── Live location push while on_way ───────────────────────────
+  useEffect(() => {
+    const isOnWay = [...bookings, ...listBookings].some((b) => b.status === 'on_way');
+    if (!isOnWay || !session?.access_token) return;
+
+    const token = session.access_token;
+    const pushLocation = async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') return;
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      fetch(`${SUPABASE_URL}/functions/v1/vendor-update-location`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      }).catch(console.error);
+    };
+
+    pushLocation();
+    const interval = setInterval(pushLocation, 60_000);
+    return () => clearInterval(interval);
+  }, [bookings, listBookings, session?.access_token]);
 
   // ── Calendar helpers ──────────────────────────────────────────
   const getBlockForSlot = (slotTime: Date): CalendarBlock | undefined => {
