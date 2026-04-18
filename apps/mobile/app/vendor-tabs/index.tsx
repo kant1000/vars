@@ -20,6 +20,7 @@ import * as Location from 'expo-location';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
+import { uploadSinglePortfolioPhoto } from '@/lib/storage';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
@@ -389,13 +390,85 @@ function ActiveCard({
 }
 
 // ── Upcoming / past booking row ──────────────────────────────
-function BookingRow({ booking }: { booking: VendorBooking }) {
+function BookingRow({
+  booking,
+  sessionToken,
+  vendorPhotoCount,
+  hasPhotoForBooking,
+  onPhotoAdded,
+}: {
+  booking: VendorBooking;
+  sessionToken?: string;
+  vendorPhotoCount?: number;
+  hasPhotoForBooking?: boolean;
+  onPhotoAdded?: () => void;
+}) {
+  const [addingPhoto, setAddingPhoto] = useState(false);
   const isCompleted = booking.status === 'completed';
+  const profileFull = (vendorPhotoCount ?? 0) >= 10;
+
+  const handleAddPhoto = async () => {
+    if (!sessionToken) return;
+    setAddingPhoto(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const upload = await uploadSinglePortfolioPhoto(user.id);
+      if (!upload) return;
+
+      const res = await fetch(
+        `${SUPABASE_URL}/functions/v1/photo-consent-request`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${sessionToken}`,
+          },
+          body: JSON.stringify({ booking_id: booking.id, storage_path: upload.path }),
+        }
+      );
+
+      if (!res.ok) {
+        const d = await res.json();
+        Alert.alert('Error', d.error ?? 'Could not submit photo.');
+        return;
+      }
+
+      Alert.alert(
+        'Request sent',
+        'Your client has been notified. The photo will appear on your profile once they approve.'
+      );
+      onPhotoAdded?.();
+    } catch (err: any) {
+      Alert.alert('Error', err.message ?? 'Could not upload photo.');
+    } finally {
+      setAddingPhoto(false);
+    }
+  };
+
   return (
     <View style={c.row}>
       <View style={{ flex: 1 }}>
         <Text style={c.rowService}>{booking.service_name}</Text>
         <Text style={c.rowMeta}>{fmtDateTime(booking.scheduled_at)}</Text>
+        {isCompleted && (
+          hasPhotoForBooking ? (
+            <Text style={c.photoSent}>📷 Photo request sent</Text>
+          ) : profileFull ? (
+            <Text style={c.photoFull}>Profile full — delete a photo to add more</Text>
+          ) : (
+            <TouchableOpacity
+              onPress={handleAddPhoto}
+              disabled={addingPhoto}
+              style={c.addPhotoBtn}
+            >
+              {addingPhoto
+                ? <ActivityIndicator color={Colors.primary} size="small" />
+                : <Text style={c.addPhotoBtnText}>+ Add a photo from this job</Text>}
+            </TouchableOpacity>
+          )
+        )}
       </View>
       <View style={{ alignItems: 'flex-end' }}>
         <Text style={[c.rowEarning, !isCompleted && { color: Colors.textMuted }]}>
@@ -484,6 +557,8 @@ export default function VendorJobsScreen() {
   const [isOnline, setIsOnline] = useState(false);
   const [togglingOnline, setTogglingOnline] = useState(false);
   const [zoneModal, setZoneModal] = useState<ZoneStatus | null>(null);
+  const [vendorPhotoCount, setVendorPhotoCount] = useState(0);
+  const [bookingPhotoIds, setBookingPhotoIds] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     const { data } = await supabase
@@ -529,6 +604,26 @@ export default function VendorJobsScreen() {
     });
 
     setBookings([...(data ?? []).map(toBooking), ...(history ?? []).map(toBooking)]);
+
+    // Portfolio state for "Add photo from this job" feature
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: photos } = await supabase
+        .from('portfolio_photos')
+        .select('booking_id, consent_state')
+        .eq('vendor_id', user.id)
+        .neq('consent_state', 'declined');
+
+      const count = (photos ?? []).length;
+      const ids = new Set(
+        (photos ?? [])
+          .filter((p: any) => p.booking_id != null)
+          .map((p: any) => p.booking_id as string)
+      );
+      setVendorPhotoCount(count);
+      setBookingPhotoIds(ids);
+    }
+
     setLoading(false);
     setRefreshing(false);
   }, []);
@@ -740,7 +835,16 @@ export default function VendorJobsScreen() {
         {/* History */}
         {history.length > 0 && (
           <Section title="Recent history">
-            {history.map((b) => <BookingRow key={b.id} booking={b} />)}
+            {history.map((b) => (
+              <BookingRow
+                key={b.id}
+                booking={b}
+                sessionToken={session?.access_token}
+                vendorPhotoCount={vendorPhotoCount}
+                hasPhotoForBooking={bookingPhotoIds.has(b.id)}
+                onPhotoAdded={load}
+              />
+            ))}
           </Section>
         )}
 
@@ -867,6 +971,10 @@ const c = StyleSheet.create({
   rowService: { fontSize: 14, fontWeight: '600', color: Colors.text },
   rowMeta: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
   rowEarning: { fontSize: 14, fontWeight: '700', color: Colors.success },
+  addPhotoBtn: { marginTop: 6 },
+  addPhotoBtnText: { fontSize: 12, color: Colors.primary, fontWeight: '600' },
+  photoSent: { fontSize: 12, color: Colors.textMuted, marginTop: 4 },
+  photoFull: { fontSize: 12, color: Colors.textMuted, marginTop: 4, fontStyle: 'italic' },
 
   empty: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 40 },
   emptyTitle: { fontSize: 20, fontWeight: '700', color: Colors.text, marginBottom: 8 },

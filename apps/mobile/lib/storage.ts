@@ -40,24 +40,30 @@ export async function pickAndUploadImage(params: {
   return data.publicUrl;
 }
 
+export interface PortfolioUpload {
+  path: string;
+  url: string;
+}
+
 /**
- * Upload multiple portfolio photos.
- * Returns array of public URLs.
+ * Pick multiple portfolio photos and upload.
+ * Returns array of { path, url }. Caller controls the max via selectionLimit.
  */
 export async function pickAndUploadPortfolioPhotos(
   vendorId: string,
-  existingCount: number
-): Promise<string[]> {
+  existingCount: number,
+  selectionLimit = 3,
+): Promise<PortfolioUpload[]> {
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ImagePicker.MediaTypeOptions.Images,
     allowsMultipleSelection: true,
     quality: 0.8,
-    selectionLimit: 10,
+    selectionLimit,
   });
 
   if (result.canceled || !result.assets.length) return [];
 
-  const urls: string[] = [];
+  const uploads: PortfolioUpload[] = [];
 
   for (let i = 0; i < result.assets.length; i++) {
     const asset = result.assets[i];
@@ -77,8 +83,48 @@ export async function pickAndUploadPortfolioPhotos(
     }
 
     const { data } = supabase.storage.from('portfolio').getPublicUrl(filePath);
-    urls.push(data.publicUrl);
+    uploads.push({ path: filePath, url: data.publicUrl });
   }
 
-  return urls;
+  return uploads;
+}
+
+/**
+ * Pick a single portfolio photo and upload.
+ * Returns { path, url } or null if cancelled.
+ */
+export async function uploadSinglePortfolioPhoto(
+  vendorId: string,
+): Promise<PortfolioUpload | null> {
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    allowsEditing: true,
+    quality: 0.85,
+  });
+
+  if (result.canceled || !result.assets[0]) return null;
+
+  const asset = result.assets[0];
+  const ext = asset.uri.split('.').pop() ?? 'jpg';
+  const filePath = `vendors/${vendorId}/portfolio/${Date.now()}.${ext}`;
+
+  const response = await fetch(asset.uri);
+  const blob = await response.blob();
+
+  const { error } = await supabase.storage
+    .from('portfolio')
+    .upload(filePath, blob, { contentType: `image/${ext}` });
+
+  if (error) throw error;
+
+  const { data } = supabase.storage.from('portfolio').getPublicUrl(filePath);
+  return { path: filePath, url: data.publicUrl };
+}
+
+/**
+ * Delete a portfolio photo from storage.
+ */
+export async function deletePortfolioPhoto(storagePath: string): Promise<void> {
+  const { error } = await supabase.storage.from('portfolio').remove([storagePath]);
+  if (error) throw error;
 }

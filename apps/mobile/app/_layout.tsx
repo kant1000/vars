@@ -73,6 +73,7 @@ function RootNavigator() {
       <Stack.Screen name="auth/login" options={{ presentation: 'modal' }} />
       <Stack.Screen name="auth/phone" options={{ presentation: 'modal', gestureEnabled: false }} />
       <Stack.Screen name="vendor/[id]" />
+      <Stack.Screen name="consent/[photoId]" />
       <Stack.Screen name="+not-found" />
     </Stack>
   );

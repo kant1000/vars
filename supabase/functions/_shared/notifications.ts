@@ -312,6 +312,36 @@ export function msg_disputeResolved_vendorPaid(amount: string) {
   };
 }
 
+// ── Portfolio consent messages ────────────────────────────────
+
+export function msg_consentRequest(vendorName: string) {
+  return {
+    title: 'Photo consent request',
+    body: `${vendorName} would like to add a photo from your session to their profile. Only you can approve this.`,
+  };
+}
+
+export function msg_vendor_consentApproved() {
+  return {
+    title: 'Photo approved',
+    body: `Your client approved the photo. It's now live on your profile.`,
+  };
+}
+
+export function msg_vendor_consentDeclined() {
+  return {
+    title: 'Photo not approved',
+    body: `Your client didn't approve this photo. That's okay — it has been removed.`,
+  };
+}
+
+export function msg_vendor_consentExpired() {
+  return {
+    title: 'Photo request expired',
+    body: `Your client didn't respond to the photo request within 72 hours. The photo has been removed.`,
+  };
+}
+
 /** Format kobo to naira string with commas e.g. 350000 → "3,500" */
 export function formatNaira(kobo: number): string {
   return (kobo / 100).toLocaleString('en-NG', { maximumFractionDigits: 0 });

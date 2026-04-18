@@ -32,8 +32,8 @@ interface VendorService {
 
 interface PortfolioPhoto {
   id: string;
-  photo_url: string;
-  caption: string | null;
+  storage_path: string;
+  consent_state: 'unverified' | 'approved';
 }
 
 interface Review {
@@ -112,9 +112,9 @@ export default function VendorProfileScreen() {
         .eq('vendor_id', id),
 
       supabase.from('portfolio_photos')
-        .select('id, photo_url, caption')
+        .select('id, storage_path, consent_state')
         .eq('vendor_id', id)
-        .eq('is_consented', true)
+        .in('consent_state', ['unverified', 'approved'])
         .order('created_at', { ascending: false })
         .limit(30),
 
@@ -148,8 +148,8 @@ export default function VendorProfileScreen() {
 
     const portfolio: PortfolioPhoto[] = (portfolioRes.data ?? []).map((p: any) => ({
       id: p.id,
-      photo_url: p.photo_url,
-      caption: p.caption,
+      storage_path: p.storage_path,
+      consent_state: p.consent_state,
     }));
 
     const reviews: Review[] = (reviewsRes.data ?? []).map((r: any) => ({
@@ -308,13 +308,21 @@ export default function VendorProfileScreen() {
             {vendor.portfolio.length === 0 ? (
               <Text style={[styles.emptyText, { margin: 20 }]}>No portfolio photos yet.</Text>
             ) : (
-              vendor.portfolio.map((photo) => (
-                <Image
-                  key={photo.id}
-                  source={{ uri: photo.photo_url }}
-                  style={{ width: PHOTO_SIZE, height: PHOTO_SIZE }}
-                />
-              ))
+              vendor.portfolio.map((photo) => {
+                const { data: { publicUrl } } = supabase.storage
+                  .from('portfolio')
+                  .getPublicUrl(photo.storage_path);
+                return (
+                  <View key={photo.id} style={{ width: PHOTO_SIZE, height: PHOTO_SIZE }}>
+                    <Image source={{ uri: publicUrl }} style={{ width: '100%', height: '100%' }} />
+                    {photo.consent_state === 'unverified' && (
+                      <View style={styles.unverifiedBadge}>
+                        <Text style={styles.unverifiedText}>Unverified</Text>
+                      </View>
+                    )}
+                  </View>
+                );
+              })
             )}
           </View>
         )}
@@ -438,6 +446,12 @@ const styles = StyleSheet.create({
 
   // Portfolio
   portfolioGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 1 },
+  unverifiedBadge: {
+    position: 'absolute', bottom: 4, left: 4,
+    backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 4,
+    paddingHorizontal: 5, paddingVertical: 2,
+  },
+  unverifiedText: { color: '#FFF', fontSize: 9, fontWeight: '700', letterSpacing: 0.3 },
 
   // Reviews
   reviewCard: {

@@ -1,18 +1,21 @@
 // ============================================================
 // VARS — Vendor Profile / Settings
-// Includes Auto-Accept zone status and navigation to Zone Setup.
+// Sections: Auto-Accept zone, Portfolio management, Account
 // ============================================================
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator, StyleSheet, Text,
-  TouchableOpacity, View, ScrollView,
+  ActivityIndicator, Alert, Dimensions, Image, ScrollView,
+  StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { signOut } from '@/lib/auth';
+import { uploadSinglePortfolioPhoto, deletePortfolioPhoto } from '@/lib/storage';
 import { Colors } from '@/constants/colors';
+
+const PHOTO_SIZE = (Dimensions.get('window').width - 48 - 16) / 3; // 3 cols, 24px side padding, 8px gaps
 
 interface VendorZoneInfo {
   auto_accept_enabled: boolean;
@@ -23,19 +26,41 @@ interface VendorZoneInfo {
   auto_accept_zone_lng: number | null;
 }
 
+interface PortfolioPhoto {
+  id: string;
+  storage_path: string;
+  consent_state: 'unverified' | 'pending' | 'approved';
+  booking_id: string | null;
+}
+
+const CONSENT_LABEL: Record<string, { text: string; color: string }> = {
+  unverified: { text: 'Unverified', color: Colors.textMuted },
+  pending:    { text: 'Awaiting approval', color: Colors.warning },
+  approved:   { text: 'Verified', color: Colors.success },
+};
+
 export default function VendorProfileScreen() {
   const insets = useSafeAreaInsets();
   const { profile } = useAuth();
   const [zoneInfo, setZoneInfo] = useState<VendorZoneInfo | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [zoneLoading, setZoneLoading] = useState(true);
+
+  const [photos, setPhotos] = useState<PortfolioPhoto[]>([]);
+  const [photosLoading, setPhotosLoading] = useState(true);
+  const [addingPhoto, setAddingPhoto] = useState(false);
 
   const today = new Date().toISOString().slice(0, 10);
 
   useEffect(() => {
-    (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setLoading(false); return; }
-      const { data } = await supabase
+    loadAll();
+  }, []);
+
+  const loadAll = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setZoneLoading(false); setPhotosLoading(false); return; }
+
+    const [zoneRes, photosRes] = await Promise.all([
+      supabase
         .from('vendors')
         .select(`
           auto_accept_enabled, auto_accept_paused_due_to_drift,
@@ -43,11 +68,21 @@ export default function VendorProfileScreen() {
           auto_accept_zone_lat, auto_accept_zone_lng
         `)
         .eq('id', user.id)
-        .single();
-      setZoneInfo(data ?? null);
-      setLoading(false);
-    })();
-  }, []);
+        .single(),
+
+      supabase
+        .from('portfolio_photos')
+        .select('id, storage_path, consent_state, booking_id')
+        .eq('vendor_id', user.id)
+        .neq('consent_state', 'declined')
+        .order('created_at', { ascending: false }),
+    ]);
+
+    setZoneInfo(zoneRes.data ?? null);
+    setPhotos((photosRes.data ?? []) as PortfolioPhoto[]);
+    setZoneLoading(false);
+    setPhotosLoading(false);
+  };
 
   const zoneConfigured = zoneInfo?.auto_accept_zone_lat != null;
   const confirmedToday = zoneInfo?.auto_accept_zone_confirmed_date === today;
@@ -65,6 +100,56 @@ export default function VendorProfileScreen() {
   };
 
   const zoneStatus = zoneStatusLabel();
+
+  const totalPhotoCount = photos.length;
+  const unverifiedCount = photos.filter((p) => p.consent_state === 'unverified').length;
+  const canAddUnverified = unverifiedCount < 3 && totalPhotoCount < 10;
+
+  const handleAddUnverifiedPhoto = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    setAddingPhoto(true);
+    try {
+      const upload = await uploadSinglePortfolioPhoto(user.id);
+      if (!upload) return;
+
+      const { error } = await supabase.from('portfolio_photos').insert({
+        vendor_id: user.id,
+        storage_path: upload.path,
+        consent_state: 'unverified',
+      });
+      if (error) throw error;
+
+      await loadAll();
+    } catch (err: any) {
+      Alert.alert('Upload failed', err.message ?? 'Could not upload photo.');
+    } finally {
+      setAddingPhoto(false);
+    }
+  };
+
+  const handleDeletePhoto = (photo: PortfolioPhoto) => {
+    Alert.alert(
+      'Delete photo',
+      'This photo will be permanently removed from your profile.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deletePortfolioPhoto(photo.storage_path);
+              await supabase.from('portfolio_photos').delete().eq('id', photo.id);
+              setPhotos((prev) => prev.filter((p) => p.id !== photo.id));
+            } catch (err: any) {
+              Alert.alert('Error', err.message ?? 'Could not delete photo.');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <View style={[s.container, { paddingTop: insets.top }]}>
@@ -87,7 +172,7 @@ export default function VendorProfileScreen() {
         <View style={s.section}>
           <Text style={[s.sectionTitle, s.sectionTitleGold]}>⚡ Auto-Accept</Text>
 
-          {loading ? (
+          {zoneLoading ? (
             <ActivityIndicator color="#D4A017" style={{ margin: 16 }} />
           ) : (
             <TouchableOpacity
@@ -120,6 +205,73 @@ export default function VendorProfileScreen() {
           )}
         </View>
 
+        {/* Portfolio */}
+        <View style={s.section}>
+          <View style={s.sectionHeader}>
+            <Text style={s.sectionTitle}>Portfolio</Text>
+            <Text style={s.photoCount}>{totalPhotoCount}/10 photos</Text>
+          </View>
+
+          {photosLoading ? (
+            <ActivityIndicator color={Colors.primary} style={{ margin: 16 }} />
+          ) : (
+            <>
+              <View style={s.photoGrid}>
+                {photos.map((photo) => {
+                  const { data: { publicUrl } } = supabase.storage
+                    .from('portfolio')
+                    .getPublicUrl(photo.storage_path);
+                  const label = CONSENT_LABEL[photo.consent_state];
+                  return (
+                    <View key={photo.id} style={s.photoWrapper}>
+                      <Image source={{ uri: publicUrl }} style={s.photo} />
+                      <View style={s.photoBadge}>
+                        <Text style={[s.photoBadgeText, { color: label.color }]}>
+                          {label.text}
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        style={s.photoDeleteBtn}
+                        onPress={() => handleDeletePhoto(photo)}
+                      >
+                        <Text style={s.photoDeleteText}>✕</Text>
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+
+                {canAddUnverified && (
+                  <TouchableOpacity
+                    style={s.addPhotoBtn}
+                    onPress={handleAddUnverifiedPhoto}
+                    disabled={addingPhoto}
+                  >
+                    {addingPhoto ? (
+                      <ActivityIndicator color={Colors.primary} />
+                    ) : (
+                      <>
+                        <Text style={s.addPhotoIcon}>+</Text>
+                        <Text style={s.addPhotoLabel}>Add photo</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {!canAddUnverified && totalPhotoCount < 10 && (
+                <Text style={s.photoHint}>
+                  Max 3 unverified photos. Add more via completed bookings.
+                </Text>
+              )}
+              {totalPhotoCount >= 10 && (
+                <Text style={s.photoHint}>
+                  Profile full (10/10). Delete a photo to add more.
+                </Text>
+              )}
+            </>
+          )}
+        </View>
+
         {/* Account */}
         <View style={s.section}>
           <Text style={s.sectionTitle}>Account</Text>
@@ -140,9 +292,7 @@ const s = StyleSheet.create({
   },
   headerTitle: { fontSize: 24, fontWeight: '800', color: Colors.text },
 
-  nameSection: {
-    alignItems: 'center', paddingVertical: 28, gap: 10,
-  },
+  nameSection: { alignItems: 'center', paddingVertical: 28, gap: 10 },
   avatar: {
     width: 72, height: 72, borderRadius: 36,
     backgroundColor: Colors.primary + '20',
@@ -155,11 +305,13 @@ const s = StyleSheet.create({
     marginTop: 8, borderTopWidth: 1, borderTopColor: Colors.border,
     paddingTop: 16, paddingHorizontal: 20,
   },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   sectionTitle: {
     fontSize: 12, fontWeight: '700', color: Colors.textMuted,
     textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12,
   },
   sectionTitleGold: { color: '#A07010' },
+  photoCount: { fontSize: 12, color: Colors.textMuted, fontWeight: '600' },
 
   settingRow: {
     flexDirection: 'row', alignItems: 'center',
@@ -184,4 +336,33 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: '#D4A01740',
   },
   confirmBannerText: { fontSize: 13, color: '#A07010', fontWeight: '600' },
+
+  // Portfolio grid
+  photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
+  photoWrapper: { width: PHOTO_SIZE, position: 'relative' },
+  photo: { width: PHOTO_SIZE, height: PHOTO_SIZE, borderRadius: 10 },
+  photoBadge: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    backgroundColor: 'rgba(255,255,255,0.88)',
+    borderBottomLeftRadius: 10, borderBottomRightRadius: 10,
+    paddingVertical: 3, alignItems: 'center',
+  },
+  photoBadgeText: { fontSize: 10, fontWeight: '700' },
+  photoDeleteBtn: {
+    position: 'absolute', top: 4, right: 4,
+    width: 22, height: 22, borderRadius: 11,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  photoDeleteText: { color: '#FFF', fontSize: 11, fontWeight: '700' },
+  addPhotoBtn: {
+    width: PHOTO_SIZE, height: PHOTO_SIZE, borderRadius: 10,
+    borderWidth: 1.5, borderColor: Colors.border, borderStyle: 'dashed',
+    alignItems: 'center', justifyContent: 'center', gap: 4,
+  },
+  addPhotoIcon: { fontSize: 24, color: Colors.primary, fontWeight: '300' },
+  addPhotoLabel: { fontSize: 11, color: Colors.textSecondary, fontWeight: '500' },
+  photoHint: {
+    fontSize: 12, color: Colors.textMuted, marginTop: 4, marginBottom: 8, lineHeight: 17,
+  },
 });

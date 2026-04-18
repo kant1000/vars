@@ -1,7 +1,7 @@
 // ============================================================
 // VARS — Vendor Onboarding Step 3: Portfolio Upload (§6.1)
-// Min 1 photo required. Photos saved to Supabase Storage.
-// Note about client-tagged photos shown at bottom.
+// Min 1 photo required. Max 3 unverified photos at onboarding.
+// Photos stored in 'portfolio' bucket; DB record has storage_path + consent_state='unverified'.
 // ============================================================
 import React, { useState } from 'react';
 import {
@@ -10,22 +10,26 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
-import { pickAndUploadPortfolioPhotos } from '@/lib/storage';
+import { pickAndUploadPortfolioPhotos, PortfolioUpload } from '@/lib/storage';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 
+const MAX_UNVERIFIED = 3;
+
 export default function Step3Portfolio() {
   const { user } = useAuth();
-  const [photos, setPhotos] = useState<string[]>([]);
+  const [photos, setPhotos] = useState<PortfolioUpload[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  const remaining = MAX_UNVERIFIED - photos.length;
+
   const handleAddPhotos = async () => {
-    if (!user) return;
+    if (!user || remaining <= 0) return;
     setIsUploading(true);
     try {
-      const urls = await pickAndUploadPortfolioPhotos(user.id, photos.length);
-      if (urls.length) setPhotos((prev) => [...prev, ...urls]);
+      const uploads = await pickAndUploadPortfolioPhotos(user.id, photos.length, remaining);
+      if (uploads.length) setPhotos((prev) => [...prev, ...uploads]);
     } catch (err: any) {
       Alert.alert('Upload failed', err.message);
     } finally {
@@ -33,12 +37,11 @@ export default function Step3Portfolio() {
     }
   };
 
-  const removePhoto = (url: string) => {
-    setPhotos((prev) => prev.filter((p) => p !== url));
+  const removePhoto = (path: string) => {
+    setPhotos((prev) => prev.filter((p) => p.path !== path));
   };
 
   const handleNext = async () => {
-    // Min 1 photo required per spec §6.1 Step 3
     if (photos.length === 0) {
       return Alert.alert('Required', 'Please add at least one portfolio photo.');
     }
@@ -46,15 +49,13 @@ export default function Step3Portfolio() {
 
     setIsSaving(true);
     try {
-      // Save photo records to DB
-      const rows = photos.map((url) => ({
+      const rows = photos.map((p) => ({
         vendor_id: user.id,
-        photo_url: url,
-        is_consented: true,
+        storage_path: p.path,
+        consent_state: 'unverified',
       }));
       const { error } = await supabase.from('portfolio_photos').insert(rows);
       if (error) throw error;
-
       router.push('/vendor-onboarding/step-4-kyc');
     } catch (err: any) {
       Alert.alert('Error', err.message);
@@ -67,45 +68,41 @@ export default function Step3Portfolio() {
     <ScrollView style={styles.container} contentContainerStyle={styles.scroll}>
       <Text style={styles.title}>Show your work.</Text>
       <Text style={styles.sub}>
-        Add at least one photo so clients know what to expect.
+        Add at least one photo so clients know what to expect. Up to {MAX_UNVERIFIED} photos.
       </Text>
 
-      {/* Photo grid */}
       <View style={styles.grid}>
-        {photos.map((url) => (
-          <View key={url} style={styles.photoWrapper}>
-            <Image source={{ uri: url }} style={styles.photo} />
-            <TouchableOpacity
-              style={styles.removeButton}
-              onPress={() => removePhoto(url)}
-            >
+        {photos.map((p) => (
+          <View key={p.path} style={styles.photoWrapper}>
+            <Image source={{ uri: p.url }} style={styles.photo} />
+            <TouchableOpacity style={styles.removeButton} onPress={() => removePhoto(p.path)}>
               <Text style={styles.removeText}>✕</Text>
             </TouchableOpacity>
           </View>
         ))}
 
-        {/* Add photo button */}
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={handleAddPhotos}
-          disabled={isUploading}
-          activeOpacity={0.8}
-        >
-          {isUploading ? (
-            <ActivityIndicator color={Colors.primary} />
-          ) : (
-            <>
-              <Text style={styles.addIcon}>+</Text>
-              <Text style={styles.addLabel}>Add photos</Text>
-            </>
-          )}
-        </TouchableOpacity>
+        {remaining > 0 && (
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={handleAddPhotos}
+            disabled={isUploading}
+            activeOpacity={0.8}
+          >
+            {isUploading ? (
+              <ActivityIndicator color={Colors.primary} />
+            ) : (
+              <>
+                <Text style={styles.addIcon}>+</Text>
+                <Text style={styles.addLabel}>Add photos</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        )}
       </View>
 
-      {/* Client consent note per spec §6.1 */}
       <View style={styles.note}>
         <Text style={styles.noteText}>
-          Photos you're tagged in by clients will also appear here once they approve.
+          These photos will show on your profile as "Unverified" until clients approve them from their completed bookings.
         </Text>
       </View>
 
@@ -145,10 +142,7 @@ const styles = StyleSheet.create({
   },
   addIcon: { fontSize: 28, color: Colors.primary, fontWeight: '300' },
   addLabel: { fontSize: 12, color: Colors.textSecondary, fontWeight: '500' },
-  note: {
-    backgroundColor: Colors.surface, borderRadius: 12,
-    padding: 14, marginBottom: 28,
-  },
+  note: { backgroundColor: Colors.surface, borderRadius: 12, padding: 14, marginBottom: 28 },
   noteText: { fontSize: 13, color: Colors.textSecondary, lineHeight: 18 },
   button: { height: 56, backgroundColor: Colors.primary, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   buttonDisabled: { opacity: 0.6 },
