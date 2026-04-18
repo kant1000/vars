@@ -7,7 +7,7 @@
 // ============================================================
 import { jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient } from '../_shared/supabase.ts';
-import { sendNotification } from '../_shared/notifications.ts';
+import { sendNotification, msg_vendor_verificationApproved, msg_vendor_verificationFailed } from '../_shared/notifications.ts';
 
 const YOUVERIFY_WEBHOOK_SECRET = Deno.env.get('YOUVERIFY_WEBHOOK_SECRET') ?? '';
 
@@ -99,30 +99,32 @@ Deno.serve(async (req: Request) => {
   // Fetch vendor's expo_push_token for notification
   const { data: vendor } = await adminClient
     .from('vendors')
-    .select('full_name, expo_push_token')
+    .select('full_name, push_token')
     .eq('id', vendorId)
     .single();
 
-  if (vendor?.expo_push_token) {
+  if (vendor?.push_token) {
     if (isVerified) {
+      const msg = msg_vendor_verificationApproved();
       await sendNotification({
-        adminClient,
-        userId: vendorId,
-        pushToken: vendor.expo_push_token,
-        title: "You're live on VARS 🎉",
-        body: "Your profile has been verified. You'll start receiving booking requests soon — make sure your availability is set.",
+        recipientId: vendorId,
+        recipientType: 'vendor',
         type: 'kyc_approved',
+        title: msg.title,
+        body: msg.body,
+        pushToken: vendor.push_token,
         data: { screen: '/vendor-tabs' },
       });
     } else {
       const reason: string = payload?.data?.reason ?? payload?.reason ?? 'Verification could not be completed';
+      const msg = msg_vendor_verificationFailed(reason);
       await sendNotification({
-        adminClient,
-        userId: vendorId,
-        pushToken: vendor.expo_push_token,
-        title: 'Verification update',
-        body: `We couldn't verify your identity. Reason: ${reason}. Please contact VARS support to resolve this.`,
+        recipientId: vendorId,
+        recipientType: 'vendor',
         type: 'kyc_rejected',
+        title: msg.title,
+        body: msg.body,
+        pushToken: vendor.push_token,
         data: { screen: '/vendor-onboarding/step-4-kyc' },
       });
     }
