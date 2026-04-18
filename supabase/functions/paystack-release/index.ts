@@ -15,6 +15,8 @@ import {
   sendNotification,
   msg_vendorDeclines,
   msg_vendor_bookingExpired,
+  msg_disputeResolved_userRefunded,
+  formatNaira,
 } from '../_shared/notifications.ts';
 
 Deno.serve(async (req: Request) => {
@@ -35,7 +37,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // --------------------------------------------------------
-    // ADMIN MODE: dispute resolved — refund customer
+    // ADMIN MODE: dispute resolved in user's favour — refund customer
     // --------------------------------------------------------
     if (isAdminCall) {
       const { booking_id } = await req.json();
@@ -46,7 +48,38 @@ Deno.serve(async (req: Request) => {
         .eq('id', booking_id)
         .single();
       if (!booking) return errorResponse('Booking not found', 404);
-      await expireBooking(supabase, booking, 'decline');
+
+      // Mark as completed (dispute closed)
+      await supabase
+        .from('bookings')
+        .update({ status: 'completed', cancelled_by: 'admin', cancellation_reason: 'Dispute resolved — user refunded' })
+        .eq('id', booking_id);
+
+      // Issue full refund via Paystack
+      if (booking.paystack_reference) {
+        try {
+          const paystack = new PaystackClient(Deno.env.get('PAYSTACK_SECRET_KEY')!);
+          await paystack.refundTransaction({
+            transaction: booking.paystack_reference,
+            merchant_note: `Dispute ${booking_id} resolved in user favour — full refund`,
+          });
+        } catch (err) {
+          console.error(`Dispute refund failed for booking ${booking_id}:`, err);
+        }
+      }
+
+      // Notify user with dispute-specific message (not the generic vendor-decline copy)
+      const { data: profile } = await supabase
+        .from('profiles').select('push_token').eq('id', booking.user_id).single();
+      const msg = msg_disputeResolved_userRefunded(formatNaira(booking.service_price_kobo));
+      await sendNotification({
+        recipientId: booking.user_id, recipientType: 'user',
+        type: 'dispute_resolved_user', title: msg.title, body: msg.body,
+        bookingId: booking_id, pushToken: profile?.push_token ?? null,
+        data: { bookingId: booking_id },
+      });
+
+      console.log(`Dispute resolved (user): booking ${booking_id} refunded`);
       return jsonResponse({ success: true, booking_id, status: 'refunded' });
     }
 

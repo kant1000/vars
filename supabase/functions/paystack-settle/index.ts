@@ -26,6 +26,7 @@ import {
   msg_paymentReleased,
   msg_vendor_paymentReleased,
   msg_vendor_serviceRenderReminder,
+  msg_disputeResolved_vendorPaid,
   formatNaira,
 } from '../_shared/notifications.ts';
 
@@ -51,6 +52,28 @@ Deno.serve(async (req: Request) => {
       const { booking_id } = await req.json();
       if (!booking_id) return errorResponse('Missing booking_id');
       await settleBooking(supabase, booking_id, 'admin_dispute');
+
+      // Send dispute-specific notification to vendor (transfer.success webhook
+      // sends the generic payment-released push, but vendor also needs the
+      // dispute resolution context message in their inbox)
+      const { data: booking } = await supabase
+        .from('bookings')
+        .select('vendor_id, service_price_kobo')
+        .eq('id', booking_id)
+        .single();
+      if (booking) {
+        const { data: vendor } = await supabase
+          .from('vendors').select('push_token').eq('id', booking.vendor_id).single();
+        const vendorShare = Math.round(booking.service_price_kobo * 0.8);
+        const msg = msg_disputeResolved_vendorPaid(formatNaira(vendorShare));
+        await sendNotification({
+          recipientId: booking.vendor_id, recipientType: 'vendor',
+          type: 'dispute_resolved_vendor', title: msg.title, body: msg.body,
+          bookingId: booking_id, pushToken: vendor?.push_token ?? null,
+          data: { bookingId: booking_id },
+        });
+      }
+
       return jsonResponse({ success: true, booking_id, status: 'completed' });
     }
 
