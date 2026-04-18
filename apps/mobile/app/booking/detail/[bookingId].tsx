@@ -87,14 +87,14 @@ function sanitize(text: string, maxLen: number) {
 function getCancellationTier(
   createdAt: string,
   scheduledAt: string,
-): { feePercent: number; refundPercent: number; label: string } {
+): { feePercent: number; refundPercent: number } {
   const now = Date.now();
   const minsSinceBooking = (now - new Date(createdAt).getTime()) / 60_000;
   const minsToService    = (new Date(scheduledAt).getTime() - now) / 60_000;
 
-  if (minsToService    <= 60) return { feePercent: 100, refundPercent: 0,  label: 'This booking is non-refundable' };
-  if (minsSinceBooking <= 15) return { feePercent: 15,  refundPercent: 85, label: '15% cancellation fee applies' };
-  return                             { feePercent: 50,  refundPercent: 50, label: '50% cancellation fee applies' };
+  if (minsToService    <= 60) return { feePercent: 100, refundPercent: 0  };
+  if (minsSinceBooking <= 15) return { feePercent: 15,  refundPercent: 85 };
+  return                             { feePercent: 50,  refundPercent: 50 };
 }
 
 // ── Status config ─────────────────────────────────────────────
@@ -576,14 +576,28 @@ export default function BookingDetailScreen() {
               {(() => {
                 const tier = getCancellationTier(booking.created_at, booking.scheduled_at);
                 const refundKobo = Math.round(booking.service_price_kobo * tier.refundPercent / 100);
+                if (tier.feePercent === 100) {
+                  return (
+                    <Text style={s.modalBody}>
+                      Your service starts within 1 hour — this booking is{' '}
+                      <Text style={s.modalBold}>non-refundable</Text>.
+                      No refund will be issued.
+                    </Text>
+                  );
+                }
+                if (tier.feePercent === 15) {
+                  return (
+                    <Text style={s.modalBody}>
+                      Cancelled within 15 minutes of booking — a 15% cancellation fee applies.{' '}
+                      <Text style={s.modalBold}>{fmtPrice(refundKobo)}</Text> will be returned to you.
+                    </Text>
+                  );
+                }
                 return (
-                  <>
-                    <Text style={s.modalBody}>{tier.label}.</Text>
-                    {tier.refundPercent > 0
-                      ? <Text style={s.modalBody}>You will receive a refund of <Text style={s.modalBold}>{fmtPrice(refundKobo)}</Text>.</Text>
-                      : <Text style={s.modalBody}>No refund will be issued for this cancellation.</Text>
-                    }
-                  </>
+                  <Text style={s.modalBody}>
+                    Cancelled more than 15 minutes after booking and more than 1 hour before service time — a 50% cancellation fee applies.{' '}
+                    <Text style={s.modalBold}>{fmtPrice(refundKobo)}</Text> will be returned to you.
+                  </Text>
                 );
               })()}
               <View style={s.modalActions}>
