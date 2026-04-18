@@ -5,6 +5,15 @@ import { adminClient } from '@/lib/supabase';
 import DisputeActions from './DisputeActions';
 import { fmtPrice } from '@/lib/format';
 
+const CATEGORY_LABEL: Record<string, { text: string; color: string }> = {
+  vendor_no_show:        { text: 'Vendor didn\'t show up',      color: '#dc2626' },
+  vendor_very_late:      { text: 'Vendor arrived very late',    color: '#d97706' },
+  service_not_completed: { text: 'Service not completed',       color: '#d97706' },
+  service_quality_poor:  { text: 'Poor service quality',        color: '#7c3aed' },
+  wrong_service:         { text: 'Wrong service performed',     color: '#7c3aed' },
+  other:                 { text: 'Other',                       color: '#6b7280' },
+};
+
 const PAGE_SIZE = 20;
 
 interface Props {
@@ -16,7 +25,7 @@ async function getDisputes(status: string, page: number) {
   let query = db
     .from('disputes')
     .select(`
-      id, status, resolution, reason, admin_notes, created_at,
+      id, status, resolution, reason, category, admin_notes, created_at,
       bookings(id, service_name, service_price_kobo, status,
         profiles(full_name),
         vendors(full_name)
@@ -86,6 +95,20 @@ export default async function DisputesPage({ searchParams }: Props) {
         const booking = d.bookings;
         return (
           <div key={d.id} className="detail" style={{ marginBottom: 16 }}>
+            {d.category && (() => {
+              const cat = CATEGORY_LABEL[d.category] ?? { text: d.category, color: '#6b7280' };
+              return (
+                <div style={{
+                  display: 'inline-block', marginBottom: 12,
+                  padding: '4px 12px', borderRadius: 6,
+                  backgroundColor: cat.color + '18',
+                  border: `1.5px solid ${cat.color}40`,
+                  fontSize: 13, fontWeight: 700, color: cat.color,
+                }}>
+                  {cat.text}
+                </div>
+              );
+            })()}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
               <div>
                 <span className={`badge badge-${d.status === 'resolved' ? 'resolved' : d.status === 'under_review' ? 'active' : 'open'}`}>

@@ -28,9 +28,13 @@ Deno.serve(async (req: Request) => {
     const { data: { user }, error: authError } = await authClient.auth.getUser();
     if (authError || !user) return errorResponse('Unauthorized', 401);
 
-    const { booking_id, reason } = await req.json();
+    const { booking_id, reason, category } = await req.json();
     if (!booking_id) return errorResponse('Missing booking_id');
-    if (!reason || !reason.trim()) return errorResponse('Dispute reason required');
+    if (!category) return errorResponse('Dispute category required');
+    // Reason is required only when category is 'other'
+    if (category === 'other' && (!reason || !reason.trim())) {
+      return errorResponse('Reason is required when category is "Other"');
+    }
 
     const supabase = createAdminClient();
 
@@ -76,7 +80,8 @@ Deno.serve(async (req: Request) => {
       .insert({
         booking_id,
         raised_by: user.id,
-        reason: reason.trim(),
+        category,
+        reason: reason ? reason.trim() : null,
         status: 'open',
         raised_at: new Date().toISOString(),
       })

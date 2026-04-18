@@ -124,6 +124,19 @@ const tl = StyleSheet.create({
 });
 
 // ── Dispute modal ────────────────────────────────────────────
+type DisputeCategory =
+  | 'vendor_no_show' | 'vendor_very_late' | 'service_not_completed'
+  | 'service_quality_poor' | 'wrong_service' | 'other';
+
+const DISPUTE_CATEGORIES: { value: DisputeCategory; label: string }[] = [
+  { value: 'vendor_no_show',          label: 'Vendor didn\'t show up' },
+  { value: 'vendor_very_late',        label: 'Vendor arrived very late' },
+  { value: 'service_not_completed',   label: 'Service was not completed' },
+  { value: 'service_quality_poor',    label: 'Service quality was poor' },
+  { value: 'wrong_service',           label: 'Wrong service was performed' },
+  { value: 'other',                   label: 'Other' },
+];
+
 function DisputeModal({
   visible, bookingId, onClose,
 }: {
@@ -131,11 +144,15 @@ function DisputeModal({
   bookingId: string;
   onClose: () => void;
 }) {
+  const [category, setCategory] = useState<DisputeCategory | null>(null);
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  const reasonRequired = category === 'other';
+  const canSubmit = !!category && (!reasonRequired || reason.trim().length >= 5) && !submitting;
+
   const submit = async () => {
-    if (reason.trim().length < 10) return;
+    if (!canSubmit) return;
     setSubmitting(true);
     try {
       const { data: { session: s } } = await supabase.auth.getSession();
@@ -145,7 +162,11 @@ function DisputeModal({
           'Content-Type': 'application/json',
           Authorization: `Bearer ${s?.access_token ?? ''}`,
         },
-        body: JSON.stringify({ booking_id: bookingId, reason: reason.trim() }),
+        body: JSON.stringify({
+          booking_id: bookingId,
+          category,
+          reason: reason.trim() || undefined,
+        }),
       });
       if (!res.ok) {
         const d = await res.json();
@@ -168,21 +189,41 @@ function DisputeModal({
         <View style={dm.sheet}>
           <Text style={dm.title}>Raise a dispute</Text>
           <Text style={dm.body}>Tell us what went wrong. Our team reviews all disputes within 24 hours.</Text>
-          <TextInput
-            style={dm.input}
-            placeholder="Describe the issue…"
-            placeholderTextColor={Colors.textMuted}
-            value={reason}
-            onChangeText={setReason}
-            multiline
-            numberOfLines={4}
-          />
+
+          <View style={dm.categories}>
+            {DISPUTE_CATEGORIES.map((c) => (
+              <TouchableOpacity
+                key={c.value}
+                style={[dm.categoryRow, category === c.value && dm.categoryRowSelected]}
+                onPress={() => setCategory(c.value)}
+                activeOpacity={0.7}
+              >
+                <View style={[dm.radio, category === c.value && dm.radioSelected]} />
+                <Text style={[dm.categoryLabel, category === c.value && dm.categoryLabelSelected]}>
+                  {c.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {category && (
+            <TextInput
+              style={[dm.input, { marginTop: 14 }]}
+              placeholder={reasonRequired ? 'Describe the issue… (required)' : 'Add more details (optional)'}
+              placeholderTextColor={Colors.textMuted}
+              value={reason}
+              onChangeText={setReason}
+              multiline
+              numberOfLines={3}
+            />
+          )}
+
           <View style={dm.btns}>
             <TouchableOpacity style={dm.cancel} onPress={onClose}><Text style={dm.cancelText}>Cancel</Text></TouchableOpacity>
             <TouchableOpacity
-              style={[dm.submit, (reason.trim().length < 10 || submitting) && dm.submitDisabled]}
+              style={[dm.submit, !canSubmit && dm.submitDisabled]}
               onPress={submit}
-              disabled={reason.trim().length < 10 || submitting}
+              disabled={!canSubmit}
             >
               {submitting ? <ActivityIndicator color="#FFF" /> : <Text style={dm.submitText}>Submit</Text>}
             </TouchableOpacity>
@@ -197,9 +238,24 @@ const dm = StyleSheet.create({
   sheet: { backgroundColor: Colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24 },
   title: { fontSize: 20, fontWeight: '800', color: Colors.text, marginBottom: 8 },
   body: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20, marginBottom: 16 },
+  categories: { gap: 8 },
+  categoryRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 12, paddingHorizontal: 14,
+    borderRadius: 12, borderWidth: 1.5, borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+  },
+  categoryRowSelected: { borderColor: Colors.error, backgroundColor: Colors.error + '0D' },
+  radio: {
+    width: 18, height: 18, borderRadius: 9,
+    borderWidth: 2, borderColor: Colors.border,
+  },
+  radioSelected: { borderColor: Colors.error, backgroundColor: Colors.error },
+  categoryLabel: { fontSize: 14, color: Colors.text, flex: 1 },
+  categoryLabelSelected: { fontWeight: '600', color: Colors.error },
   input: {
     backgroundColor: Colors.surface, borderRadius: 12, borderWidth: 1, borderColor: Colors.border,
-    paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, color: Colors.text, minHeight: 100,
+    paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, color: Colors.text, minHeight: 80,
   },
   btns: { flexDirection: 'row', gap: 12, marginTop: 16 },
   cancel: { flex: 1, height: 48, borderRadius: 12, borderWidth: 1.5, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
