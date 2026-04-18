@@ -77,6 +77,20 @@ function getCancellationTier(
   return                             { feePercent: 50,  refundPercent: 50 };
 }
 
+// ── Dispute categories ────────────────────────────────────────
+type DisputeCategory =
+  | 'vendor_no_show' | 'vendor_very_late' | 'service_not_completed'
+  | 'service_quality_poor' | 'wrong_service' | 'other';
+
+const DISPUTE_CATEGORIES: { value: DisputeCategory; label: string }[] = [
+  { value: 'vendor_no_show',          label: "Vendor didn't show up" },
+  { value: 'vendor_very_late',        label: 'Vendor arrived very late' },
+  { value: 'service_not_completed',   label: 'Service was not completed' },
+  { value: 'service_quality_poor',    label: 'Service quality was poor' },
+  { value: 'wrong_service',           label: 'Wrong service was performed' },
+  { value: 'other',                   label: 'Other' },
+];
+
 // ── Status config ─────────────────────────────────────────────
 const STATUS_CONFIG: Record<BookingStatus, { label: string; color: string; description: string }> = {
   pending:          { label: 'Awaiting vendor',   color: Colors.statusPending,   description: 'Your vendor has 1 hour to confirm this booking.' },
@@ -299,6 +313,7 @@ export default function BookingDetailScreen() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showDisputeModal, setShowDisputeModal] = useState(false);
+  const [disputeCategory, setDisputeCategory] = useState<DisputeCategory | null>(null);
   const [disputeReason, setDisputeReason] = useState('');
 
   const callEdgeFn = async (fn: string, body: object) => {
@@ -336,11 +351,17 @@ export default function BookingDetailScreen() {
   };
 
   const handleDispute = async () => {
-    if (!booking || !disputeReason.trim()) return;
+    if (!booking || !disputeCategory) return;
+    if (disputeCategory === 'other' && !disputeReason.trim()) return;
     setShowDisputeModal(false);
     setActionLoading(true); setActionError(null);
     try {
-      await callEdgeFn('dispute-raise', { booking_id: booking.id, reason: disputeReason.trim() });
+      await callEdgeFn('dispute-raise', {
+        booking_id: booking.id,
+        category: disputeCategory,
+        reason: disputeReason.trim() || undefined,
+      });
+      setDisputeCategory(null);
       setDisputeReason('');
       await load();
     } catch (err: any) { setActionError(err.message); }
@@ -601,20 +622,38 @@ export default function BookingDetailScreen() {
             <Pressable style={[s.modalSheet, { paddingBottom: 32 }]} onPress={() => {}}>
               <Text style={s.modalTitle}>Raise a dispute</Text>
               <Text style={s.modalBody}>Tell us what went wrong. Our team will review within 24 hours.</Text>
-              <TextInput
-                style={s.disputeInput}
-                placeholder="Describe the issue…"
-                placeholderTextColor={Colors.textMuted}
-                value={disputeReason}
-                onChangeText={(t) => setDisputeReason(sanitize(t, 500))}
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-              />
+              <View style={{ gap: 8, marginBottom: 2 }}>
+                {DISPUTE_CATEGORIES.map((c) => (
+                  <TouchableOpacity
+                    key={c.value}
+                    activeOpacity={0.7}
+                    onPress={() => setDisputeCategory(c.value)}
+                    style={[s.categoryRow, disputeCategory === c.value && s.categoryRowSelected]}
+                  >
+                    <View style={[s.radio, disputeCategory === c.value && s.radioSelected]} />
+                    <Text style={[s.categoryLabel, disputeCategory === c.value && s.categoryLabelSelected]}>
+                      {c.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              {disputeCategory && (
+                <TextInput
+                  style={[s.disputeInput, { marginTop: 14 }]}
+                  placeholder={disputeCategory === 'other' ? 'Describe the issue… (required)' : 'Add more details (optional)'}
+                  placeholderTextColor={Colors.textMuted}
+                  value={disputeReason}
+                  onChangeText={(t) => setDisputeReason(sanitize(t, 500))}
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                />
+              )}
               <TouchableOpacity
-                style={[s.primaryBtn, !disputeReason.trim() && s.btnDisabled]}
+                style={[s.primaryBtn, { marginTop: 16 },
+                  (!disputeCategory || (disputeCategory === 'other' && !disputeReason.trim())) && s.btnDisabled]}
                 onPress={handleDispute}
-                disabled={!disputeReason.trim()}
+                disabled={!disputeCategory || (disputeCategory === 'other' && !disputeReason.trim())}
               >
                 <Text style={s.primaryBtnText}>Submit dispute</Text>
               </TouchableOpacity>
@@ -732,8 +771,19 @@ const s = StyleSheet.create({
     backgroundColor: Colors.surface, borderRadius: 12,
     borderWidth: 1, borderColor: Colors.border,
     paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 15, color: Colors.text, minHeight: 100,
+    fontSize: 15, color: Colors.text, minHeight: 80,
   },
+  categoryRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 12, paddingHorizontal: 14,
+    borderRadius: 12, borderWidth: 1.5, borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+  },
+  categoryRowSelected: { borderColor: Colors.error, backgroundColor: Colors.error + '0D' },
+  radio: { width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: Colors.border },
+  radioSelected: { borderColor: Colors.error, backgroundColor: Colors.error },
+  categoryLabel: { fontSize: 14, color: Colors.text, flex: 1 },
+  categoryLabelSelected: { fontWeight: '600', color: Colors.error },
 
   // Live tracking map
   liveHeader: {
