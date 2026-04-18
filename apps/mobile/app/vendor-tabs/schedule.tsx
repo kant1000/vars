@@ -7,8 +7,8 @@
 // ============================================================
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator, Dimensions, Modal, Platform, Pressable,
-  ScrollView, StyleSheet, Text, TouchableOpacity, View,
+  ActivityIndicator, Dimensions, FlatList, Modal, Platform, Pressable,
+  RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -381,6 +381,25 @@ export default function ScheduleScreen() {
     });
   }, []);
 
+  const parseBooking = (b: any): VendorBooking => ({
+    id: b.id,
+    status: b.status as BookingStatus,
+    service_name: b.service_name,
+    service_duration_blocks: b.service_duration_blocks,
+    service_price_kobo: b.service_price_kobo,
+    scheduled_at: b.scheduled_at,
+    client_name: b.profiles?.full_name ?? 'Client',
+    client_phone: b.profiles?.phone_number ?? null,
+    phone_revealed: b.phone_revealed ?? false,
+    user_location_lat: b.user_location_lat ?? null,
+    user_location_lng: b.user_location_lng ?? null,
+    user_location_address: b.user_location_address ?? null,
+    access_building: b.access_building ?? null,
+    access_floor: b.access_floor ?? null,
+    access_flat: b.access_flat ?? null,
+    access_code: b.access_code ?? null,
+  });
+
   const loadData = useCallback(async () => {
     if (!vendorId) return;
     const dayStart = new Date(selectedDay); dayStart.setHours(0, 0, 0, 0);
@@ -410,28 +429,42 @@ export default function ScheduleScreen() {
     ]);
 
     setBlocks(calData ?? []);
-    setBookings((bkData ?? []).map((b: any) => ({
-      id: b.id,
-      status: b.status as BookingStatus,
-      service_name: b.service_name,
-      service_duration_blocks: b.service_duration_blocks,
-      service_price_kobo: b.service_price_kobo,
-      scheduled_at: b.scheduled_at,
-      client_name: b.profiles?.full_name ?? 'Client',
-      client_phone: b.profiles?.phone_number ?? null,
-      phone_revealed: b.phone_revealed ?? false,
-      user_location_lat: b.user_location_lat ?? null,
-      user_location_lng: b.user_location_lng ?? null,
-      user_location_address: b.user_location_address ?? null,
-      access_building: b.access_building ?? null,
-      access_floor: b.access_floor ?? null,
-      access_flat: b.access_flat ?? null,
-      access_code: b.access_code ?? null,
-    })));
+    setBookings((bkData ?? []).map(parseBooking));
     setLoading(false);
   }, [vendorId, selectedDay]);
 
   useEffect(() => { if (vendorId) loadData(); }, [loadData, vendorId]);
+
+  // ── List view data ────────────────────────────────────────────
+  const [listBookings, setListBookings] = useState<VendorBooking[]>([]);
+  const [listLoading, setListLoading] = useState(false);
+  const [listRefreshing, setListRefreshing] = useState(false);
+
+  const loadListBookings = useCallback(async () => {
+    if (!vendorId) return;
+    const { data } = await supabase
+      .from('bookings')
+      .select(`
+        id, status, service_name, service_duration_blocks, service_price_kobo,
+        scheduled_at, phone_revealed, user_location_lat, user_location_lng,
+        user_location_address, access_building, access_floor, access_flat, access_code,
+        profiles:user_id(full_name, phone_number)
+      `)
+      .eq('vendor_id', vendorId)
+      .in('status', ACTIVE_STATUSES)
+      .order('scheduled_at', { ascending: true })
+      .limit(40);
+    setListBookings((data ?? []).map(parseBooking));
+    setListLoading(false);
+    setListRefreshing(false);
+  }, [vendorId]);
+
+  useEffect(() => {
+    if (vendorId && viewMode === 'list') {
+      setListLoading(true);
+      loadListBookings();
+    }
+  }, [vendorId, viewMode, loadListBookings]);
 
   // ── Calendar helpers ──────────────────────────────────────────
   const getBlockForSlot = (slotTime: Date): CalendarBlock | undefined => {
@@ -620,11 +653,50 @@ export default function ScheduleScreen() {
             </View>
           )}
         </ScrollView>
+      ) : listLoading ? (
+        <View style={s.centered}><ActivityIndicator color={Colors.primary} /></View>
       ) : (
-        // List view — coming in Part 3
-        <View style={s.centered}>
-          <Text style={{ color: Colors.textMuted }}>List view coming soon</Text>
-        </View>
+        <FlatList
+          data={listBookings}
+          keyExtractor={(b) => b.id}
+          contentContainerStyle={{ padding: 16, paddingBottom: 60, gap: 10 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={listRefreshing}
+              onRefresh={() => { setListRefreshing(true); loadListBookings(); }}
+              tintColor={Colors.primary}
+            />
+          }
+          ListEmptyComponent={
+            <View style={s.listEmpty}>
+              <Text style={s.listEmptyTitle}>No upcoming bookings</Text>
+              <Text style={s.listEmptyBody}>Active bookings will appear here.</Text>
+            </View>
+          }
+          renderItem={({ item: bk }) => {
+            const sl = STATUS_LABEL[bk.status];
+            return (
+              <TouchableOpacity
+                style={s.listCard}
+                onPress={() => setSelectedBooking(bk)}
+                activeOpacity={0.85}
+              >
+                <View style={s.listCardTop}>
+                  <Text style={s.listClientName}>{bk.client_name}</Text>
+                  <View style={[s.listStatusPill, { backgroundColor: sl.color + '18' }]}>
+                    <Text style={[s.listStatusText, { color: sl.color }]}>{sl.text}</Text>
+                  </View>
+                </View>
+                <Text style={s.listServiceName}>{bk.service_name}</Text>
+                <View style={s.listCardBottom}>
+                  <Text style={s.listDateTime}>{fmtDate(bk.scheduled_at)} · {fmtTime(bk.scheduled_at)}</Text>
+                  <Text style={s.listPrice}>{fmtPrice(bk.service_price_kobo)}</Text>
+                </View>
+              </TouchableOpacity>
+            );
+          }}
+        />
       )}
 
       {/* Booking bottom sheet */}
@@ -714,6 +786,23 @@ const s = StyleSheet.create({
 
   summary: { paddingHorizontal: 16, paddingTop: 12 },
   summaryText: { fontSize: 13, color: Colors.textSecondary, fontWeight: '500' },
+
+  // List view
+  listEmpty: { alignItems: 'center', paddingTop: 80 },
+  listEmptyTitle: { fontSize: 17, fontWeight: '700', color: Colors.text, marginBottom: 6 },
+  listEmptyBody: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center' },
+  listCard: {
+    backgroundColor: Colors.surface, borderRadius: 16,
+    padding: 16, borderWidth: 1, borderColor: Colors.border, gap: 4,
+  },
+  listCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
+  listClientName: { fontSize: 15, fontWeight: '700', color: Colors.text },
+  listStatusPill: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+  listStatusText: { fontSize: 11, fontWeight: '700' },
+  listServiceName: { fontSize: 14, color: Colors.textSecondary },
+  listCardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
+  listDateTime: { fontSize: 12, color: Colors.textMuted },
+  listPrice: { fontSize: 14, fontWeight: '700', color: Colors.text },
 });
 
 // ── Bottom sheet styles ───────────────────────────────────────
