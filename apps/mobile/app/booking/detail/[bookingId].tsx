@@ -77,17 +77,29 @@ function fmtShortDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
+// ── Silent input filter ───────────────────────────────────────
+function sanitize(text: string, maxLen: number) {
+  return text.replace(/@/g, '').replace(/\d{7,}/g, '').slice(0, maxLen);
+}
+
 // ── Cancellation fee preview ──────────────────────────────────
-function getCancellationTier(scheduledAt: string): { feePercent: number; refundPercent: number; label: string } {
-  const hoursUntil = (new Date(scheduledAt).getTime() - Date.now()) / 3_600_000;
-  if (hoursUntil > 24) return { feePercent: 15,  refundPercent: 85,  label: '15% cancellation fee applies' };
-  if (hoursUntil > 2)  return { feePercent: 50,  refundPercent: 50,  label: '50% cancellation fee applies' };
-  return              { feePercent: 100, refundPercent: 0,   label: 'This booking is non-refundable' };
+// Mirrors calculateCancellationFee() in _shared/paystack.ts
+function getCancellationTier(
+  createdAt: string,
+  scheduledAt: string,
+): { feePercent: number; refundPercent: number; label: string } {
+  const now = Date.now();
+  const minsSinceBooking = (now - new Date(createdAt).getTime()) / 60_000;
+  const minsToService    = (new Date(scheduledAt).getTime() - now) / 60_000;
+
+  if (minsToService    <= 60) return { feePercent: 100, refundPercent: 0,  label: 'This booking is non-refundable' };
+  if (minsSinceBooking <= 15) return { feePercent: 15,  refundPercent: 85, label: '15% cancellation fee applies' };
+  return                             { feePercent: 50,  refundPercent: 50, label: '50% cancellation fee applies' };
 }
 
 // ── Status config ─────────────────────────────────────────────
 const STATUS_CONFIG: Record<BookingStatus, { label: string; color: string; description: string }> = {
-  pending:          { label: 'Awaiting vendor',   color: Colors.statusPending,   description: 'Your vendor has 2 hours to confirm this booking.' },
+  pending:          { label: 'Awaiting vendor',   color: Colors.statusPending,   description: 'Your vendor has 1 hour to confirm this booking.' },
   accepted:         { label: 'Confirmed',          color: Colors.statusAccepted,  description: 'Your vendor confirmed. See you soon.' },
   on_way:           { label: 'On the way',         color: Colors.statusOnWay,     description: 'Your vendor is on their way to you.' },
   arrived:          { label: 'Arrived',            color: Colors.statusArrived,   description: 'Your vendor has arrived.' },
@@ -562,7 +574,7 @@ export default function BookingDetailScreen() {
             <Pressable style={s.modalSheet} onPress={() => {}}>
               <Text style={s.modalTitle}>Cancel booking?</Text>
               {(() => {
-                const tier = getCancellationTier(booking.scheduled_at);
+                const tier = getCancellationTier(booking.created_at, booking.scheduled_at);
                 const refundKobo = Math.round(booking.service_price_kobo * tier.refundPercent / 100);
                 return (
                   <>
@@ -599,7 +611,7 @@ export default function BookingDetailScreen() {
                 placeholder="Describe the issue…"
                 placeholderTextColor={Colors.textMuted}
                 value={disputeReason}
-                onChangeText={setDisputeReason}
+                onChangeText={(t) => setDisputeReason(sanitize(t, 500))}
                 multiline
                 numberOfLines={4}
                 textAlignVertical="top"

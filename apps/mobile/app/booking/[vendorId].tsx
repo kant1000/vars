@@ -516,7 +516,7 @@ function Step3Location({
             <Text style={[s.infoText, isAutoAccept && s.infoTextAutoAccept]}>
               {isAutoAccept
                 ? '⚡ Instant confirm — your booking is confirmed immediately after payment.'
-                : 'Payment is held securely by VARS until your service is complete. Your vendor has 2 hours to accept.'}
+                : 'Payment is held securely by VARS until your service is complete. Your vendor has 1 hour to accept.'}
             </Text>
           </View>
         </View>
