@@ -149,7 +149,7 @@ export default function ConsentScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <TouchableOpacity style={styles.navBack} onPress={() => router.back()}>
+      <TouchableOpacity style={styles.navBack} onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')}>
         <Text style={styles.navBackText}>← Back</Text>
       </TouchableOpacity>
 

@@ -118,7 +118,11 @@ export default function VendorProfileScreen() {
         storage_path: upload.path,
         consent_state: 'unverified',
       });
-      if (error) throw error;
+      if (error) {
+        // Clean up the already-uploaded storage file to avoid orphans
+        await supabase.storage.from('portfolio').remove([upload.path]).catch(() => {});
+        throw error;
+      }
 
       await loadAll();
     } catch (err: any) {

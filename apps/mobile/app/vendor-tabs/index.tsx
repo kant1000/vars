@@ -431,6 +431,8 @@ function BookingRow({
 
       if (!res.ok) {
         const d = await res.json();
+        // Clean up the already-uploaded storage file to avoid orphans
+        await supabase.storage.from('portfolio').remove([upload.path]).catch(() => {});
         Alert.alert('Error', d.error ?? 'Could not submit photo.');
         return;
       }

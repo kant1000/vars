@@ -10,6 +10,7 @@ import { Stack } from 'expo-router';
 import { router, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Linking from 'expo-linking';
+import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -64,6 +65,15 @@ function RootNavigator() {
     });
 
     return () => subscription.remove();
+  }, []);
+
+  // Navigate to screen embedded in push notification data (e.g. consent requests)
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const screen = response.notification.request.content.data?.screen as string | undefined;
+      if (screen) router.push(screen as any);
+    });
+    return () => sub.remove();
   }, []);
 
   return (
