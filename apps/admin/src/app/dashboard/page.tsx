@@ -4,6 +4,22 @@
 // ============================================================
 import { adminClient } from '@/lib/supabase';
 
+interface SystemAlert {
+  id: string;
+  job_name: string;
+  last_failed_at: string;
+  error_message: string | null;
+}
+
+async function getAlerts(): Promise<SystemAlert[]> {
+  const db = adminClient();
+  const { data } = await db
+    .from('system_alerts')
+    .select('id, job_name, last_failed_at, error_message')
+    .order('last_failed_at', { ascending: false });
+  return (data ?? []) as SystemAlert[];
+}
+
 async function getStats() {
   const db = adminClient();
   const [vendors, bookings, disputes, revenue] = await Promise.all([
@@ -43,7 +59,7 @@ async function getStats() {
 }
 
 export default async function DashboardPage() {
-  const stats = await getStats();
+  const [stats, alerts] = await Promise.all([getStats(), getAlerts()]);
 
   const STATS = [
     { label: 'Total vendors',      value: stats.totalVendors,      color: 'var(--blue)'  },
@@ -64,6 +80,32 @@ export default async function DashboardPage() {
           {new Date().toLocaleDateString('en-NG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
         </span>
       </div>
+
+      {alerts.length > 0 && (
+        <div style={{
+          marginBottom: 24,
+          borderRadius: 10,
+          border: '1px solid #f87171',
+          backgroundColor: '#fff1f1',
+          padding: '14px 18px',
+        }}>
+          <div style={{ fontWeight: 700, color: '#b91c1c', marginBottom: 8, fontSize: 14 }}>
+            ⚠ {alerts.length} cron job{alerts.length > 1 ? 's' : ''} failing
+          </div>
+          {alerts.map((a) => (
+            <div key={a.id} style={{ fontSize: 13, color: '#7f1d1d', marginBottom: 4 }}>
+              <strong>{a.job_name}</strong>
+              {' — '}last failed{' '}
+              {new Date(a.last_failed_at).toLocaleString('en-NG', {
+                day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true,
+              })}
+              {a.error_message && (
+                <span style={{ color: '#9a3412', marginLeft: 6 }}>({a.error_message})</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="stats">
         {STATS.map((s) => (
