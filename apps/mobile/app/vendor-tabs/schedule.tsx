@@ -133,7 +133,6 @@ function BookingBottomSheet({
   onClose: () => void;
   onAction: () => void;
 }) {
-  const [mapReady, setMapReady] = useState(false);
   const [acting, setActing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -163,6 +162,7 @@ function BookingBottomSheet({
   };
 
   const handleAction = async (action: 'accept' | 'decline' | 'on_way' | 'arrived' | 'service_rendered') => {
+    if (!session?.access_token) { setActionError('Session expired. Please sign in again.'); return; }
     setActing(true);
     setActionError(null);
     try {
@@ -215,7 +215,6 @@ function BookingBottomSheet({
                 zoomEnabled={false}
                 rotateEnabled={false}
                 pitchEnabled={false}
-                onMapReady={() => setMapReady(true)}
                 liteMode={Platform.OS === 'android'}
               >
                 <Marker coordinate={{ latitude: booking.user_location_lat!, longitude: booking.user_location_lng! }} />
@@ -705,7 +704,7 @@ export default function ScheduleScreen() {
           booking={selectedBooking}
           session={session}
           onClose={() => setSelectedBooking(null)}
-          onAction={() => { setSelectedBooking(null); loadData(); }}
+          onAction={() => { setSelectedBooking(null); loadData(); loadListBookings(); }}
         />
       )}
     </View>
