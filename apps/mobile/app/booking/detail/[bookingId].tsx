@@ -322,10 +322,11 @@ export default function BookingDetailScreen() {
   const [disputeReason, setDisputeReason] = useState('');
 
   const callEdgeFn = async (fn: string, body: object) => {
-    if (!session?.access_token) throw new Error('Session expired. Please sign in again.');
+    const { data: { session: s } } = await supabase.auth.getSession();
+    if (!s?.access_token) throw new Error('Session expired. Please sign in again.');
     const res = await fetch(`${SUPABASE_URL}/functions/v1/${fn}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s.access_token}` },
       body: JSON.stringify(body),
     });
     const data = await res.json();

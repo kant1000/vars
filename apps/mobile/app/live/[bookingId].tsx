@@ -136,11 +136,10 @@ const tl = StyleSheet.create({
 
 // ── Dispute modal ────────────────────────────────────────────
 function DisputeModal({
-  visible, bookingId, sessionToken, onClose,
+  visible, bookingId, onClose,
 }: {
   visible: boolean;
   bookingId: string;
-  sessionToken: string;
   onClose: () => void;
 }) {
   const [reason, setReason] = useState('');
@@ -150,11 +149,12 @@ function DisputeModal({
     if (reason.trim().length < 10) return;
     setSubmitting(true);
     try {
+      const { data: { session: s } } = await supabase.auth.getSession();
       const res = await fetch(`${SUPABASE_URL}/functions/v1/dispute-raise`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${sessionToken}`,
+          Authorization: `Bearer ${s?.access_token ?? ''}`,
         },
         body: JSON.stringify({ booking_id: bookingId, reason: reason.trim() }),
       });
@@ -344,11 +344,12 @@ export default function LiveScreen() {
           onPress: async () => {
             setCancelling(true);
             try {
+              const { data: { session: s } } = await supabase.auth.getSession();
               const res = await fetch(`${SUPABASE_URL}/functions/v1/paystack-cancel`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
-                  Authorization: `Bearer ${session.access_token}`,
+                  Authorization: `Bearer ${s?.access_token ?? ''}`,
                 },
                 body: JSON.stringify({ booking_id: booking.id }),
               });
@@ -369,14 +370,15 @@ export default function LiveScreen() {
   };
 
   const confirmServiceRendered = async () => {
-    if (!session || !booking) return;
+    if (!booking) return;
     setConfirming(true);
     try {
+      const { data: { session: s } } = await supabase.auth.getSession();
       const res = await fetch(`${SUPABASE_URL}/functions/v1/paystack-settle`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${s?.access_token ?? ''}`,
         },
         body: JSON.stringify({ booking_id: booking.id, trigger: 'user_confirm' }),
       });
@@ -557,7 +559,6 @@ export default function LiveScreen() {
       <DisputeModal
         visible={disputeVisible}
         bookingId={booking.id}
-        sessionToken={session?.access_token ?? ''}
         onClose={() => setDisputeVisible(false)}
       />
     </View>

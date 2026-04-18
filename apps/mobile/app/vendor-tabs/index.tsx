@@ -96,10 +96,9 @@ function useCountdown(expiryIso: string | null) {
 
 // ── Grace period card (auto-accepted, 5-min cancel window) ──
 function GraceCard({
-  booking, sessionToken, onUpdated,
+  booking, onUpdated,
 }: {
   booking: VendorBooking;
-  sessionToken: string;
   onUpdated: () => void;
 }) {
   const [cancelling, setCancelling] = useState(false);
@@ -122,11 +121,12 @@ function GraceCard({
           onPress: async () => {
             setCancelling(true);
             try {
+              const { data: { session: s } } = await supabase.auth.getSession();
               const res = await fetch(`${SUPABASE_URL}/functions/v1/vendor-cancel-grace`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
-                  Authorization: `Bearer ${sessionToken}`,
+                  Authorization: `Bearer ${s?.access_token ?? ''}`,
                 },
                 body: JSON.stringify({ booking_id: booking.id }),
               });
@@ -182,10 +182,9 @@ function GraceCard({
 
 // ── Pending booking card ─────────────────────────────────────
 function PendingCard({
-  booking, sessionToken, onUpdated,
+  booking, onUpdated,
 }: {
   booking: VendorBooking;
-  sessionToken: string;
   onUpdated: () => void;
 }) {
   const [acting, setActing] = useState(false);
@@ -197,9 +196,10 @@ function PendingCard({
     setActing(true);
     const endpoint = action === 'accept' ? 'paystack-capture' : 'paystack-release';
     try {
+      const { data: { session: s } } = await supabase.auth.getSession();
       const res = await fetch(`${SUPABASE_URL}/functions/v1/${endpoint}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionToken}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s?.access_token ?? ''}` },
         body: JSON.stringify({ booking_id: booking.id }),
       });
       if (!res.ok) {
@@ -259,10 +259,9 @@ const FLOW_ACTIONS: Partial<Record<BookingStatus, { label: string; next: Booking
 };
 
 function ActiveCard({
-  booking, sessionToken, onUpdated,
+  booking, onUpdated,
 }: {
   booking: VendorBooking;
-  sessionToken: string;
   onUpdated: () => void;
 }) {
   const [acting, setActing] = useState(false);
@@ -301,11 +300,12 @@ function ActiveCard({
           onPress: async () => {
             setCancelling(true);
             try {
+              const { data: { session: s } } = await supabase.auth.getSession();
               const res = await fetch(`${SUPABASE_URL}/functions/v1/vendor-cancel-booking`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
-                  Authorization: `Bearer ${sessionToken}`,
+                  Authorization: `Bearer ${s?.access_token ?? ''}`,
                 },
                 body: JSON.stringify({ booking_id: booking.id }),
               });
@@ -392,13 +392,11 @@ function ActiveCard({
 // ── Upcoming / past booking row ──────────────────────────────
 function BookingRow({
   booking,
-  sessionToken,
   vendorPhotoCount,
   hasPhotoForBooking,
   onPhotoAdded,
 }: {
   booking: VendorBooking;
-  sessionToken?: string;
   vendorPhotoCount?: number;
   hasPhotoForBooking?: boolean;
   onPhotoAdded?: () => void;
@@ -408,11 +406,11 @@ function BookingRow({
   const profileFull = (vendorPhotoCount ?? 0) >= 10;
 
   const handleAddPhoto = async () => {
-    if (!sessionToken) return;
     setAddingPhoto(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const { data: { session: s } } = await supabase.auth.getSession();
+      if (!s?.access_token) return;
+      const user = s.user;
 
       const upload = await uploadSinglePortfolioPhoto(user.id);
       if (!upload) return;
@@ -423,7 +421,7 @@ function BookingRow({
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${sessionToken}`,
+            Authorization: `Bearer ${s.access_token}`,
           },
           body: JSON.stringify({ booking_id: booking.id, storage_path: upload.path }),
         }
@@ -483,11 +481,10 @@ function BookingRow({
 
 // ── Zone confirmation modal ──────────────────────────────────
 function ZoneConfirmModal({
-  visible, zone, sessionToken, onConfirmed, onDismiss,
+  visible, zone, onConfirmed, onDismiss,
 }: {
   visible: boolean;
   zone: { lat: number; lng: number; radius_km: number } | null;
-  sessionToken: string;
   onConfirmed: () => void;
   onDismiss: () => void;
 }) {
@@ -496,11 +493,12 @@ function ZoneConfirmModal({
   const handleConfirm = async () => {
     setConfirming(true);
     try {
+      const { data: { session: s } } = await supabase.auth.getSession();
       const res = await fetch(`${SUPABASE_URL}/functions/v1/vendor-confirm-zone`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${sessionToken}`,
+          Authorization: `Bearer ${s?.access_token ?? ''}`,
         },
       });
       if (res.ok) onConfirmed();
@@ -755,7 +753,6 @@ export default function VendorJobsScreen() {
         <ZoneConfirmModal
           visible={!!zoneModal}
           zone={zoneModal.zone}
-          sessionToken={session?.access_token ?? ''}
           onConfirmed={() => setZoneModal(null)}
           onDismiss={() => setZoneModal(null)}
         />
@@ -792,8 +789,7 @@ export default function VendorJobsScreen() {
               <GraceCard
                 key={b.id}
                 booking={b}
-                sessionToken={session?.access_token ?? ''}
-                onUpdated={load}
+                      onUpdated={load}
               />
             ))}
           </Section>
@@ -806,8 +802,7 @@ export default function VendorJobsScreen() {
               <PendingCard
                 key={b.id}
                 booking={b}
-                sessionToken={session?.access_token ?? ''}
-                onUpdated={load}
+                      onUpdated={load}
               />
             ))}
           </Section>
@@ -841,7 +836,6 @@ export default function VendorJobsScreen() {
               <BookingRow
                 key={b.id}
                 booking={b}
-                sessionToken={session?.access_token}
                 vendorPhotoCount={vendorPhotoCount}
                 hasPhotoForBooking={bookingPhotoIds.has(b.id)}
                 onPhotoAdded={load}

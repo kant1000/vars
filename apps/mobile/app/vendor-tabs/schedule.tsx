@@ -150,7 +150,6 @@ function BookingBottomSheet({
   }, [booking.auto_accepted, booking.auto_accept_grace_expires_at]);
 
   const handleGraceCancel = async () => {
-    if (!session?.access_token) { setActionError('Session expired. Please sign in again.'); return; }
     setActing(true);
     setActionError(null);
     try {
@@ -169,11 +168,13 @@ function BookingBottomSheet({
   const accessRevealed = booking.phone_revealed;
 
   const callEdgeFn = async (fn: string, body: object) => {
+    const { data: { session: s } } = await supabase.auth.getSession();
+    if (!s?.access_token) throw new Error('Session expired. Please sign in again.');
     const res = await fetch(`${SUPABASE_URL}/functions/v1/${fn}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${session?.access_token}`,
+        Authorization: `Bearer ${s.access_token}`,
       },
       body: JSON.stringify(body),
     });
@@ -190,7 +191,6 @@ function BookingBottomSheet({
   };
 
   const handleAction = async (action: 'accept' | 'decline' | 'on_way' | 'arrived' | 'service_rendered') => {
-    if (!session?.access_token) { setActionError('Session expired. Please sign in again.'); return; }
     setActing(true);
     setActionError(null);
     try {
@@ -528,14 +528,15 @@ export default function ScheduleScreen() {
     const isOnWay = [...bookings, ...listBookings].some((b) => b.status === 'on_way');
     if (!isOnWay || !session?.access_token) return;
 
-    const token = session.access_token;
     const pushLocation = async () => {
+      const { data: { session: s } } = await supabase.auth.getSession();
+      if (!s?.access_token) return;
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') return;
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       fetch(`${SUPABASE_URL}/functions/v1/vendor-update-location`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s.access_token}` },
         body: JSON.stringify({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
       }).catch(console.error);
     };

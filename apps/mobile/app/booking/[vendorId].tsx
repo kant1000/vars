@@ -634,16 +634,19 @@ export default function BookingFlow() {
   };
 
   const handlePay = async () => {
-    if (!service || !slot || !session || !coords) return;
+    if (!service || !slot || !coords) return;
     setPaying(true);
     setError(null);
 
     try {
+      const { data: { session: s } } = await supabase.auth.getSession();
+      if (!s) { setError('Session expired. Please sign in again.'); setPaying(false); return; }
+
       const res = await fetch(`${SUPABASE_URL}/functions/v1/paystack-initialize`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${s.access_token}`,
         },
         body: JSON.stringify({
           vendor_service_id: service.id,
