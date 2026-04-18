@@ -24,7 +24,10 @@ Deno.serve(async (req: Request) => {
     if (authError || !user) return errorResponse('Unauthorized', 401);
 
     const body = await req.json();
-    const { vendor_service_id, scheduled_at, user_location_lat, user_location_lng, user_location_address } = body;
+    const {
+      vendor_service_id, scheduled_at, user_location_lat, user_location_lng, user_location_address,
+      access_building, access_floor, access_flat, access_code,
+    } = body;
 
     if (!vendor_service_id || !scheduled_at || user_location_lat == null || user_location_lng == null) {
       return errorResponse('Missing required fields: vendor_service_id, scheduled_at, user_location_lat, user_location_lng');
@@ -120,6 +123,10 @@ Deno.serve(async (req: Request) => {
           user_location_lat,
           user_location_lng,
           user_location_address: user_location_address ?? null,
+          access_building: access_building ?? null,
+          access_floor: access_floor ?? null,
+          access_flat: access_flat ?? null,
+          access_code: access_code ?? null,
         },
         cancel_action: 'close', // Paystack popup behaviour
       },

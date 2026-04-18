@@ -38,6 +38,12 @@ export async function sendNotification(payload: NotificationPayload): Promise<vo
   // 2. Send push notification via Expo if token exists
   if (payload.pushToken) {
     try {
+      // Auto-inject deep-link screen for all customer notifications that have a bookingId
+      const pushData: Record<string, unknown> = { ...payload.data, bookingId: payload.bookingId };
+      if (payload.recipientType === 'user' && payload.bookingId) {
+        pushData.screen = `/booking/detail/${payload.bookingId}`;
+      }
+
       await fetch('https://exp.host/--/api/v2/push/send', {
         method: 'POST',
         headers: {
@@ -49,7 +55,7 @@ export async function sendNotification(payload: NotificationPayload): Promise<vo
           to: payload.pushToken,
           title: payload.title,
           body: payload.body,
-          data: { ...payload.data, bookingId: payload.bookingId },
+          data: pushData,
           sound: 'default',
           priority: 'high',
         }),

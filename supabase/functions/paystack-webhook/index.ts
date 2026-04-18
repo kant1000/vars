@@ -134,6 +134,10 @@ async function handleChargeSuccess(
     user_location_lat,
     user_location_lng,
     user_location_address,
+    access_building,
+    access_floor,
+    access_flat,
+    access_code,
   } = bookingMeta as Record<string, unknown>;
 
   // Build PostGIS point from lat/lng
@@ -175,6 +179,12 @@ async function handleChargeSuccess(
       scheduled_at,
       user_location: userLocationPoint,
       user_location_address: user_location_address ?? null,
+      user_location_lat: user_location_lat as number,
+      user_location_lng: user_location_lng as number,
+      access_building: (access_building as string) ?? null,
+      access_floor: (access_floor as string) ?? null,
+      access_flat: (access_flat as string) ?? null,
+      access_code: (access_code as string) ?? null,
       status: autoAcceptResult.shouldAutoAccept ? 'accepted' : 'pending',
       paystack_reference: reference,
       paystack_authorization_code: (data.authorization as Record<string, unknown>)?.authorization_code ?? null,

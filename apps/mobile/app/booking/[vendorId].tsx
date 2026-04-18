@@ -1,19 +1,21 @@
 // ============================================================
-// VARS — Booking Flow (Phase 7)
-// Route: /booking/[vendorId]
+// VARS — Booking Flow
 // Step 1: Select service
-// Step 2: Pick date + time slot (30-min blocks)
-// Step 3: Review & pay → calls paystack-initialize edge fn
+// Step 2: Pick date + time slot
+// Step 3a: Review + access details
+// Step 3b: Location confirmation + pay
 // ============================================================
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Dimensions, Modal, Pressable,
+  ActivityIndicator, Dimensions, FlatList, Modal, Pressable,
   ScrollView, StyleSheet, Text, TouchableOpacity,
-  View, TextInput, KeyboardAvoidingView, Platform,
+  View, TextInput, Platform,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
+import * as Location from 'expo-location';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
@@ -21,11 +23,10 @@ import { Colors } from '@/constants/colors';
 const SCREEN_W = Dimensions.get('window').width;
 const BLOCK_MINS = 30;
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
 
-// ── Types ───────────────────────────────────────────────────
+// ── Types ────────────────────────────────────────────────────
 interface ServiceOption {
-  id: string;           // vendor_services.id
+  id: string;
   service_id: string;
   name: string;
   description: string | null;
@@ -34,7 +35,25 @@ interface ServiceOption {
   category_name: string;
 }
 
-// ── Helpers ─────────────────────────────────────────────────
+interface AccessDetails {
+  building: string;
+  floor: string;
+  flat: string;
+  gateCode: string;
+}
+
+// ── Constants ────────────────────────────────────────────────
+const FLOOR_OPTIONS = [
+  'Ground', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th',
+  '8th', '9th', '10th', '11th', '12th', '13th', '14th', '15th', 'Penthouse',
+];
+
+const EMPTY_ACCESS: AccessDetails = { building: '', floor: '', flat: '', gateCode: '' };
+
+// ── Helpers ──────────────────────────────────────────────────
+function sanitize(text: string, maxLen: number) {
+  return text.replace(/@/g, '').replace(/\d{7,}/g, '').slice(0, maxLen);
+}
 function fmtPrice(kobo: number) {
   return `₦${Math.round(kobo / 100).toLocaleString('en-NG')}`;
 }
@@ -57,7 +76,7 @@ function sameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
-// ── Step indicator ───────────────────────────────────────────
+// ── Step indicator ────────────────────────────────────────────
 function StepBar({ step }: { step: number }) {
   const labels = ['Service', 'Schedule', 'Review'];
   return (
@@ -96,7 +115,7 @@ const sb = StyleSheet.create({
   lineDone: { backgroundColor: Colors.primary },
 });
 
-// ── Step 1: Select service ───────────────────────────────────
+// ── Step 1: Select service ────────────────────────────────────
 function Step1({ vendorId, onSelect }: { vendorId: string; onSelect: (s: ServiceOption) => void }) {
   const [services, setServices] = useState<ServiceOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,7 +125,8 @@ function Step1({ vendorId, onSelect }: { vendorId: string; onSelect: (s: Service
       const { data } = await supabase
         .from('vendor_services')
         .select('id, price_kobo, duration_blocks, services(id, name, description, service_categories(name))')
-        .eq('vendor_id', vendorId);
+        .eq('vendor_id', vendorId)
+        .eq('is_bookable', true);
       setServices((data ?? []).map((vs: any) => ({
         id: vs.id,
         service_id: vs.services?.id,
@@ -142,7 +162,7 @@ function Step1({ vendorId, onSelect }: { vendorId: string; onSelect: (s: Service
   );
 }
 
-// ── Step 2: Date + time picker ───────────────────────────────
+// ── Step 2: Date + time picker ────────────────────────────────
 function Step2({
   vendorId, service, onConfirm,
 }: {
@@ -150,7 +170,6 @@ function Step2({
   service: ServiceOption;
   onConfirm: (slot: Date, isAutoAccept: boolean) => void;
 }) {
-  // Generate next 14 days (excluding today before current time)
   const today = new Date();
   const days: Date[] = Array.from({ length: 14 }, (_, i) => {
     const d = new Date(today);
@@ -168,7 +187,6 @@ function Step2({
     const dayStart = new Date(day); dayStart.setHours(8, 0, 0, 0);
     const dayEnd = new Date(day); dayEnd.setHours(22, 0, 0, 0);
 
-    // Fetch vendor calendar blocks
     const { data: calBlocks } = await supabase
       .from('vendor_calendar')
       .select('start_time, end_time, block_state')
@@ -176,7 +194,6 @@ function Step2({
       .lt('start_time', dayEnd.toISOString())
       .gt('end_time', dayStart.toISOString());
 
-    // Fetch existing accepted/pending bookings
     const { data: booked } = await supabase
       .from('bookings')
       .select('scheduled_at, service_duration_blocks')
@@ -185,7 +202,6 @@ function Step2({
       .gte('scheduled_at', dayStart.toISOString())
       .lt('scheduled_at', dayEnd.toISOString());
 
-    // Build 30-min slots from 08:00–22:00
     const generated: { time: Date; available: boolean; autoAccept: boolean }[] = [];
     let cursor = new Date(dayStart);
     const now = new Date();
@@ -197,10 +213,8 @@ function Step2({
       let available = true;
       let autoAccept = false;
 
-      // Past slots
       if (slotStart <= now) { available = false; }
 
-      // Conflicts with calendar blocks (unavailable or transport_buffer = blocked)
       if (available) {
         for (const b of calBlocks ?? []) {
           if (b.block_state !== 'unavailable' && b.block_state !== 'transport_buffer') continue;
@@ -209,7 +223,6 @@ function Step2({
         }
       }
 
-      // Check if slot start is auto_accept
       if (available) {
         autoAccept = (calBlocks ?? []).some((b) => {
           if (b.block_state !== 'auto_accept') return false;
@@ -217,7 +230,6 @@ function Step2({
         });
       }
 
-      // Conflicts with existing bookings
       if (available) {
         for (const b of booked ?? []) {
           const bStart = new Date(b.scheduled_at);
@@ -226,7 +238,6 @@ function Step2({
         }
       }
 
-      // Don't show slot if service would run past end of day
       if (slotEnd > dayEnd) { available = false; }
 
       generated.push({ time: slotStart, available, autoAccept });
@@ -243,7 +254,6 @@ function Step2({
     <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
       <Text style={[s.stepTitle, { margin: 16 }]}>When works for you?</Text>
 
-      {/* Day selector */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8, paddingBottom: 8 }}>
         {days.map((d) => {
           const active = sameDay(d, selectedDay);
@@ -252,22 +262,18 @@ function Step2({
               <Text style={[s.dayChipWeekday, active && s.dayChipTextActive]}>
                 {d.toLocaleDateString('en-NG', { weekday: 'short' })}
               </Text>
-              <Text style={[s.dayChipNum, active && s.dayChipTextActive]}>
-                {d.getDate()}
-              </Text>
+              <Text style={[s.dayChipNum, active && s.dayChipTextActive]}>{d.getDate()}</Text>
             </TouchableOpacity>
           );
         })}
       </ScrollView>
 
-      {/* Auto-accept legend if any slots show it */}
       {slots.some((sl) => sl.available && sl.autoAccept) && (
         <View style={s.autoAcceptLegend}>
           <Text style={s.autoAcceptLegendText}>⚡ Instant confirm — no waiting</Text>
         </View>
       )}
 
-      {/* Time slots */}
       {loadingSlots ? (
         <View style={s.centered}><ActivityIndicator color={Colors.primary} /></View>
       ) : (
@@ -275,25 +281,15 @@ function Step2({
           {slots.map((slot) => (
             <TouchableOpacity
               key={slot.time.toISOString()}
-              style={[
-                s.slot,
-                !slot.available && s.slotUnavailable,
-                slot.available && slot.autoAccept && s.slotAutoAccept,
-              ]}
+              style={[s.slot, !slot.available && s.slotUnavailable, slot.available && slot.autoAccept && s.slotAutoAccept]}
               onPress={() => slot.available && onConfirm(slot.time, slot.autoAccept)}
               disabled={!slot.available}
               activeOpacity={0.8}
             >
-              <Text style={[
-                s.slotText,
-                !slot.available && s.slotTextUnavailable,
-                slot.available && slot.autoAccept && s.slotTextAutoAccept,
-              ]}>
+              <Text style={[s.slotText, !slot.available && s.slotTextUnavailable, slot.available && slot.autoAccept && s.slotTextAutoAccept]}>
                 {fmtTime(slot.time)}
               </Text>
-              {slot.available && slot.autoAccept && (
-                <Text style={s.slotAutoIcon}>⚡</Text>
-              )}
+              {slot.available && slot.autoAccept && <Text style={s.slotAutoIcon}>⚡</Text>}
             </TouchableOpacity>
           ))}
         </View>
@@ -302,28 +298,28 @@ function Step2({
   );
 }
 
-// ── Step 3: Review & pay ─────────────────────────────────────
-function Step3({
-  vendorId, service, slot, isAutoAccept, onPay, paying,
+// ── Step 3a: Review + access details ─────────────────────────
+function Step3Review({
+  service, slot, isAutoAccept,
+  access, setAccess,
+  onConfirmLocation, locating, locError,
 }: {
-  vendorId: string;
   service: ServiceOption;
   slot: Date;
   isAutoAccept: boolean;
-  onPay: (address: string, notes: string) => void;
-  paying: boolean;
+  access: AccessDetails;
+  setAccess: (a: AccessDetails) => void;
+  onConfirmLocation: () => void;
+  locating: boolean;
+  locError: string | null;
 }) {
-  const [address, setAddress] = useState('');
-  const [notes, setNotes] = useState('');
-
-  const canPay = address.trim().length >= 5;
+  const [showFloorPicker, setShowFloorPicker] = useState(false);
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+    <>
       <ScrollView contentContainerStyle={{ padding: 20, gap: 16, paddingBottom: 120 }}>
         <Text style={s.stepTitle}>Review your booking</Text>
 
-        {/* Summary card */}
         <View style={s.summaryCard}>
           <Row label="Service" value={service.name} />
           <Row label="Duration" value={fmtDuration(service.duration_blocks)} />
@@ -333,49 +329,204 @@ function Step3({
           <Row label="Total" value={fmtPrice(service.price_kobo)} bold />
         </View>
 
-        {/* Address */}
+        <Text style={s.sectionHeading}>Access details <Text style={s.optionalTag}>(optional)</Text></Text>
+        <Text style={s.accessHint}>Help your vendor find you faster.</Text>
+
+        {/* Building name */}
         <View>
-          <Text style={s.fieldLabel}>Your address <Text style={s.required}>*</Text></Text>
+          <Text style={s.fieldLabel}>Building / estate name</Text>
           <TextInput
             style={s.textInput}
-            placeholder="Where should your vendor come to?"
+            placeholder="e.g. Palm Spring Residences"
             placeholderTextColor={Colors.textMuted}
-            value={address}
-            onChangeText={setAddress}
-            multiline
-            numberOfLines={2}
+            value={access.building}
+            onChangeText={(t) => setAccess({ ...access, building: sanitize(t, 60) })}
+            returnKeyType="next"
           />
         </View>
 
-        {/* Notes */}
+        {/* Floor */}
         <View>
-          <Text style={s.fieldLabel}>Notes for your vendor <Text style={s.optional}>(optional)</Text></Text>
+          <Text style={s.fieldLabel}>Floor</Text>
+          <TouchableOpacity
+            style={[s.textInput, s.pickerRow]}
+            onPress={() => setShowFloorPicker(true)}
+            activeOpacity={0.8}
+          >
+            <Text style={access.floor ? s.pickerValue : s.pickerPlaceholder}>
+              {access.floor || 'Select floor'}
+            </Text>
+            <Text style={s.pickerChevron}>›</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Flat / unit */}
+        <View>
+          <Text style={s.fieldLabel}>Flat / unit number</Text>
           <TextInput
             style={s.textInput}
-            placeholder="e.g. Ring the gate, 2nd floor, etc."
+            placeholder="e.g. 4B"
             placeholderTextColor={Colors.textMuted}
-            value={notes}
-            onChangeText={setNotes}
-            multiline
-            numberOfLines={2}
+            value={access.flat}
+            onChangeText={(t) => setAccess({ ...access, flat: sanitize(t, 20) })}
+            returnKeyType="next"
           />
         </View>
 
-        <View style={[s.infoBox, isAutoAccept && s.infoBoxAutoAccept]}>
-          <Text style={[s.infoText, isAutoAccept && s.infoTextAutoAccept]}>
-            {isAutoAccept
-              ? '⚡ This slot is instant-confirm. Your booking will be confirmed immediately after payment.'
-              : 'Payment is held securely by VARS until your service is complete. Your vendor has 2 hours to accept this booking.'}
+        {/* Gate code */}
+        <View>
+          <Text style={s.fieldLabel}>Gate / access code</Text>
+          <TextInput
+            style={s.textInput}
+            placeholder="e.g. 1234"
+            placeholderTextColor={Colors.textMuted}
+            value={access.gateCode}
+            onChangeText={(t) => setAccess({ ...access, gateCode: sanitize(t, 20) })}
+            returnKeyType="done"
+            secureTextEntry={false}
+          />
+        </View>
+
+        <View style={s.accessPrivacyNote}>
+          <Text style={s.accessPrivacyText}>
+            Access details are only shared with your vendor 15 minutes before their arrival.
           </Text>
+        </View>
+
+        {locError && (
+          <View style={s.errorBanner}>
+            <Text style={s.errorText}>{locError}</Text>
+          </View>
+        )}
+      </ScrollView>
+
+      <View style={s.payWrap}>
+        <TouchableOpacity
+          style={[s.payBtn, locating && s.payBtnDisabled]}
+          onPress={onConfirmLocation}
+          disabled={locating}
+          activeOpacity={0.88}
+        >
+          {locating
+            ? <ActivityIndicator color="#FFF" />
+            : <Text style={s.payBtnText}>Confirm location →</Text>
+          }
+        </TouchableOpacity>
+      </View>
+
+      {/* Floor picker modal */}
+      <Modal visible={showFloorPicker} transparent animationType="slide">
+        <Pressable style={s.modalOverlay} onPress={() => setShowFloorPicker(false)}>
+          <Pressable style={s.pickerSheet} onPress={() => {}}>
+            <View style={s.pickerHandle} />
+            <Text style={s.pickerTitle}>Select floor</Text>
+            <FlatList
+              data={FLOOR_OPTIONS}
+              keyExtractor={(item) => item}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={s.pickerOption}
+                  onPress={() => { setAccess({ ...access, floor: item }); setShowFloorPicker(false); }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[s.pickerOptionText, access.floor === item && s.pickerOptionSelected]}>
+                    {item}
+                  </Text>
+                  {access.floor === item && <Text style={s.pickerCheck}>✓</Text>}
+                </TouchableOpacity>
+              )}
+            />
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </>
+  );
+}
+
+// ── Step 3b: Location confirmation + pay ─────────────────────
+function Step3Location({
+  service, slot, isAutoAccept,
+  coords, locAddress, access,
+  onPay, paying,
+}: {
+  service: ServiceOption;
+  slot: Date;
+  isAutoAccept: boolean;
+  coords: { lat: number; lng: number };
+  locAddress: string;
+  access: AccessDetails;
+  onPay: () => void;
+  paying: boolean;
+}) {
+  const [mapReady, setMapReady] = useState(false);
+
+  const hasAccess = access.building || access.floor || access.flat || access.gateCode;
+
+  return (
+    <>
+      <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
+        {/* Map thumbnail */}
+        <MapView
+          style={s.mapThumb}
+          provider={PROVIDER_DEFAULT}
+          region={{
+            latitude: coords.lat,
+            longitude: coords.lng,
+            latitudeDelta: 0.003,
+            longitudeDelta: 0.003,
+          }}
+          scrollEnabled={false}
+          zoomEnabled={false}
+          rotateEnabled={false}
+          pitchEnabled={false}
+          onMapReady={() => setMapReady(true)}
+          liteMode={Platform.OS === 'android'}
+        >
+          <Marker coordinate={{ latitude: coords.lat, longitude: coords.lng }} />
+        </MapView>
+
+        <View style={{ padding: 20, gap: 16 }}>
+          {/* Detected address */}
+          <View style={s.addressRow}>
+            <Text style={s.addressIcon}>📍</Text>
+            <Text style={s.addressText} numberOfLines={2}>{locAddress || 'Your current location'}</Text>
+          </View>
+
+          {/* Access details summary */}
+          {hasAccess && (
+            <View style={s.accessSummaryCard}>
+              <Text style={s.accessSummaryTitle}>Access details</Text>
+              {access.building ? <AccessRow label="Building" value={access.building} /> : null}
+              {access.floor ? <AccessRow label="Floor" value={access.floor} /> : null}
+              {access.flat ? <AccessRow label="Flat/unit" value={access.flat} /> : null}
+              {access.gateCode ? <AccessRow label="Gate code" value={access.gateCode} /> : null}
+            </View>
+          )}
+
+          {/* Summary */}
+          <View style={s.summaryCard}>
+            <Row label="Service" value={service.name} />
+            <Row label="Date" value={fmtDate(slot)} />
+            <Row label="Time" value={fmtTime(slot)} />
+            <View style={s.divider} />
+            <Row label="Total" value={fmtPrice(service.price_kobo)} bold />
+          </View>
+
+          <View style={[s.infoBox, isAutoAccept && s.infoBoxAutoAccept]}>
+            <Text style={[s.infoText, isAutoAccept && s.infoTextAutoAccept]}>
+              {isAutoAccept
+                ? '⚡ Instant confirm — your booking is confirmed immediately after payment.'
+                : 'Payment is held securely by VARS until your service is complete. Your vendor has 2 hours to accept.'}
+            </Text>
+          </View>
         </View>
       </ScrollView>
 
-      {/* Pay button */}
       <View style={s.payWrap}>
         <TouchableOpacity
-          style={[s.payBtn, (!canPay || paying) && s.payBtnDisabled]}
-          onPress={() => canPay && !paying && onPay(address, notes)}
-          disabled={!canPay || paying}
+          style={[s.payBtn, (!mapReady || paying) && s.payBtnDisabled]}
+          onPress={onPay}
+          disabled={!mapReady || paying}
           activeOpacity={0.88}
         >
           {paying
@@ -384,7 +535,7 @@ function Step3({
           }
         </TouchableOpacity>
       </View>
-    </KeyboardAvoidingView>
+    </>
   );
 }
 
@@ -397,16 +548,34 @@ function Row({ label, value, bold }: { label: string; value: string; bold?: bool
   );
 }
 
-// ── Root component ───────────────────────────────────────────
+function AccessRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={s.accessDetailRow}>
+      <Text style={s.accessDetailLabel}>{label}</Text>
+      <Text style={s.accessDetailValue}>{value}</Text>
+    </View>
+  );
+}
+
+// ── Root component ────────────────────────────────────────────
 export default function BookingFlow() {
   const { vendorId } = useLocalSearchParams<{ vendorId: string }>();
   const insets = useSafeAreaInsets();
-  const { user, session } = useAuth();
+  const { session } = useAuth();
 
   const [step, setStep] = useState(1);
   const [service, setService] = useState<ServiceOption | null>(null);
   const [slot, setSlot] = useState<Date | null>(null);
   const [slotIsAutoAccept, setSlotIsAutoAccept] = useState(false);
+
+  // Step 3 state
+  const [step3View, setStep3View] = useState<'review' | 'location'>('review');
+  const [access, setAccess] = useState<AccessDetails>(EMPTY_ACCESS);
+  const [locating, setLocating] = useState(false);
+  const [locError, setLocError] = useState<string | null>(null);
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [locAddress, setLocAddress] = useState('');
+
   const [paying, setPaying] = useState(false);
   const [paystackUrl, setPaystackUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -419,11 +588,53 @@ export default function BookingFlow() {
   const handleSelectSlot = (s: Date, isAutoAccept: boolean) => {
     setSlot(s);
     setSlotIsAutoAccept(isAutoAccept);
+    setStep3View('review');
+    setAccess(EMPTY_ACCESS);
+    setLocError(null);
+    setCoords(null);
+    setLocAddress('');
     setStep(3);
   };
 
-  const handlePay = async (address: string, notes: string) => {
-    if (!service || !slot || !session) return;
+  const handleBack = () => {
+    if (step === 3 && step3View === 'location') {
+      setStep3View('review');
+      return;
+    }
+    if (step > 1) { setStep(step - 1); return; }
+    router.back();
+  };
+
+  const handleConfirmLocation = async () => {
+    setLocating(true);
+    setLocError(null);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setLocError('Location permission is required to book a visit. Please enable it in Settings.');
+        setLocating(false);
+        return;
+      }
+
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const { latitude, longitude } = pos.coords;
+
+      const [geo] = await Location.reverseGeocodeAsync({ latitude, longitude });
+      const parts = [geo?.name, geo?.street, geo?.city ?? geo?.region].filter(Boolean);
+      const address = parts.join(', ');
+
+      setCoords({ lat: latitude, lng: longitude });
+      setLocAddress(address);
+      setStep3View('location');
+    } catch (err: any) {
+      setLocError('Could not get your location. Please try again.');
+    } finally {
+      setLocating(false);
+    }
+  };
+
+  const handlePay = async () => {
+    if (!service || !slot || !session || !coords) return;
     setPaying(true);
     setError(null);
 
@@ -435,19 +646,22 @@ export default function BookingFlow() {
           Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          vendor_id: vendorId,
           vendor_service_id: service.id,
           scheduled_at: slot.toISOString(),
-          customer_address: address,
-          notes,
+          user_location_lat: coords.lat,
+          user_location_lng: coords.lng,
+          user_location_address: locAddress || null,
+          access_building: access.building || null,
+          access_floor: access.floor || null,
+          access_flat: access.flat || null,
+          access_code: access.gateCode || null,
         }),
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Payment initialisation failed');
 
-      // Open Paystack checkout in WebView modal
-      setPaystackUrl(data.authorization_url);
+      setPaystackUrl(`https://checkout.paystack.com/${data.access_code}`);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -456,25 +670,22 @@ export default function BookingFlow() {
   };
 
   const handleWebViewNav = (url: string) => {
-    // Paystack redirects to callback_url after payment
-    if (url.includes('paystack') && (url.includes('callback') || url.includes('success') || url.includes('cancel'))) {
+    if (url.startsWith('https://checkout.paystack.com/')) return true;
+    if (url.includes('cancel') || url.includes('declined') || url.includes('close')) {
       setPaystackUrl(null);
-      if (url.includes('cancel')) {
-        setError('Payment was cancelled.');
-      } else {
-        // Navigate to bookings tab
-        router.replace('/(tabs)/bookings');
-      }
+      setError('Payment was cancelled.');
       return false;
     }
-    return true;
+    // Any redirect away from Paystack checkout = payment complete
+    setPaystackUrl(null);
+    router.replace('/(tabs)/bookings');
+    return false;
   };
 
   return (
     <View style={[s.container, { paddingTop: insets.top }]}>
-      {/* Header */}
       <View style={s.header}>
-        <TouchableOpacity onPress={() => step > 1 ? setStep(step - 1) : router.back()} style={s.headerBack}>
+        <TouchableOpacity onPress={handleBack} style={s.headerBack}>
           <Text style={s.headerBackText}>‹</Text>
         </TouchableOpacity>
         <Text style={s.headerTitle}>Book a visit</Text>
@@ -495,12 +706,26 @@ export default function BookingFlow() {
       {step === 2 && service && (
         <Step2 vendorId={vendorId!} service={service} onConfirm={handleSelectSlot} />
       )}
-      {step === 3 && service && slot && (
-        <Step3
-          vendorId={vendorId!}
+      {step === 3 && service && slot && step3View === 'review' && (
+        <Step3Review
           service={service}
           slot={slot}
           isAutoAccept={slotIsAutoAccept}
+          access={access}
+          setAccess={setAccess}
+          onConfirmLocation={handleConfirmLocation}
+          locating={locating}
+          locError={locError}
+        />
+      )}
+      {step === 3 && service && slot && step3View === 'location' && coords && (
+        <Step3Location
+          service={service}
+          slot={slot}
+          isAutoAccept={slotIsAutoAccept}
+          coords={coords}
+          locAddress={locAddress}
+          access={access}
           onPay={handlePay}
           paying={paying}
         />
@@ -591,7 +816,10 @@ const s = StyleSheet.create({
   },
   autoAcceptLegendText: { fontSize: 12, color: '#A07010', fontWeight: '600' },
 
-  // Review
+  // Review / summary
+  sectionHeading: { fontSize: 16, fontWeight: '700', color: Colors.text, marginBottom: -8 },
+  optionalTag: { fontSize: 13, fontWeight: '400', color: Colors.textMuted },
+  accessHint: { fontSize: 13, color: Colors.textSecondary, marginTop: -8 },
   summaryCard: {
     backgroundColor: Colors.surface, borderRadius: 16,
     padding: 16, borderWidth: 1, borderColor: Colors.border,
@@ -602,17 +830,68 @@ const s = StyleSheet.create({
   summaryValueBold: { fontSize: 16, fontWeight: '800', color: Colors.primary },
   divider: { height: 1, backgroundColor: Colors.border, marginVertical: 6 },
   fieldLabel: { fontSize: 14, fontWeight: '600', color: Colors.text, marginBottom: 6 },
-  required: { color: Colors.error },
-  optional: { color: Colors.textMuted, fontWeight: '400' },
   textInput: {
     backgroundColor: Colors.surface, borderRadius: 12,
     borderWidth: 1, borderColor: Colors.border,
-    paddingHorizontal: 14, paddingVertical: 10,
-    fontSize: 15, color: Colors.text, minHeight: 52,
+    paddingHorizontal: 14, paddingVertical: 12,
+    fontSize: 15, color: Colors.text,
   },
-  infoBox: {
-    backgroundColor: Colors.primaryLight, borderRadius: 12, padding: 14,
+  pickerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  pickerValue: { fontSize: 15, color: Colors.text },
+  pickerPlaceholder: { fontSize: 15, color: Colors.textMuted },
+  pickerChevron: { fontSize: 20, color: Colors.textMuted },
+  accessPrivacyNote: {
+    backgroundColor: Colors.primaryLight, borderRadius: 12, padding: 12,
   },
+  accessPrivacyText: { fontSize: 13, color: Colors.primary, lineHeight: 18 },
+
+  // Floor picker modal
+  modalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  pickerSheet: {
+    backgroundColor: Colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    paddingHorizontal: 20, paddingBottom: 40, maxHeight: '70%',
+  },
+  pickerHandle: {
+    width: 36, height: 4, borderRadius: 2, backgroundColor: Colors.border,
+    alignSelf: 'center', marginVertical: 12,
+  },
+  pickerTitle: {
+    fontSize: 16, fontWeight: '700', color: Colors.text,
+    marginBottom: 12, textAlign: 'center',
+  },
+  pickerOption: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
+  pickerOptionText: { fontSize: 16, color: Colors.text },
+  pickerOptionSelected: { color: Colors.primary, fontWeight: '700' },
+  pickerCheck: { fontSize: 16, color: Colors.primary, fontWeight: '700' },
+
+  // Map + location
+  mapThumb: { width: SCREEN_W, height: 200 },
+  addressRow: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 8,
+    backgroundColor: Colors.surface, borderRadius: 12,
+    padding: 12, borderWidth: 1, borderColor: Colors.border,
+  },
+  addressIcon: { fontSize: 16, lineHeight: 22 },
+  addressText: { flex: 1, fontSize: 14, color: Colors.text, lineHeight: 20, fontWeight: '500' },
+
+  // Access summary card (Step 3b)
+  accessSummaryCard: {
+    backgroundColor: Colors.surface, borderRadius: 14,
+    padding: 14, borderWidth: 1, borderColor: Colors.border, gap: 4,
+  },
+  accessSummaryTitle: { fontSize: 13, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 },
+  accessDetailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 },
+  accessDetailLabel: { fontSize: 13, color: Colors.textSecondary },
+  accessDetailValue: { fontSize: 13, fontWeight: '600', color: Colors.text },
+
+  // Info box
+  infoBox: { backgroundColor: Colors.primaryLight, borderRadius: 12, padding: 14 },
   infoBoxAutoAccept: { backgroundColor: '#FFF8E6' },
   infoText: { fontSize: 13, color: Colors.primary, lineHeight: 19, fontWeight: '500' },
   infoTextAutoAccept: { color: '#A07010' },
