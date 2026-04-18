@@ -52,6 +52,8 @@ export interface VendorBooking {
   access_floor: string | null;
   access_flat: string | null;
   access_code: string | null;
+  auto_accepted: boolean;
+  auto_accept_grace_expires_at: string | null;
 }
 
 // ── Constants ─────────────────────────────────────────────────
@@ -133,6 +135,34 @@ function BookingBottomSheet({
 }) {
   const [acting, setActing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [graceSecondsLeft, setGraceSecondsLeft] = useState<number>(0);
+
+  useEffect(() => {
+    if (!booking.auto_accepted || !booking.auto_accept_grace_expires_at) return;
+    const expiry = new Date(booking.auto_accept_grace_expires_at).getTime();
+    const tick = () => {
+      const left = Math.max(0, Math.floor((expiry - Date.now()) / 1000));
+      setGraceSecondsLeft(left);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [booking.auto_accepted, booking.auto_accept_grace_expires_at]);
+
+  const handleGraceCancel = async () => {
+    if (!session?.access_token) { setActionError('Session expired. Please sign in again.'); return; }
+    setActing(true);
+    setActionError(null);
+    try {
+      await callEdgeFn('vendor-cancel-grace', { booking_id: booking.id });
+      onAction();
+      onClose();
+    } catch (err: any) {
+      setActionError(err.message);
+    } finally {
+      setActing(false);
+    }
+  };
 
   const sl = STATUS_LABEL[booking.status];
   const hasMap = booking.user_location_lat != null && booking.user_location_lng != null;
@@ -257,6 +287,27 @@ function BookingBottomSheet({
                 </View>
               )}
             </View>
+
+            {/* Auto-accept grace window banner */}
+            {booking.auto_accepted && booking.status === 'accepted' && graceSecondsLeft > 0 && (
+              <View style={bs.graceBanner}>
+                <View style={{ flex: 1 }}>
+                  <Text style={bs.graceTitle}>Auto-accepted booking</Text>
+                  <Text style={bs.graceTimer}>
+                    {`${Math.floor(graceSecondsLeft / 60)}:${String(graceSecondsLeft % 60).padStart(2, '0')} to cancel penalty-free`}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[bs.graceBtn, acting && bs.actionBtnDisabled]}
+                  onPress={handleGraceCancel}
+                  disabled={acting}
+                >
+                  {acting
+                    ? <ActivityIndicator color={Colors.error} size="small" />
+                    : <Text style={bs.graceBtnText}>Cancel penalty-free</Text>}
+                </TouchableOpacity>
+              </View>
+            )}
 
             {actionError && (
               <View style={bs.errorBox}>
@@ -401,6 +452,8 @@ export default function ScheduleScreen() {
     access_floor: b.access_floor ?? null,
     access_flat: b.access_flat ?? null,
     access_code: b.access_code ?? null,
+    auto_accepted: b.auto_accepted ?? false,
+    auto_accept_grace_expires_at: b.auto_accept_grace_expires_at ?? null,
   });
 
   const loadData = useCallback(async () => {
@@ -423,6 +476,7 @@ export default function ScheduleScreen() {
           id, status, service_name, service_duration_blocks, service_price_kobo,
           scheduled_at, phone_revealed, user_location_lat, user_location_lng,
           user_location_address, access_building, access_floor, access_flat, access_code,
+          auto_accepted, auto_accept_grace_expires_at,
           profiles:user_id(full_name, phone_number)
         `)
         .eq('vendor_id', vendorId)
@@ -884,6 +938,19 @@ const bs = StyleSheet.create({
   lockedIcon: { fontSize: 16 },
   lockedText: { fontSize: 13, color: Colors.textMuted, fontStyle: 'italic', flex: 1 },
   mutedText: { fontSize: 13, color: Colors.textMuted },
+
+  graceBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: '#FFF8E6', borderRadius: 12, padding: 14,
+    borderWidth: 1, borderColor: '#D4A017', marginBottom: 12,
+  },
+  graceTitle: { fontSize: 12, fontWeight: '700', color: '#A07010', marginBottom: 2 },
+  graceTimer: { fontSize: 13, color: '#A07010' },
+  graceBtn: {
+    borderWidth: 1.5, borderColor: Colors.error, borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 8,
+  },
+  graceBtnText: { fontSize: 13, fontWeight: '700', color: Colors.error },
 
   errorBox: { backgroundColor: Colors.error + '15', borderRadius: 10, padding: 12, marginBottom: 12 },
   errorText: { fontSize: 13, color: Colors.error, fontWeight: '500' },
