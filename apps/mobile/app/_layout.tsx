@@ -86,6 +86,7 @@ function RootNavigator() {
       <Stack.Screen name="booking/[vendorId]" />
       <Stack.Screen name="consent/[photoId]" />
       <Stack.Screen name="booking/detail/[bookingId]" />
+      <Stack.Screen name="vendor-zone-setup" />
       <Stack.Screen name="+not-found" />
     </Stack>
   );

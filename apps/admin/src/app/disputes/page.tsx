@@ -15,7 +15,7 @@ async function getDisputes(status: string, page: number) {
   let query = db
     .from('disputes')
     .select(`
-      id, status, resolution, reason, admin_notes, raised_at,
+      id, status, resolution, reason, admin_notes, created_at,
       bookings(id, service_name, service_price_kobo, status,
         profiles(full_name),
         vendors(full_name)
@@ -95,9 +95,9 @@ export default async function DisputesPage({ searchParams }: Props) {
                   {d.status.replace(/_/g, ' ')}
                 </span>
                 <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--text2)' }}>
-                  {new Date(d.raised_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  {new Date(d.created_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </span>
-                {d.status !== 'resolved' && <SlaTimer raisedAt={d.raised_at} />}
+                {d.status !== 'resolved' && <SlaTimer raisedAt={d.created_at} />}
               </div>
               {d.resolution && (
                 <span className={`badge ${d.resolution === 'refund_user' ? 'badge-pending' : d.resolution === 'pay_vendor' ? 'badge-verified' : 'badge-active'}`}>

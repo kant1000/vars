@@ -110,6 +110,7 @@ Deno.serve(async (req: Request) => {
       email: userEmail,
       amount: vendorService.price_kobo,
       reference,
+      callback_url: 'vars://payment/callback',
       metadata: {
         // Stored in Paystack — used by webhook to create the booking
         vars_booking: {

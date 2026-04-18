@@ -67,7 +67,7 @@ export default function BookingsScreen() {
     if (!user) { setLoading(false); return; }
     const { data } = await supabase
       .from('bookings')
-      .select('id, status, service_name, service_price_kobo, scheduled_at, vendors(full_name)')
+      .select('id, status, service_name, service_price_kobo, scheduled_at, vendors:vendor_id(full_name)')
       .eq('user_id', user.id)
       .order('scheduled_at', { ascending: false })
       .limit(50);

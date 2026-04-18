@@ -5,7 +5,7 @@
 // List: upcoming bookings in chronological order
 // Part 1: types, helpers, calendar view with booked overlay
 // ============================================================
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator, Dimensions, FlatList, Modal, Platform, Pressable,
   RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View,
@@ -79,9 +79,6 @@ const STATUS_LABEL: Record<BookingStatus, { text: string; color: string }> = {
   disputed:         { text: 'Under review',     color: Colors.statusDisputed  },
 };
 
-const DAYS = Array.from({ length: 14 }, (_, i) => {
-  const d = new Date(); d.setDate(d.getDate() + i); d.setHours(0, 0, 0, 0); return d;
-});
 
 // ── Helpers ───────────────────────────────────────────────────
 function addMinutes(d: Date, m: number) { return new Date(d.getTime() + m * 60000); }
@@ -352,9 +349,15 @@ export default function ScheduleScreen() {
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
 
+  const DAYS = useMemo(() => Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(); d.setDate(d.getDate() + i); d.setHours(0, 0, 0, 0); return d;
+  }), []);
+
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
   const [vendorId, setVendorId] = useState<string | null>(null);
-  const [selectedDay, setSelectedDay] = useState(DAYS[0]);
+  const [selectedDay, setSelectedDay] = useState(() => {
+    const d = new Date(); d.setHours(0, 0, 0, 0); return d;
+  });
   const [blocks, setBlocks] = useState<CalendarBlock[]>([]);
   const [bookings, setBookings] = useState<VendorBooking[]>([]);
   const [loading, setLoading] = useState(true);
