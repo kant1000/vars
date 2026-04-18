@@ -332,7 +332,7 @@ After an auto-accepted booking is created, the vendor has a **5-minute grace win
 
 ### Transport Buffers
 
-When a booking is auto-accepted, the system automatically inserts `transport_buffer` blocks into `vendor_calendar` for the **two 30-minute slots immediately after** the booking ends. These blocks prevent back-to-back bookings with no travel time. They are:
+When a booking is confirmed (auto-accepted or manually accepted by the vendor), the system automatically inserts `transport_buffer` blocks into `vendor_calendar` for the **two 30-minute slots immediately after** the booking ends. These blocks prevent back-to-back bookings with no travel time. They are:
 - **After-only** — no buffer is inserted before the booking (vendor may have come from anywhere)
 - Two consecutive 30-minute blocks immediately after the booking's last slot
 - Clamped to working hours — only created if they end by 22:00

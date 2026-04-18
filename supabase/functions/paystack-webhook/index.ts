@@ -12,6 +12,7 @@
 
 import { createAdminClient } from '../_shared/supabase.ts';
 import { verifyWebhookSignature, PaystackClient } from '../_shared/paystack.ts';
+import { createTransportBuffers } from '../_shared/calendar.ts';
 import {
   sendNotification,
   msg_paymentAuthorized,
@@ -389,82 +390,6 @@ async function checkAutoAccept(
 
   console.log(`Auto-accept: all conditions met for vendor ${vendorId}, slot ${scheduledAt}`);
   return { shouldAutoAccept: true };
-}
-
-// ── Transport buffer creator ─────────────────────────────────
-// Creates two 30-min blocks immediately after the confirmed booking ends.
-// Rules:
-//   • Both blocks are AFTER the booking only (no before-buffer)
-//   • Skip a block if it would end after 22:00 (outside working hours)
-//   • Skip a block if a calendar entry already exists at that start time
-async function createTransportBuffers(
-  supabase: ReturnType<typeof createAdminClient>,
-  vendorId: string,
-  bookingId: string,
-  scheduledAt: string,
-  durationBlocks: number
-): Promise<void> {
-  const bookingStart = new Date(scheduledAt);
-  const bookingEnd = new Date(bookingStart.getTime() + durationBlocks * 30 * 60 * 1000);
-
-  // Working hours boundary relative to the booking's day (UTC)
-  const dayOf = (d: Date) => {
-    const base = new Date(d);
-    base.setUTCHours(0, 0, 0, 0);
-    return base;
-  };
-  const workEnd = (d: Date) => new Date(dayOf(d).getTime() + 22 * 60 * 60 * 1000);
-
-  // Two consecutive 30-min after-buffers
-  const buf1Start = bookingEnd;
-  const buf1End   = new Date(bookingEnd.getTime() + 30 * 60 * 1000);
-  const buf2Start = buf1End;
-  const buf2End   = new Date(buf1End.getTime() + 30 * 60 * 1000);
-
-  const candidates: { start: Date; end: Date }[] = [];
-
-  // Add each block only if it fits within working hours
-  if (buf1End <= workEnd(buf1End)) {
-    candidates.push({ start: buf1Start, end: buf1End });
-  }
-  if (buf2End <= workEnd(buf2End)) {
-    candidates.push({ start: buf2Start, end: buf2End });
-  }
-
-  if (candidates.length === 0) return;
-
-  // For each candidate buffer slot, check if a block already exists
-  const inserts: Record<string, unknown>[] = [];
-  for (const { start, end } of candidates) {
-    const { data: existing } = await supabase
-      .from('vendor_calendar')
-      .select('id')
-      .eq('vendor_id', vendorId)
-      .eq('start_time', start.toISOString())
-      .maybeSingle();
-
-    if (!existing) {
-      inserts.push({
-        vendor_id: vendorId,
-        start_time: start.toISOString(),
-        end_time: end.toISOString(),
-        block_state: 'transport_buffer',
-        transport_buffer_source_booking_id: bookingId,
-      });
-    }
-  }
-
-  if (inserts.length === 0) {
-    console.log(`Transport buffers for booking ${bookingId}: slots already occupied, skipped.`);
-    return;
-  }
-
-  const { error } = await supabase.from('vendor_calendar').insert(inserts);
-  if (error) {
-    console.error(`Failed to create transport buffers for booking ${bookingId}:`, error);
-  } else {
-    console.log(`Transport buffers created for booking ${bookingId} (${inserts.length} block(s))`);
-  }
 }
 
 async function handleTransferSuccess(

@@ -9,6 +9,7 @@
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient, createAuthClient } from '../_shared/supabase.ts';
+import { createTransportBuffers } from '../_shared/calendar.ts';
 import {
   sendNotification,
   msg_vendorAccepts,
@@ -39,7 +40,7 @@ Deno.serve(async (req: Request) => {
       .from('bookings')
       .select(`
         id, status, vendor_id, user_id,
-        service_name, service_price_kobo, scheduled_at,
+        service_name, service_price_kobo, service_duration_blocks, scheduled_at,
         paystack_reference, created_at
       `)
       .eq('id', booking_id)
@@ -74,6 +75,15 @@ Deno.serve(async (req: Request) => {
       .eq('id', booking_id);
 
     if (updateError) throw updateError;
+
+    // Create transport buffer blocks after the booking end time
+    await createTransportBuffers(
+      supabase,
+      user.id,
+      booking_id,
+      booking.scheduled_at,
+      booking.service_duration_blocks
+    );
 
     // Fetch user profile for notification
     const { data: profile } = await supabase
