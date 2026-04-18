@@ -6,8 +6,9 @@
 // ============================================================
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator, RefreshControl, ScrollView,
-  StyleSheet, Text, TouchableOpacity, View,
+  ActivityIndicator, KeyboardAvoidingView, Modal, Platform,
+  Pressable, RefreshControl, ScrollView,
+  StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -73,6 +74,14 @@ function fmtTime(iso: string) {
 }
 function fmtShortDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
+// ── Cancellation fee preview ──────────────────────────────────
+function getCancellationTier(scheduledAt: string): { feePercent: number; refundPercent: number; label: string } {
+  const hoursUntil = (new Date(scheduledAt).getTime() - Date.now()) / 3_600_000;
+  if (hoursUntil > 24) return { feePercent: 15,  refundPercent: 85,  label: '15% cancellation fee applies' };
+  if (hoursUntil > 2)  return { feePercent: 50,  refundPercent: 50,  label: '50% cancellation fee applies' };
+  return              { feePercent: 100, refundPercent: 0,   label: 'This booking is non-refundable' };
 }
 
 // ── Status config ─────────────────────────────────────────────
@@ -206,6 +215,53 @@ export default function BookingDetailScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showDisputeModal, setShowDisputeModal] = useState(false);
+  const [disputeReason, setDisputeReason] = useState('');
+
+  const callEdgeFn = async (fn: string, body: object) => {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/${fn}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error ?? `${fn} failed`);
+    return data;
+  };
+
+  const handleConfirmService = async () => {
+    if (!booking) return;
+    setActionLoading(true); setActionError(null);
+    try {
+      await callEdgeFn('paystack-settle', { booking_id: booking.id });
+      await load();
+    } catch (err: any) { setActionError(err.message); }
+    finally { setActionLoading(false); }
+  };
+
+  const handleCancel = async () => {
+    if (!booking) return;
+    setShowCancelModal(false);
+    setActionLoading(true); setActionError(null);
+    try {
+      await callEdgeFn('paystack-cancel', { booking_id: booking.id, reason: 'User cancelled' });
+      await load();
+    } catch (err: any) { setActionError(err.message); }
+    finally { setActionLoading(false); }
+  };
+
+  const handleDispute = async () => {
+    if (!booking || !disputeReason.trim()) return;
+    setShowDisputeModal(false);
+    setActionLoading(true); setActionError(null);
+    try {
+      await callEdgeFn('dispute-raise', { booking_id: booking.id, reason: disputeReason.trim() });
+      setDisputeReason('');
+      await load();
+    } catch (err: any) { setActionError(err.message); }
+    finally { setActionLoading(false); }
+  };
 
   const load = useCallback(async () => {
     const { data, error } = await supabase
@@ -340,8 +396,122 @@ export default function BookingDetailScreen() {
           </View>
         )}
 
-        {/* Action area — stub, implemented in Part 5 */}
+        {/* ── Action area ─────────────────────────────── */}
+
+        {/* Confirm service (service_rendered) */}
+        {booking.status === 'service_rendered' && (
+          <View style={s.actionSection}>
+            <TouchableOpacity
+              style={[s.primaryBtn, actionLoading && s.btnDisabled]}
+              onPress={handleConfirmService}
+              disabled={actionLoading}
+            >
+              {actionLoading
+                ? <ActivityIndicator color="#FFF" />
+                : <Text style={s.primaryBtnText}>Confirm service complete</Text>
+              }
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.secondaryBtn, actionLoading && s.btnDisabled]}
+              onPress={() => setShowDisputeModal(true)}
+              disabled={actionLoading}
+            >
+              <Text style={s.secondaryBtnText}>Something went wrong</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Cancel (pending / accepted only) */}
+        {(booking.status === 'pending' || booking.status === 'accepted') && (
+          <View style={s.actionSection}>
+            <TouchableOpacity
+              style={[s.cancelBtn, actionLoading && s.btnDisabled]}
+              onPress={() => setShowCancelModal(true)}
+              disabled={actionLoading}
+            >
+              {actionLoading
+                ? <ActivityIndicator color={Colors.error} />
+                : <Text style={s.cancelBtnText}>Cancel booking</Text>
+              }
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Expired — find another vendor */}
+        {booking.status === 'expired' && (
+          <View style={s.actionSection}>
+            <TouchableOpacity
+              style={s.primaryBtn}
+              onPress={() => router.replace('/(tabs)')}
+            >
+              <Text style={s.primaryBtnText}>Find another vendor</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
       </ScrollView>
+
+      {/* ── Cancel confirmation modal ───────────────── */}
+      {booking && (
+        <Modal visible={showCancelModal} transparent animationType="fade" onRequestClose={() => setShowCancelModal(false)}>
+          <Pressable style={s.modalOverlay} onPress={() => setShowCancelModal(false)}>
+            <Pressable style={s.modalSheet} onPress={() => {}}>
+              <Text style={s.modalTitle}>Cancel booking?</Text>
+              {(() => {
+                const tier = getCancellationTier(booking.scheduled_at);
+                const refundKobo = Math.round(booking.service_price_kobo * tier.refundPercent / 100);
+                return (
+                  <>
+                    <Text style={s.modalBody}>{tier.label}.</Text>
+                    {tier.refundPercent > 0
+                      ? <Text style={s.modalBody}>You will receive a refund of <Text style={s.modalBold}>{fmtPrice(refundKobo)}</Text>.</Text>
+                      : <Text style={s.modalBody}>No refund will be issued for this cancellation.</Text>
+                    }
+                  </>
+                );
+              })()}
+              <View style={s.modalActions}>
+                <TouchableOpacity style={s.modalKeepBtn} onPress={() => setShowCancelModal(false)}>
+                  <Text style={s.modalKeepText}>Keep booking</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={s.modalCancelBtn} onPress={handleCancel}>
+                  <Text style={s.modalCancelText}>Yes, cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </Pressable>
+          </Pressable>
+        </Modal>
+      )}
+
+      {/* ── Dispute modal ───────────────────────────── */}
+      <Modal visible={showDisputeModal} transparent animationType="slide" onRequestClose={() => setShowDisputeModal(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+          <Pressable style={s.modalOverlay} onPress={() => setShowDisputeModal(false)}>
+            <Pressable style={[s.modalSheet, { paddingBottom: 32 }]} onPress={() => {}}>
+              <Text style={s.modalTitle}>Raise a dispute</Text>
+              <Text style={s.modalBody}>Tell us what went wrong. Our team will review within 24 hours.</Text>
+              <TextInput
+                style={s.disputeInput}
+                placeholder="Describe the issue…"
+                placeholderTextColor={Colors.textMuted}
+                value={disputeReason}
+                onChangeText={setDisputeReason}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+              <TouchableOpacity
+                style={[s.primaryBtn, !disputeReason.trim() && s.btnDisabled]}
+                onPress={handleDispute}
+                disabled={!disputeReason.trim()}
+              >
+                <Text style={s.primaryBtnText}>Submit dispute</Text>
+              </TouchableOpacity>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
+
     </View>
   );
 }
@@ -406,4 +576,51 @@ const s = StyleSheet.create({
   errorTitle: { fontSize: 18, fontWeight: '700', color: Colors.text, marginBottom: 12 },
   backLink: { paddingHorizontal: 24, paddingVertical: 12, backgroundColor: Colors.primary, borderRadius: 12 },
   backLinkText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
+
+  // Action buttons
+  actionSection: { paddingHorizontal: 16, paddingTop: 16, gap: 10 },
+  primaryBtn: {
+    height: 56, backgroundColor: Colors.primary,
+    borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+  },
+  primaryBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
+  secondaryBtn: {
+    height: 50, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: Colors.border,
+  },
+  secondaryBtnText: { fontSize: 15, fontWeight: '600', color: Colors.textSecondary },
+  cancelBtn: {
+    height: 50, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: Colors.error + '60',
+  },
+  cancelBtnText: { fontSize: 15, fontWeight: '600', color: Colors.error },
+  btnDisabled: { opacity: 0.5 },
+
+  // Modals
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  modalSheet: {
+    backgroundColor: Colors.background,
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    padding: 24, paddingBottom: 40, gap: 12,
+  },
+  modalTitle: { fontSize: 20, fontWeight: '800', color: Colors.text },
+  modalBody: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20 },
+  modalBold: { fontWeight: '700', color: Colors.text },
+  modalActions: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  modalKeepBtn: {
+    flex: 1, height: 52, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
+  },
+  modalKeepText: { fontSize: 15, fontWeight: '700', color: Colors.text },
+  modalCancelBtn: {
+    flex: 1, height: 52, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: Colors.error,
+  },
+  modalCancelText: { fontSize: 15, fontWeight: '700', color: '#FFF' },
+  disputeInput: {
+    backgroundColor: Colors.surface, borderRadius: 12,
+    borderWidth: 1, borderColor: Colors.border,
+    paddingHorizontal: 14, paddingVertical: 12,
+    fontSize: 15, color: Colors.text, minHeight: 100,
+  },
 });
