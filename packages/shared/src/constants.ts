@@ -9,7 +9,7 @@ export const VARS_COMMISSION_PERCENT = 20;
 export const BLOCK_DURATION_MINUTES = 30;
 
 /** Vendor response window for accepting bookings (minutes) */
-export const BOOKING_RESPONSE_WINDOW_MINUTES = 120; // 2 hours
+export const BOOKING_RESPONSE_WINDOW_MINUTES = 60; // 1 hour
 
 /** Auto-release fires this many hours after "Service Rendered" */
 export const AUTO_RELEASE_HOURS = 2;

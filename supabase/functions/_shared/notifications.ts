@@ -176,7 +176,7 @@ export function msg_cancelNonRefundable() {
 export function msg_vendor_newBooking(clientFirstName: string, service: string, date: string, time: string) {
   return {
     title: 'New booking request',
-    body: `New booking from ${clientFirstName}. ${service} on ${date} at ${time}. You have 2 hours to accept.`,
+    body: `New booking from ${clientFirstName}. ${service} on ${date} at ${time}. You have 1 hour to accept.`,
   };
 }
 
