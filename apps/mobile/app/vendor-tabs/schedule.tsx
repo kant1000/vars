@@ -7,14 +7,18 @@
 // ============================================================
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator, Dimensions, ScrollView, StyleSheet,
-  Text, TouchableOpacity, View,
+  ActivityIndicator, Dimensions, Modal, Platform, Pressable,
+  ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
+
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
 // ── Types ─────────────────────────────────────────────────────
 type BlockState = 'unavailable' | 'available' | 'auto_accept' | 'transport_buffer';
@@ -120,6 +124,220 @@ function nextState(current: BlockState | 'default'): BlockState | 'delete' {
   return 'delete';
 }
 
+// ── BookingBottomSheet ────────────────────────────────────────
+function BookingBottomSheet({
+  booking, session, onClose, onAction,
+}: {
+  booking: VendorBooking;
+  session: any;
+  onClose: () => void;
+  onAction: () => void;
+}) {
+  const [mapReady, setMapReady] = useState(false);
+  const [acting, setActing] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const sl = STATUS_LABEL[booking.status];
+  const hasMap = booking.user_location_lat != null && booking.user_location_lng != null;
+  const accessRevealed = booking.phone_revealed;
+
+  const callEdgeFn = async (fn: string, body: object) => {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/${fn}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session?.access_token}`,
+      },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error ?? `${fn} failed`);
+  };
+
+  const updateStatus = async (newStatus: BookingStatus) => {
+    const { error } = await supabase
+      .from('bookings')
+      .update({ status: newStatus })
+      .eq('id', booking.id);
+    if (error) throw new Error(error.message);
+  };
+
+  const handleAction = async (action: 'accept' | 'decline' | 'on_way' | 'arrived' | 'service_rendered') => {
+    setActing(true);
+    setActionError(null);
+    try {
+      if (action === 'accept')   await callEdgeFn('paystack-capture', { booking_id: booking.id });
+      if (action === 'decline')  await callEdgeFn('vendor-cancel-booking', { booking_id: booking.id });
+      if (action === 'on_way')         await updateStatus('on_way');
+      if (action === 'arrived')        await updateStatus('arrived');
+      if (action === 'service_rendered') await updateStatus('service_rendered');
+      onAction();
+      onClose();
+    } catch (err: any) {
+      setActionError(err.message);
+    } finally {
+      setActing(false);
+    }
+  };
+
+  return (
+    <Modal visible animationType="slide" transparent onRequestClose={onClose}>
+      <Pressable style={bs.overlay} onPress={onClose}>
+        <Pressable style={bs.sheet} onPress={() => {}}>
+          <View style={bs.handle} />
+
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+            {/* Header row */}
+            <View style={bs.headerRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={bs.clientName}>{booking.client_name}</Text>
+                <View style={[bs.statusPill, { backgroundColor: sl.color + '18' }]}>
+                  <Text style={[bs.statusText, { color: sl.color }]}>{sl.text}</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={onClose} style={bs.closeBtn}>
+                <Text style={bs.closeBtnText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Map thumbnail */}
+            {hasMap && (
+              <MapView
+                style={bs.map}
+                provider={PROVIDER_DEFAULT}
+                region={{
+                  latitude: booking.user_location_lat!,
+                  longitude: booking.user_location_lng!,
+                  latitudeDelta: 0.003,
+                  longitudeDelta: 0.003,
+                }}
+                scrollEnabled={false}
+                zoomEnabled={false}
+                rotateEnabled={false}
+                pitchEnabled={false}
+                onMapReady={() => setMapReady(true)}
+                liteMode={Platform.OS === 'android'}
+              >
+                <Marker coordinate={{ latitude: booking.user_location_lat!, longitude: booking.user_location_lng! }} />
+              </MapView>
+            )}
+
+            {booking.user_location_address ? (
+              <View style={bs.addressRow}>
+                <Text style={bs.addressIcon}>📍</Text>
+                <Text style={bs.addressText}>{booking.user_location_address}</Text>
+              </View>
+            ) : null}
+
+            {/* Booking details */}
+            <View style={bs.card}>
+              <DetailRow label="Service"  value={booking.service_name} />
+              <DetailRow label="Date"     value={fmtDate(booking.scheduled_at)} />
+              <DetailRow label="Time"     value={fmtTime(booking.scheduled_at)} />
+              <DetailRow label="Duration" value={fmtDuration(booking.service_duration_blocks)} />
+              <View style={bs.divider} />
+              <DetailRow label="Earning"  value={fmtPrice(booking.service_price_kobo)} bold />
+            </View>
+
+            {/* Access details */}
+            <View style={bs.card}>
+              <Text style={bs.sectionTitle}>Access details</Text>
+              {accessRevealed ? (
+                <>
+                  {booking.client_phone && <DetailRow label="Phone" value={booking.client_phone} />}
+                  {booking.access_building && <DetailRow label="Building" value={booking.access_building} />}
+                  {booking.access_floor   && <DetailRow label="Floor"    value={booking.access_floor} />}
+                  {booking.access_flat    && <DetailRow label="Flat"     value={booking.access_flat} />}
+                  {booking.access_code    && <DetailRow label="Gate code" value={booking.access_code} />}
+                  {!booking.client_phone && !booking.access_building && !booking.access_floor && !booking.access_flat && !booking.access_code && (
+                    <Text style={bs.mutedText}>No access details provided.</Text>
+                  )}
+                </>
+              ) : (
+                <View style={bs.lockedRow}>
+                  <Text style={bs.lockedIcon}>🔒</Text>
+                  <Text style={bs.lockedText}>Available 15 minutes before your arrival</Text>
+                </View>
+              )}
+            </View>
+
+            {actionError && (
+              <View style={bs.errorBox}>
+                <Text style={bs.errorText}>{actionError}</Text>
+              </View>
+            )}
+
+            {/* Action buttons */}
+            {booking.status === 'pending' && (
+              <View style={bs.actionRow}>
+                <TouchableOpacity
+                  style={[bs.actionBtn, bs.actionBtnDecline, acting && bs.actionBtnDisabled]}
+                  onPress={() => handleAction('decline')}
+                  disabled={acting}
+                >
+                  {acting ? <ActivityIndicator color={Colors.error} /> : <Text style={bs.actionBtnDeclineText}>Decline</Text>}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[bs.actionBtn, bs.actionBtnAccept, acting && bs.actionBtnDisabled]}
+                  onPress={() => handleAction('accept')}
+                  disabled={acting}
+                >
+                  {acting ? <ActivityIndicator color="#FFF" /> : <Text style={bs.actionBtnAcceptText}>Accept</Text>}
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {booking.status === 'accepted' && (
+              <TouchableOpacity
+                style={[bs.primaryBtn, acting && bs.actionBtnDisabled]}
+                onPress={() => handleAction('on_way')}
+                disabled={acting}
+              >
+                {acting ? <ActivityIndicator color="#FFF" /> : <Text style={bs.primaryBtnText}>Mark on my way</Text>}
+              </TouchableOpacity>
+            )}
+
+            {booking.status === 'on_way' && (
+              <TouchableOpacity
+                style={[bs.primaryBtn, acting && bs.actionBtnDisabled]}
+                onPress={() => handleAction('arrived')}
+                disabled={acting}
+              >
+                {acting ? <ActivityIndicator color="#FFF" /> : <Text style={bs.primaryBtnText}>Mark arrived</Text>}
+              </TouchableOpacity>
+            )}
+
+            {booking.status === 'arrived' && (
+              <TouchableOpacity
+                style={[bs.primaryBtn, acting && bs.actionBtnDisabled]}
+                onPress={() => handleAction('service_rendered')}
+                disabled={acting}
+              >
+                {acting ? <ActivityIndicator color="#FFF" /> : <Text style={bs.primaryBtnText}>Mark service complete</Text>}
+              </TouchableOpacity>
+            )}
+
+            {booking.status === 'service_rendered' && (
+              <View style={bs.waitingBox}>
+                <Text style={bs.waitingText}>Awaiting client confirmation to release payment</Text>
+              </View>
+            )}
+          </ScrollView>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+function DetailRow({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+  return (
+    <View style={bs.detailRow}>
+      <Text style={bs.detailLabel}>{label}</Text>
+      <Text style={[bs.detailValue, bold && bs.detailValueBold]}>{value}</Text>
+    </View>
+  );
+}
+
 // ── Sub-components ────────────────────────────────────────────
 function LegendDot({ color, label }: { color: string; label: string }) {
   return (
@@ -133,6 +351,7 @@ function LegendDot({ color, label }: { color: string; label: string }) {
 // ── Main screen ───────────────────────────────────────────────
 export default function ScheduleScreen() {
   const insets = useSafeAreaInsets();
+  const { session } = useAuth();
 
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
   const [vendorId, setVendorId] = useState<string | null>(null);
@@ -408,7 +627,15 @@ export default function ScheduleScreen() {
         </View>
       )}
 
-      {/* Bottom sheet — coming in Part 2 */}
+      {/* Booking bottom sheet */}
+      {selectedBooking && (
+        <BookingBottomSheet
+          booking={selectedBooking}
+          session={session}
+          onClose={() => setSelectedBooking(null)}
+          onAction={() => { setSelectedBooking(null); loadData(); }}
+        />
+      )}
     </View>
   );
 }
@@ -487,4 +714,88 @@ const s = StyleSheet.create({
 
   summary: { paddingHorizontal: 16, paddingTop: 12 },
   summaryText: { fontSize: 13, color: Colors.textSecondary, fontWeight: '500' },
+});
+
+// ── Bottom sheet styles ───────────────────────────────────────
+const bs = StyleSheet.create({
+  overlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    backgroundColor: Colors.background,
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    maxHeight: '90%', paddingHorizontal: 20,
+  },
+  handle: {
+    width: 36, height: 4, borderRadius: 2, backgroundColor: Colors.border,
+    alignSelf: 'center', marginVertical: 12,
+  },
+  headerRow: {
+    flexDirection: 'row', alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  clientName: { fontSize: 20, fontWeight: '800', color: Colors.text, marginBottom: 6 },
+  statusPill: { alignSelf: 'flex-start', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+  statusText: { fontSize: 12, fontWeight: '700' },
+  closeBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
+  closeBtnText: { fontSize: 18, color: Colors.textMuted },
+
+  map: { width: '100%', height: 180, borderRadius: 14, marginBottom: 10, overflow: 'hidden' },
+  addressRow: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 6,
+    backgroundColor: Colors.surface, borderRadius: 10,
+    padding: 10, borderWidth: 1, borderColor: Colors.border,
+    marginBottom: 12,
+  },
+  addressIcon: { fontSize: 14, lineHeight: 20 },
+  addressText: { flex: 1, fontSize: 13, color: Colors.text, lineHeight: 18 },
+
+  card: {
+    backgroundColor: Colors.surface, borderRadius: 14,
+    padding: 14, borderWidth: 1, borderColor: Colors.border,
+    marginBottom: 12, gap: 2,
+  },
+  sectionTitle: {
+    fontSize: 12, fontWeight: '700', color: Colors.textMuted,
+    textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8,
+  },
+  detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
+  detailLabel: { fontSize: 14, color: Colors.textSecondary },
+  detailValue: { fontSize: 14, fontWeight: '600', color: Colors.text },
+  detailValueBold: { fontSize: 16, fontWeight: '800', color: Colors.primary },
+  divider: { height: 1, backgroundColor: Colors.border, marginVertical: 4 },
+
+  lockedRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
+  lockedIcon: { fontSize: 16 },
+  lockedText: { fontSize: 13, color: Colors.textMuted, fontStyle: 'italic', flex: 1 },
+  mutedText: { fontSize: 13, color: Colors.textMuted },
+
+  errorBox: { backgroundColor: Colors.error + '15', borderRadius: 10, padding: 12, marginBottom: 12 },
+  errorText: { fontSize: 13, color: Colors.error, fontWeight: '500' },
+
+  actionRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  actionBtn: {
+    flex: 1, height: 52, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  actionBtnDisabled: { opacity: 0.5 },
+  actionBtnAccept: { backgroundColor: Colors.primary },
+  actionBtnAcceptText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+  actionBtnDecline: { borderWidth: 1.5, borderColor: Colors.error },
+  actionBtnDeclineText: { color: Colors.error, fontSize: 16, fontWeight: '700' },
+
+  primaryBtn: {
+    height: 54, backgroundColor: Colors.primary,
+    borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+    marginTop: 4,
+  },
+  primaryBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+
+  waitingBox: {
+    backgroundColor: Colors.surface, borderRadius: 12,
+    padding: 14, borderWidth: 1, borderColor: Colors.border,
+    alignItems: 'center', marginTop: 4,
+  },
+  waitingText: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
 });
