@@ -101,7 +101,7 @@ vars/
 - **Live tracking** — map polls vendor GPS every 30 seconds while en route; phone number and full access details revealed 15 minutes before appointment
 - **Confirm & settle** — customer taps "Confirm service done" to release escrow; auto-releases 1 hour after the scheduled booking end time if the customer takes no action
 - **Reviews** — 1–5 star rating + comment after completion
-- **Disputes** — raise an issue from the booking detail screen; escrow freezes immediately pending admin review
+- **Disputes** — raise an issue from the live or booking detail screen; choose a structured category (Vendor didn't show up / Arrived very late / Service not completed / Poor quality / Wrong service / Other) before adding optional free-text detail; escrow freezes immediately pending admin review
 
 ### For Vendors
 
@@ -117,7 +117,7 @@ vars/
 ### Admin
 
 - **Vendors** — defaults to rejected KYC queue (Youverify handles clean passes automatically). Override-approve or reset flagged cases. Vendors with 3+ cancellations in 30 days are auto-flagged for review.
-- **Disputes** — SLA timer per dispute (warns at 18h, critical at 24h). Resolve by releasing escrow to vendor or refunding customer.
+- **Disputes** — SLA timer per dispute (warns at 18h, critical at 24h). Each card shows a colour-coded category label at the top for instant triage. Resolve by releasing escrow to vendor or refunding customer; both parties receive dispute-specific resolution notifications.
 - Pioneer lead management
 
 ---
@@ -140,6 +140,7 @@ Thirteen migration files build up the schema incrementally:
 | `010_system_alerts` | `system_alerts` table + `check_cron_health()` for cron monitoring |
 | `011_booking_access_details` | `access_building`, `access_floor`, `access_flat`, `access_code`, `user_location_lat`, `user_location_lng` on bookings |
 | `012_disputes_rename_statement` | Rename `disputes.statement` → `disputes.reason` to align with edge functions and admin panel |
+| `013_dispute_category` | `dispute_category` enum + `category` column on disputes for structured triage |
 
 ### Key Tables
 
@@ -152,7 +153,7 @@ Thirteen migration files build up the schema incrementally:
 | `bookings` | All bookings; holds Paystack reference, escrow state, access details (`access_building/floor/flat/code`), and customer location (`user_location_lat/lng`) |
 | `vendor_calendar` | Per-slot availability with state: `unavailable` / `auto_accept` / `transport_buffer` |
 | `reviews` | Star ratings + comments |
-| `disputes` | Customer-raised issues |
+| `disputes` | Customer-raised issues; includes `category` enum for instant triage |
 | `payouts` | Vendor payout records |
 | `pioneer_leads` | Pre-launch interest signups |
 
@@ -191,15 +192,17 @@ All functions live in `supabase/functions/` and run on Deno.
 | Function | Method | Purpose |
 |---|---|---|
 | `paystack-initialize` | POST | Validates booking request, initialises Paystack transaction, returns `access_code` |
-| `paystack-webhook` | POST | Handles Paystack events: creates booking on `charge.success` (card already charged), auto-accepts if conditions met, creates transport buffers for auto-accepted bookings only |
-| `paystack-capture` | POST | Vendor accepts a pending booking — updates booking status to `accepted` (no Paystack action needed; payment already charged) |
+| `paystack-webhook` | POST | Handles Paystack events: creates booking on `charge.success` (card already charged), auto-accepts if conditions met, creates transport buffers for auto-accepted bookings |
+| `paystack-capture` | POST | Vendor accepts a pending booking — updates booking status to `accepted`, creates transport buffer blocks (same as auto-accept path) |
 | `paystack-release` | POST | Vendor declines or booking expires — issues a full Paystack refund to the customer |
 | `paystack-settle` | POST | Customer confirms service done, or 1-hr auto-release fires after scheduled end — initiates Paystack transfer to vendor (80/20 split; Pioneer vendors: 100%) |
 | `paystack-cancel` | POST | Customer cancels — tiered refund (0–15 min: 15% fee; 15 min–1 hr: 50% fee; within 1 hr of service: non-refundable); releases transport buffers |
 | `paystack-verify-bank` | POST | Verifies vendor bank account via Paystack during onboarding |
 | `vendor-cancel-booking` | POST | Vendor cancels an accepted/in-progress booking — full refund to customer, transport buffers released, rolling 30-day cancellation count incremented, flags vendor at 3+ |
 | `vendor-cancel-grace` | POST | Vendor cancels an auto-accepted booking within the 5-minute grace period (penalty-free, full refund) |
-| `dispute-raise` | POST | User raises a dispute — booking status set to `disputed` (freezes auto-release), inserts into `disputes`, notifies both parties |
+| `dispute-raise` | POST | User raises a dispute — requires a structured `category`; free-text `reason` optional unless category is `other`; booking status set to `disputed` (freezes auto-release), inserts into `disputes`, notifies both parties |
+| `phone-reveal` | POST (cron, every 5 min) | Finds accepted bookings within 15 min of `scheduled_at`, sets `phone_revealed = true`, notifies vendor ("Head out now") and customer ("They're on their way") |
+| `send-reminders` | POST (cron, every 5 min) | Sends 24-hour and 1-hour before-appointment reminders to both customer and vendor; idempotent via notifications table |
 | `vendor-kyc-init` | POST | Initiates Youverify KYC session |
 | `vendor-kyc-webhook` | POST | Receives Youverify result — clean pass: `kyc_status = verified` + `is_active = true` (instant activation); failure: `kyc_status = rejected`, appears in admin queue |
 | `vendor-register-lead` | POST | Captures a pioneer programme lead |
@@ -393,13 +396,14 @@ Transport buffer blocks are deleted on cancellation, freeing the vendor's calend
 
 ### Disputes (`dispute-raise`)
 
-1. User taps "Something's wrong" from the live booking screen
-2. Booking status set to `disputed` — **escrow is frozen** (the auto-release cron only queries `service_rendered`, so disputed bookings are skipped)
-3. A `disputes` record is inserted and both parties are notified
-4. Admin resolves via the Disputes panel (SLA: 24 hours, warns at 18h):
-   - **Release to Vendor** — calls `paystack-settle` to complete the standard 80/20 payout
-   - **Refund to User** — calls `paystack-release` to issue a full refund
-5. Both parties notified of the outcome
+1. User taps "Something's wrong" from the live booking screen or booking detail screen
+2. User selects a **category** (required): Vendor didn't show up / Arrived very late / Service not completed / Poor quality / Wrong service / Other. Free-text reason is optional unless category is "Other"
+3. Booking status set to `disputed` — **escrow is frozen** (the auto-release cron only queries `service_rendered`, so disputed bookings are skipped)
+4. A `disputes` record is inserted (with category) and both parties are notified
+5. Admin resolves via the Disputes panel (SLA: 24 hours, warns at 18h). Each card shows a colour-coded category label for instant triage:
+   - **Release to Vendor** — calls `paystack-settle`; vendor receives dispute-resolution notification
+   - **Refund to User** — calls `paystack-release`; user receives dispute-resolution notification with refund amount
+6. Both parties notified of the outcome with dispute-specific copy (not the generic payment messages)
 
 ### Vendor No-Response Expiry (`paystack-release` cron)
 
@@ -487,7 +491,8 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 PAYSTACK_SECRET_KEY=
 YOUVERIFY_API_KEY=
-VARS_CRON_SECRET=          # shared secret for scheduled cron calls
+CRON_SECRET=               # shared secret validated by all cron-triggered edge functions
+YOUVERIFY_WEBHOOK_SECRET=  # HMAC secret for Youverify webhook signature verification
 ```
 
 ### Admin (`apps/admin/.env.local`)
