@@ -18,6 +18,7 @@ import * as Location from 'expo-location';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
+import { fmtPrice, fmtDuration, fmtTime, fmtDate } from '@/lib/format';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
@@ -97,25 +98,6 @@ function generateSlots(day: Date): Date[] {
 
 function getFirstName(fullName: string): string {
   return fullName.split(' ')[0] ?? fullName;
-}
-
-function fmtTime(iso: string) {
-  return new Date(iso).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit', hour12: true });
-}
-
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' });
-}
-
-function fmtPrice(kobo: number) {
-  return `₦${Math.round(kobo / 100).toLocaleString('en-NG')}`;
-}
-
-function fmtDuration(blocks: number) {
-  const m = blocks * 30;
-  if (m < 60) return `${m}min`;
-  const h = Math.floor(m / 60), rem = m % 60;
-  return rem ? `${h}hr ${rem}min` : `${h}hr`;
 }
 
 function nextState(current: BlockState | 'default'): BlockState | 'delete' {

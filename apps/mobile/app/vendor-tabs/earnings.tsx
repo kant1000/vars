@@ -10,6 +10,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
+import { fmtPrice, fmtLongDate } from '@/lib/format';
 
 interface Payout {
   id: string;
@@ -18,13 +19,6 @@ interface Payout {
   created_at: string;
   booking_id: string;
   service_name: string | null;
-}
-
-function fmtPrice(kobo: number) {
-  return `₦${Math.round(kobo / 100).toLocaleString('en-NG')}`;
-}
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 const STATUS_COLOR: Record<string, string> = {
@@ -99,7 +93,7 @@ export default function EarningsScreen() {
             <View key={p.id} style={s.row}>
               <View style={{ flex: 1 }}>
                 <Text style={s.rowService}>{p.service_name ?? 'Service'}</Text>
-                <Text style={s.rowDate}>{fmtDate(p.created_at)}</Text>
+                <Text style={s.rowDate}>{fmtLongDate(p.created_at)}</Text>
               </View>
               <View style={{ alignItems: 'flex-end', gap: 4 }}>
                 <Text style={s.rowAmount}>{fmtPrice(p.amount_kobo)}</Text>

@@ -21,6 +21,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 import { uploadSinglePortfolioPhoto } from '@/lib/storage';
+import { fmtPrice, fmtDuration, fmtDateTime } from '@/lib/format';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
@@ -57,21 +58,6 @@ interface ZoneStatus {
 }
 
 // ── Helpers ─────────────────────────────────────────────────
-function fmtPrice(kobo: number) {
-  return `₦${Math.round(kobo / 100).toLocaleString('en-NG')}`;
-}
-function fmtDuration(blocks: number) {
-  const m = blocks * 30;
-  if (m < 60) return `${m}min`;
-  const h = Math.floor(m / 60), rem = m % 60;
-  return rem ? `${h}hr ${rem}min` : `${h}hr`;
-}
-function fmtDateTime(iso: string) {
-  return new Date(iso).toLocaleString('en-NG', {
-    weekday: 'short', day: 'numeric', month: 'short',
-    hour: '2-digit', minute: '2-digit', hour12: true,
-  });
-}
 function vendorEarning(priceKobo: number) {
   return Math.round(priceKobo * 0.8); // 80% to vendor
 }

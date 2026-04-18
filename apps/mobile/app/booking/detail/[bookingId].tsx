@@ -16,6 +16,7 @@ import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
+import { fmtPrice, fmtDuration, fmtTime, fmtDate, fmtDateTime } from '@/lib/format';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
@@ -55,27 +56,6 @@ interface BookingDetail {
 }
 
 // ── Helpers ───────────────────────────────────────────────────
-function fmtPrice(kobo: number) {
-  return `₦${Math.round(kobo / 100).toLocaleString('en-NG')}`;
-}
-function fmtDuration(blocks: number) {
-  const m = blocks * 30;
-  if (m < 60) return `${m}min`;
-  const h = Math.floor(m / 60), rem = m % 60;
-  return rem ? `${h}hr ${rem}min` : `${h}hr`;
-}
-function fmtDateTime(iso: string) {
-  return new Date(iso).toLocaleString('en-NG', {
-    weekday: 'short', day: 'numeric', month: 'short',
-    hour: '2-digit', minute: '2-digit', hour12: true,
-  });
-}
-function fmtTime(iso: string) {
-  return new Date(iso).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit', hour12: true });
-}
-function fmtShortDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' });
-}
 
 // ── Silent input filter ───────────────────────────────────────
 function sanitize(text: string, maxLen: number) {
@@ -454,7 +434,7 @@ export default function BookingDetailScreen() {
             <SummaryRow label="Vendor"    value={booking.vendor_name} />
             <SummaryRow label="Service"   value={booking.service_name} />
             <SummaryRow label="Duration"  value={fmtDuration(booking.service_duration_blocks)} />
-            <SummaryRow label="Date"      value={fmtShortDate(booking.scheduled_at)} />
+            <SummaryRow label="Date"      value={fmtDate(booking.scheduled_at)} />
             <SummaryRow label="Time"      value={fmtTime(booking.scheduled_at)} />
             <View style={s.cardDivider} />
             <SummaryRow label="Total"     value={fmtPrice(booking.service_price_kobo)} bold />

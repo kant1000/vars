@@ -19,6 +19,7 @@ import * as Location from 'expo-location';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
+import { fmtPrice, fmtDuration, fmtTime, fmtDate } from '@/lib/format';
 
 const SCREEN_W = Dimensions.get('window').width;
 const BLOCK_MINS = 30;
@@ -53,21 +54,6 @@ const EMPTY_ACCESS: AccessDetails = { building: '', floor: '', flat: '', gateCod
 // ── Helpers ──────────────────────────────────────────────────
 function sanitize(text: string, maxLen: number) {
   return text.replace(/@/g, '').replace(/\d{7,}/g, '').slice(0, maxLen);
-}
-function fmtPrice(kobo: number) {
-  return `₦${Math.round(kobo / 100).toLocaleString('en-NG')}`;
-}
-function fmtDuration(blocks: number) {
-  const m = blocks * BLOCK_MINS;
-  if (m < 60) return `${m}min`;
-  const h = Math.floor(m / 60), rem = m % 60;
-  return rem ? `${h}hr ${rem}min` : `${h}hr`;
-}
-function fmtTime(date: Date) {
-  return date.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit', hour12: true });
-}
-function fmtDate(date: Date) {
-  return date.toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' });
 }
 function addMinutes(d: Date, m: number) {
   return new Date(d.getTime() + m * 60000);

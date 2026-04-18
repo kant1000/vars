@@ -16,6 +16,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { signOut } from '@/lib/auth';
 import { pickAndUploadImage } from '@/lib/storage';
 import { Colors } from '@/constants/colors';
+import { fmtPrice, fmtLongDate } from '@/lib/format';
 
 type BookingStatus = 'pending'|'accepted'|'on_way'|'arrived'|'service_rendered'|'completed'|'cancelled'|'expired'|'disputed';
 
@@ -27,13 +28,6 @@ interface PastBooking {
   scheduled_at: string;
   vendor_name: string;
   has_review: boolean;
-}
-
-function fmtPrice(kobo: number) {
-  return `₦${Math.round(kobo / 100).toLocaleString('en-NG')}`;
-}
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 const STATUS_COLOR: Partial<Record<BookingStatus, string>> = {
@@ -238,7 +232,7 @@ export default function ProfileScreen() {
               >
                 <View style={{ flex: 1 }}>
                   <Text style={s.bookingService}>{b.service_name}</Text>
-                  <Text style={s.bookingMeta}>{b.vendor_name} · {fmtDate(b.scheduled_at)}</Text>
+                  <Text style={s.bookingMeta}>{b.vendor_name} · {fmtLongDate(b.scheduled_at)}</Text>
                 </View>
                 <View style={{ alignItems: 'flex-end', gap: 4 }}>
                   <Text style={s.bookingPrice}>{fmtPrice(b.service_price_kobo)}</Text>
@@ -264,7 +258,7 @@ export default function ProfileScreen() {
               <View key={b.id} style={s.bookingRow}>
                 <View style={{ flex: 1 }}>
                   <Text style={s.bookingService}>{b.service_name}</Text>
-                  <Text style={s.bookingMeta}>{b.vendor_name} · {fmtDate(b.scheduled_at)}</Text>
+                  <Text style={s.bookingMeta}>{b.vendor_name} · {fmtLongDate(b.scheduled_at)}</Text>
                 </View>
                 <View style={{ alignItems: 'flex-end', gap: 6 }}>
                   <Text style={s.bookingPrice}>{fmtPrice(b.service_price_kobo)}</Text>

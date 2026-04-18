@@ -3,6 +3,7 @@
 // Filter by status. View booking details. Issue manual refund.
 // ============================================================
 import { adminClient } from '@/lib/supabase';
+import { fmtPrice } from '@/lib/format';
 
 const PAGE_SIZE = 30;
 
@@ -30,10 +31,6 @@ async function getBookings(status: string, page: number, q: string) {
 
   const { data, count } = await query;
   return { bookings: data ?? [], total: count ?? 0 };
-}
-
-function fmtPrice(kobo: number) {
-  return `₦${Math.round(kobo / 100).toLocaleString('en-NG')}`;
 }
 
 export default async function BookingsPage({ searchParams }: Props) {

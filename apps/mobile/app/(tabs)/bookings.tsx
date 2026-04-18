@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
+import { fmtPrice, fmtDateTime } from '@/lib/format';
 
 type BookingStatus =
   | 'pending' | 'accepted' | 'on_way' | 'arrived'
@@ -40,16 +41,6 @@ const STATUS_LABEL: Record<BookingStatus, { text: string; color: string }> = {
 };
 
 const ACTIVE: BookingStatus[] = ['pending', 'accepted', 'on_way', 'arrived', 'service_rendered'];
-
-function fmtPrice(kobo: number) {
-  return `₦${Math.round(kobo / 100).toLocaleString('en-NG')}`;
-}
-function fmtDateTime(iso: string) {
-  return new Date(iso).toLocaleString('en-NG', {
-    weekday: 'short', day: 'numeric', month: 'short',
-    hour: '2-digit', minute: '2-digit', hour12: true,
-  });
-}
 
 type ListItem =
   | { type: 'header'; label: string }

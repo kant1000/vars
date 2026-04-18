@@ -3,6 +3,7 @@
 // ============================================================
 import { adminClient } from '@/lib/supabase';
 import DisputeActions from './DisputeActions';
+import { fmtPrice } from '@/lib/format';
 
 const PAGE_SIZE = 20;
 
@@ -27,10 +28,6 @@ async function getDisputes(status: string, page: number) {
   if (status && status !== 'all') query = query.eq('status', status);
   const { data, count } = await query;
   return { disputes: data ?? [], total: count ?? 0 };
-}
-
-function fmtPrice(kobo: number) {
-  return `₦${Math.round(kobo / 100).toLocaleString('en-NG')}`;
 }
 
 /** How long ago the dispute was raised, and SLA urgency. */
