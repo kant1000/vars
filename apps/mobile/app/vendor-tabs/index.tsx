@@ -14,7 +14,7 @@ import {
   ActivityIndicator, Alert, AppState, Modal, RefreshControl,
   ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { supabase } from '@/lib/supabase';
@@ -22,6 +22,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 import { uploadSinglePortfolioPhoto } from '@/lib/storage';
 import { fmtPrice, fmtDuration, fmtDateTime } from '@/lib/format';
+import { fetchWithRetry } from '@/lib/fetchWithRetry';
+import { useNetworkState } from '@/lib/useNetworkState';
+import { enqueueAction, flushQueue } from '@/lib/actionQueue';
+import { cacheSet, cacheGet } from '@/lib/cache';
+import { OfflineBanner } from '@/components/OfflineBanner';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
@@ -88,6 +93,7 @@ function GraceCard({
   onUpdated: () => void;
 }) {
   const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
   const { display, expired } = useCountdown(booking.auto_accept_grace_expires_at);
 
   // Auto-refresh when grace period expires so the card is removed
@@ -106,9 +112,10 @@ function GraceCard({
           style: 'destructive',
           onPress: async () => {
             setCancelling(true);
+            setCancelError(null);
             try {
               const { data: { session: s } } = await supabase.auth.getSession();
-              const res = await fetch(`${SUPABASE_URL}/functions/v1/vendor-cancel-grace`, {
+              const res = await fetchWithRetry(`${SUPABASE_URL}/functions/v1/vendor-cancel-grace`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -118,12 +125,12 @@ function GraceCard({
               });
               if (!res.ok) {
                 const d = await res.json();
-                Alert.alert('Error', d.error ?? 'Could not cancel.');
+                setCancelError(d.error ?? "Couldn't cancel — tap to retry");
               } else {
                 onUpdated();
               }
             } catch {
-              Alert.alert('Error', 'Could not reach server.');
+              setCancelError("Couldn't reach server — tap to retry");
             } finally {
               setCancelling(false);
             }
@@ -162,6 +169,7 @@ function GraceCard({
           }
         </TouchableOpacity>
       )}
+      {cancelError && <Text style={c.inlineError}>{cancelError}</Text>}
     </View>
   );
 }
@@ -174,28 +182,30 @@ function PendingCard({
   onUpdated: () => void;
 }) {
   const [acting, setActing] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   // 1-hour window from booking creation (server enforces this via paystack-capture)
   const expiry = new Date(new Date(booking.created_at).getTime() + 1 * 60 * 60 * 1000).toISOString();
   const { display: countdown } = useCountdown(expiry);
 
   const handle = async (action: 'accept' | 'decline') => {
     setActing(true);
+    setActionError(null);
     const endpoint = action === 'accept' ? 'paystack-capture' : 'paystack-release';
     try {
       const { data: { session: s } } = await supabase.auth.getSession();
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/${endpoint}`, {
+      const res = await fetchWithRetry(`${SUPABASE_URL}/functions/v1/${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s?.access_token ?? ''}` },
         body: JSON.stringify({ booking_id: booking.id }),
       });
       if (!res.ok) {
         const d = await res.json();
-        Alert.alert('Error', d.error ?? 'Something went wrong.');
+        setActionError(d.error ?? "Couldn't save — tap to retry");
       } else {
         onUpdated();
       }
     } catch {
-      Alert.alert('Error', 'Could not reach server.');
+      setActionError("Couldn't reach server — tap to retry");
     } finally {
       setActing(false);
     }
@@ -233,6 +243,7 @@ function PendingCard({
             : <Text style={c.acceptBtnText}>Accept</Text>}
         </TouchableOpacity>
       </View>
+      {actionError && <Text style={c.inlineError}>{actionError}</Text>}
     </View>
   );
 }
@@ -251,7 +262,9 @@ function ActiveCard({
   onUpdated: () => void;
 }) {
   const [acting, setActing] = useState(false);
+  const [advanceError, setAdvanceError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
   const action = FLOW_ACTIONS[booking.status];
 
   // Show "time's up" banner when arrived and past scheduled end
@@ -263,13 +276,14 @@ function ActiveCard({
   const advance = async () => {
     if (!action) return;
     setActing(true);
+    setAdvanceError(null);
     const update: Record<string, any> = { status: action.next };
-    if (action.next === 'on_way')    update.on_way_at = new Date().toISOString();
-    if (action.next === 'arrived')   update.arrived_at = new Date().toISOString();
+    if (action.next === 'on_way')           update.on_way_at = new Date().toISOString();
+    if (action.next === 'arrived')          update.arrived_at = new Date().toISOString();
     if (action.next === 'service_rendered') update.service_rendered_at = new Date().toISOString();
 
     const { error } = await supabase.from('bookings').update(update).eq('id', booking.id);
-    if (error) Alert.alert('Error', error.message);
+    if (error) setAdvanceError("Couldn't save — tap to retry");
     else onUpdated();
     setActing(false);
   };
@@ -285,9 +299,10 @@ function ActiveCard({
           style: 'destructive',
           onPress: async () => {
             setCancelling(true);
+            setCancelError(null);
             try {
               const { data: { session: s } } = await supabase.auth.getSession();
-              const res = await fetch(`${SUPABASE_URL}/functions/v1/vendor-cancel-booking`, {
+              const res = await fetchWithRetry(`${SUPABASE_URL}/functions/v1/vendor-cancel-booking`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -297,12 +312,12 @@ function ActiveCard({
               });
               if (!res.ok) {
                 const d = await res.json();
-                Alert.alert('Error', d.error ?? 'Could not cancel booking.');
+                setCancelError(d.error ?? "Couldn't cancel — tap to retry");
               } else {
                 onUpdated();
               }
             } catch {
-              Alert.alert('Error', 'Could not reach server.');
+              setCancelError("Couldn't reach server — tap to retry");
             } finally {
               setCancelling(false);
             }
@@ -354,6 +369,7 @@ function ActiveCard({
             : <Text style={c.flowBtnText}>{action.label}</Text>}
         </TouchableOpacity>
       )}
+      {advanceError && <Text style={c.inlineError}>{advanceError}</Text>}
       {booking.status === 'service_rendered' && (
         <View style={c.waitingBox}>
           <Text style={c.waitingText}>Waiting for customer to confirm. Payment auto-releases 1 hour after the scheduled end time.</Text>
@@ -371,6 +387,7 @@ function ActiveCard({
           }
         </TouchableOpacity>
       )}
+      {cancelError && <Text style={c.inlineError}>{cancelError}</Text>}
     </View>
   );
 }
@@ -480,7 +497,7 @@ function ZoneConfirmModal({
     setConfirming(true);
     try {
       const { data: { session: s } } = await supabase.auth.getSession();
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/vendor-confirm-zone`, {
+      const res = await fetchWithRetry(`${SUPABASE_URL}/functions/v1/vendor-confirm-zone`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -536,17 +553,28 @@ function ZoneConfirmModal({
 export default function VendorJobsScreen() {
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
+  const { isOnline: isConnected } = useNetworkState();
 
   const [bookings, setBookings] = useState<VendorBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isOnline, setIsOnline] = useState(false);
   const [togglingOnline, setTogglingOnline] = useState(false);
+  const [toggleError, setToggleError] = useState<string | null>(null);
   const [zoneModal, setZoneModal] = useState<ZoneStatus | null>(null);
   const [vendorPhotoCount, setVendorPhotoCount] = useState(0);
   const [bookingPhotoIds, setBookingPhotoIds] = useState<Set<string>>(new Set());
 
+  // Flush queued offline actions when network is restored
+  useEffect(() => {
+    if (isConnected) flushQueue().catch(() => {});
+  }, [isConnected]);
+
   const load = useCallback(async () => {
+    // Serve stale cache immediately so screen isn't blank on mount
+    const cached = await cacheGet<VendorBooking[]>('vendor_jobs');
+    if (cached && loading) setBookings(cached);
+
     const { data } = await supabase
       .from('bookings')
       .select(`
@@ -589,7 +617,9 @@ export default function VendorJobsScreen() {
       grace_cancelled: b.grace_cancelled ?? false,
     });
 
-    setBookings([...(data ?? []).map(toBooking), ...(history ?? []).map(toBooking)]);
+    const allBookings = [...(data ?? []).map(toBooking), ...(history ?? []).map(toBooking)];
+    setBookings(allBookings);
+    cacheSet('vendor_jobs', allBookings, 5 * 60_000).catch(() => {});
 
     // Portfolio state for "Add photo from this job" feature
     const { data: { user } } = await supabase.auth.getUser();
@@ -649,6 +679,9 @@ export default function VendorJobsScreen() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Refresh on screen focus (push notification deep-link fallback)
+  useFocusEffect(useCallback(() => { load(); }, [load]));
+
   // Realtime
   useEffect(() => {
     const ch = supabase.channel('vendor_bookings_rt')
@@ -659,11 +692,16 @@ export default function VendorJobsScreen() {
 
   const toggleOnline = async () => {
     setTogglingOnline(true);
+    setToggleError(null);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       const next = !isOnline;
-      await supabase.from('vendors').update({ is_online: next }).eq('id', user.id);
-      setIsOnline(next);
+      setIsOnline(next); // optimistic
+      const { error } = await supabase.from('vendors').update({ is_online: next }).eq('id', user.id);
+      if (error) {
+        setIsOnline(!next); // revert
+        setToggleError("Couldn't save — tap to retry");
+      }
     }
     setTogglingOnline(false);
   };
@@ -734,6 +772,8 @@ export default function VendorJobsScreen() {
 
   return (
     <View style={[c.container, { paddingTop: insets.top }]}>
+      <OfflineBanner visible={!isConnected} />
+
       {/* Zone confirmation modal */}
       {zoneModal && (
         <ZoneConfirmModal
@@ -747,18 +787,21 @@ export default function VendorJobsScreen() {
       {/* Header */}
       <View style={c.header}>
         <Text style={c.headerTitle}>My Jobs</Text>
-        <TouchableOpacity
-          style={[c.onlineToggle, isOnline ? c.onlineOn : c.onlineOff, togglingOnline && c.btnDisabled]}
-          onPress={toggleOnline}
-          disabled={togglingOnline}
-        >
-          {togglingOnline
-            ? <ActivityIndicator color={isOnline ? '#FFF' : Colors.primary} size="small" />
-            : <Text style={[c.onlineToggleText, isOnline && c.onlineToggleTextOn]}>
-                {isOnline ? '● Online' : '○ Go online'}
-              </Text>
-          }
-        </TouchableOpacity>
+        <View style={{ alignItems: 'flex-end' }}>
+          <TouchableOpacity
+            style={[c.onlineToggle, isOnline ? c.onlineOn : c.onlineOff, togglingOnline && c.btnDisabled]}
+            onPress={toggleOnline}
+            disabled={togglingOnline}
+          >
+            {togglingOnline
+              ? <ActivityIndicator color={isOnline ? '#FFF' : Colors.primary} size="small" />
+              : <Text style={[c.onlineToggleText, isOnline && c.onlineToggleTextOn]}>
+                  {isOnline ? '● Online' : '○ Go online'}
+                </Text>
+            }
+          </TouchableOpacity>
+          {toggleError && <Text style={c.inlineError}>{toggleError}</Text>}
+        </View>
       </View>
 
       <ScrollView
@@ -798,7 +841,7 @@ export default function VendorJobsScreen() {
         {todayActive.length > 0 && (
           <Section title="Active today">
             {todayActive.map((b) => (
-              <ActiveCard key={b.id} booking={b} sessionToken={session?.access_token ?? ''} onUpdated={load} />
+              <ActiveCard key={b.id} booking={b} onUpdated={load} />
             ))}
           </Section>
         )}
@@ -918,6 +961,7 @@ const c = StyleSheet.create({
   waitingText: { fontSize: 12, color: Colors.primary, lineHeight: 17 },
 
   btnDisabled: { opacity: 0.5 },
+  inlineError: { fontSize: 12, color: Colors.error, marginTop: 6, textAlign: 'center' },
 
   // Service-rendered reminder banner
   renderReminderBanner: {

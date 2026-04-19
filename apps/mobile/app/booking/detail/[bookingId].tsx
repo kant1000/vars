@@ -10,13 +10,17 @@ import {
   Pressable, RefreshControl, ScrollView,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 import { fmtPrice, fmtDuration, fmtTime, fmtDate, fmtDateTime } from '@/lib/format';
+import { fetchWithRetry } from '@/lib/fetchWithRetry';
+import { useNetworkState } from '@/lib/useNetworkState';
+import { cacheSet, cacheGet } from '@/lib/cache';
+import { OfflineBanner } from '@/components/OfflineBanner';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
@@ -305,6 +309,7 @@ export default function BookingDetailScreen() {
   const { bookingId } = useLocalSearchParams<{ bookingId: string }>();
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
+  const { isOnline: isConnected } = useNetworkState();
 
   const [booking, setBooking] = useState<BookingDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -319,7 +324,7 @@ export default function BookingDetailScreen() {
   const callEdgeFn = async (fn: string, body: object) => {
     const { data: { session: s } } = await supabase.auth.getSession();
     if (!s?.access_token) throw new Error('Session expired. Please sign in again.');
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/${fn}`, {
+    const res = await fetchWithRetry(`${SUPABASE_URL}/functions/v1/${fn}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s.access_token}` },
       body: JSON.stringify(body),
@@ -369,6 +374,12 @@ export default function BookingDetailScreen() {
   };
 
   const load = useCallback(async () => {
+    // Serve stale cache immediately so screen isn't blank on mount
+    if (loading) {
+      const cached = await cacheGet<BookingDetail>(`booking_detail_${bookingId}`);
+      if (cached) setBooking(cached);
+    }
+
     const { data, error } = await supabase
       .from('bookings')
       .select(`
@@ -384,18 +395,23 @@ export default function BookingDetailScreen() {
       .single();
 
     if (!error && data) {
-      setBooking({
+      const fresh: BookingDetail = {
         ...data,
         vendor_id: (data as any).vendor_id,
         vendor_name: (data as any).vendors?.full_name ?? 'Vendor',
         vendor_phone: (data as any).vendors?.phone_number ?? null,
-      } as BookingDetail);
+      } as BookingDetail;
+      setBooking(fresh);
+      cacheSet(`booking_detail_${bookingId}`, fresh, 5 * 60_000).catch(() => {});
     }
     setLoading(false);
     setRefreshing(false);
   }, [bookingId]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Refresh on focus — handles push notification deep-links
+  useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const handleBack = () => {
     if (router.canGoBack()) router.back();
@@ -424,6 +440,8 @@ export default function BookingDetailScreen() {
 
   return (
     <View style={[s.container, { paddingTop: insets.top }]}>
+      <OfflineBanner visible={!isConnected} />
+
       {/* Header */}
       <View style={s.header}>
         <TouchableOpacity onPress={handleBack} style={s.headerBack}>

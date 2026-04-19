@@ -15,12 +15,16 @@ import {
   TouchableOpacity, View,
 } from 'react-native';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 import { fmtPrice, fmtTime, fmtDateTime } from '@/lib/format';
+import { fetchWithRetry } from '@/lib/fetchWithRetry';
+import { useNetworkState } from '@/lib/useNetworkState';
+import { cacheSet, cacheGet } from '@/lib/cache';
+import { OfflineBanner } from '@/components/OfflineBanner';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
@@ -270,15 +274,26 @@ export default function LiveScreen() {
   const { bookingId } = useLocalSearchParams<{ bookingId: string }>();
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
+  const { isOnline: isConnected } = useNetworkState();
 
   const [booking, setBooking] = useState<BookingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [confirming, setConfirming] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [disputeVisible, setDisputeVisible] = useState(false);
+  // Live tracking: count consecutive Realtime location-update failures
+  const staleLocCount = useRef(0);
+  const [staleLocWarning, setStaleLocWarning] = useState(false);
   const mapRef = useRef<MapView>(null);
 
   const load = useCallback(async () => {
+    // Show stale cache immediately on mount so screen isn't blank
+    if (loading) {
+      const cached = await cacheGet<BookingData>(`live_booking_${bookingId}`);
+      if (cached) setBooking(cached);
+    }
+
     const { data, error } = await supabase
       .from('bookings')
       .select(`
@@ -309,7 +324,7 @@ export default function LiveScreen() {
       } catch { /* ignore */ }
     }
 
-    setBooking({
+    const fresh: BookingData = {
       id: v.id,
       status: v.status,
       service_name: v.service_name,
@@ -330,11 +345,16 @@ export default function LiveScreen() {
       vendor_phone: vendor?.phone_number ?? null,
       vendor_live_lat: vendorLat,
       vendor_live_lng: vendorLng,
-    });
+    };
+    setBooking(fresh);
+    cacheSet(`live_booking_${bookingId}`, fresh, 30_000).catch(() => {});
     setLoading(false);
   }, [bookingId]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Refresh on focus — handles push notification deep-links that skip Realtime
+  useFocusEffect(useCallback(() => { load(); }, [load]));
 
   // Realtime: booking status changes
   useEffect(() => {
@@ -358,7 +378,13 @@ export default function LiveScreen() {
         filter: `id=eq.${booking.vendor_id}`,
       }, (payload) => {
         const loc = (payload.new as any)?.live_location;
-        if (!loc) return;
+        if (!loc) {
+          staleLocCount.current += 1;
+          if (staleLocCount.current >= 3) setStaleLocWarning(true);
+          return;
+        }
+        staleLocCount.current = 0;
+        setStaleLocWarning(false);
         try {
           const geo = typeof loc === 'string' ? JSON.parse(loc) : loc;
           const lat = geo?.coordinates?.[1];
@@ -390,7 +416,7 @@ export default function LiveScreen() {
             setCancelling(true);
             try {
               const { data: { session: s } } = await supabase.auth.getSession();
-              const res = await fetch(`${SUPABASE_URL}/functions/v1/paystack-cancel`, {
+              const res = await fetchWithRetry(`${SUPABASE_URL}/functions/v1/paystack-cancel`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -404,7 +430,7 @@ export default function LiveScreen() {
               }
               // Status update comes via Realtime
             } catch {
-              Alert.alert('Error', 'Could not reach server. Please check your connection.');
+              Alert.alert('Error', "Couldn't reach server — please check your connection.");
             } finally {
               setCancelling(false);
             }
@@ -417,9 +443,10 @@ export default function LiveScreen() {
   const confirmServiceRendered = async () => {
     if (!booking) return;
     setConfirming(true);
+    setConfirmError(null);
     try {
       const { data: { session: s } } = await supabase.auth.getSession();
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/paystack-settle`, {
+      const res = await fetchWithRetry(`${SUPABASE_URL}/functions/v1/paystack-settle`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -429,11 +456,11 @@ export default function LiveScreen() {
       });
       if (!res.ok) {
         const d = await res.json();
-        Alert.alert('Error', d.error ?? 'Something went wrong. Please try again.');
+        setConfirmError(d.error ?? "Couldn't save — tap to retry");
       }
       // Status update will come via Realtime
     } catch {
-      Alert.alert('Error', 'Could not reach server. Please check your connection.');
+      setConfirmError("Couldn't reach server — tap to retry");
     } finally {
       setConfirming(false);
     }
@@ -469,6 +496,8 @@ export default function LiveScreen() {
 
   return (
     <View style={[s.container, { paddingTop: insets.top }]}>
+      <OfflineBanner visible={!isConnected} />
+
       {/* Header */}
       <View style={s.header}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
@@ -494,6 +523,13 @@ export default function LiveScreen() {
           )}
           <Text style={s.cardPrice}>{fmtPrice(booking.service_price_kobo)}</Text>
         </View>
+
+        {/* Stale location warning */}
+        {staleLocWarning && (
+          <View style={s.staleLocBox}>
+            <Text style={s.staleLocText}>📡 Live location unavailable — showing last known position</Text>
+          </View>
+        )}
 
         {/* Live map */}
         {showMap && (
@@ -554,17 +590,20 @@ export default function LiveScreen() {
       {!isTerminal && (
         <View style={[s.actions, { paddingBottom: insets.bottom + 12 }]}>
           {canConfirm && (
-            <TouchableOpacity
-              style={[s.confirmBtn, confirming && s.btnDisabled]}
-              onPress={confirmServiceRendered}
-              disabled={confirming}
-              activeOpacity={0.88}
-            >
-              {confirming
-                ? <ActivityIndicator color="#FFF" />
-                : <Text style={s.confirmBtnText}>Confirm service done</Text>
-              }
-            </TouchableOpacity>
+            <>
+              <TouchableOpacity
+                style={[s.confirmBtn, confirming && s.btnDisabled]}
+                onPress={confirmServiceRendered}
+                disabled={confirming}
+                activeOpacity={0.88}
+              >
+                {confirming
+                  ? <ActivityIndicator color="#FFF" />
+                  : <Text style={s.confirmBtnText}>Confirm service done</Text>
+                }
+              </TouchableOpacity>
+              {confirmError && <Text style={s.inlineError}>{confirmError}</Text>}
+            </>
           )}
           {canCancel && (
             <TouchableOpacity
@@ -662,6 +701,15 @@ const s = StyleSheet.create({
     backgroundColor: Colors.primaryLight, borderRadius: 12, padding: 12,
   },
   autoReleaseText: { fontSize: 13, color: Colors.primary, lineHeight: 18 },
+
+  staleLocBox: {
+    marginHorizontal: 16, marginBottom: 8,
+    backgroundColor: Colors.warning + '18', borderRadius: 10, padding: 10,
+    borderWidth: 1, borderColor: Colors.warning + '50',
+  },
+  staleLocText: { fontSize: 12, color: Colors.warning, fontWeight: '500' },
+
+  inlineError: { fontSize: 12, color: Colors.error, textAlign: 'center', marginTop: 4 },
 
   sectionLabel: { fontSize: 13, fontWeight: '700', color: Colors.textMuted, marginHorizontal: 20, marginTop: 8, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
 
