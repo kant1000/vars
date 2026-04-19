@@ -287,13 +287,12 @@ export default function LiveScreen() {
   const [staleLocWarning, setStaleLocWarning] = useState(false);
   const mapRef = useRef<MapView>(null);
 
-  const load = useCallback(async () => {
-    // Show stale cache immediately on mount so screen isn't blank
-    if (loading) {
-      const cached = await cacheGet<BookingData>(`live_booking_${bookingId}`);
-      if (cached) setBooking(cached);
-    }
+  // Seed UI from cache on first mount only — avoids blank screen while fetch runs
+  useEffect(() => {
+    cacheGet<BookingData>(`live_booking_${bookingId}`).then((c) => { if (c) setBooking(c); });
+  }, [bookingId]);
 
+  const load = useCallback(async () => {
     const { data, error } = await supabase
       .from('bookings')
       .select(`
@@ -351,9 +350,7 @@ export default function LiveScreen() {
     setLoading(false);
   }, [bookingId]);
 
-  useEffect(() => { load(); }, [load]);
-
-  // Refresh on focus — handles push notification deep-links that skip Realtime
+  // useFocusEffect handles both initial mount and return-from-navigation refreshes
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   // Realtime: booking status changes
@@ -379,8 +376,14 @@ export default function LiveScreen() {
       }, (payload) => {
         const loc = (payload.new as any)?.live_location;
         if (!loc) {
-          staleLocCount.current += 1;
-          if (staleLocCount.current >= 3) setStaleLocWarning(true);
+          // Only count as a miss if we're in an active tracking status and had a prior location
+          if (
+            booking?.vendor_live_lat != null &&
+            ['on_way', 'arrived'].includes(booking?.status ?? '')
+          ) {
+            staleLocCount.current += 1;
+            if (staleLocCount.current >= 3) setStaleLocWarning(true);
+          }
           return;
         }
         staleLocCount.current = 0;
@@ -466,7 +469,7 @@ export default function LiveScreen() {
     }
   };
 
-  if (loading) {
+  if (loading && !booking) {
     return <View style={s.centered}><ActivityIndicator color={Colors.primary} size="large" /></View>;
   }
   if (!booking) {

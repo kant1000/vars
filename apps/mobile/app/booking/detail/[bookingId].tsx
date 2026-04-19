@@ -373,13 +373,12 @@ export default function BookingDetailScreen() {
     finally { setActionLoading(false); }
   };
 
-  const load = useCallback(async () => {
-    // Serve stale cache immediately so screen isn't blank on mount
-    if (loading) {
-      const cached = await cacheGet<BookingDetail>(`booking_detail_${bookingId}`);
-      if (cached) setBooking(cached);
-    }
+  // Seed UI from cache on first mount only — avoids blank screen while fetch runs
+  useEffect(() => {
+    cacheGet<BookingDetail>(`booking_detail_${bookingId}`).then((c) => { if (c) setBooking(c); });
+  }, [bookingId]);
 
+  const load = useCallback(async () => {
     const { data, error } = await supabase
       .from('bookings')
       .select(`
@@ -408,9 +407,7 @@ export default function BookingDetailScreen() {
     setRefreshing(false);
   }, [bookingId]);
 
-  useEffect(() => { load(); }, [load]);
-
-  // Refresh on focus — handles push notification deep-links
+  // useFocusEffect handles both initial mount and return-from-navigation refreshes
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const handleBack = () => {
@@ -418,7 +415,7 @@ export default function BookingDetailScreen() {
     else router.replace('/(tabs)/bookings');
   };
 
-  if (loading) {
+  if (loading && !booking) {
     return <View style={s.centered}><ActivityIndicator color={Colors.primary} size="large" /></View>;
   }
 

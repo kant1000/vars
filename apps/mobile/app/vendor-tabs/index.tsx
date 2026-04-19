@@ -11,7 +11,7 @@
 // ============================================================
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Alert, AppState, Modal, RefreshControl,
+  ActivityIndicator, Alert, Modal, RefreshControl,
   ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
@@ -24,7 +24,7 @@ import { uploadSinglePortfolioPhoto } from '@/lib/storage';
 import { fmtPrice, fmtDuration, fmtDateTime } from '@/lib/format';
 import { fetchWithRetry } from '@/lib/fetchWithRetry';
 import { useNetworkState } from '@/lib/useNetworkState';
-import { enqueueAction, flushQueue } from '@/lib/actionQueue';
+import { flushQueue } from '@/lib/actionQueue';
 import { cacheSet, cacheGet } from '@/lib/cache';
 import { OfflineBanner } from '@/components/OfflineBanner';
 
@@ -565,16 +565,21 @@ export default function VendorJobsScreen() {
   const [vendorPhotoCount, setVendorPhotoCount] = useState(0);
   const [bookingPhotoIds, setBookingPhotoIds] = useState<Set<string>>(new Set());
 
-  // Flush queued offline actions when network is restored
+  // Flush queued offline actions only when transitioning offline → online (not on mount)
+  const prevConnectedRef = useRef<boolean | null>(null);
   useEffect(() => {
-    if (isConnected) flushQueue().catch(() => {});
+    if (prevConnectedRef.current === false && isConnected) {
+      flushQueue().catch(() => {});
+    }
+    prevConnectedRef.current = isConnected;
   }, [isConnected]);
 
-  const load = useCallback(async () => {
-    // Serve stale cache immediately so screen isn't blank on mount
-    const cached = await cacheGet<VendorBooking[]>('vendor_jobs');
-    if (cached && loading) setBookings(cached);
+  // Seed UI from cache on first mount only — avoids blank screen while fetch runs
+  useEffect(() => {
+    cacheGet<VendorBooking[]>('vendor_jobs').then((c) => { if (c) setBookings(c); });
+  }, []);
 
+  const load = useCallback(async () => {
     const { data } = await supabase
       .from('bookings')
       .select(`
@@ -677,9 +682,7 @@ export default function VendorJobsScreen() {
     })();
   }, []);
 
-  useEffect(() => { load(); }, [load]);
-
-  // Refresh on screen focus (push notification deep-link fallback)
+  // useFocusEffect handles both initial mount and return-from-navigation refreshes
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   // Realtime
@@ -768,7 +771,8 @@ export default function VendorJobsScreen() {
   });
   const history  = bookings.filter((b) => ['completed','cancelled','expired'].includes(b.status));
 
-  if (loading) return <View style={c.centered}><ActivityIndicator color={Colors.primary} size="large" /></View>;
+  // Show spinner only when there's genuinely nothing to display yet (cache not yet seeded)
+  if (loading && bookings.length === 0) return <View style={c.centered}><ActivityIndicator color={Colors.primary} size="large" /></View>;
 
   return (
     <View style={[c.container, { paddingTop: insets.top }]}>
