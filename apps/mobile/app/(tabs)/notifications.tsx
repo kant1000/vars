@@ -210,10 +210,15 @@ export default function NotificationsScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={Colors.primary} />
+          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor="transparent" colors={['transparent']} />
         }
         contentContainerStyle={{ paddingBottom: 40 }}
       >
+        {refreshing && (
+          <View style={{ alignItems: 'center', paddingTop: 8, paddingBottom: 4 }}>
+            <ScissorsLoader size="small" color="dark" />
+          </View>
+        )}
         {notifs.length === 0 ? (
           <View style={s.empty}>
             <Text style={s.emptyEmoji}>🔔</Text>

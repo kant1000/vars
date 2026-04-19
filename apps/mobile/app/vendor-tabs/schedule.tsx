@@ -728,8 +728,16 @@ export default function ScheduleScreen() {
             <RefreshControl
               refreshing={listRefreshing}
               onRefresh={() => { setListRefreshing(true); loadListBookings(); }}
-              tintColor={Colors.primary}
+              tintColor="transparent"
+              colors={['transparent']}
             />
+          }
+          ListHeaderComponent={
+            listRefreshing ? (
+              <View style={{ alignItems: 'center', paddingVertical: 12 }}>
+                <ScissorsLoader size="small" color="dark" />
+              </View>
+            ) : null
           }
           ListEmptyComponent={
             <View style={s.listEmpty}>

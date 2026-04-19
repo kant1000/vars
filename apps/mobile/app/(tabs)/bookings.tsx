@@ -117,8 +117,16 @@ export default function BookingsScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={() => { setRefreshing(true); load(); }}
-            tintColor={Colors.primary}
+            tintColor="transparent"
+            colors={['transparent']}
           />
+        }
+        ListHeaderComponent={
+          refreshing ? (
+            <View style={{ alignItems: 'center', paddingVertical: 12 }}>
+              <ScissorsLoader size="small" color="dark" />
+            </View>
+          ) : null
         }
         renderItem={({ item }) => {
           if (item.type === 'header') {

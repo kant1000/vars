@@ -68,8 +68,13 @@ export default function EarningsScreen() {
 
       <ScrollView
         contentContainerStyle={{ paddingBottom: 40 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={Colors.primary} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor="transparent" colors={['transparent']} />}
       >
+        {refreshing && (
+          <View style={{ alignItems: 'center', paddingTop: 8, paddingBottom: 4 }}>
+            <ScissorsLoader size="small" color="dark" />
+          </View>
+        )}
         {/* Summary cards */}
         <View style={s.summaryRow}>
           <View style={[s.summaryCard, { flex: 1 }]}>

@@ -212,13 +212,18 @@ export default function HomeScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor={Colors.primary}
+              tintColor="transparent"
+              colors={['transparent']}
             />
           }
           onEndReached={onEndReached}
           onEndReachedThreshold={0.4}
           ListHeaderComponent={
-            loading && vendors.length === 0 ? (
+            refreshing ? (
+              <View style={{ alignItems: 'center', paddingVertical: 12 }}>
+                <ScissorsLoader size="small" color="dark" />
+              </View>
+            ) : loading && vendors.length === 0 ? (
               <View style={styles.centered}>
                 <ScissorsLoader size="small" color="dark" />
               </View>

@@ -156,9 +156,14 @@ export default function ProfileScreen() {
         contentContainerStyle={{ paddingBottom: 60 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadBookings(); }} tintColor={Colors.primary} />
+          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadBookings(); }} tintColor="transparent" colors={['transparent']} />
         }
       >
+        {refreshing && (
+          <View style={{ alignItems: 'center', paddingTop: 8, paddingBottom: 4 }}>
+            <ScissorsLoader size="small" color="dark" />
+          </View>
+        )}
         {/* ── Avatar + name header ── */}
         <View style={[s.header, { paddingTop: insets.top + 16 }]}>
           <TouchableOpacity onPress={changePhoto} style={s.avatarWrap} disabled={uploadingPhoto}>

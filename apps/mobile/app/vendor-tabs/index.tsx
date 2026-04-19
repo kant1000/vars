@@ -813,9 +813,14 @@ export default function VendorJobsScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={Colors.primary} />
+          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor="transparent" colors={['transparent']} />
         }
       >
+        {refreshing && (
+          <View style={{ alignItems: 'center', paddingTop: 8, paddingBottom: 4 }}>
+            <ScissorsLoader size="small" color="dark" />
+          </View>
+        )}
         {/* Auto-accepted — grace period */}
         {graceBookings.length > 0 && (
           <Section title={`Auto-accepted (${graceBookings.length})`} urgent>

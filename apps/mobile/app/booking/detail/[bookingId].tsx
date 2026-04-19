@@ -453,9 +453,14 @@ export default function BookingDetailScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: isTerminal ? 40 : 120 }}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={Colors.primary} />
+          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor="transparent" colors={['transparent']} />
         }
       >
+        {refreshing && (
+          <View style={{ alignItems: 'center', paddingTop: 8, paddingBottom: 4 }}>
+            <ScissorsLoader size="small" color="dark" />
+          </View>
+        )}
         {/* Status hero */}
         <View style={[s.statusHero, { borderBottomColor: cfg.color + '30' }]}>
           <View style={[s.statusPill, { backgroundColor: cfg.color + '18' }]}>
