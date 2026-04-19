@@ -46,6 +46,7 @@ The platform operates a **two-sided marketplace**:
 |---|---|
 | Mobile app | Expo SDK 52, React Native 0.76, Expo Router 4 |
 | Maps | react-native-maps |
+| Animations | react-native-reanimated 3, react-native-svg 15.8.0 |
 | Auth | Supabase Auth (email + phone OTP) |
 | Database | Supabase Postgres (PostGIS enabled) |
 | Realtime | Supabase Realtime (booking status + vendor location) |
@@ -238,6 +239,27 @@ All functions live in `supabase/functions/` and run on Deno.
 | Vendor profile & settings | `/vendor-tabs/profile` |
 | Auto-Accept zone setup | `/vendor-zone-setup` |
 | Onboarding (5 steps) | `/vendor-onboarding/step-[1-5]-*` |
+
+---
+
+## Loading States & Animation
+
+All loading states across the app use a custom `ScissorsLoader` component (`apps/mobile/components/ScissorsLoader.tsx`) in place of the platform-default `ActivityIndicator`.
+
+### ScissorsLoader
+
+- Renders the VARS scissors logo mark as an animated SVG using `react-native-svg`
+- Two blades rotate ±15° around a shared pivot point in a continuous open/close loop, driven by `react-native-reanimated` v3 (`useSharedValue`, `withRepeat`, `withSequence`)
+- Props: `size: 'large' | 'small'` (80×103 px / 28×36 px) and `color: 'light' | 'dark'` (#FFFFFF / #1A1A1A)
+- Color rule: `light` on dark/primary-colour button backgrounds; `dark` on white or surface backgrounds
+
+### Launch Transition
+
+After `SplashScreen.hideAsync()` the app shows a full-screen dark overlay with the large ScissorsLoader centred. The overlay holds for 800 ms then fades out over 400 ms using the React Native `Animated` API.
+
+### Pull-to-Refresh
+
+All `RefreshControl` instances suppress the native OS spinner (`tintColor="transparent"`, `colors={['transparent']}`) and instead render an inline ScissorsLoader at the top of the scroll content (or via `ListHeaderComponent` on FlatLists) while `refreshing` is true.
 
 ---
 
