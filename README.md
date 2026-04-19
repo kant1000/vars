@@ -242,6 +242,23 @@ All functions live in `supabase/functions/` and run on Deno.
 
 ---
 
+## Connectivity Resilience
+
+The mobile app is built to degrade gracefully on Lagos's variable network conditions. Four utilities in `apps/mobile/lib/` work together:
+
+| Utility | File | Purpose |
+|---|---|---|
+| `useNetworkState` | `lib/useNetworkState.ts` | Polls Google's `generate_204` endpoint to determine real connectivity. Polls every 30 s when online, every 8 s when offline. No third-party dependency. |
+| `fetchWithRetry` | `lib/fetchWithRetry.ts` | Wraps `fetch` with 3 attempts, an 8 s abort-controller timeout per attempt, and silent exponential backoff (1 s → 2 s between retries). Used for all edge function calls that must succeed. |
+| `actionQueue` | `lib/actionQueue.ts` | AsyncStorage-backed queue for actions that fail due to connectivity. `enqueueAction()` persists a serialised request; `flushQueue()` replays the queue in order when the device comes back online, removing each entry on success. |
+| `cache` | `lib/cache.ts` | AsyncStorage TTL cache (`cacheSet` / `cacheGet` / `cacheInvalidate`). Screens write fresh data to the cache and read stale data from it when offline, so the UI is never blank. |
+
+### OfflineBanner
+
+`components/OfflineBanner.tsx` renders a fixed amber bar ("You're offline — we'll sync when you're back") that slides down from the top of the screen when `useNetworkState` reports offline, and slides back up automatically when connectivity is restored.
+
+---
+
 ## Loading States & Animation
 
 All loading states across the app use a custom `ScissorsLoader` component (`apps/mobile/components/ScissorsLoader.tsx`) in place of the platform-default `ActivityIndicator`.
