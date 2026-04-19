@@ -5,10 +5,11 @@
 // ============================================================
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator, Alert, Image, KeyboardAvoidingView,
+  Alert, Image, KeyboardAvoidingView,
   Platform, RefreshControl, ScrollView, StyleSheet,
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
+import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
@@ -170,7 +171,7 @@ export default function ProfileScreen() {
             )}
             <View style={s.editPhotoBadge}>
               {uploadingPhoto
-                ? <ActivityIndicator size="small" color="#FFF" />
+                ? <ScissorsLoader size="small" color="light" />
                 : <Text style={s.editPhotoBadgeText}>✎</Text>
               }
             </View>
@@ -212,7 +213,7 @@ export default function ProfileScreen() {
                   disabled={!name.trim() || saving}
                 >
                   {saving
-                    ? <ActivityIndicator color="#FFF" size="small" />
+                    ? <ScissorsLoader size="small" color="light" />
                     : <Text style={s.saveBtnText}>Save</Text>
                   }
                 </TouchableOpacity>
@@ -250,7 +251,7 @@ export default function ProfileScreen() {
         {/* ── Booking history ── */}
         <Section title="Booking history">
           {loadingBookings ? (
-            <ActivityIndicator color={Colors.primary} style={{ paddingVertical: 20 }} />
+            <View style={{ paddingVertical: 20, alignItems: 'center' }}><ScissorsLoader size="small" color="dark" /></View>
           ) : pastBookings.length === 0 ? (
             <Text style={s.emptyText}>No past bookings yet.</Text>
           ) : (

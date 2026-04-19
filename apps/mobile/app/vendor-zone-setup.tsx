@@ -10,9 +10,10 @@
 // ============================================================
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Alert, StyleSheet, Text,
+  Alert, StyleSheet, Text,
   TouchableOpacity, View, Switch, ScrollView,
 } from 'react-native';
+import { ScissorsLoader } from '@/components/ScissorsLoader';
 import MapView, { Circle, Marker, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
@@ -120,7 +121,7 @@ export default function VendorZoneSetup() {
   if (loading) {
     return (
       <View style={s.centered}>
-        <ActivityIndicator color={Colors.primary} size="large" />
+        <ScissorsLoader size="large" color="dark" />
       </View>
     );
   }
@@ -234,7 +235,7 @@ export default function VendorZoneSetup() {
             disabled={saving}
           >
             {saving
-              ? <ActivityIndicator color="#FFF" />
+              ? <ScissorsLoader size="small" color="light" />
               : <Text style={s.saveBtnText}>Save zone settings</Text>
             }
           </TouchableOpacity>

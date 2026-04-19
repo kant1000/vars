@@ -5,9 +5,10 @@
 // ============================================================
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator, Alert, Image, StyleSheet,
+  Alert, Image, StyleSheet,
   Text, TouchableOpacity, View,
 } from 'react-native';
+import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
@@ -95,7 +96,7 @@ export default function ConsentScreen() {
   if (loading) {
     return (
       <View style={[styles.centered, { paddingTop: insets.top }]}>
-        <ActivityIndicator color={Colors.primary} size="large" />
+        <ScissorsLoader size="large" color="dark" />
       </View>
     );
   }
@@ -169,7 +170,7 @@ export default function ConsentScreen() {
           disabled={responding}
         >
           {responding
-            ? <ActivityIndicator color={Colors.error} size="small" />
+            ? <ScissorsLoader size="small" color="dark" />
             : <Text style={styles.declineBtnText}>Decline</Text>}
         </TouchableOpacity>
 
@@ -179,7 +180,7 @@ export default function ConsentScreen() {
           disabled={responding}
         >
           {responding
-            ? <ActivityIndicator color="#FFF" size="small" />
+            ? <ScissorsLoader size="small" color="light" />
             : <Text style={styles.approveBtnText}>Approve</Text>}
         </TouchableOpacity>
       </View>

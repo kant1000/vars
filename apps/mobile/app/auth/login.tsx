@@ -18,10 +18,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  ActivityIndicator,
   Alert,
   StatusBar,
 } from 'react-native';
+import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Colors } from '@/constants/colors';
 import {
@@ -230,7 +230,7 @@ export default function LoginScreen() {
             activeOpacity={0.85}
           >
             {isLoading ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ScissorsLoader size="small" color="light" />
             ) : (
               <Text style={styles.submitText}>
                 {mode === 'signin' ? 'Sign in' : 'Create account'}
@@ -273,7 +273,7 @@ function SocialButton({
       activeOpacity={0.85}
     >
       {isLoading ? (
-        <ActivityIndicator color={Colors.text} size="small" />
+        <ScissorsLoader size="small" color="dark" />
       ) : (
         <Text style={styles.socialButtonText}>{label}</Text>
       )}

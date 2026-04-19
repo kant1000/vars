@@ -6,8 +6,9 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  TextInput, ActivityIndicator, Alert,
+  TextInput, Alert,
 } from 'react-native';
+import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -125,7 +126,7 @@ export default function Step2Services() {
   if (isLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color={Colors.primary} />
+        <ScissorsLoader size="small" color="dark" />
       </View>
     );
   }
@@ -248,7 +249,7 @@ export default function Step2Services() {
         activeOpacity={0.85}
       >
         {isSaving
-          ? <ActivityIndicator color="#FFF" />
+          ? <ScissorsLoader size="small" color="light" />
           : <Text style={styles.buttonText}>Next — Add portfolio photos</Text>}
       </TouchableOpacity>
     </ScrollView>

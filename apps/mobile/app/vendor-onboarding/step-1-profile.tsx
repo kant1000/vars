@@ -5,8 +5,9 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
-  ScrollView, ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform,
+  ScrollView, Alert, Image, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { ScissorsLoader } from '@/components/ScissorsLoader';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
@@ -143,7 +144,7 @@ export default function Step1Profile() {
           {/* Base location */}
           <TouchableOpacity style={styles.locationButton} onPress={handleDetectLocation}>
             {isLocating ? (
-              <ActivityIndicator color={Colors.primary} />
+              <ScissorsLoader size="small" color="dark" />
             ) : (
               <Text style={locationCoords ? styles.locationSet : styles.locationUnset}>
                 {locationCoords ? `📍 ${locationLabel}` : 'Set your base location'}
@@ -162,7 +163,7 @@ export default function Step1Profile() {
           activeOpacity={0.85}
         >
           {isLoading
-            ? <ActivityIndicator color="#FFF" />
+            ? <ScissorsLoader size="small" color="light" />
             : <Text style={styles.buttonText}>Next — Choose your services</Text>}
         </TouchableOpacity>
       </ScrollView>

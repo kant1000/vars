@@ -7,9 +7,10 @@
 // ============================================================
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator, Dimensions, FlatList, Modal, Platform, Pressable,
+  Dimensions, FlatList, Modal, Platform, Pressable,
   RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
+import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
@@ -285,7 +286,7 @@ function BookingBottomSheet({
                   disabled={acting}
                 >
                   {acting
-                    ? <ActivityIndicator color={Colors.error} size="small" />
+                    ? <ScissorsLoader size="small" color="dark" />
                     : <Text style={bs.graceBtnText}>Cancel penalty-free</Text>}
                 </TouchableOpacity>
               </View>
@@ -305,14 +306,14 @@ function BookingBottomSheet({
                   onPress={() => handleAction('decline')}
                   disabled={acting}
                 >
-                  {acting ? <ActivityIndicator color={Colors.error} /> : <Text style={bs.actionBtnDeclineText}>Decline</Text>}
+                  {acting ? <ScissorsLoader size="small" color="dark" /> : <Text style={bs.actionBtnDeclineText}>Decline</Text>}
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[bs.actionBtn, bs.actionBtnAccept, acting && bs.actionBtnDisabled]}
                   onPress={() => handleAction('accept')}
                   disabled={acting}
                 >
-                  {acting ? <ActivityIndicator color="#FFF" /> : <Text style={bs.actionBtnAcceptText}>Accept</Text>}
+                  {acting ? <ScissorsLoader size="small" color="light" /> : <Text style={bs.actionBtnAcceptText}>Accept</Text>}
                 </TouchableOpacity>
               </View>
             )}
@@ -323,7 +324,7 @@ function BookingBottomSheet({
                 onPress={() => handleAction('on_way')}
                 disabled={acting}
               >
-                {acting ? <ActivityIndicator color="#FFF" /> : <Text style={bs.primaryBtnText}>Mark on my way</Text>}
+                {acting ? <ScissorsLoader size="small" color="light" /> : <Text style={bs.primaryBtnText}>Mark on my way</Text>}
               </TouchableOpacity>
             )}
 
@@ -333,7 +334,7 @@ function BookingBottomSheet({
                 onPress={() => handleAction('arrived')}
                 disabled={acting}
               >
-                {acting ? <ActivityIndicator color="#FFF" /> : <Text style={bs.primaryBtnText}>Mark arrived</Text>}
+                {acting ? <ScissorsLoader size="small" color="light" /> : <Text style={bs.primaryBtnText}>Mark arrived</Text>}
               </TouchableOpacity>
             )}
 
@@ -343,7 +344,7 @@ function BookingBottomSheet({
                 onPress={() => handleAction('service_rendered')}
                 disabled={acting}
               >
-                {acting ? <ActivityIndicator color="#FFF" /> : <Text style={bs.primaryBtnText}>Mark service complete</Text>}
+                {acting ? <ScissorsLoader size="small" color="light" /> : <Text style={bs.primaryBtnText}>Mark service complete</Text>}
               </TouchableOpacity>
             )}
 
@@ -574,7 +575,7 @@ export default function ScheduleScreen() {
   const unavailCount = blocks.filter((b) => b.block_state === 'unavailable').length;
 
   if (loading) {
-    return <View style={s.centered}><ActivityIndicator color={Colors.primary} /></View>;
+    return <View style={s.centered}><ScissorsLoader size="small" color="dark" /></View>;
   }
 
   const slots = generateSlots(selectedDay);
@@ -686,7 +687,7 @@ export default function ScheduleScreen() {
                   activeOpacity={0.7}
                 >
                   {isToggling ? (
-                    <ActivityIndicator size="small" color={Colors.textMuted} />
+                    <ScissorsLoader size="small" color="dark" />
                   ) : (
                     <>
                       <Text style={[s.slotTime, { color: isPast ? Colors.textMuted : style.text }]}>
@@ -716,7 +717,7 @@ export default function ScheduleScreen() {
           )}
         </ScrollView>
       ) : listLoading ? (
-        <View style={s.centered}><ActivityIndicator color={Colors.primary} /></View>
+        <View style={s.centered}><ScissorsLoader size="small" color="dark" /></View>
       ) : (
         <FlatList
           data={listBookings}

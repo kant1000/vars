@@ -5,9 +5,10 @@
 // ============================================================
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator, FlatList, RefreshControl,
+  FlatList, RefreshControl,
   StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
+import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
@@ -78,7 +79,7 @@ export default function BookingsScreen() {
   useEffect(() => { load(); }, [load]);
 
   if (loading) {
-    return <View style={st.centered}><ActivityIndicator color={Colors.primary} size="large" /></View>;
+    return <View style={st.centered}><ScissorsLoader size="large" color="dark" /></View>;
   }
 
   if (!user) {

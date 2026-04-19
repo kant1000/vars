@@ -6,10 +6,11 @@
 // ============================================================
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, FlatList, RefreshControl,
+  FlatList, RefreshControl,
   StyleSheet, Text, TouchableOpacity, View,
   ScrollView, TextInput,
 } from 'react-native';
+import { ScissorsLoader } from '@/components/ScissorsLoader';
 import * as Location from 'expo-location';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
@@ -197,7 +198,7 @@ export default function HomeScreen() {
       {/* ── Vendor list ── */}
       {!coords && !locError ? (
         <View style={styles.centered}>
-          <ActivityIndicator color={Colors.primary} />
+          <ScissorsLoader size="small" color="dark" />
           <Text style={styles.loadingText}>Finding your location…</Text>
         </View>
       ) : (
@@ -219,7 +220,7 @@ export default function HomeScreen() {
           ListHeaderComponent={
             loading && vendors.length === 0 ? (
               <View style={styles.centered}>
-                <ActivityIndicator color={Colors.primary} />
+                <ScissorsLoader size="small" color="dark" />
               </View>
             ) : null
           }
@@ -235,7 +236,7 @@ export default function HomeScreen() {
           }
           ListFooterComponent={
             hasMore && vendors.length > 0 ? (
-              <ActivityIndicator style={{ marginVertical: 20 }} color={Colors.primary} />
+              <View style={{ marginVertical: 20, alignItems: 'center' }}><ScissorsLoader size="small" color="dark" /></View>
             ) : null
           }
         />

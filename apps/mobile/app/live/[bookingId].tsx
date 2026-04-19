@@ -10,10 +10,11 @@
 // ============================================================
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Alert, Linking, Modal,
+  Alert, Linking, Modal,
   ScrollView, StyleSheet, Text, TextInput,
   TouchableOpacity, View,
 } from 'react-native';
+import { ScissorsLoader } from '@/components/ScissorsLoader';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -229,7 +230,7 @@ function DisputeModal({
               onPress={submit}
               disabled={!canSubmit}
             >
-              {submitting ? <ActivityIndicator color="#FFF" /> : <Text style={dm.submitText}>Submit</Text>}
+              {submitting ? <ScissorsLoader size="small" color="light" /> : <Text style={dm.submitText}>Submit</Text>}
             </TouchableOpacity>
           </View>
         </View>
@@ -470,7 +471,7 @@ export default function LiveScreen() {
   };
 
   if (loading && !booking) {
-    return <View style={s.centered}><ActivityIndicator color={Colors.primary} size="large" /></View>;
+    return <View style={s.centered}><ScissorsLoader size="large" color="dark" /></View>;
   }
   if (!booking) {
     return (
@@ -601,7 +602,7 @@ export default function LiveScreen() {
                 activeOpacity={0.88}
               >
                 {confirming
-                  ? <ActivityIndicator color="#FFF" />
+                  ? <ScissorsLoader size="small" color="light" />
                   : <Text style={s.confirmBtnText}>Confirm service done</Text>
                 }
               </TouchableOpacity>
@@ -615,7 +616,7 @@ export default function LiveScreen() {
               disabled={cancelling}
             >
               {cancelling
-                ? <ActivityIndicator color={Colors.error} size="small" />
+                ? <ScissorsLoader size="small" color="dark" />
                 : <Text style={s.cancelBtnText}>Cancel booking</Text>
               }
             </TouchableOpacity>

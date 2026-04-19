@@ -4,9 +4,10 @@
 // ============================================================
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator, RefreshControl, ScrollView,
+  RefreshControl, ScrollView,
   StyleSheet, Text, View,
 } from 'react-native';
+import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
@@ -57,7 +58,7 @@ export default function EarningsScreen() {
   const totalKobo   = payouts.filter((p) => p.status === 'success').reduce((s, p) => s + p.amount_kobo, 0);
   const pendingKobo = payouts.filter((p) => p.status === 'pending').reduce((s, p) => s + p.amount_kobo, 0);
 
-  if (loading) return <View style={s.centered}><ActivityIndicator color={Colors.primary} /></View>;
+  if (loading) return <View style={s.centered}><ScissorsLoader size="small" color="dark" /></View>;
 
   return (
     <View style={[s.container, { paddingTop: insets.top }]}>

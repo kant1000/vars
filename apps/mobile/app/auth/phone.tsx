@@ -12,12 +12,12 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
   StatusBar,
 } from 'react-native';
+import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router } from 'expo-router';
 import { Colors } from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
@@ -86,7 +86,7 @@ export default function PhoneScreen() {
           activeOpacity={0.85}
         >
           {isLoading ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ScissorsLoader size="small" color="light" />
           ) : (
             <Text style={styles.buttonText}>Continue</Text>
           )}

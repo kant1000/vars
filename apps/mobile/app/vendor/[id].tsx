@@ -6,10 +6,11 @@
 // ============================================================
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator, Dimensions, FlatList, Image,
+  Dimensions, FlatList, Image,
   Pressable, ScrollView, StyleSheet, Text,
   TouchableOpacity, View,
 } from 'react-native';
+import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
@@ -187,7 +188,7 @@ export default function VendorProfileScreen() {
   if (loading) {
     return (
       <View style={styles.loadingWrap}>
-        <ActivityIndicator color={Colors.primary} size="large" />
+        <ScissorsLoader size="large" color="dark" />
       </View>
     );
   }

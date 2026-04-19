@@ -5,7 +5,8 @@
 // and deep link auth callbacks from OAuth flows.
 // ============================================================
 
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, StyleSheet } from 'react-native';
 import { Stack } from 'expo-router';
 import { router, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -17,16 +18,28 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { ScissorsLoader } from '@/components/ScissorsLoader';
 
 SplashScreen.preventAutoHideAsync();
 
 function RootNavigator() {
   const { isLoading, isAuthenticated, needsPhone } = useAuth();
   const segments = useSegments();
+  const [showTransition, setShowTransition] = useState(false);
+  const fadeAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     if (isLoading) return;
     SplashScreen.hideAsync();
+    setShowTransition(true);
+    const timer = setTimeout(() => {
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: true,
+      }).start(() => setShowTransition(false));
+    }, 800);
+    return () => clearTimeout(timer);
   }, [isLoading]);
 
   useEffect(() => {
@@ -77,18 +90,25 @@ function RootNavigator() {
   }, []);
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="onboarding" />
-      <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="auth/login" options={{ presentation: 'modal' }} />
-      <Stack.Screen name="auth/phone" options={{ presentation: 'modal', gestureEnabled: false }} />
-      <Stack.Screen name="vendor/[id]" />
-      <Stack.Screen name="booking/[vendorId]" />
-      <Stack.Screen name="consent/[photoId]" />
-      <Stack.Screen name="booking/detail/[bookingId]" />
-      <Stack.Screen name="vendor-zone-setup" />
-      <Stack.Screen name="+not-found" />
-    </Stack>
+    <>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="onboarding" />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="auth/login" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="auth/phone" options={{ presentation: 'modal', gestureEnabled: false }} />
+        <Stack.Screen name="vendor/[id]" />
+        <Stack.Screen name="booking/[vendorId]" />
+        <Stack.Screen name="consent/[photoId]" />
+        <Stack.Screen name="booking/detail/[bookingId]" />
+        <Stack.Screen name="vendor-zone-setup" />
+        <Stack.Screen name="+not-found" />
+      </Stack>
+      {showTransition && (
+        <Animated.View style={[lt.overlay, { opacity: fadeAnim }]}>
+          <ScissorsLoader size="large" color="light" />
+        </Animated.View>
+      )}
+    </>
   );
 }
 
@@ -104,3 +124,13 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+
+const lt = StyleSheet.create({
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#111111',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 999,
+  },
+});

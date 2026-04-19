@@ -6,8 +6,9 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
+  ScrollView, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { WebView } from 'react-native-webview';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
@@ -197,7 +198,7 @@ export default function Step4Kyc() {
               activeOpacity={0.85}
             >
               {kycState === 'loading'
-                ? <ActivityIndicator color="#FFF" />
+                ? <ScissorsLoader size="small" color="light" />
                 : <Text style={styles.kycButtonText}>Start identity check</Text>}
             </TouchableOpacity>
           )}
@@ -260,7 +261,7 @@ export default function Step4Kyc() {
               activeOpacity={0.85}
             >
               {isVerifyingBank
-                ? <ActivityIndicator color={Colors.primary} />
+                ? <ScissorsLoader size="small" color="dark" />
                 : <Text style={styles.verifyButtonText}>Verify account</Text>}
             </TouchableOpacity>
           )}
@@ -276,7 +277,7 @@ export default function Step4Kyc() {
           activeOpacity={0.85}
         >
           {isSaving
-            ? <ActivityIndicator color="#FFF" />
+            ? <ScissorsLoader size="small" color="light" />
             : <Text style={styles.buttonText}>Submit for review</Text>}
         </TouchableOpacity>
       </ScrollView>

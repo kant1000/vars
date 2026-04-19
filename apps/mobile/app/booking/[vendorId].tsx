@@ -7,10 +7,11 @@
 // ============================================================
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Dimensions, FlatList, Modal, Pressable,
+  Dimensions, FlatList, Modal, Pressable,
   ScrollView, StyleSheet, Text, TouchableOpacity,
   View, TextInput, Platform,
 } from 'react-native';
+import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router, useLocalSearchParams } from 'expo-router';
 import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -126,7 +127,7 @@ function Step1({ vendorId, onSelect }: { vendorId: string; onSelect: (s: Service
     })();
   }, [vendorId]);
 
-  if (loading) return <View style={s.centered}><ActivityIndicator color={Colors.primary} /></View>;
+  if (loading) return <View style={s.centered}><ScissorsLoader size="small" color="dark" /></View>;
 
   return (
     <ScrollView contentContainerStyle={{ padding: 16, gap: 10 }}>
@@ -261,7 +262,7 @@ function Step2({
       )}
 
       {loadingSlots ? (
-        <View style={s.centered}><ActivityIndicator color={Colors.primary} /></View>
+        <View style={s.centered}><ScissorsLoader size="small" color="dark" /></View>
       ) : (
         <View style={s.slotGrid}>
           {slots.map((slot) => (
@@ -394,7 +395,7 @@ function Step3Review({
           activeOpacity={0.88}
         >
           {locating
-            ? <ActivityIndicator color="#FFF" />
+            ? <ScissorsLoader size="small" color="light" />
             : <Text style={s.payBtnText}>Confirm location →</Text>
           }
         </TouchableOpacity>
@@ -516,7 +517,7 @@ function Step3Location({
           activeOpacity={0.88}
         >
           {paying
-            ? <ActivityIndicator color="#FFF" />
+            ? <ScissorsLoader size="small" color="light" />
             : <Text style={s.payBtnText}>Pay {fmtPrice(service.price_kobo)} securely</Text>
           }
         </TouchableOpacity>
@@ -736,7 +737,7 @@ export default function BookingFlow() {
               onShouldStartLoadWithRequest={(req) => handleWebViewNav(req.url)}
               startInLoadingState
               renderLoading={() => (
-                <View style={s.centered}><ActivityIndicator color={Colors.primary} size="large" /></View>
+                <View style={s.centered}><ScissorsLoader size="large" color="dark" /></View>
               )}
             />
           )}

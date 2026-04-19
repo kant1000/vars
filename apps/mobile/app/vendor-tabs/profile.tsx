@@ -4,9 +4,10 @@
 // ============================================================
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator, Alert, Dimensions, Image, ScrollView,
+  Alert, Dimensions, Image, ScrollView,
   StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
+import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
@@ -177,7 +178,7 @@ export default function VendorProfileScreen() {
           <Text style={[s.sectionTitle, s.sectionTitleGold]}>⚡ Auto-Accept</Text>
 
           {zoneLoading ? (
-            <ActivityIndicator color="#D4A017" style={{ margin: 16 }} />
+            <View style={{ margin: 16, alignItems: 'center' }}><ScissorsLoader size="small" color="dark" /></View>
           ) : (
             <TouchableOpacity
               style={[s.settingRow, s.settingRowGold]}
@@ -217,7 +218,7 @@ export default function VendorProfileScreen() {
           </View>
 
           {photosLoading ? (
-            <ActivityIndicator color={Colors.primary} style={{ margin: 16 }} />
+            <View style={{ margin: 16, alignItems: 'center' }}><ScissorsLoader size="small" color="dark" /></View>
           ) : (
             <>
               <View style={s.photoGrid}>
@@ -251,7 +252,7 @@ export default function VendorProfileScreen() {
                     disabled={addingPhoto}
                   >
                     {addingPhoto ? (
-                      <ActivityIndicator color={Colors.primary} />
+                      <ScissorsLoader size="small" color="dark" />
                     ) : (
                       <>
                         <Text style={s.addPhotoIcon}>+</Text>

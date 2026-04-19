@@ -6,8 +6,9 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Image,
-  ScrollView, ActivityIndicator, Alert,
+  ScrollView, Alert,
 } from 'react-native';
+import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { pickAndUploadPortfolioPhotos, PortfolioUpload } from '@/lib/storage';
@@ -89,7 +90,7 @@ export default function Step3Portfolio() {
             activeOpacity={0.8}
           >
             {isUploading ? (
-              <ActivityIndicator color={Colors.primary} />
+              <ScissorsLoader size="small" color="dark" />
             ) : (
               <>
                 <Text style={styles.addIcon}>+</Text>
@@ -113,7 +114,7 @@ export default function Step3Portfolio() {
         activeOpacity={0.85}
       >
         {isSaving
-          ? <ActivityIndicator color="#FFF" />
+          ? <ScissorsLoader size="small" color="light" />
           : <Text style={styles.buttonText}>Next — Verify your identity</Text>}
       </TouchableOpacity>
     </ScrollView>

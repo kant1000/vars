@@ -15,10 +15,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  ActivityIndicator,
   Alert,
   StatusBar,
 } from 'react-native';
+import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { signInWithEmail } from '@/lib/auth';
@@ -194,7 +194,7 @@ export default function VendorLoginScreen() {
             activeOpacity={0.85}
           >
             {isLoading ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ScissorsLoader size="small" color="light" />
             ) : (
               <Text style={styles.buttonText}>
                 {mode === 'signup' ? 'Get started' : 'Sign in'}

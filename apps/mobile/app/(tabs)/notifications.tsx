@@ -7,9 +7,10 @@
 // ============================================================
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator, RefreshControl, ScrollView,
+  RefreshControl, ScrollView,
   StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
+import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
@@ -185,7 +186,7 @@ export default function NotificationsScreen() {
     else { groups.push({ label, items: [n] }); }
   }
 
-  if (loading) return <View style={s.centered}><ActivityIndicator color={Colors.primary} size="large" /></View>;
+  if (loading) return <View style={s.centered}><ScissorsLoader size="large" color="dark" /></View>;
 
   return (
     <View style={[s.container, { paddingTop: insets.top }]}>

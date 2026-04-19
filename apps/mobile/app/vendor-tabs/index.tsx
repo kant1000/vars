@@ -11,9 +11,10 @@
 // ============================================================
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Alert, Modal, RefreshControl,
+  Alert, Modal, RefreshControl,
   ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
+import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
@@ -164,7 +165,7 @@ function GraceCard({
           disabled={cancelling}
         >
           {cancelling
-            ? <ActivityIndicator color={Colors.error} size="small" />
+            ? <ScissorsLoader size="small" color="dark" />
             : <Text style={c.graceCancelText}>Cancel (no penalty)</Text>
           }
         </TouchableOpacity>
@@ -239,7 +240,7 @@ function PendingCard({
           onPress={() => handle('accept')}
           disabled={acting}
         >
-          {acting ? <ActivityIndicator color="#FFF" size="small" />
+          {acting ? <ScissorsLoader size="small" color="light" />
             : <Text style={c.acceptBtnText}>Accept</Text>}
         </TouchableOpacity>
       </View>
@@ -365,7 +366,7 @@ function ActiveCard({
           onPress={advance}
           disabled={acting}
         >
-          {acting ? <ActivityIndicator color="#FFF" size="small" />
+          {acting ? <ScissorsLoader size="small" color="light" />
             : <Text style={c.flowBtnText}>{action.label}</Text>}
         </TouchableOpacity>
       )}
@@ -382,7 +383,7 @@ function ActiveCard({
           disabled={cancelling}
         >
           {cancelling
-            ? <ActivityIndicator color={Colors.error} size="small" />
+            ? <ScissorsLoader size="small" color="dark" />
             : <Text style={c.vendorCancelText}>Cancel booking</Text>
           }
         </TouchableOpacity>
@@ -467,7 +468,7 @@ function BookingRow({
               style={c.addPhotoBtn}
             >
               {addingPhoto
-                ? <ActivityIndicator color={Colors.primary} size="small" />
+                ? <ScissorsLoader size="small" color="dark" />
                 : <Text style={c.addPhotoBtnText}>+ Add a photo from this job</Text>}
             </TouchableOpacity>
           )
@@ -533,7 +534,7 @@ function ZoneConfirmModal({
             disabled={confirming}
           >
             {confirming
-              ? <ActivityIndicator color="#FFF" />
+              ? <ScissorsLoader size="small" color="light" />
               : <Text style={zm.confirmBtnText}>Yes, I'm in my zone</Text>
             }
           </TouchableOpacity>
@@ -772,7 +773,7 @@ export default function VendorJobsScreen() {
   const history  = bookings.filter((b) => ['completed','cancelled','expired'].includes(b.status));
 
   // Show spinner only when there's genuinely nothing to display yet (cache not yet seeded)
-  if (loading && bookings.length === 0) return <View style={c.centered}><ActivityIndicator color={Colors.primary} size="large" /></View>;
+  if (loading && bookings.length === 0) return <View style={c.centered}><ScissorsLoader size="large" color="dark" /></View>;
 
   return (
     <View style={[c.container, { paddingTop: insets.top }]}>
@@ -798,7 +799,7 @@ export default function VendorJobsScreen() {
             disabled={togglingOnline}
           >
             {togglingOnline
-              ? <ActivityIndicator color={isOnline ? '#FFF' : Colors.primary} size="small" />
+              ? <ScissorsLoader size="small" color={isOnline ? 'light' : 'dark'} />
               : <Text style={[c.onlineToggleText, isOnline && c.onlineToggleTextOn]}>
                   {isOnline ? '● Online' : '○ Go online'}
                 </Text>
