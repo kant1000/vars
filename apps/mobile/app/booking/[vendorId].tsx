@@ -26,6 +26,7 @@ import { LightningIcon, CheckIcon, CloseIcon, PinIcon } from '@/components/icons
 const SCREEN_W = Dimensions.get('window').width;
 const BLOCK_MINS = 30;
 const CHIP_W = (SCREEN_W - 32 - 8 * 3) / 4;
+const CONFIRM_BAR_HEIGHT = 86;
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
 // ── Types ────────────────────────────────────────────────────
@@ -262,7 +263,7 @@ function Step2({
 
   return (
     <>
-      <ScrollView contentContainerStyle={{ paddingBottom: selectedSlot ? 100 : 40 }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: selectedSlot ? CONFIRM_BAR_HEIGHT + 16 : 40 }}>
         <Text style={[s.stepTitle, { margin: 16 }]}>When works for you?</Text>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8, paddingBottom: 8 }}>

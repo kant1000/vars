@@ -664,7 +664,7 @@ export default function ScheduleScreen() {
       .from('bookings')
       .select(`
         id, status, service_name, service_duration_blocks, service_price_kobo,
-        scheduled_at, phone_revealed, user_location_lat, user_location_lng,
+        scheduled_at, suggested_scheduled_at, phone_revealed, user_location_lat, user_location_lng,
         user_location_address, access_building, access_floor, access_flat, access_code,
         profiles:user_id(full_name, phone_number)
       `)
