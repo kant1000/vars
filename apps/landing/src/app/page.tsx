@@ -96,7 +96,13 @@ export default async function HomePage() {
 
           <div className="benefits-grid">
             <div className="benefit-card">
-              <span className="benefit-icon">&#128183;</span>
+              <span className="benefit-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="2" y="6" width="20" height="14" rx="2" stroke="#111111" strokeWidth="1.75"/>
+                  <circle cx="12" cy="13" r="3" stroke="#111111" strokeWidth="1.75"/>
+                  <path d="M6 10h.01M18 16h.01" stroke="#111111" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              </span>
               <div className="benefit-title">Same-day payouts</div>
               <p className="benefit-body">
                 Your share is transferred automatically once a booking completes.
@@ -104,7 +110,12 @@ export default async function HomePage() {
               </p>
             </div>
             <div className="benefit-card">
-              <span className="benefit-icon">&#128100;</span>
+              <span className="benefit-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="12" cy="8" r="4" stroke="#111111" strokeWidth="1.75"/>
+                  <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="#111111" strokeWidth="1.75" strokeLinecap="round"/>
+                </svg>
+              </span>
               <div className="benefit-title">Your own client base</div>
               <p className="benefit-body">
                 Build a verified profile with reviews, ratings, and a photo portfolio
@@ -112,7 +123,12 @@ export default async function HomePage() {
               </p>
             </div>
             <div className="benefit-card">
-              <span className="benefit-icon">&#128197;</span>
+              <span className="benefit-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="12" cy="12" r="9" stroke="#111111" strokeWidth="1.75"/>
+                  <path d="M12 7v5l3 3" stroke="#111111" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </span>
               <div className="benefit-title">You set your hours</div>
               <p className="benefit-body">
                 Toggle online when you&apos;re available. Manage your schedule entirely
@@ -120,7 +136,12 @@ export default async function HomePage() {
               </p>
             </div>
             <div className="benefit-card">
-              <span className="benefit-icon">&#128274;</span>
+              <span className="benefit-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 2L4 6v6c0 5 3.6 9.7 8 11 4.4-1.3 8-6 8-11V6L12 2z" stroke="#111111" strokeWidth="1.75" strokeLinejoin="round"/>
+                  <path d="M9 12l2 2 4-4" stroke="#111111" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </span>
               <div className="benefit-title">Protected escrow</div>
               <p className="benefit-body">
                 Customers pay upfront. Funds are held securely and released to you
@@ -182,7 +203,7 @@ export default async function HomePage() {
             >
               I built VARS because I believe the most talented stylists
               in Lagos deserve a business, not just a hustle. VARS is the platform
-              that gives them one.
+              that gives we one.
             </h2>
             <div className="founder-attr">
               <div className="founder-avatar">S</div>
