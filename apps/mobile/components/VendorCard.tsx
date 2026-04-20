@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Colors } from '@/constants/colors';
+import { StarFilledIcon } from '@/components/icons';
 
 export interface VendorCardData {
   id: string;
@@ -77,7 +78,7 @@ export function VendorCard({ vendor, returnTo }: Props) {
             </Text>
           )}
           <View style={styles.ratingRow}>
-            <Text style={styles.star}>★</Text>
+            <StarFilledIcon size={13} color={Colors.star} />
             <Text style={styles.ratingText}>
               {vendor.avg_rating.toFixed(1)}
               {vendor.total_reviews > 0 && (
@@ -142,7 +143,6 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   category: { fontSize: 12, color: Colors.textSecondary, flex: 1 },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  star: { color: Colors.star, fontSize: 12 },
   ratingText: { fontSize: 12, fontWeight: '600', color: Colors.text },
   reviewCount: { fontWeight: '400', color: Colors.textSecondary },
   price: { fontSize: 13, color: Colors.textSecondary },

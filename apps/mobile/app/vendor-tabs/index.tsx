@@ -28,6 +28,7 @@ import { useNetworkState } from '@/lib/useNetworkState';
 import { flushQueue } from '@/lib/actionQueue';
 import { cacheSet, cacheGet } from '@/lib/cache';
 import { OfflineBanner } from '@/components/OfflineBanner';
+import { LightningIcon } from '@/components/icons';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
@@ -521,7 +522,7 @@ function ZoneConfirmModal({
     <Modal visible={visible} transparent animationType="fade">
       <View style={zm.overlay}>
         <View style={zm.sheet}>
-          <Text style={zm.icon}>⚡</Text>
+          <LightningIcon size={24} color="#D4A017" />
           <Text style={zm.title}>Confirm your zone?</Text>
           <Text style={zm.body}>
             {zone
@@ -1028,7 +1029,6 @@ const zm = StyleSheet.create({
     borderTopLeftRadius: 24, borderTopRightRadius: 24,
     padding: 28, width: '100%', alignItems: 'center', gap: 8,
   },
-  icon:  { fontSize: 36, marginBottom: 4 },
   title: { fontSize: 20, fontWeight: '800', color: Colors.text, textAlign: 'center' },
   body:  { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 8 },
   confirmBtn: {

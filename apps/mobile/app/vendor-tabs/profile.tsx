@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { signOut } from '@/lib/auth';
 import { uploadSinglePortfolioPhoto, deletePortfolioPhoto } from '@/lib/storage';
 import { Colors } from '@/constants/colors';
+import { CloseIcon } from '@/components/icons';
 
 const PHOTO_SIZE = (Dimensions.get('window').width - 48 - 16) / 3; // 3 cols, 24px side padding, 8px gaps
 
@@ -239,7 +240,7 @@ export default function VendorProfileScreen() {
                         style={s.photoDeleteBtn}
                         onPress={() => handleDeletePhoto(photo)}
                       >
-                        <Text style={s.photoDeleteText}>✕</Text>
+                        <CloseIcon size={11} color="#FFF" />
                       </TouchableOpacity>
                     </View>
                   );
@@ -359,7 +360,6 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.55)',
     alignItems: 'center', justifyContent: 'center',
   },
-  photoDeleteText: { color: '#FFF', fontSize: 11, fontWeight: '700' },
   addPhotoBtn: {
     width: PHOTO_SIZE, height: PHOTO_SIZE, borderRadius: 10,
     borderWidth: 1.5, borderColor: Colors.border, borderStyle: 'dashed',

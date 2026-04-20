@@ -20,6 +20,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 import { fmtPrice, fmtDuration, fmtTime, fmtDate } from '@/lib/format';
+import { CloseIcon, PinIcon, LockIcon, LightningIcon, CarIcon } from '@/components/icons';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
@@ -207,7 +208,7 @@ function BookingBottomSheet({
                 </View>
               </View>
               <TouchableOpacity onPress={onClose} style={bs.closeBtn}>
-                <Text style={bs.closeBtnText}>✕</Text>
+                <CloseIcon size={18} color={Colors.textMuted} />
               </TouchableOpacity>
             </View>
 
@@ -234,7 +235,7 @@ function BookingBottomSheet({
 
             {booking.user_location_address ? (
               <View style={bs.addressRow}>
-                <Text style={bs.addressIcon}>📍</Text>
+                <PinIcon size={14} color={Colors.textSecondary} />
                 <Text style={bs.addressText}>{booking.user_location_address}</Text>
               </View>
             ) : null}
@@ -265,7 +266,7 @@ function BookingBottomSheet({
                 </>
               ) : (
                 <View style={bs.lockedRow}>
-                  <Text style={bs.lockedIcon}>🔒</Text>
+                  <LockIcon size={16} color={Colors.textMuted} />
                   <Text style={bs.lockedText}>Available 15 minutes before your arrival</Text>
                 </View>
               )}
@@ -693,9 +694,9 @@ export default function ScheduleScreen() {
                       <Text style={[s.slotTime, { color: isPast ? Colors.textMuted : style.text }]}>
                         {slot.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit', hour12: true })}
                       </Text>
-                      {state === 'auto_accept'      && <Text style={s.slotIcon}>⚡</Text>}
-                      {state === 'unavailable'      && <Text style={s.slotIcon}>✕</Text>}
-                      {state === 'transport_buffer' && <Text style={s.slotIcon}>🚗</Text>}
+                      {state === 'auto_accept'      && <LightningIcon size={10} color="#D4A017" />}
+                      {state === 'unavailable'      && <CloseIcon size={10} color={Colors.error} />}
+                      {state === 'transport_buffer' && <CarIcon size={10} color={Colors.textMuted} />}
                     </>
                   )}
                 </TouchableOpacity>
@@ -838,7 +839,6 @@ const s = StyleSheet.create({
   },
   slotPast: { opacity: 0.35 },
   slotTime: { fontSize: 11, fontWeight: '600' },
-  slotIcon: { fontSize: 10, marginTop: 1 },
 
   // Booked slot
   slotBooked: {
@@ -899,7 +899,6 @@ const bs = StyleSheet.create({
   statusPill: { alignSelf: 'flex-start', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
   statusText: { fontSize: 12, fontWeight: '700' },
   closeBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
-  closeBtnText: { fontSize: 18, color: Colors.textMuted },
 
   map: { width: '100%', height: 180, borderRadius: 14, marginBottom: 10, overflow: 'hidden' },
   addressRow: {
@@ -908,7 +907,6 @@ const bs = StyleSheet.create({
     padding: 10, borderWidth: 1, borderColor: Colors.border,
     marginBottom: 12,
   },
-  addressIcon: { fontSize: 14, lineHeight: 20 },
   addressText: { flex: 1, fontSize: 13, color: Colors.text, lineHeight: 18 },
 
   card: {
@@ -927,7 +925,6 @@ const bs = StyleSheet.create({
   divider: { height: 1, backgroundColor: Colors.border, marginVertical: 4 },
 
   lockedRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
-  lockedIcon: { fontSize: 16 },
   lockedText: { fontSize: 13, color: Colors.textMuted, fontStyle: 'italic', flex: 1 },
   mutedText: { fontSize: 13, color: Colors.textMuted },
 
