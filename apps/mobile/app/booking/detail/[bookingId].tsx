@@ -29,7 +29,8 @@ const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 // ── Types ─────────────────────────────────────────────────────
 type BookingStatus =
   | 'pending' | 'accepted' | 'on_way' | 'arrived'
-  | 'service_rendered' | 'completed' | 'cancelled' | 'expired' | 'disputed';
+  | 'service_rendered' | 'completed' | 'cancelled' | 'expired' | 'disputed'
+  | 'rescheduled_pending';
 
 interface BookingDetail {
   id: string;
@@ -59,6 +60,7 @@ interface BookingDetail {
   // Payment
   paystack_reference: string | null;
   vendor_id: string;
+  suggested_scheduled_at: string | null;
 }
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -99,15 +101,16 @@ const DISPUTE_CATEGORIES: { value: DisputeCategory; label: string }[] = [
 
 // ── Status config ─────────────────────────────────────────────
 const STATUS_CONFIG: Record<BookingStatus, { label: string; color: string; description: string }> = {
-  pending:          { label: 'Awaiting vendor',   color: Colors.statusPending,   description: 'Your vendor has 1 hour to confirm this booking.' },
-  accepted:         { label: 'Confirmed',          color: Colors.statusAccepted,  description: 'Your vendor confirmed. See you soon.' },
-  on_way:           { label: 'On the way',         color: Colors.statusOnWay,     description: 'Your vendor is on their way to you.' },
-  arrived:          { label: 'Arrived',            color: Colors.statusArrived,   description: 'Your vendor has arrived.' },
-  service_rendered: { label: 'Service complete',   color: Colors.primary,         description: 'Confirm below to release payment to your vendor.' },
-  completed:        { label: 'Completed',          color: Colors.statusCompleted, description: 'Service complete. Payment has been released.' },
-  cancelled:        { label: 'Cancelled',          color: Colors.statusCancelled, description: 'This booking was cancelled.' },
-  expired:          { label: 'Expired',            color: Colors.statusExpired,   description: 'Your vendor did not respond in time. You have been fully refunded.' },
-  disputed:         { label: 'Under review',       color: Colors.statusDisputed,  description: 'This booking is under review by the VARS team.' },
+  pending:              { label: 'Awaiting vendor',       color: Colors.statusPending,   description: 'Your vendor has 1 hour to confirm this booking.' },
+  accepted:             { label: 'Confirmed',              color: Colors.statusAccepted,  description: 'Your vendor confirmed. See you soon.' },
+  on_way:               { label: 'On the way',             color: Colors.statusOnWay,     description: 'Your vendor is on their way to you.' },
+  arrived:              { label: 'Arrived',                color: Colors.statusArrived,   description: 'Your vendor has arrived.' },
+  service_rendered:     { label: 'Service complete',       color: Colors.primary,         description: 'Confirm below to release payment to your vendor.' },
+  completed:            { label: 'Completed',              color: Colors.statusCompleted, description: 'Service complete. Payment has been released.' },
+  cancelled:            { label: 'Cancelled',              color: Colors.statusCancelled, description: 'This booking was cancelled.' },
+  expired:              { label: 'Expired',                color: Colors.statusExpired,   description: 'Your vendor did not respond in time. You have been fully refunded.' },
+  disputed:             { label: 'Under review',           color: Colors.statusDisputed,  description: 'This booking is under review by the VARS team.' },
+  rescheduled_pending:  { label: 'New time suggested',     color: Colors.statusPending,   description: 'Your vendor suggested a new time. Review it below.' },
 };
 
 // ── Timeline ──────────────────────────────────────────────────
@@ -141,7 +144,7 @@ function buildTimeline(b: BookingDetail): TimelineStep[] {
   }
 
   const ORDER: BookingStatus[] = ['pending', 'accepted', 'on_way', 'arrived', 'service_rendered', 'completed'];
-  const currentIdx = ORDER.indexOf(s);
+  const currentIdx = ORDER.indexOf(s === 'rescheduled_pending' ? 'pending' : s);
 
   const steps: TimelineStep[] = [
     { label: 'Booking placed',   ts: b.created_at,           reached: true },
@@ -375,6 +378,26 @@ export default function BookingDetailScreen() {
     finally { setActionLoading(false); }
   };
 
+  const handleAcceptReschedule = async () => {
+    if (!booking) return;
+    setActionLoading(true); setActionError(null);
+    try {
+      await callEdgeFn('customer-accept-reschedule', { booking_id: booking.id });
+      await load();
+    } catch (err: any) { setActionError(err.message); }
+    finally { setActionLoading(false); }
+  };
+
+  const handleDeclineReschedule = async () => {
+    if (!booking) return;
+    setActionLoading(true); setActionError(null);
+    try {
+      await callEdgeFn('customer-decline-reschedule', { booking_id: booking.id });
+      await load();
+    } catch (err: any) { setActionError(err.message); }
+    finally { setActionLoading(false); }
+  };
+
   // Seed UI from cache on first mount only — avoids blank screen while fetch runs
   useEffect(() => {
     cacheGet<BookingDetail>(`booking_detail_${bookingId}`).then((c) => { if (c) setBooking(c); });
@@ -385,7 +408,7 @@ export default function BookingDetailScreen() {
       .from('bookings')
       .select(`
         id, status, vendor_id, service_name, service_duration_blocks, service_price_kobo,
-        scheduled_at, paystack_reference,
+        scheduled_at, suggested_scheduled_at, paystack_reference,
         user_location_address, user_location_lat, user_location_lng,
         access_building, access_floor, access_flat, access_code,
         created_at, accepted_at, on_way_at, arrived_at,
@@ -401,6 +424,7 @@ export default function BookingDetailScreen() {
         vendor_id: (data as any).vendor_id,
         vendor_name: (data as any).vendors?.full_name ?? 'Vendor',
         vendor_phone: (data as any).vendors?.phone_number ?? null,
+        suggested_scheduled_at: (data as any).suggested_scheduled_at ?? null,
       } as BookingDetail;
       setBooking(fresh);
       cacheSet(`booking_detail_${bookingId}`, fresh, 5 * 60_000).catch(() => {});
@@ -637,6 +661,43 @@ export default function BookingDetailScreen() {
         </Modal>
       )}
 
+      {/* ── Reschedule suggestion modal ─────────────── */}
+      {booking.status === 'rescheduled_pending' && !!booking.suggested_scheduled_at && (
+        <Modal visible transparent animationType="fade" onRequestClose={() => {}}>
+          <View style={s.rescheduleOverlay}>
+            <View style={s.rescheduleSheet}>
+              <Text style={s.rescheduleVendorName}>{booking.vendor_name}</Text>
+              <Text style={s.rescheduleHeading}>Suggested a new time</Text>
+              <View style={s.rescheduleTimeCard}>
+                <Text style={s.rescheduleDateText}>{fmtDate(booking.suggested_scheduled_at)}</Text>
+                <Text style={s.rescheduleTimeText}>{fmtTime(booking.suggested_scheduled_at)}</Text>
+              </View>
+              {actionError && (
+                <View style={[s.errorBanner, { marginHorizontal: 0 }]}>
+                  <Text style={s.errorText}>{actionError}</Text>
+                </View>
+              )}
+              <TouchableOpacity
+                style={[s.primaryBtn, { width: '100%' }, actionLoading && s.btnDisabled]}
+                onPress={handleAcceptReschedule}
+                disabled={actionLoading}
+              >
+                {actionLoading
+                  ? <ScissorsLoader size="small" color="light" />
+                  : <Text style={s.primaryBtnText}>Accept new time</Text>}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.secondaryBtn, { width: '100%' }, actionLoading && s.btnDisabled]}
+                onPress={handleDeclineReschedule}
+                disabled={actionLoading}
+              >
+                <Text style={s.secondaryBtnText}>Find another vendor</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
+
       {/* ── Dispute modal ───────────────────────────── */}
       <Modal visible={showDisputeModal} transparent animationType="slide" onRequestClose={() => setShowDisputeModal(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
@@ -805,6 +866,30 @@ const s = StyleSheet.create({
   radioSelected: { borderColor: Colors.error, backgroundColor: Colors.error },
   categoryLabel: { fontSize: 14, color: Colors.text, flex: 1 },
   categoryLabelSelected: { fontWeight: '600', color: Colors.error },
+
+  // Reschedule modal
+  rescheduleOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.65)',
+    justifyContent: 'center', alignItems: 'center', padding: 24,
+  },
+  rescheduleSheet: {
+    backgroundColor: Colors.background, borderRadius: 24,
+    padding: 24, width: '100%', gap: 12, alignItems: 'center',
+  },
+  rescheduleVendorName: {
+    fontSize: 12, fontWeight: '700', color: Colors.textMuted,
+    textTransform: 'uppercase', letterSpacing: 0.5,
+  },
+  rescheduleHeading: {
+    fontSize: 22, fontWeight: '800', color: Colors.text, textAlign: 'center',
+  },
+  rescheduleTimeCard: {
+    backgroundColor: Colors.surface, borderRadius: 16,
+    padding: 20, borderWidth: 1, borderColor: Colors.border,
+    alignItems: 'center', width: '100%', marginVertical: 4,
+  },
+  rescheduleDateText: { fontSize: 15, fontWeight: '600', color: Colors.textSecondary },
+  rescheduleTimeText: { fontSize: 34, fontWeight: '800', color: Colors.text, marginTop: 4 },
 
   // Live tracking map
   liveHeader: {

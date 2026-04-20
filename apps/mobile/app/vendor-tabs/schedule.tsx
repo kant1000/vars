@@ -29,7 +29,8 @@ type BlockState = 'unavailable' | 'available' | 'auto_accept' | 'transport_buffe
 
 type BookingStatus =
   | 'pending' | 'accepted' | 'on_way' | 'arrived'
-  | 'service_rendered' | 'completed' | 'cancelled' | 'expired' | 'disputed';
+  | 'service_rendered' | 'completed' | 'cancelled' | 'expired' | 'disputed'
+  | 'rescheduled_pending';
 
 interface CalendarBlock {
   id: string;
@@ -57,13 +58,14 @@ export interface VendorBooking {
   access_code: string | null;
   auto_accepted: boolean;
   auto_accept_grace_expires_at: string | null;
+  suggested_scheduled_at: string | null;
 }
 
 // ── Constants ─────────────────────────────────────────────────
 const SCREEN_W = Dimensions.get('window').width;
 const SLOT_W   = (SCREEN_W - 32 - 20) / 4;
 const STORAGE_KEY = 'vars_vendor_schedule_view';
-const ACTIVE_STATUSES: BookingStatus[] = ['pending', 'accepted', 'on_way', 'arrived', 'service_rendered'];
+const ACTIVE_STATUSES: BookingStatus[] = ['pending', 'accepted', 'on_way', 'arrived', 'service_rendered', 'rescheduled_pending'];
 
 const STATE_STYLE = {
   default:          { border: Colors.border,        bg: Colors.background, text: Colors.primary },
@@ -74,15 +76,16 @@ const STATE_STYLE = {
 };
 
 const STATUS_LABEL: Record<BookingStatus, { text: string; color: string }> = {
-  pending:          { text: 'Pending',          color: Colors.statusPending   },
-  accepted:         { text: 'Confirmed',        color: Colors.statusAccepted  },
-  on_way:           { text: 'On the way',       color: Colors.statusOnWay     },
-  arrived:          { text: 'Arrived',          color: Colors.statusArrived   },
-  service_rendered: { text: 'Service done',     color: Colors.primary         },
-  completed:        { text: 'Completed',        color: Colors.statusCompleted },
-  cancelled:        { text: 'Cancelled',        color: Colors.statusCancelled },
-  expired:          { text: 'Expired',          color: Colors.statusExpired   },
-  disputed:         { text: 'Under review',     color: Colors.statusDisputed  },
+  pending:              { text: 'Pending',            color: Colors.statusPending   },
+  accepted:             { text: 'Confirmed',          color: Colors.statusAccepted  },
+  on_way:               { text: 'On the way',         color: Colors.statusOnWay     },
+  arrived:              { text: 'Arrived',            color: Colors.statusArrived   },
+  service_rendered:     { text: 'Service done',       color: Colors.primary         },
+  completed:            { text: 'Completed',          color: Colors.statusCompleted },
+  cancelled:            { text: 'Cancelled',          color: Colors.statusCancelled },
+  expired:              { text: 'Expired',            color: Colors.statusExpired   },
+  disputed:             { text: 'Under review',       color: Colors.statusDisputed  },
+  rescheduled_pending:  { text: 'Reschedule pending', color: Colors.statusPending   },
 };
 
 
@@ -121,6 +124,13 @@ function BookingBottomSheet({
   const [actionError, setActionError] = useState<string | null>(null);
   const [graceSecondsLeft, setGraceSecondsLeft] = useState<number>(0);
 
+  // ── Reschedule state ────────────────────────────────────────
+  const [showReschedulePicker, setShowReschedulePicker] = useState(false);
+  const [rescheduleSlots, setRescheduleSlots] = useState<{ label: string; slots: { time: Date; available: boolean }[] }[]>([]);
+  const [loadingRescheduleSlots, setLoadingRescheduleSlots] = useState(false);
+  const [suggestedSlot, setSuggestedSlot] = useState<Date | null>(null);
+  const [submittingReschedule, setSubmittingReschedule] = useState(false);
+
   useEffect(() => {
     if (!booking.auto_accepted || !booking.auto_accept_grace_expires_at) return;
     const expiry = new Date(booking.auto_accept_grace_expires_at).getTime();
@@ -144,6 +154,97 @@ function BookingBottomSheet({
       setActionError(err.message);
     } finally {
       setActing(false);
+    }
+  };
+
+  const loadRescheduleSlots = async () => {
+    setLoadingRescheduleSlots(true);
+    const { data: { session: s } } = await supabase.auth.getSession();
+    const vendorId = s?.user?.id;
+    if (!vendorId) { setLoadingRescheduleSlots(false); return; }
+
+    const origDate = new Date(booking.scheduled_at);
+    const days = [
+      new Date(new Date(booking.scheduled_at).setHours(0, 0, 0, 0)),
+      (() => { const d = new Date(booking.scheduled_at); d.setDate(d.getDate() + 1); d.setHours(0, 0, 0, 0); return d; })(),
+    ];
+
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today.getTime() + 86400000);
+    const getDayLabel = (d: Date) => {
+      if (d.getTime() === today.getTime()) return 'Today';
+      if (d.getTime() === tomorrow.getTime()) return 'Tomorrow';
+      return d.toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' });
+    };
+
+    const result: typeof rescheduleSlots = [];
+    for (const day of days) {
+      const dayStart = new Date(day); dayStart.setHours(8, 0, 0, 0);
+      const dayEnd   = new Date(day); dayEnd.setHours(22, 0, 0, 0);
+
+      const [{ data: calBlocks }, { data: booked }] = await Promise.all([
+        supabase.from('vendor_calendar')
+          .select('start_time, end_time, block_state')
+          .eq('vendor_id', vendorId)
+          .lt('start_time', dayEnd.toISOString())
+          .gt('end_time', dayStart.toISOString()),
+        supabase.from('bookings')
+          .select('id, scheduled_at, service_duration_blocks')
+          .eq('vendor_id', vendorId)
+          .in('status', ['pending', 'accepted', 'on_way', 'arrived', 'rescheduled_pending'])
+          .neq('id', booking.id)
+          .gte('scheduled_at', dayStart.toISOString())
+          .lt('scheduled_at', dayEnd.toISOString()),
+      ]);
+
+      const daySlots: { time: Date; available: boolean }[] = [];
+      let cursor = new Date(dayStart);
+      const now = new Date();
+      const durMs = booking.service_duration_blocks * 30 * 60000;
+
+      while (cursor < dayEnd) {
+        const slotStart = new Date(cursor);
+        const slotEnd   = new Date(slotStart.getTime() + durMs);
+        let available   = slotStart > now && slotEnd <= dayEnd;
+
+        if (available) {
+          for (const b of calBlocks ?? []) {
+            if (b.block_state !== 'unavailable' && b.block_state !== 'transport_buffer') continue;
+            const bS = new Date(b.start_time), bE = new Date(b.end_time);
+            if (slotStart < bE && slotEnd > bS) { available = false; break; }
+          }
+        }
+        if (available) {
+          for (const bk of booked ?? []) {
+            const bS = new Date(bk.scheduled_at);
+            const bE = new Date(bS.getTime() + bk.service_duration_blocks * 30 * 60000);
+            if (slotStart < bE && slotEnd > bS) { available = false; break; }
+          }
+        }
+        daySlots.push({ time: slotStart, available });
+        cursor = new Date(cursor.getTime() + 30 * 60000);
+      }
+      result.push({ label: getDayLabel(day), slots: daySlots });
+    }
+    setRescheduleSlots(result);
+    setLoadingRescheduleSlots(false);
+  };
+
+  const handleSuggestReschedule = async () => {
+    if (!suggestedSlot) return;
+    setSubmittingReschedule(true);
+    setActionError(null);
+    try {
+      await callEdgeFn('vendor-suggest-reschedule', {
+        booking_id: booking.id,
+        suggested_at: suggestedSlot.toISOString(),
+      });
+      onAction();
+      onClose();
+    } catch (err: any) {
+      setActionError(err.message);
+    } finally {
+      setSubmittingReschedule(false);
     }
   };
 
@@ -300,22 +401,97 @@ function BookingBottomSheet({
             )}
 
             {/* Action buttons */}
-            {booking.status === 'pending' && (
-              <View style={bs.actionRow}>
+            {booking.status === 'pending' && !showReschedulePicker && (
+              <>
+                <View style={bs.actionRow}>
+                  <TouchableOpacity
+                    style={[bs.actionBtn, bs.actionBtnDecline, acting && bs.actionBtnDisabled]}
+                    onPress={() => handleAction('decline')}
+                    disabled={acting}
+                  >
+                    {acting ? <ScissorsLoader size="small" color="dark" /> : <Text style={bs.actionBtnDeclineText}>Decline</Text>}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[bs.actionBtn, bs.actionBtnAccept, acting && bs.actionBtnDisabled]}
+                    onPress={() => handleAction('accept')}
+                    disabled={acting}
+                  >
+                    {acting ? <ScissorsLoader size="small" color="light" /> : <Text style={bs.actionBtnAcceptText}>Accept</Text>}
+                  </TouchableOpacity>
+                </View>
                 <TouchableOpacity
-                  style={[bs.actionBtn, bs.actionBtnDecline, acting && bs.actionBtnDisabled]}
-                  onPress={() => handleAction('decline')}
+                  style={[bs.rescheduleBtn, acting && bs.actionBtnDisabled]}
+                  onPress={() => { setShowReschedulePicker(true); loadRescheduleSlots(); }}
                   disabled={acting}
                 >
-                  {acting ? <ScissorsLoader size="small" color="dark" /> : <Text style={bs.actionBtnDeclineText}>Decline</Text>}
+                  <Text style={bs.rescheduleBtnText}>Suggest another time</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={[bs.actionBtn, bs.actionBtnAccept, acting && bs.actionBtnDisabled]}
-                  onPress={() => handleAction('accept')}
-                  disabled={acting}
-                >
-                  {acting ? <ScissorsLoader size="small" color="light" /> : <Text style={bs.actionBtnAcceptText}>Accept</Text>}
-                </TouchableOpacity>
+              </>
+            )}
+
+            {/* Inline reschedule picker */}
+            {booking.status === 'pending' && showReschedulePicker && (
+              <View style={bs.rescheduleWrap}>
+                <Text style={bs.rescheduleHeading}>Suggest another time</Text>
+                {loadingRescheduleSlots ? (
+                  <View style={{ alignItems: 'center', paddingVertical: 20 }}>
+                    <ScissorsLoader size="small" color="dark" />
+                  </View>
+                ) : (
+                  <>
+                    {rescheduleSlots.map(({ label, slots }) => (
+                      <View key={label} style={{ marginBottom: 14 }}>
+                        <Text style={bs.rescheduleDayLabel}>{label}</Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
+                          {slots.map((sl) => (
+                            <TouchableOpacity
+                              key={sl.time.toISOString()}
+                              disabled={!sl.available}
+                              onPress={() => setSuggestedSlot(sl.time)}
+                              style={[
+                                bs.rescheduleChip,
+                                !sl.available && bs.rescheduleChipUnavailable,
+                                suggestedSlot?.getTime() === sl.time.getTime() && bs.rescheduleChipSelected,
+                              ]}
+                              activeOpacity={0.8}
+                            >
+                              <Text style={[
+                                bs.rescheduleChipText,
+                                !sl.available && bs.rescheduleChipTextUnavailable,
+                                suggestedSlot?.getTime() === sl.time.getTime() && bs.rescheduleChipTextSelected,
+                              ]}>
+                                {fmtTime(sl.time)}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </ScrollView>
+                      </View>
+                    ))}
+                    {suggestedSlot && (
+                      <TouchableOpacity
+                        style={[bs.primaryBtn, submittingReschedule && bs.actionBtnDisabled]}
+                        onPress={handleSuggestReschedule}
+                        disabled={submittingReschedule}
+                      >
+                        {submittingReschedule
+                          ? <ScissorsLoader size="small" color="light" />
+                          : <Text style={bs.primaryBtnText}>Send — {fmtDate(suggestedSlot)} at {fmtTime(suggestedSlot)}</Text>}
+                      </TouchableOpacity>
+                    )}
+                    <TouchableOpacity
+                      style={{ marginTop: 10, alignItems: 'center' }}
+                      onPress={() => { setShowReschedulePicker(false); setSuggestedSlot(null); }}
+                    >
+                      <Text style={{ fontSize: 14, color: Colors.textMuted, fontWeight: '600' }}>Cancel</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
+            )}
+
+            {booking.status === 'rescheduled_pending' && (
+              <View style={bs.waitingBox}>
+                <Text style={bs.waitingText}>Reschedule suggestion sent — waiting for customer response</Text>
               </View>
             )}
 
@@ -438,6 +614,7 @@ export default function ScheduleScreen() {
     access_code: b.access_code ?? null,
     auto_accepted: b.auto_accepted ?? false,
     auto_accept_grace_expires_at: b.auto_accept_grace_expires_at ?? null,
+    suggested_scheduled_at: b.suggested_scheduled_at ?? null,
   });
 
   const loadData = useCallback(async () => {
@@ -458,7 +635,7 @@ export default function ScheduleScreen() {
         .from('bookings')
         .select(`
           id, status, service_name, service_duration_blocks, service_price_kobo,
-          scheduled_at, phone_revealed, user_location_lat, user_location_lng,
+          scheduled_at, suggested_scheduled_at, phone_revealed, user_location_lat, user_location_lng,
           user_location_address, access_building, access_floor, access_flat, access_code,
           auto_accepted, auto_accept_grace_expires_at,
           profiles:user_id(full_name, phone_number)
@@ -968,4 +1145,29 @@ const bs = StyleSheet.create({
     alignItems: 'center', marginTop: 4,
   },
   waitingText: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
+
+  // Reschedule suggestion UI
+  rescheduleBtn: {
+    height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: Colors.primary, marginTop: 8,
+  },
+  rescheduleBtnText: { fontSize: 15, fontWeight: '600', color: Colors.primary },
+  rescheduleWrap: {
+    backgroundColor: Colors.surface, borderRadius: 14,
+    padding: 14, borderWidth: 1, borderColor: Colors.border, marginBottom: 12,
+  },
+  rescheduleHeading: { fontSize: 14, fontWeight: '700', color: Colors.text, marginBottom: 12 },
+  rescheduleDayLabel: {
+    fontSize: 12, fontWeight: '700', color: Colors.textMuted,
+    textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6,
+  },
+  rescheduleChip: {
+    paddingHorizontal: 12, paddingVertical: 8,
+    borderRadius: 10, borderWidth: 1.5, borderColor: Colors.primary, alignItems: 'center',
+  },
+  rescheduleChipUnavailable: { borderColor: Colors.border, backgroundColor: Colors.surface },
+  rescheduleChipSelected: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  rescheduleChipText: { fontSize: 13, fontWeight: '700', color: Colors.primary },
+  rescheduleChipTextUnavailable: { color: Colors.textMuted },
+  rescheduleChipTextSelected: { color: '#FFF' },
 });

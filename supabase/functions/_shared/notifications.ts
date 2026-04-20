@@ -351,6 +351,36 @@ export function msg_vendor_consentExpired() {
   };
 }
 
+// ── Reschedule messages ───────────────────────────────────────
+
+export function msg_reschedule_suggested_customer(vendorName: string, day: string, time: string) {
+  return {
+    title: 'New time suggested',
+    body: `${vendorName} has suggested a new time for your booking — ${day} at ${time}. Accept or find another vendor.`,
+  };
+}
+
+export function msg_reschedule_accepted_vendor(clientFirstName: string, day: string, time: string) {
+  return {
+    title: 'Reschedule accepted',
+    body: `${clientFirstName} accepted your suggested time. Your booking is confirmed for ${day} at ${time}.`,
+  };
+}
+
+export function msg_reschedule_declined_vendor(clientFirstName: string) {
+  return {
+    title: 'Reschedule declined',
+    body: `${clientFirstName} didn't accept your suggested time. The booking has been cancelled and they've been fully refunded.`,
+  };
+}
+
+export function msg_reschedule_expired_vendor(clientFirstName: string) {
+  return {
+    title: 'Reschedule expired',
+    body: `Your reschedule suggestion for ${clientFirstName} was not accepted in time. The booking has been cancelled.`,
+  };
+}
+
 /** Format kobo to naira string with commas e.g. 350000 → "3,500" */
 export function formatNaira(kobo: number): string {
   return (kobo / 100).toLocaleString('en-NG', { maximumFractionDigits: 0 });

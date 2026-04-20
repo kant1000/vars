@@ -25,6 +25,7 @@ import { LightningIcon, CheckIcon, CloseIcon, PinIcon } from '@/components/icons
 
 const SCREEN_W = Dimensions.get('window').width;
 const BLOCK_MINS = 30;
+const CHIP_W = (SCREEN_W - 32 - 8 * 3) / 4;
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
 // ── Types ────────────────────────────────────────────────────
@@ -238,51 +239,127 @@ function Step2({
 
   useEffect(() => { loadSlots(selectedDay); }, [selectedDay, loadSlots]);
 
-  return (
-    <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-      <Text style={[s.stepTitle, { margin: 16 }]}>When works for you?</Text>
+  const [selectedSlot, setSelectedSlot] = useState<Date | null>(null);
+  const [selectedAutoAccept, setSelectedAutoAccept] = useState(false);
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8, paddingBottom: 8 }}>
-        {days.map((d) => {
-          const active = sameDay(d, selectedDay);
-          return (
-            <TouchableOpacity key={d.toISOString()} style={[s.dayChip, active && s.dayChipActive]} onPress={() => setSelectedDay(d)}>
-              <Text style={[s.dayChipWeekday, active && s.dayChipTextActive]}>
-                {d.toLocaleDateString('en-NG', { weekday: 'short' })}
-              </Text>
-              <Text style={[s.dayChipNum, active && s.dayChipTextActive]}>{d.getDate()}</Text>
-            </TouchableOpacity>
-          );
-        })}
+  // Reset selection whenever the day changes
+  useEffect(() => { setSelectedSlot(null); setSelectedAutoAccept(false); }, [selectedDay]);
+
+  const selectedEnd = selectedSlot
+    ? addMinutes(selectedSlot, service.duration_blocks * BLOCK_MINS)
+    : null;
+
+  const getSlotRole = (t: Date): 'start' | 'covered' | null => {
+    if (!selectedSlot || !selectedEnd) return null;
+    if (t.getTime() === selectedSlot.getTime()) return 'start';
+    if (t > selectedSlot && t < selectedEnd) return 'covered';
+    return null;
+  };
+
+  // Group slots into rows of 4 for connected-chip rendering
+  const slotRows: typeof slots[] = [];
+  for (let i = 0; i < slots.length; i += 4) slotRows.push(slots.slice(i, i + 4));
+
+  return (
+    <>
+      <ScrollView contentContainerStyle={{ paddingBottom: selectedSlot ? 100 : 40 }}>
+        <Text style={[s.stepTitle, { margin: 16 }]}>When works for you?</Text>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8, paddingBottom: 8 }}>
+          {days.map((d) => {
+            const active = sameDay(d, selectedDay);
+            return (
+              <TouchableOpacity key={d.toISOString()} style={[s.dayChip, active && s.dayChipActive]} onPress={() => setSelectedDay(d)}>
+                <Text style={[s.dayChipWeekday, active && s.dayChipTextActive]}>
+                  {d.toLocaleDateString('en-NG', { weekday: 'short' })}
+                </Text>
+                <Text style={[s.dayChipNum, active && s.dayChipTextActive]}>{d.getDate()}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {slots.some((sl) => sl.available && sl.autoAccept) && (
+          <View style={s.autoAcceptLegend}>
+            <Text style={s.autoAcceptLegendText}>⚡ Instant confirm — no waiting</Text>
+          </View>
+        )}
+
+        {loadingSlots ? (
+          <View style={s.centered}><ScissorsLoader size="small" color="dark" /></View>
+        ) : (
+          <View style={s.slotGrid}>
+            {slotRows.map((row, ri) => {
+              const cells: React.ReactNode[] = [];
+              let ci = 0;
+              while (ci < row.length) {
+                const sl = row[ci];
+                const role = getSlotRole(sl.time);
+                if (role === 'start') {
+                  // Count how many covered slots follow in this same row
+                  let span = 1;
+                  while (ci + span < row.length && getSlotRole(row[ci + span].time) === 'covered') span++;
+                  const mergedW = CHIP_W * span + 8 * (span - 1);
+                  cells.push(
+                    <TouchableOpacity
+                      key={sl.time.toISOString()}
+                      style={[s.slot, s.slotSelected, { width: mergedW }]}
+                      onPress={() => { setSelectedSlot(null); setSelectedAutoAccept(false); }}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={[s.slotText, s.slotTextSelected]}>{fmtTime(sl.time)}</Text>
+                      {sl.autoAccept && <LightningIcon size={9} color="#FFF" />}
+                    </TouchableOpacity>
+                  );
+                  ci += span;
+                } else if (role === 'covered') {
+                  // Cross-row continuation chip — no text, just tinted fill
+                  cells.push(
+                    <View key={sl.time.toISOString()} style={[s.slot, s.slotCovered, { width: CHIP_W }]} />
+                  );
+                  ci++;
+                } else {
+                  cells.push(
+                    <TouchableOpacity
+                      key={sl.time.toISOString()}
+                      style={[s.slot, { width: CHIP_W }, !sl.available && s.slotUnavailable, sl.available && sl.autoAccept && s.slotAutoAccept]}
+                      onPress={() => { if (sl.available) { setSelectedSlot(sl.time); setSelectedAutoAccept(sl.autoAccept); } }}
+                      disabled={!sl.available}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[s.slotText, !sl.available && s.slotTextUnavailable, sl.available && sl.autoAccept && s.slotTextAutoAccept]}>
+                        {fmtTime(sl.time)}
+                      </Text>
+                      {sl.available && sl.autoAccept && <LightningIcon size={9} color="#D4A017" />}
+                    </TouchableOpacity>
+                  );
+                  ci++;
+                }
+              }
+              // Pad short rows (e.g. last row) to maintain grid width
+              while (cells.length < 4) {
+                cells.push(<View key={`pad-${ri}-${cells.length}`} style={{ width: CHIP_W }} />);
+              }
+              return <View key={ri} style={s.slotRow}>{cells}</View>;
+            })}
+          </View>
+        )}
       </ScrollView>
 
-      {slots.some((sl) => sl.available && sl.autoAccept) && (
-        <View style={s.autoAcceptLegend}>
-          <Text style={s.autoAcceptLegendText}>⚡ Instant confirm — no waiting</Text>
+      {selectedSlot && (
+        <View style={s.confirmBar}>
+          <TouchableOpacity
+            style={s.confirmBtn}
+            onPress={() => onConfirm(selectedSlot, selectedAutoAccept)}
+            activeOpacity={0.88}
+          >
+            <Text style={s.confirmBtnText}>
+              Confirm {fmtTime(selectedSlot)} – {fmtTime(addMinutes(selectedSlot, service.duration_blocks * BLOCK_MINS))} →
+            </Text>
+          </TouchableOpacity>
         </View>
       )}
-
-      {loadingSlots ? (
-        <View style={s.centered}><ScissorsLoader size="small" color="dark" /></View>
-      ) : (
-        <View style={s.slotGrid}>
-          {slots.map((slot) => (
-            <TouchableOpacity
-              key={slot.time.toISOString()}
-              style={[s.slot, !slot.available && s.slotUnavailable, slot.available && slot.autoAccept && s.slotAutoAccept]}
-              onPress={() => slot.available && onConfirm(slot.time, slot.autoAccept)}
-              disabled={!slot.available}
-              activeOpacity={0.8}
-            >
-              <Text style={[s.slotText, !slot.available && s.slotTextUnavailable, slot.available && slot.autoAccept && s.slotTextAutoAccept]}>
-                {fmtTime(slot.time)}
-              </Text>
-              {slot.available && slot.autoAccept && <LightningIcon size={9} color="#D4A017" />}
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-    </ScrollView>
+    </>
   );
 }
 
@@ -312,7 +389,7 @@ function Step3Review({
           <Row label="Service" value={service.name} />
           <Row label="Duration" value={fmtDuration(service.duration_blocks)} />
           <Row label="Date" value={fmtDate(slot)} />
-          <Row label="Time" value={fmtTime(slot)} />
+          <Row label="Time" value={`${fmtTime(slot)} – ${fmtTime(addMinutes(slot, service.duration_blocks * BLOCK_MINS))}`} />
           <View style={s.divider} />
           <Row label="Total" value={fmtPrice(service.price_kobo)} bold />
         </View>
@@ -495,7 +572,7 @@ function Step3Location({
           <View style={s.summaryCard}>
             <Row label="Service" value={service.name} />
             <Row label="Date" value={fmtDate(slot)} />
-            <Row label="Time" value={fmtTime(slot)} />
+            <Row label="Time" value={`${fmtTime(slot)} – ${fmtTime(addMinutes(slot, service.duration_blocks * BLOCK_MINS))}`} />
             <View style={s.divider} />
             <Row label="Total" value={fmtPrice(service.price_kobo)} bold />
           </View>
@@ -788,17 +865,21 @@ const s = StyleSheet.create({
   dayChipTextActive: { color: '#FFF' },
 
   // Slots
-  slotGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, gap: 8, marginTop: 16 },
+  slotGrid: { paddingHorizontal: 16, gap: 8, marginTop: 16 },
+  slotRow: { flexDirection: 'row', gap: 8 },
   slot: {
-    width: (SCREEN_W - 32 - 24) / 4, paddingVertical: 10,
+    paddingVertical: 10,
     borderRadius: 10, borderWidth: 1.5, borderColor: Colors.primary,
-    alignItems: 'center',
+    alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 4,
   },
   slotUnavailable: { borderColor: Colors.border, backgroundColor: Colors.surface },
   slotAutoAccept: { borderColor: '#D4A017', backgroundColor: '#FFF8E6' },
+  slotSelected: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  slotCovered: { backgroundColor: Colors.primary + '22', borderColor: Colors.primary + '55' },
   slotText: { fontSize: 13, fontWeight: '700', color: Colors.primary },
   slotTextUnavailable: { color: Colors.textMuted },
   slotTextAutoAccept: { color: '#A07010' },
+  slotTextSelected: { color: '#FFF' },
   autoAcceptLegend: {
     marginHorizontal: 16, marginBottom: 8, marginTop: 4,
     backgroundColor: '#FFF8E6', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6,
@@ -882,6 +963,19 @@ const s = StyleSheet.create({
   infoBoxAutoAccept: { backgroundColor: '#FFF8E6' },
   infoText: { fontSize: 13, color: Colors.primary, lineHeight: 19, fontWeight: '500' },
   infoTextAutoAccept: { color: '#A07010' },
+
+  // Slot confirm bar (Step 2)
+  confirmBar: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    backgroundColor: Colors.background,
+    borderTopWidth: 1, borderTopColor: Colors.border,
+    padding: 16,
+  },
+  confirmBtn: {
+    height: 54, backgroundColor: Colors.primary,
+    borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+  },
+  confirmBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
 
   // Pay button
   payWrap: {
