@@ -22,6 +22,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 import { fmtPrice, fmtTime, fmtDateTime } from '@/lib/format';
+import { CheckIcon, HourglassIcon, CheckCircleIcon, CarIcon, PinIcon, SparkleIcon, StarIcon, XCircleIcon, ClockIcon, WarningIcon } from '@/components/icons';
 import { fetchWithRetry } from '@/lib/fetchWithRetry';
 import { useNetworkState } from '@/lib/useNetworkState';
 import { cacheSet, cacheGet } from '@/lib/cache';
@@ -58,16 +59,16 @@ interface BookingData {
 }
 
 // ── Status config ────────────────────────────────────────────
-const STATUS_CONFIG: Record<BookingStatus, { label: string; color: string; emoji: string }> = {
-  pending:          { label: 'Awaiting vendor',      color: Colors.statusPending,   emoji: '⏳' },
-  accepted:         { label: 'Booking confirmed',    color: Colors.statusAccepted,  emoji: '✅' },
-  on_way:           { label: 'Vendor on their way',  color: Colors.statusOnWay,     emoji: '🚗' },
-  arrived:          { label: 'Vendor has arrived',   color: Colors.statusArrived,   emoji: '📍' },
-  service_rendered: { label: 'Service complete',     color: Colors.primary,         emoji: '🎉' },
-  completed:        { label: 'All done',             color: Colors.statusCompleted, emoji: '⭐' },
-  cancelled:        { label: 'Cancelled',            color: Colors.statusCancelled, emoji: '✕' },
-  expired:          { label: 'Expired',              color: Colors.statusExpired,   emoji: '⏱' },
-  disputed:         { label: 'Under review',         color: Colors.statusDisputed,  emoji: '⚠️' },
+const STATUS_CONFIG: Record<BookingStatus, { label: string; color: string; Icon: React.ComponentType<{ size?: number; color?: string }> }> = {
+  pending:          { label: 'Awaiting vendor',      color: Colors.statusPending,   Icon: HourglassIcon },
+  accepted:         { label: 'Booking confirmed',    color: Colors.statusAccepted,  Icon: CheckCircleIcon },
+  on_way:           { label: 'Vendor on their way',  color: Colors.statusOnWay,     Icon: CarIcon },
+  arrived:          { label: 'Vendor has arrived',   color: Colors.statusArrived,   Icon: PinIcon },
+  service_rendered: { label: 'Service complete',     color: Colors.primary,         Icon: SparkleIcon },
+  completed:        { label: 'All done',             color: Colors.statusCompleted, Icon: StarIcon },
+  cancelled:        { label: 'Cancelled',            color: Colors.statusCancelled, Icon: XCircleIcon },
+  expired:          { label: 'Expired',              color: Colors.statusExpired,   Icon: ClockIcon },
+  disputed:         { label: 'Under review',         color: Colors.statusDisputed,  Icon: WarningIcon },
 };
 
 const STATUS_ORDER: BookingStatus[] = [
@@ -92,9 +93,10 @@ function Timeline({ current }: { current: BookingStatus }) {
           <View key={s} style={tl.row}>
             <View style={tl.left}>
               <View style={[tl.dot, done && tl.dotDone, active && { backgroundColor: cfg.color, borderColor: cfg.color }]}>
-                <Text style={[tl.dotText, (done || active) && tl.dotTextActive]}>
-                  {done ? '✓' : cfg.emoji}
-                </Text>
+                {done
+                  ? <CheckIcon size={12} color="#FFF" />
+                  : <cfg.Icon size={12} color={(done || active) ? '#FFF' : '#6B7280'} />
+                }
               </View>
               {i < STATUS_ORDER.length - 1 && (
                 <View style={[tl.connector, done && tl.connectorDone]} />
@@ -120,8 +122,6 @@ const tl = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   dotDone: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  dotText: { fontSize: 11 },
-  dotTextActive: { color: '#FFF' },
   connector: { width: 2, flex: 1, backgroundColor: Colors.border, minHeight: 16 },
   connectorDone: { backgroundColor: Colors.primary },
   label: { fontSize: 14, color: Colors.textMuted, paddingTop: 4 },
@@ -514,7 +514,7 @@ export default function LiveScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         {/* Status pill */}
         <View style={[s.statusPill, { backgroundColor: cfg.color + '15' }]}>
-          <Text style={s.statusEmoji}>{cfg.emoji}</Text>
+          <cfg.Icon size={20} color={cfg.color} />
           <Text style={[s.statusLabel, { color: cfg.color }]}>{cfg.label}</Text>
         </View>
 
@@ -672,7 +672,6 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 8,
     margin: 16, borderRadius: 16, padding: 14,
   },
-  statusEmoji: { fontSize: 20 },
   statusLabel: { fontSize: 17, fontWeight: '800' },
 
   card: {

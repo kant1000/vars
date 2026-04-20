@@ -21,6 +21,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 import { fmtPrice, fmtDuration, fmtTime, fmtDate } from '@/lib/format';
+import { LightningIcon, CheckIcon, CloseIcon, PinIcon } from '@/components/icons';
 
 const SCREEN_W = Dimensions.get('window').width;
 const BLOCK_MINS = 30;
@@ -276,7 +277,7 @@ function Step2({
               <Text style={[s.slotText, !slot.available && s.slotTextUnavailable, slot.available && slot.autoAccept && s.slotTextAutoAccept]}>
                 {fmtTime(slot.time)}
               </Text>
-              {slot.available && slot.autoAccept && <Text style={s.slotAutoIcon}>⚡</Text>}
+              {slot.available && slot.autoAccept && <LightningIcon size={9} color="#D4A017" />}
             </TouchableOpacity>
           ))}
         </View>
@@ -419,7 +420,7 @@ function Step3Review({
                   <Text style={[s.pickerOptionText, access.floor === item && s.pickerOptionSelected]}>
                     {item}
                   </Text>
-                  {access.floor === item && <Text style={s.pickerCheck}>✓</Text>}
+                  {access.floor === item && <CheckIcon size={16} color={Colors.primary} />}
                 </TouchableOpacity>
               )}
             />
@@ -475,7 +476,7 @@ function Step3Location({
         <View style={{ padding: 20, gap: 16 }}>
           {/* Detected address */}
           <View style={s.addressRow}>
-            <Text style={s.addressIcon}>📍</Text>
+            <PinIcon size={16} color={Colors.text} />
             <Text style={s.addressText} numberOfLines={2}>{locAddress || 'Your current location'}</Text>
           </View>
 
@@ -726,7 +727,7 @@ export default function BookingFlow() {
         <View style={{ flex: 1, paddingTop: insets.top }}>
           <View style={s.webviewHeader}>
             <TouchableOpacity onPress={() => setPaystackUrl(null)} style={s.webviewClose}>
-              <Text style={s.webviewCloseText}>✕</Text>
+              <CloseIcon size={18} color={Colors.text} />
             </TouchableOpacity>
             <Text style={s.webviewTitle}>Secure payment</Text>
             <View style={{ width: 36 }} />
@@ -798,7 +799,6 @@ const s = StyleSheet.create({
   slotText: { fontSize: 13, fontWeight: '700', color: Colors.primary },
   slotTextUnavailable: { color: Colors.textMuted },
   slotTextAutoAccept: { color: '#A07010' },
-  slotAutoIcon: { fontSize: 9, color: '#D4A017', marginTop: 1 },
   autoAcceptLegend: {
     marginHorizontal: 16, marginBottom: 8, marginTop: 4,
     backgroundColor: '#FFF8E6', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6,
@@ -858,8 +858,6 @@ const s = StyleSheet.create({
   },
   pickerOptionText: { fontSize: 16, color: Colors.text },
   pickerOptionSelected: { color: Colors.primary, fontWeight: '700' },
-  pickerCheck: { fontSize: 16, color: Colors.primary, fontWeight: '700' },
-
   // Map + location
   mapThumb: { width: SCREEN_W, height: 200 },
   addressRow: {
@@ -867,7 +865,6 @@ const s = StyleSheet.create({
     backgroundColor: Colors.surface, borderRadius: 12,
     padding: 12, borderWidth: 1, borderColor: Colors.border,
   },
-  addressIcon: { fontSize: 16, lineHeight: 22 },
   addressText: { flex: 1, fontSize: 14, color: Colors.text, lineHeight: 20, fontWeight: '500' },
 
   // Access summary card (Step 3b)
@@ -907,6 +904,5 @@ const s = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
   webviewClose: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  webviewCloseText: { fontSize: 18, color: Colors.text },
   webviewTitle: { fontSize: 16, fontWeight: '700', color: Colors.text },
 });

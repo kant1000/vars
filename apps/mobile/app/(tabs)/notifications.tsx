@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
+import { BellIcon, HourglassIcon, CheckCircleIcon, XCircleIcon, CreditCardIcon, BanknoteIcon, ArrowUpIcon, CarIcon, PinIcon, StarIcon, WarningIcon, ClockIcon, SparkleIcon } from '@/components/icons';
 
 // ── Types ───────────────────────────────────────────────────
 interface AppNotification {
@@ -30,38 +31,38 @@ interface AppNotification {
 }
 
 // ── Notification type → icon ─────────────────────────────────
-const TYPE_ICON: Record<string, string> = {
-  booking_pending:        '⏳',
-  booking_accepted:       '✅',
-  booking_declined:       '✕',
-  booking_expired:        '⏱',
-  booking_cancelled:      '✕',
-  payment_authorized:     '💳',
-  payment_released:       '💸',
-  payment_settled:        '💰',
-  vendor_on_way:          '🚗',  // legacy compat
-  on_way:                 '🚗',
-  vendor_arrived:         '📍',  // legacy compat
-  arrived:                '📍',
-  vendor_cancelled:       '✕',
-  vendor_self_cancelled:  '✕',
-  service_rendered:       '🎉',
-  booking_completed:      '⭐',
-  kyc_approved:           '✅',
-  kyc_rejected:           '⚠️',
-  dispute_raised:         '⚠️',
-  dispute_resolved:       '✅',
-  phone_revealed:         '📞',
-  cancel_0_15:            '✕',
-  cancel_15_60:           '✕',
-  cancel_non_refundable:  '✕',
-  user_cancelled_with_fee:'💸',
-  vendor_declines:        '✕',
-  booking_expired:        '⏱',
+type IconComp = React.FC<{ size?: number; color?: string }>;
+const TYPE_ICON: Record<string, IconComp> = {
+  booking_pending:        HourglassIcon,
+  booking_accepted:       CheckCircleIcon,
+  booking_declined:       XCircleIcon,
+  booking_expired:        ClockIcon,
+  payment_authorized:     CreditCardIcon,
+  payment_released:       ArrowUpIcon,
+  payment_settled:        BanknoteIcon,
+  vendor_on_way:          CarIcon,
+  on_way:                 CarIcon,
+  vendor_arrived:         PinIcon,
+  arrived:                PinIcon,
+  service_rendered:       SparkleIcon,
+  booking_completed:      StarIcon,
+  kyc_approved:           CheckCircleIcon,
+  kyc_rejected:           WarningIcon,
+  dispute_raised:         WarningIcon,
+  dispute_resolved:       CheckCircleIcon,
+  booking_cancelled:      XCircleIcon,
+  vendor_cancelled:       XCircleIcon,
+  vendor_self_cancelled:  XCircleIcon,
+  vendor_declines:        XCircleIcon,
+  cancel_0_15:            ArrowUpIcon,
+  cancel_15_60:           ArrowUpIcon,
+  cancel_non_refundable:  ArrowUpIcon,
+  user_cancelled_with_fee:ArrowUpIcon,
 };
 
-function typeIcon(type: string): string {
-  return TYPE_ICON[type] ?? '🔔';
+function typeIcon(type: string): React.ReactElement {
+  const Icon = TYPE_ICON[type] ?? BellIcon;
+  return <Icon size={20} color="#6B7280" />;
 }
 
 function timeAgo(iso: string): string {
@@ -97,7 +98,7 @@ function NotifRow({
       activeOpacity={0.75}
     >
       <View style={[s.iconWrap, !notif.is_read && s.iconWrapUnread]}>
-        <Text style={s.icon}>{typeIcon(notif.type)}</Text>
+        {typeIcon(notif.type)}
       </View>
       <View style={s.content}>
         <View style={s.topRow}>
@@ -221,7 +222,7 @@ export default function NotificationsScreen() {
         )}
         {notifs.length === 0 ? (
           <View style={s.empty}>
-            <Text style={s.emptyEmoji}>🔔</Text>
+            <BellIcon size={48} color="#6B7280" />
             <Text style={s.emptyTitle}>All clear</Text>
             <Text style={s.emptyBody}>You're up to date. Booking updates, payment confirmations and more will appear here.</Text>
           </View>
@@ -280,7 +281,6 @@ const s = StyleSheet.create({
     flexShrink: 0,
   },
   iconWrapUnread: { backgroundColor: Colors.primary + '20' },
-  icon: { fontSize: 20 },
 
   content: { flex: 1 },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 3 },
@@ -296,7 +296,6 @@ const s = StyleSheet.create({
   },
 
   empty: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 40 },
-  emptyEmoji: { fontSize: 48, marginBottom: 16 },
   emptyTitle: { fontSize: 20, fontWeight: '700', color: Colors.text, marginBottom: 8 },
   emptyBody: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
 });

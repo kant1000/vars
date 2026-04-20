@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
+import { StarFilledIcon, StarEmptyIcon } from '@/components/icons';
 
 interface BookingInfo {
   vendor_id: string;
@@ -118,7 +119,10 @@ export default function ReviewScreen() {
           <View style={s.stars}>
             {[1, 2, 3, 4, 5].map((n) => (
               <TouchableOpacity key={n} onPress={() => setRating(n)} activeOpacity={0.7}>
-                <Text style={[s.star, n <= rating && s.starFilled]}>{n <= rating ? '★' : '☆'}</Text>
+                {n <= rating
+                  ? <StarFilledIcon size={44} color={Colors.star} />
+                  : <StarEmptyIcon size={44} color={Colors.starEmpty} />
+                }
               </TouchableOpacity>
             ))}
           </View>
@@ -198,8 +202,6 @@ const s = StyleSheet.create({
   optional: { fontWeight: '400', color: Colors.textMuted },
 
   stars: { flexDirection: 'row', gap: 12, justifyContent: 'center', paddingVertical: 8 },
-  star: { fontSize: 44, color: Colors.starEmpty },
-  starFilled: { color: Colors.star },
   ratingLabel: { textAlign: 'center', fontSize: 15, fontWeight: '700', color: Colors.star },
 
   commentInput: {

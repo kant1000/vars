@@ -22,6 +22,7 @@ import { fetchWithRetry } from '@/lib/fetchWithRetry';
 import { useNetworkState } from '@/lib/useNetworkState';
 import { cacheSet, cacheGet } from '@/lib/cache';
 import { OfflineBanner } from '@/components/OfflineBanner';
+import { PinIcon } from '@/components/icons';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
@@ -500,7 +501,7 @@ export default function BookingDetailScreen() {
                 <LocationMap lat={booking.user_location_lat!} lng={booking.user_location_lng!} />
                 {booking.user_location_address ? (
                   <View style={s.addressRow}>
-                    <Text style={s.addressIcon}>📍</Text>
+                    <PinIcon size={16} color={Colors.text} />
                     <Text style={s.addressText}>{booking.user_location_address}</Text>
                   </View>
                 ) : null}
@@ -739,7 +740,6 @@ const s = StyleSheet.create({
     backgroundColor: Colors.surface, borderRadius: 10,
     padding: 10, borderWidth: 1, borderColor: Colors.border,
   },
-  addressIcon: { fontSize: 14, lineHeight: 20 },
   addressText: { flex: 1, fontSize: 13, color: Colors.text, lineHeight: 18 },
 
   errorBanner: { backgroundColor: Colors.error + '15', marginHorizontal: 16, marginTop: 16, borderRadius: 10, padding: 12 },

@@ -13,6 +13,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
+import { CheckIcon, CloseIcon } from '@/components/icons';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
@@ -115,7 +116,12 @@ export default function ConsentScreen() {
   if (done) {
     return (
       <View style={[styles.centered, { paddingTop: insets.top }]}>
-        <Text style={styles.doneIcon}>{done === 'approved' ? '✓' : '✕'}</Text>
+        <View style={styles.doneIcon}>
+          {done === 'approved'
+            ? <CheckIcon size={48} color="#22C55E" />
+            : <CloseIcon size={48} color="#EF4444" />
+          }
+        </View>
         <Text style={styles.doneTitle}>
           {done === 'approved' ? 'Photo approved' : 'Photo declined'}
         </Text>
@@ -227,7 +233,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32, alignItems: 'center', justifyContent: 'center', marginTop: 8,
   },
   backBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
-  doneIcon: { fontSize: 48, marginBottom: 16 },
+  doneIcon: { marginBottom: 16, alignItems: 'center' as const },
   doneTitle: { fontSize: 24, fontWeight: '800', color: Colors.text, marginBottom: 10, textAlign: 'center' },
   doneBody: { fontSize: 15, color: Colors.textSecondary, textAlign: 'center', lineHeight: 22, marginBottom: 28 },
 });

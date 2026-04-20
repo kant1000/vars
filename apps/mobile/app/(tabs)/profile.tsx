@@ -18,6 +18,7 @@ import { signOut } from '@/lib/auth';
 import { pickAndUploadImage } from '@/lib/storage';
 import { Colors } from '@/constants/colors';
 import { fmtPrice, fmtLongDate } from '@/lib/format';
+import { HeartIcon, BellIcon, EditIcon, ChevronRightIcon } from '@/components/icons';
 
 type BookingStatus = 'pending'|'accepted'|'on_way'|'arrived'|'service_rendered'|'completed'|'cancelled'|'expired'|'disputed';
 
@@ -177,7 +178,7 @@ export default function ProfileScreen() {
             <View style={s.editPhotoBadge}>
               {uploadingPhoto
                 ? <ScissorsLoader size="small" color="light" />
-                : <Text style={s.editPhotoBadgeText}>✎</Text>
+                : <EditIcon size={12} color="#FFF" />
               }
             </View>
           </TouchableOpacity>
@@ -295,12 +296,12 @@ export default function ProfileScreen() {
         {/* ── Settings rows ── */}
         <Section title="Account">
           <SettingsRow
-            icon="♥"
+            icon={<HeartIcon size={18} color={Colors.text} />}
             label="My favourites"
             onPress={() => router.push('/(tabs)' as any)}
           />
           <SettingsRow
-            icon="🔔"
+            icon={<BellIcon size={18} color={Colors.text} />}
             label="Notification preferences"
             onPress={() => router.push('/settings/notifications' as any)}
           />
@@ -327,12 +328,12 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function SettingsRow({ icon, label, onPress }: { icon: string; label: string; onPress: () => void }) {
+function SettingsRow({ icon, label, onPress }: { icon: React.ReactNode; label: string; onPress: () => void }) {
   return (
     <TouchableOpacity style={s.settingsRow} onPress={onPress} activeOpacity={0.7}>
-      <Text style={s.settingsIcon}>{icon}</Text>
+      <View style={s.settingsIcon}>{icon}</View>
       <Text style={s.settingsLabel}>{label}</Text>
-      <Text style={s.settingsChevron}>›</Text>
+      <ChevronRightIcon size={18} color={Colors.textMuted} />
     </TouchableOpacity>
   );
 }
@@ -360,7 +361,6 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 2, borderColor: Colors.background,
   },
-  editPhotoBadgeText: { color: '#FFF', fontSize: 13 },
   name: { fontSize: 22, fontWeight: '800', color: Colors.text, marginBottom: 4 },
   phoneDisplay: { fontSize: 14, color: Colors.textSecondary, marginBottom: 12 },
   editBtn: { paddingHorizontal: 20, paddingVertical: 8, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 20 },
@@ -425,9 +425,8 @@ const s = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 14,
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  settingsIcon: { fontSize: 18, width: 24, textAlign: 'center' },
+  settingsIcon: { width: 24, alignItems: 'center' as const, justifyContent: 'center' as const },
   settingsLabel: { flex: 1, fontSize: 15, fontWeight: '600', color: Colors.text },
-  settingsChevron: { fontSize: 20, color: Colors.textMuted },
 
   // Sign out
   signOutWrap: { alignItems: 'center', paddingTop: 32, paddingBottom: 8, gap: 12 },

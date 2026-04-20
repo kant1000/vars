@@ -14,6 +14,7 @@ import { supabase } from '@/lib/supabase';
 import { pickAndUploadPortfolioPhotos, PortfolioUpload } from '@/lib/storage';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
+import { CloseIcon } from '@/components/icons';
 
 const MAX_UNVERIFIED = 3;
 
@@ -77,7 +78,7 @@ export default function Step3Portfolio() {
           <View key={p.path} style={styles.photoWrapper}>
             <Image source={{ uri: p.url }} style={styles.photo} />
             <TouchableOpacity style={styles.removeButton} onPress={() => removePhoto(p.path)}>
-              <Text style={styles.removeText}>✕</Text>
+              <CloseIcon size={11} color="#FFF" />
             </TouchableOpacity>
           </View>
         ))}
@@ -135,7 +136,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.55)',
     alignItems: 'center', justifyContent: 'center',
   },
-  removeText: { color: '#FFF', fontSize: 11, fontWeight: '700' },
   addButton: {
     width: '30%', aspectRatio: 1, borderRadius: 10,
     borderWidth: 1.5, borderColor: Colors.border, borderStyle: 'dashed',

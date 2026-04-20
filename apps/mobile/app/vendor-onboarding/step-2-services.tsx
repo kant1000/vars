@@ -13,6 +13,7 @@ import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
+import { ChevronUpIcon, ChevronDownIcon, CheckIcon } from '@/components/icons';
 
 interface ServiceCategory {
   id: string;
@@ -149,7 +150,7 @@ export default function Step2Services() {
               onPress={() => setExpandedCategory(isExpanded ? null : cat.id)}
             >
               <Text style={styles.categoryName}>{cat.name}</Text>
-              <Text style={styles.categoryChevron}>{isExpanded ? '▲' : '▼'}</Text>
+              {isExpanded ? <ChevronUpIcon size={12} color={Colors.textSecondary} /> : <ChevronDownIcon size={12} color={Colors.textSecondary} />}
             </TouchableOpacity>
 
             {isExpanded && (
@@ -165,7 +166,7 @@ export default function Step2Services() {
                         activeOpacity={0.8}
                       >
                         <View style={[styles.checkbox, sel && styles.checkboxChecked]}>
-                          {sel && <Text style={styles.checkmark}>✓</Text>}
+                          {sel && <CheckIcon size={13} color="#FFF" />}
                         </View>
                         <Text style={styles.serviceName}>{svc.name}</Text>
                       </TouchableOpacity>
@@ -227,7 +228,7 @@ export default function Step2Services() {
                           activeOpacity={0.8}
                         >
                           <View style={[styles.checkbox, sel && styles.checkboxChecked]}>
-                            {sel && <Text style={styles.checkmark}>✓</Text>}
+                            {sel && <CheckIcon size={13} color="#FFF" />}
                           </View>
                           <Text style={styles.serviceName}>{svc.name}</Text>
                           <Text style={styles.infoOnly}>info only</Text>
@@ -265,13 +266,11 @@ const styles = StyleSheet.create({
   category: { marginBottom: 12, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 14, overflow: 'hidden' },
   categoryHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, backgroundColor: Colors.surface },
   categoryName: { fontSize: 16, fontWeight: '700', color: Colors.text },
-  categoryChevron: { fontSize: 12, color: Colors.textSecondary },
   serviceList: { padding: 12, gap: 4 },
   serviceRow: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 10, gap: 12 },
   serviceRowSelected: { backgroundColor: Colors.primaryLight },
   checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
   checkboxChecked: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  checkmark: { color: '#FFF', fontSize: 13, fontWeight: '700' },
   serviceName: { flex: 1, fontSize: 15, color: Colors.text, fontWeight: '500' },
   infoOnly: { fontSize: 11, color: Colors.textMuted, fontStyle: 'italic' },
   serviceConfig: { marginLeft: 46, marginBottom: 8, gap: 8 },
