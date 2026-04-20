@@ -5,7 +5,7 @@
 import { Tabs } from 'expo-router';
 import { Platform } from 'react-native';
 import { Colors } from '@/constants/colors';
-import { Ionicons } from '@expo/vector-icons';
+import { SearchIcon, CalendarIcon, BellIcon, PersonIcon } from '@/components/icons';
 
 export default function TabLayout() {
   return (
@@ -30,7 +30,7 @@ export default function TabLayout() {
           title: 'Discover',
           tabBarLabel: 'Discover',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="search-outline" size={size} color={color} />
+            <SearchIcon size={size} color={color} />
           ),
         }}
       />
@@ -40,7 +40,7 @@ export default function TabLayout() {
           title: 'Bookings',
           tabBarLabel: 'Bookings',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="calendar-outline" size={size} color={color} />
+            <CalendarIcon size={size} color={color} />
           ),
         }}
       />
@@ -50,7 +50,7 @@ export default function TabLayout() {
           title: 'Alerts',
           tabBarLabel: 'Alerts',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="notifications-outline" size={size} color={color} />
+            <BellIcon size={size} color={color} />
           ),
         }}
       />
@@ -60,7 +60,7 @@ export default function TabLayout() {
           title: 'Profile',
           tabBarLabel: 'Profile',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" size={size} color={color} />
+            <PersonIcon size={size} color={color} />
           ),
         }}
       />

@@ -82,3 +82,15 @@ export function ClockIcon({ size = 16, color = '#1A1A1A' }: P) {
 export function SparkleIcon({ size = 16, color = '#1A1A1A' }: P) {
   return <Svg {...base(size, color)}><Path d="M12 3v3M12 18v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M3 12h3M18 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12" /></Svg>;
 }
+export function SearchIcon({ size = 16, color = '#1A1A1A' }: P) {
+  return <Svg {...base(size, color)}><Circle cx="11" cy="11" r="8" /><Line x1="21" y1="21" x2="16.65" y2="16.65" /></Svg>;
+}
+export function CalendarIcon({ size = 16, color = '#1A1A1A' }: P) {
+  return <Svg {...base(size, color)}><Rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><Line x1="16" y1="2" x2="16" y2="6" /><Line x1="8" y1="2" x2="8" y2="6" /><Line x1="3" y1="10" x2="21" y2="10" /></Svg>;
+}
+export function PersonIcon({ size = 16, color = '#1A1A1A' }: P) {
+  return <Svg {...base(size, color)}><Path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><Circle cx="12" cy="7" r="4" /></Svg>;
+}
+export function BriefcaseIcon({ size = 16, color = '#1A1A1A' }: P) {
+  return <Svg {...base(size, color)}><Rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><Path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" /><Line x1="12" y1="12" x2="12" y2="12" /><Line x1="12" y1="12" x2="12.01" y2="12" /></Svg>;
+}
