@@ -203,7 +203,7 @@ export default async function HomePage() {
             >
               I built VARS because I believe the most talented stylists
               in Lagos deserve a business, not just a hustle. VARS is the platform
-              that gives we one.
+              that gives us one.
             </h2>
             <div className="founder-attr">
               <div className="founder-avatar">S</div>
