@@ -63,30 +63,29 @@ Last updated: 2026-04-24.
 - Corepack: available
 - Yarn: pinned in `package.json` as `yarn@1.22.22`
 - Supabase CLI: available
-- Worktree: dirty
-- `apps/mobile/package.json` merge conflict: resolved and staged
-- Root `CLAUDE.md`: deleted in the current worktree
+- Worktree: **clean** — all audit fixes committed and pushed
+- Root `CLAUDE.md`: present and committed
 - Payment, KYC, and maps credentials are not activated yet by the owner. Treat related audit gaps as expected external setup, not code failures.
 - Android Studio is installed at `C:\Program Files\Android\Android Studio`; its bundled JDK works, but `adb`, `emulator`, and `eas` are not available on PATH yet.
 
-Current intentional source/setup changes include:
+Generated artifacts such as `apps/mobile/dist/`, `apps/mobile/dist-*`, `.next/`, `**/next-env.d.ts`, and `apps/mobile/expo-env.d.ts` are gitignored.
 
-- `.gitignore`
-- `apps/mobile/package.json`
-- `apps/mobile/.eslintrc.js`
-- `apps/mobile/app/(tabs)/profile.tsx`
-- `apps/mobile/lib/auth.ts`
-- `supabase/functions/*reschedule*`
-- `supabase/migrations/20240101000015_reschedule_expires_at.sql`
-- `yarn.lock`
-- `AGENTS.md`
-- `apps/admin/.gitignore`
-- `apps/mobile/assets/images/*`
-- `docs/ACCESS_AND_AUDIT.md`
-- `docs/codex/*`
-- `scripts/audit-access.ps1`
+## Build Fixes Applied (2026-04-24)
 
-Generated artifacts such as `apps/mobile/dist/`, `apps/mobile/dist-*`, `.next/`, and `apps/mobile/expo-env.d.ts` should stay ignored.
+**Admin build** — was failing at `Collecting page data` because `supabase.ts` instantiated the browser Supabase client at module-import time (`export const supabase = createClient(...)`). With no env vars set at build time, all four data-fetching pages (`/bookings`, `/dashboard`, `/vendors`, `/disputes`) crashed on import. Fixed by converting the export to a lazy `getSupabaseBrowserClient()` function and adding `export const dynamic = 'force-dynamic'` to each of those pages so Next.js renders them at request time only.
+
+**Mobile TypeScript** — two errors:
+1. `app/(tabs)/profile.tsx`: `pickAndUploadImage` called with two positional args; function signature takes `{bucket, path, aspect?}`. Fixed.
+2. `lib/auth.ts`: `AuthSession.parseRedirectResult` was removed in `expo-auth-session` v6. Replaced with `expo-linking` URL parsing (`Linking.parse`).
+
+**Mobile lint** — no ESLint config existed and `eslint`/`@typescript-eslint` packages were absent from devDependencies. Added `eslint`, `@typescript-eslint/parser`, and `@typescript-eslint/eslint-plugin` to devDependencies; added `eslint.config.js` (flat config format). Now passes: 0 errors, 16 warnings (all `no-unused-vars`, none blocking).
+
+**Android JS export** — passes: 4.9 MB Hermes bytecode bundle, 1546 modules. Delete `apps/mobile/dist-audit-android/` after verification.
+
+**Reschedule flow** — three bugs fixed in the edge functions (see also `supabase/functions/`):
+1. `customer-accept-reschedule`: old transport buffer calendar rows were not deleted before creating new ones for the suggested slot. Fixed.
+2. `customer-decline-reschedule`: transport buffer rows were not deleted on decline. Fixed.
+3. Missing expiry: no function existed to expire `rescheduled_pending` bookings after 1 hour. Created `supabase/functions/reschedule-expire/index.ts` and registered it as an hourly cron in migration `20240101000015`.
 
 ## First Commands For Future Sessions
 
@@ -116,7 +115,7 @@ corepack yarn workspace @vars/mobile lint
 corepack yarn workspace @vars/mobile run expo export --platform android --output-dir dist-audit-android
 ```
 
-Recent results: admin build passed, landing build passed, mobile TypeScript passed, mobile lint passed with warnings only, and Android Expo export passed. Remove `apps/mobile/dist-audit-android` after export checks.
+Current results (2026-04-24): admin build ✅, landing build ✅, mobile TypeScript ✅ (0 errors), mobile lint ✅ (0 errors / 16 warnings), Android Expo export ✅ (4.9 MB bundle). Delete `apps/mobile/dist-audit-android/` after export checks.
 
 ## Credentials
 
