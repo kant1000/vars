@@ -1,5 +1,18 @@
 {
   "installCommand": "cd ../.. && yarn install --frozen-lockfile",
   "buildCommand": "cd ../.. && yarn workspace @vars/landing build",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "bookwithvars.com"
+        }
+      ],
+      "destination": "https://www.bookwithvars.com/:path*",
+      "permanent": true
+    }
+  ]
 }

@@ -94,7 +94,7 @@ export default function PioneerSection({ initialSpots }: Props) {
   };
 
   return (
-    <section className="pioneer-section" id="vendors">
+    <section className="pioneer-section" id="stylists">
       <div className="container">
         <div className="pioneer-inner">
           {/* Left: info */}
@@ -106,10 +106,10 @@ export default function PioneerSection({ initialSpots }: Props) {
               Pioneer Programme
             </div>
             <h2 className="pioneer-title">
-              Be one of the first<br />50 VARS vendors.
+              Be one of the first<br />50 VARS stylists.
             </h2>
             <p className="pioneer-sub">
-              Pioneers get a permanent badge that builds trust with every customer,
+              Pioneers get a permanent badge that builds trust with every customer
               and keep 100% of their first 3 bookings. After that, the standard
               platform fee applies.
             </p>
@@ -184,8 +184,8 @@ export default function PioneerSection({ initialSpots }: Props) {
                 </div>
                 <p className="form-success-sub">
                   {result === 'pioneer'
-                    ? `Congratulations! You've secured a Pioneer spot. We'll reach out on WhatsApp with your onboarding steps. Download the VARS app to complete your profile.`
-                    : `All Pioneer spots were claimed. You're on the waitlist and will be notified when new spots open. Download the app and set up your profile to be ready.`}
+                    ? `Congratulations! You've secured a Pioneer spot. We'll reach out on WhatsApp with your onboarding steps so you can complete your stylist profile.`
+                    : `All Pioneer spots were claimed. You're on the waitlist and will be notified when new spots open. We'll send your next steps so your profile is ready for launch.`}
                 </p>
               </div>
             ) : (

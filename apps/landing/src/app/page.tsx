@@ -1,9 +1,9 @@
 import PioneerSection from '@/components/PioneerSection';
 
-// Revalidate every 60 seconds so the pioneer count stays fresh
 export const revalidate = 60;
 
 const PIONEER_MAX = 50;
+const siteUrl = 'https://www.bookwithvars.com';
 
 async function getPioneerSpotsRemaining(): Promise<number> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -11,9 +11,6 @@ async function getPioneerSpotsRemaining(): Promise<number> {
   if (!supabaseUrl || !serviceKey) return PIONEER_MAX;
 
   try {
-    // Count from vendor_leads only — all pioneers register here first.
-    // Converted leads stay (converted = TRUE, pioneer = TRUE) so the
-    // count never double-counts full vendor accounts.
     const res = await fetch(
       `${supabaseUrl}/rest/v1/vendor_leads?pioneer=eq.true&select=id`,
       {
@@ -27,7 +24,8 @@ async function getPioneerSpotsRemaining(): Promise<number> {
       }
     );
     const leadCount = parseInt(
-      res.headers.get('content-range')?.split('/')[1] ?? '0', 10
+      res.headers.get('content-range')?.split('/')[1] ?? '0',
+      10
     );
     return Math.max(0, PIONEER_MAX - leadCount);
   } catch {
@@ -35,40 +33,96 @@ async function getPioneerSpotsRemaining(): Promise<number> {
   }
 }
 
+const structuredData = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'VARS',
+    url: siteUrl,
+    logo: `${siteUrl}/logo.svg`,
+    email: 'support@bookwithvars.com',
+    sameAs: ['https://www.instagram.com/bookwithvars'],
+    description:
+      'VARS is a Lagos home service beauty platform for stylists, barbers, and makeup artists.',
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'VARS',
+    url: siteUrl,
+    inLanguage: 'en-GB',
+    description:
+      'Join VARS as a Lagos stylist and get discovered for home service barbing, hair styling, and makeup jobs.',
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: [
+      {
+        '@type': 'Question',
+        name: 'Is VARS available outside Lagos?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'VARS is launching in Lagos first. Abuja and Port Harcourt are planned for later.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'How do I become a VARS stylist?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Register your interest through the Pioneer Programme form. VARS will contact selected stylists with onboarding steps.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'How does payment protection work?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Customers pay through the app. Payment is released after the service is complete, helping protect both the customer and the stylist.',
+        },
+      },
+    ],
+  },
+];
+
 export default async function HomePage() {
   const spotsRemaining = await getPioneerSpotsRemaining();
 
   return (
     <>
-      {/* ── Nav ─────────────────────────────────────────────── */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
+
       <nav>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo-white.svg" alt="VARS" style={{ height: 28, width: 'auto' }} />
-        <a href="#vendors" className="nav-cta">Join as a vendor</a>
+        <a href="#stylists" className="nav-cta">Join as a stylist</a>
       </nav>
 
-      {/* ── Hero ──────────────────────────────────────────────── */}
       <section className="hero">
         <div className="container">
           <div className="hero-inner">
             <div>
-              <span className="hero-eyebrow">Now in Lagos</span>
+              <span className="hero-eyebrow">Now onboarding in Lagos</span>
               <h1>
-                Your skill deserves<br />
-                more than a salary.
+                Your craft deserves<br />
+                better income.
               </h1>
               <p className="hero-sub">
-                VARS connects barbers, hairstylists, makeup artists, and more
-                directly to clients nearby. Work for yourself. Get paid securely.
-                Build your reputation.
+                VARS helps Lagos stylists, barbers, hairstylists, and makeup
+                artists get discovered for home service jobs nearby. Build your
+                profile, protect your payments, and grow from real completed work.
               </p>
               <div className="hero-actions">
-                <span className="btn-coming-soon">
-                  Coming to iOS &amp; Android
-                </span>
-                <a href="#vendors" className="btn-ghost">
-                  I&apos;m a vendor
+                <a href="#stylists" className="btn-primary">
+                  Claim a Pioneer spot
                 </a>
+                <span className="btn-coming-soon">
+                  Customer app coming soon
+                </span>
               </div>
             </div>
 
@@ -76,7 +130,7 @@ export default async function HomePage() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/landing.png"
-                alt="VARS — beauty at your door"
+                alt="VARS app preview for Lagos home service beauty bookings"
                 className="hero-illus-img"
               />
             </div>
@@ -84,46 +138,46 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── Why VARS (for vendors) ─────────────────────────────── */}
       <section className="why-section section-light" id="why">
         <div className="container">
-          <span className="section-label">For vendors</span>
+          <span className="section-label">For Lagos stylists</span>
           <h2 className="section-title">Your skills. Your schedule.</h2>
           <p className="section-sub">
-            VARS is built to put more money in your pocket and give you
-            full control over your business.
+            VARS is built for independent beauty professionals who want more
+            bookings without depending on walk-ins, cash handling, or scattered
+            WhatsApp referrals.
           </p>
 
           <div className="benefits-grid">
             <div className="benefit-card">
-              <span className="benefit-icon">
+              <span className="benefit-icon" aria-hidden="true">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <rect x="2" y="6" width="20" height="14" rx="2" stroke="#111111" strokeWidth="1.75"/>
                   <circle cx="12" cy="13" r="3" stroke="#111111" strokeWidth="1.75"/>
                   <path d="M6 10h.01M18 16h.01" stroke="#111111" strokeWidth="2" strokeLinecap="round"/>
                 </svg>
               </span>
-              <div className="benefit-title">Same-day payouts</div>
+              <div className="benefit-title">Payment protection</div>
               <p className="benefit-body">
-                Your share is transferred automatically once a booking completes.
-                No waiting, no paperwork, no middleman.
+                Customers pay securely through the app. Your money is released
+                after the service is complete, with no awkward cash chase.
               </p>
             </div>
             <div className="benefit-card">
-              <span className="benefit-icon">
+              <span className="benefit-icon" aria-hidden="true">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <circle cx="12" cy="8" r="4" stroke="#111111" strokeWidth="1.75"/>
                   <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="#111111" strokeWidth="1.75" strokeLinecap="round"/>
                 </svg>
               </span>
-              <div className="benefit-title">Your own client base</div>
+              <div className="benefit-title">A profile that builds trust</div>
               <p className="benefit-body">
-                Build a verified profile with reviews, ratings, and a photo portfolio
-                that grows with every booking.
+                Show your work, earn real ratings from completed jobs, and
+                stand out as a verified stylist in Lagos.
               </p>
             </div>
             <div className="benefit-card">
-              <span className="benefit-icon">
+              <span className="benefit-icon" aria-hidden="true">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <circle cx="12" cy="12" r="9" stroke="#111111" strokeWidth="1.75"/>
                   <path d="M12 7v5l3 3" stroke="#111111" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
@@ -131,69 +185,67 @@ export default async function HomePage() {
               </span>
               <div className="benefit-title">You set your hours</div>
               <p className="benefit-body">
-                Toggle online when you&apos;re available. Manage your schedule entirely
-                from the app. No shifts, no boss.
+                Choose when you are available and define the areas you cover,
+                from Lekki and Victoria Island to Ikeja and Surulere.
               </p>
             </div>
             <div className="benefit-card">
-              <span className="benefit-icon">
+              <span className="benefit-icon" aria-hidden="true">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M12 2L4 6v6c0 5 3.6 9.7 8 11 4.4-1.3 8-6 8-11V6L12 2z" stroke="#111111" strokeWidth="1.75" strokeLinejoin="round"/>
                   <path d="M9 12l2 2 4-4" stroke="#111111" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </span>
-              <div className="benefit-title">Protected escrow</div>
+              <div className="benefit-title">Verified from day one</div>
               <p className="benefit-body">
-                Customers pay upfront. Funds are held securely and released to you
-                once the service is confirmed complete.
+                VARS is built around KYC checks, completed-job ratings, and
+                safer bookings so serious stylists can earn customer confidence.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── Pioneer section (client component) ───────────────── */}
       <PioneerSection initialSpots={spotsRemaining} />
 
-      {/* ── How it works ──────────────────────────────────────── */}
       <section className="how-section section-light">
         <div className="container">
-          <span className="section-label">How it works</span>
-          <h2 className="section-title">Three taps. Done.</h2>
+          <span className="section-label">How VARS works</span>
+          <h2 className="section-title">From fresh profile to paid booking.</h2>
           <p className="section-sub">
-            From search to session, the whole experience is built around your time.
+            The platform is designed around the way Lagos beauty work really
+            happens: mobile, trust-based, time-sensitive, and reputation-led.
           </p>
 
           <div className="steps-grid">
             <div className="step-card">
               <div className="step-number">1</div>
-              <div className="step-title">Find someone near you</div>
+              <div className="step-title">Register as a Pioneer</div>
               <p className="step-body">
-                Browse verified vendors by service, location, and rating.
-                Every profile includes real reviews and portfolio photos.
+                Join the first group of VARS stylists for barbing, hair styling,
+                and makeup artistry in Lagos.
               </p>
             </div>
             <div className="step-card">
               <div className="step-number">2</div>
-              <div className="step-title">Book &amp; pay securely</div>
+              <div className="step-title">Set your zone and services</div>
               <p className="step-body">
-                Pick a time, confirm your location, and pay through the app.
-                Your money is held in escrow until the service is complete.
+                Choose where you operate, add your portfolio, and show customers
+                what kind of home service beauty work you do best.
               </p>
             </div>
             <div className="step-card">
               <div className="step-number">3</div>
-              <div className="step-title">Relax while they come to you</div>
+              <div className="step-title">Earn from completed jobs</div>
               <p className="step-body">
-                Track your vendor in real time. No rushing, no traffic,
-                no waiting rooms. Your home is your salon.
+                Customers book and pay securely. You show up, deliver the work,
+                and build ratings that bring the next booking closer.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── Founder note ──────────────────────────────────────── */}
       <section className="founder-section">
         <div className="container">
           <div className="founder-inner">
@@ -201,9 +253,9 @@ export default async function HomePage() {
               className="founder-quote"
               style={{ color: 'rgba(255,255,255,0.9)' }}
             >
-              I built VARS because I believe the most talented stylists
-              in Lagos deserve a business, not just a hustle. VARS is the platform
-              that gives us one.
+              I built VARS because talented Lagos stylists deserve a business,
+              not just a hustle. Your craft should be easier to find, easier to
+              trust, and easier to pay for.
             </h2>
             <div className="founder-attr">
               <div className="founder-avatar">S</div>
@@ -216,7 +268,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── FAQ ───────────────────────────────────────────────── */}
       <section className="faq-section section-subtle">
         <div className="container">
           <span className="section-label">Common questions</span>
@@ -226,60 +277,62 @@ export default async function HomePage() {
             <div className="faq-item">
               <div className="faq-q">Is VARS available outside Lagos?</div>
               <p className="faq-a">
-                We&apos;re launching in Lagos first. Abuja and Port Harcourt are next.
-                Register now and we&apos;ll let you know when we expand to your city.
+                We are launching in Lagos first. Abuja and Port Harcourt are
+                planned for later, but the first Pioneer spots are Lagos-only.
               </p>
             </div>
             <div className="faq-item">
-              <div className="faq-q">How do I become a vendor?</div>
+              <div className="faq-q">How do I become a VARS stylist?</div>
               <p className="faq-a">
-                Register your interest above, then download the VARS app to complete
-                your KYC verification and set up your profile.
+                Register your interest above. If selected, you will receive
+                onboarding steps to complete verification and prepare your profile.
               </p>
             </div>
             <div className="faq-item">
-              <div className="faq-q">What is the Pioneer commission deal?</div>
+              <div className="faq-q">What is the Pioneer Programme?</div>
               <p className="faq-a">
-                Pioneers keep 100% of their earnings for their first 3 completed
-                bookings. After that, the standard 80/20 split applies — you keep 80%.
+                The first 50 stylists get a permanent Pioneer badge and keep
+                100% of their first 3 completed bookings. After that, the standard
+                80/20 split applies.
               </p>
             </div>
             <div className="faq-item">
-              <div className="faq-q">How does escrow payment work?</div>
+              <div className="faq-q">How does payment protection work?</div>
               <p className="faq-a">
-                Customers pay when they book. Funds are held securely until they
-                confirm the service is complete (or 2 hours pass automatically).
-                Then your share is instantly transferred to your bank account.
+                Customers pay when they book. Payment is released after the
+                service is complete, so stylists do not have to depend on cash
+                collection after the job.
               </p>
             </div>
             <div className="faq-item">
-              <div className="faq-q">Do I need any equipment?</div>
+              <div className="faq-q">Which services are launching first?</div>
               <p className="faq-a">
-                Just your tools and a smartphone. VARS provides the app, the customers,
-                the booking management, and the payment infrastructure.
+                VARS is starting with home service barbing, hair styling, and
+                makeup artistry, including bridal makeup.
               </p>
             </div>
             <div className="faq-item">
               <div className="faq-q">When does the app launch?</div>
               <p className="faq-a">
-                Very soon. Register now to secure your Pioneer spot and be
-                among the first vendors live on the platform when we open to customers.
+                VARS is currently in the pre-launch stylist acquisition phase.
+                Register now to secure your Pioneer spot before customer bookings open.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── Footer ─────────────────────────────────────────────── */}
       <footer>
         <p style={{ marginBottom: 8 }}>
-          <strong>VARS</strong> &nbsp;·&nbsp; Beauty at your door.
+          <strong>VARS</strong> &nbsp;|&nbsp; Your craft, your income.
         </p>
         <p>
           <a href="mailto:support@bookwithvars.com">support@bookwithvars.com</a>
-          &nbsp;&nbsp;·&nbsp;&nbsp;
+          &nbsp;&nbsp;|&nbsp;&nbsp;
+          <a href="https://www.instagram.com/bookwithvars">Instagram</a>
+          &nbsp;&nbsp;|&nbsp;&nbsp;
           <a href="/privacy">Privacy</a>
-          &nbsp;&nbsp;·&nbsp;&nbsp;
+          &nbsp;&nbsp;|&nbsp;&nbsp;
           <a href="/terms">Terms</a>
         </p>
         <p style={{ marginTop: 16 }}>
