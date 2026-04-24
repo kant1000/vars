@@ -1,5 +1,6 @@
 import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
+import * as Linking from 'expo-linking';
 import { supabase } from './supabase';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -25,8 +26,12 @@ export async function signInWithGoogle() {
   const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
 
   if (result.type === 'success' && result.url) {
-    const { params } = AuthSession.parseRedirectResult(result);
-    if (params.error) throw new Error(params.error_description ?? params.error);
+    const { queryParams } = Linking.parse(result.url);
+    const error = queryParams?.error;
+    const errorDescription = queryParams?.error_description;
+    if (typeof error === 'string') {
+      throw new Error(typeof errorDescription === 'string' ? errorDescription : error);
+    }
 
     // Exchange the code for a session
     const { error: sessionError } = await supabase.auth.exchangeCodeForSession(result.url);

@@ -62,6 +62,7 @@ Deno.serve(async (req: Request) => {
         accepted_at: new Date().toISOString(),
         scheduled_at: booking.suggested_scheduled_at,
         suggested_scheduled_at: null,
+        reschedule_expires_at: null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', booking_id);

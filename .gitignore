@@ -13,6 +13,15 @@ supabase/.temp/
 node_modules/
 .yarn/cache/
 
+# Build output
+.next/
+dist/
+apps/mobile/dist/
+apps/mobile/dist-*/
+apps/mobile/expo-env.d.ts
+
 # OS
 .DS_Store
 Thumbs.db
+.vercel
+.env*.local

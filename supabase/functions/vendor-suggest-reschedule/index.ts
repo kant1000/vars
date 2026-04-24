@@ -44,12 +44,14 @@ Deno.serve(async (req: Request) => {
       return errorResponse(`Can only suggest reschedule for pending bookings (current: ${booking.status})`);
     }
 
-    // Update status and store the suggested slot
+    // Update status and store the suggested slot; customer has 1 hour to respond
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
     const { error: updateError } = await supabase
       .from('bookings')
       .update({
         status: 'rescheduled_pending',
         suggested_scheduled_at: suggested_at,
+        reschedule_expires_at: expiresAt,
         updated_at: new Date().toISOString(),
       })
       .eq('id', booking_id);

@@ -113,7 +113,10 @@ export default function ProfileScreen() {
     if (!user) return;
     setUploadingPhoto(true);
     try {
-      const url = await pickAndUploadImage(user.id, 'avatars');
+      const url = await pickAndUploadImage({
+        bucket: 'avatars',
+        path: `users/${user.id}/avatar`,
+      });
       if (url) {
         await supabase.from('profiles').update({ profile_photo_url: url }).eq('id', user.id);
         await refreshProfile();

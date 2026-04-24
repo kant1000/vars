@@ -54,6 +54,7 @@ Deno.serve(async (req: Request) => {
         cancellation_vendor_amount_kobo: 0,
         cancellation_refund_amount_kobo: booking.service_price_kobo,
         suggested_scheduled_at: null,
+        reschedule_expires_at: null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', booking_id);

@@ -2,11 +2,14 @@
   "name": "vars",
   "version": "1.0.0",
   "private": true,
+  "packageManager": "yarn@1.22.22",
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "scripts": {
+    "audit:access": "powershell -ExecutionPolicy Bypass -File scripts/audit-access.ps1",
+    "audit:access:network": "powershell -ExecutionPolicy Bypass -File scripts/audit-access.ps1 -CheckNetwork",
     "mobile": "yarn workspace @vars/mobile start",
     "admin": "yarn workspace @vars/admin dev",
     "landing": "yarn workspace @vars/landing dev",
