@@ -23,6 +23,11 @@ This roadmap tracks the practical path to make the whole app work as intended.
 - Android JS bundle export validation. Done — 4.9 MB Hermes bundle, 1546 modules.
 - Reschedule flow audit and bug fixes. Done — transport buffer cleanup on accept/decline, hourly expiry cron (`reschedule-expire`) created and registered.
 
+## Phase 2b: Landing SEO
+
+- Phase 1 SEO implementation. Done — sitemap, robots, manifest, OG image, privacy page, terms page, canonical, JSON-LD schemas, vercel.json redirect.
+- Google Search Console setup. Done — DNS TXT verification, sitemap submitted, 3 pages indexed.
+
 ## Phase 3: Supabase Health
 
 - Review all migrations in order.
@@ -58,6 +63,8 @@ This roadmap tracks the practical path to make the whole app work as intended.
 
 ## Immediate Next Steps
 
-- Merge `claude/build-app-from-spec-6QwSN` into `main` once the owner has reviewed the branch.
 - Android APK delivery: use EAS Cloud Build (`eas build --platform android --profile preview`) rather than a local Android Studio build — avoids the Windows PATH/JDK friction and produces a shareable `.apk` or `.aab` without needing `adb` or an emulator on the dev machine.
-- Activate Paystack, Youverify, and Google Maps credentials once Nigerian business registration completes. Set in Supabase Edge Function secrets and mobile `.env.local`; no code changes needed.
+- Activate Paystack live credentials. Blocked on Nigerian business registration completion.
+- Activate Youverify credentials. Blocked on pricing negotiation with Ayotomide.
+- Activate Google Maps API key. Set in mobile `.env.local` and Supabase Edge Function secrets; no code changes needed.
+- Phase 2 customer marketing begins when 100 verified vendors are live across 4 Lagos neighbourhoods with all 3 service categories covered (barbing, hair styling, makeup artistry).

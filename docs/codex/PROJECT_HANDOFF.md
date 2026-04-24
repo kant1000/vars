@@ -54,7 +54,7 @@ https://github.com/kant1000/vars.git
 
 ## Current State
 
-Last updated: 2026-04-24.
+Last updated: 2026-04-24 (SEO update).
 
 - Current branch: `main`
 - Default branch: `main` (set as default on GitHub 2026-04-24)
@@ -64,7 +64,10 @@ Last updated: 2026-04-24.
 - Corepack: available
 - Yarn: pinned in `package.json` as `yarn@1.22.22`
 - Supabase CLI: available
-- Worktree: **clean** — all audit fixes committed and pushed
+- Worktree: **clean** — all audit and SEO fixes committed and pushed
+- Landing Phase 1 SEO: **complete and live** at bookwithvars.com
+- Google Search Console: verified via DNS TXT record; sitemap submitted (https://www.bookwithvars.com/sitemap.xml, 3 pages indexed)
+- Vercel production branch is tracking `claude/build-app-from-spec-6QwSN` (force-pushed to match `main`; both branches are identical)
 - Root `CLAUDE.md`: present and committed
 - Payment, KYC, and maps credentials are not activated yet by the owner. Treat related audit gaps as expected external setup, not code failures.
 - Android Studio is installed at `C:\Program Files\Android\Android Studio`; its bundled JDK works, but `adb`, `emulator`, and `eas` are not available on PATH yet.
@@ -82,6 +85,21 @@ Generated artifacts such as `apps/mobile/dist/`, `apps/mobile/dist-*`, `.next/`,
 **Mobile lint** — no ESLint config existed and `eslint`/`@typescript-eslint` packages were absent from devDependencies. Added `eslint`, `@typescript-eslint/parser`, and `@typescript-eslint/eslint-plugin` to devDependencies; added `eslint.config.js` (flat config format). Now passes: 0 errors, 16 warnings (all `no-unused-vars`, none blocking).
 
 **Android JS export** — passes: 4.9 MB Hermes bytecode bundle, 1546 modules. Delete `apps/mobile/dist-audit-android/` after verification.
+
+**Landing Phase 1 SEO (2026-04-24)** — all files added or updated on `main`:
+
+New files:
+- `apps/landing/src/app/sitemap.ts` — `/`, `/privacy`, `/terms` entries
+- `apps/landing/src/app/robots.ts` — allow all; sitemap URL set
+- `apps/landing/src/app/manifest.ts` — PWA manifest, `#111111` background, `#0A7AFF` theme
+- `apps/landing/src/app/opengraph-image.tsx` — 1200×630 edge OG image
+- `apps/landing/src/app/privacy/page.tsx` — privacy policy page
+- `apps/landing/src/app/terms/page.tsx` — terms of service page
+
+Updated files:
+- `apps/landing/src/app/layout.tsx` — added canonical, `lang="en-GB"`, JSON-LD Organization + WebSite schema
+- `apps/landing/src/app/page.tsx` — FAQPage JSON-LD, vendor acquisition copy, Pioneer counter deemphasis at zero (opacity 0.45, label changes to "Pioneer programme full")
+- `apps/landing/vercel.json` — non-www → www redirect rule added
 
 **Reschedule flow** — three bugs fixed in the edge functions (see also `supabase/functions/`):
 1. `customer-accept-reschedule`: old transport buffer calendar rows were not deleted before creating new ones for the suggested slot. Fixed.
