@@ -115,13 +115,16 @@ export default function PioneerSection({ initialSpots }: Props) {
             </p>
 
             {/* Live spots counter */}
-            <div className="spots-counter">
+            <div
+              className="spots-counter"
+              style={spots === 0 ? { opacity: 0.45 } : undefined}
+            >
               <div>
                 <div className="spots-number">{spots}</div>
               </div>
               <div className="spots-bar-wrap">
                 <div className="spots-label">
-                  Pioneer spots remaining<br />
+                  {spots === 0 ? 'Pioneer programme full' : 'Pioneer spots remaining'}<br />
                   <span style={{ color: '#D4A017', fontWeight: 700 }}>
                     {PIONEER_MAX - spots} of {PIONEER_MAX} claimed
                   </span>
