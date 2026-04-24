@@ -112,13 +112,12 @@ export default async function HomePage() {
                 better income.
               </h1>
               <p className="hero-sub">
-                VARS helps Lagos stylists, barbers, hairstylists, and makeup
-                artists get discovered for home service jobs nearby. Build your
-                profile, protect your payments, and grow from real completed work.
+                VARS connects barbers, hairstylists, makeup artists, and more directly
+                to clients nearby. Work for yourself. Get paid securely. Build your reputation.
               </p>
               <div className="hero-actions">
                 <a href="#stylists" className="btn-primary">
-                  Claim a Pioneer spot
+                  I'm a stylist
                 </a>
                 <span className="btn-coming-soon">
                   Customer app coming soon
@@ -220,10 +219,10 @@ export default async function HomePage() {
           <div className="steps-grid">
             <div className="step-card">
               <div className="step-number">1</div>
-              <div className="step-title">Register as a Pioneer</div>
+              <div className="step-title">Create your stylist profile</div>
               <p className="step-body">
-                Join the first group of VARS stylists for barbing, hair styling,
-                and makeup artistry in Lagos.
+                Sign up as a barber, hair stylist, or makeup artist. Add your
+                portfolio and set the areas in Lagos you cover.
               </p>
             </div>
             <div className="step-card">
