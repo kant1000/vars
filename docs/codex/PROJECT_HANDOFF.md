@@ -56,7 +56,8 @@ https://github.com/kant1000/vars.git
 
 Last updated: 2026-04-24.
 
-- Current branch: `claude/build-app-from-spec-6QwSN`
+- Current branch: `main`
+- Default branch: `main` (set as default on GitHub 2026-04-24)
 - Remote: `origin`
 - GitHub read access: confirmed through `git ls-remote`
 - Node: available
