@@ -136,6 +136,30 @@ corepack yarn workspace @vars/mobile run expo export --platform android --output
 
 Current results (2026-04-24): admin build ✅, landing build ✅, mobile TypeScript ✅ (0 errors), mobile lint ✅ (0 errors / 16 warnings), Android Expo export ✅ (4.9 MB bundle). Delete `apps/mobile/dist-audit-android/` after export checks.
 
+## Infrastructure Notes
+
+### Supabase API Keys — Migrated (2026-04-24)
+
+Supabase has migrated from legacy JWT-based API keys to a new key system. Legacy `service_role` and `anon` JWT keys have been disabled.
+
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` now uses the `sb_publishable_` prefix
+- `SUPABASE_SERVICE_ROLE_KEY` now uses the `sb_secret_` prefix
+- Vercel environment variables have been updated to the new key format
+- Any code referencing the old JWT key format (`eyJ...`) must use the new keys from Vercel environment variables — no hardcoded keys anywhere in the codebase
+- Edge functions in `supabase/functions/` consume `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` from Supabase secrets (not Vercel) — those secrets will also need updating when credentials are activated in production
+
+### Vercel Production Branch
+
+- The `vars-landing` Vercel project is tracking `claude/build-app-from-spec-6QwSN` as its production branch (Hobby plan limitation — production branch cannot be changed via the UI)
+- `main` and `claude/build-app-from-spec-6QwSN` are kept in sync after every push to `main` by running:
+
+```bash
+git push origin main:claude/build-app-from-spec-6QwSN
+```
+
+- This sync step is required after every push to `main` until the account is upgraded to Vercel Pro
+- On Vercel Pro upgrade: change the production branch to `main` permanently in Project Settings → Git, then the sync step can be dropped
+
 ## Credentials
 
 Required names are documented in `docs/ACCESS_AND_AUDIT.md`.
