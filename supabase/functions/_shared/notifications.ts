@@ -77,7 +77,7 @@ export async function sendNotification(payload: NotificationPayload): Promise<vo
 export function msg_paymentAuthorized(vendorName: string) {
   return {
     title: 'Booking confirmed',
-    body: `You're all set — ${vendorName} has 2 hours to confirm your booking. We'll let you know.`,
+    body: `You're all set — ${vendorName} has 1 hour to confirm your booking. We'll let you know.`,
   };
 }
 

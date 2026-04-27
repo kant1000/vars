@@ -228,12 +228,9 @@ async function settleBooking(
   const isPioneerBooking =
     vendor.pioneer === true && vendor.pioneer_bookings_completed < 3;
 
-  const vendorAmountKobo = isPioneerBooking
-    ? booking.service_price_kobo
-    : calculateSettlement(booking.service_price_kobo).vendorAmountKobo;
-  const varsCommissionKobo = isPioneerBooking
-    ? 0
-    : calculateSettlement(booking.service_price_kobo).varsCommissionKobo;
+  const settlement = calculateSettlement(booking.service_price_kobo);
+  const vendorAmountKobo = isPioneerBooking ? booking.service_price_kobo : settlement.vendorAmountKobo;
+  const varsNetKobo = isPioneerBooking ? 0 : settlement.varsNetKobo;
 
   const transferRef = generateReference('VARS_TRF');
 
@@ -253,7 +250,7 @@ async function settleBooking(
       booking_id: bookingId,
       vendor_id: booking.vendor_id,
       vendor_amount_kobo: vendorAmountKobo,
-      vars_commission_kobo: varsCommissionKobo,
+      vars_commission_kobo: varsNetKobo,
       paystack_transfer_reference: transferRef,
       status: 'pending',
     })
@@ -289,11 +286,21 @@ async function settleBooking(
       );
     }
 
-    console.log(
-      `Transfer initiated: ${transfer.transfer_code} — ` +
-      `₦${formatNaira(vendorAmountKobo)} to vendor ${booking.vendor_id} ` +
-      `(VARS commission: ₦${formatNaira(varsCommissionKobo)}${isPioneerBooking ? ' — Pioneer waiver' : ''})`
-    );
+    if (!isPioneerBooking) {
+      console.log(
+        `Transfer initiated: ${transfer.transfer_code} — ` +
+        `₦${formatNaira(vendorAmountKobo)} to vendor ${booking.vendor_id} | ` +
+        `VARS gross: ₦${formatNaira(settlement.varsCommissionKobo)}, ` +
+        `Paystack fee: ₦${formatNaira(settlement.paystackFeeKobo)}, ` +
+        `stamp duty: ₦${formatNaira(settlement.stampDutyKobo)}, ` +
+        `VARS net: ₦${formatNaira(varsNetKobo)}`
+      );
+    } else {
+      console.log(
+        `Transfer initiated: ${transfer.transfer_code} — ` +
+        `₦${formatNaira(vendorAmountKobo)} to vendor ${booking.vendor_id} (Pioneer waiver — VARS net: ₦0)`
+      );
+    }
   } catch (err) {
     // Transfer failed — update payout to failed, alert ops
     await supabase
