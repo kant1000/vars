@@ -33,8 +33,8 @@ The README is the canonical record of what is implemented. It covers:
 Before asking "is X built?", check the README edge functions table and mobile screens table. If it's not listed there, it isn't built.
 
 **In-flight (not yet in README):**
-- Vendor reschedule flow (`rescheduled_pending` status, `suggested_scheduled_at` column, 3 new edge functions) — built on branch `claude/build-app-from-spec-6QwSN`, not yet merged
-- Reschedule 1-hour expiry cron — written in notifications.ts but the edge function, migration column, and cron schedule are not yet built
+- None — reschedule flow (edge functions, migrations 014/015, mobile screens) is now merged and documented.
+- Reschedule expiry cron (`reschedule-expire-hourly`) still needs scheduling via Supabase Dashboard → Database → SQL Editor (can't be done in code). See prior session notes for the exact SQL.
 
 ---
 

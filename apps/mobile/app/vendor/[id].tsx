@@ -249,9 +249,15 @@ export default function VendorProfileScreen() {
           <View style={styles.nameRow}>
             <Text style={styles.name} numberOfLines={1}>{vendor.full_name}</Text>
             <View style={styles.ratingRow}>
-              <Text style={styles.star}>★</Text>
-              <Text style={styles.ratingText}>{vendor.avg_rating.toFixed(1)}</Text>
-              <Text style={styles.reviewCount}>({vendor.total_reviews})</Text>
+              {vendor.total_reviews === 0 ? (
+                <Text style={styles.newOnVars}>New on VARS</Text>
+              ) : (
+                <>
+                  <Text style={styles.star}>★</Text>
+                  <Text style={styles.ratingText}>{vendor.avg_rating.toFixed(1)}</Text>
+                  <Text style={styles.reviewCount}>({vendor.total_reviews})</Text>
+                </>
+              )}
             </View>
           </View>
 
@@ -418,6 +424,7 @@ const styles = StyleSheet.create({
   star: { color: Colors.star, fontSize: 14 },
   ratingText: { fontSize: 14, fontWeight: '700', color: Colors.text },
   reviewCount: { fontSize: 13, color: Colors.textMuted },
+  newOnVars: { fontSize: 13, fontWeight: '600', color: Colors.badgeNew },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
   badge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   badgeText: { fontSize: 11, fontWeight: '700' },

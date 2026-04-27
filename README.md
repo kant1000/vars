@@ -125,7 +125,7 @@ vars/
 
 ## Database Schema
 
-Thirteen migration files build up the schema incrementally:
+Sixteen migration files build up the schema incrementally:
 
 | Migration | Contents |
 |---|---|
@@ -142,6 +142,9 @@ Thirteen migration files build up the schema incrementally:
 | `011_booking_access_details` | `access_building`, `access_floor`, `access_flat`, `access_code`, `user_location_lat`, `user_location_lng` on bookings |
 | `012_disputes_rename_statement` | Rename `disputes.statement` → `disputes.reason` to align with edge functions and admin panel |
 | `013_dispute_category` | `dispute_category` enum + `category` column on disputes for structured triage |
+| `014_reschedule_pending` | `suggested_scheduled_at` column on bookings for vendor reschedule proposals |
+| `015_reschedule_expires_at` | `reschedule_expires_at` column; cron cancels stale `rescheduled_pending` bookings after 1 hour |
+| `016_booking_status_trigger` | Postgres trigger blocking invalid status jumps from JWT clients; edge functions (service role) bypass freely |
 
 ### Key Tables
 
@@ -182,6 +185,16 @@ service_rendered
    ├── (user confirm / auto-release 1hr after sched. end) ──────────► completed
    │
    └── (user dispute) ──────────────────────────────────────────────► disputed
+
+accepted / pending
+   │
+   └── (vendor suggests reschedule) ────────────────────────────────► rescheduled_pending
+          │
+          ├── (customer accepts) ───────────────────────────────────► accepted
+          │
+          ├── (customer declines) ──────────────────────────────────► cancelled
+          │
+          └── (1hr no customer response — cron) ───────────────────► cancelled
 ```
 
 ---
@@ -210,6 +223,10 @@ All functions live in `supabase/functions/` and run on Deno.
 | `vendor-set-zone` | POST | Saves vendor's auto-accept geographic zone |
 | `vendor-confirm-zone` | GET/POST | GET: returns zone status; POST: marks zone confirmed for today |
 | `vendor-update-location` | POST | Called every 60s by vendor app while `on_way`; writes `vendor_current_lat/lng` to vendors table for customer live tracking map; also detects zone drift |
+| `vendor-suggest-reschedule` | POST | Vendor proposes a new time — sets status to `rescheduled_pending`, writes `suggested_scheduled_at`, starts 1-hour expiry clock |
+| `customer-accept-reschedule` | POST | Customer accepts vendor's proposed time — booking returns to `accepted` with updated `scheduled_at` |
+| `customer-decline-reschedule` | POST | Customer declines — booking cancelled with full refund |
+| `reschedule-expire` | POST (cron, hourly) | Cancels any `rescheduled_pending` booking where `reschedule_expires_at` is in the past; notifies both parties |
 
 ---
 
