@@ -125,7 +125,7 @@ vars/
 
 ## Database Schema
 
-Sixteen migration files build up the schema incrementally:
+Seventeen migration files build up the schema incrementally:
 
 | Migration | Contents |
 |---|---|
@@ -145,6 +145,7 @@ Sixteen migration files build up the schema incrementally:
 | `014_reschedule_pending` | `suggested_scheduled_at` column on bookings for vendor reschedule proposals |
 | `015_reschedule_expires_at` | `reschedule_expires_at` column; cron cancels stale `rescheduled_pending` bookings after 1 hour |
 | `016_booking_status_trigger` | Postgres trigger blocking invalid status jumps from JWT clients; edge functions (service role) bypass freely |
+| `017_remove_available_block_state` | Removes the vestigial `available` value from `block_state_enum`; available slots carry no DB row |
 
 ### Key Tables
 
@@ -155,7 +156,7 @@ Sixteen migration files build up the schema incrementally:
 | `services` | Master service catalogue |
 | `vendor_services` | A vendor's offered services with price and duration |
 | `bookings` | All bookings; holds Paystack reference, escrow state, access details (`access_building/floor/flat/code`), and customer location (`user_location_lat/lng`) |
-| `vendor_calendar` | Per-slot availability with state: `unavailable` / `auto_accept` / `transport_buffer` |
+| `vendor_calendar` | Blocked slot records — state: `unavailable` / `auto_accept` / `transport_buffer`. No row = slot is open. |
 | `reviews` | Star ratings + comments |
 | `disputes` | Customer-raised issues; includes `category` enum for instant triage |
 | `payout_history` | Vendor payout records |
@@ -230,6 +231,23 @@ All functions live in `supabase/functions/` and run on Deno.
 | `customer-accept-reschedule` | POST | Customer accepts vendor's proposed time — booking returns to `accepted` with updated `scheduled_at` |
 | `customer-decline-reschedule` | POST | Customer declines — booking cancelled with full refund |
 | `reschedule-expire` | POST (cron, hourly) | Cancels any `rescheduled_pending` booking where `reschedule_expires_at` is in the past; notifies both parties |
+
+---
+
+## Cron Jobs
+
+All cron jobs are registered manually in the Supabase dashboard (Database → SQL Editor using `cron.schedule()`). They are not in migration files. If you need to recreate them on a new project, run each of these:
+
+| Job name | Schedule | Function called |
+|---|---|---|
+| `booking-expire-every-5min` | `*/5 * * * *` | `paystack-release` |
+| `auto-release-every-5min` | `*/5 * * * *` | `paystack-settle` |
+| `phone-reveal-every-5min` | `*/5 * * * *` | `phone-reveal` |
+| `send-reminders-every-5min` | `*/5 * * * *` | `send-reminders` |
+| `reschedule-expire-hourly` | `0 * * * *` | `reschedule-expire` |
+| `check-cron-health` | `0 */2 * * *` | `check_cron_health()` (DB function, not edge function) |
+
+All edge function cron jobs call their function via `net.http_post` with the `x-vars-cron-secret` header. The `check-cron-health` job calls the Postgres function directly via `SELECT check_cron_health()`.
 
 ---
 

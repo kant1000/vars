@@ -5,10 +5,10 @@ export const Colors = {
   primaryLight: '#E8F2FF',
 
   background: '#FFFFFF',
-  surface: '#F8F8F8',
+  surface: '#F5F5F5',
   border: '#E8E8E8',
 
-  text: '#1A1A1A',
+  text: '#111111',
   textSecondary: '#6B7280',
   textMuted: '#A3A3A3',
   textOnPrimary: '#FFFFFF',
