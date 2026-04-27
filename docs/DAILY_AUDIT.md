@@ -1,5 +1,7 @@
 # VARS Daily Codebase Audit
 
+**Pre-flight:** run the build/lint checks in `docs/ACCESS_AND_AUDIT.md` → Baseline Audit Order before starting.
+
 Run every check in order. For each: **PASS**, **WARN**, or **FAIL** with one-line reason.
 Final output: severity-grouped summary, then **ITEMS REQUIRING FOUNDER DECISION**.
 
