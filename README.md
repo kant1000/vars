@@ -158,8 +158,8 @@ Sixteen migration files build up the schema incrementally:
 | `vendor_calendar` | Per-slot availability with state: `unavailable` / `auto_accept` / `transport_buffer` |
 | `reviews` | Star ratings + comments |
 | `disputes` | Customer-raised issues; includes `category` enum for instant triage |
-| `payouts` | Vendor payout records |
-| `pioneer_leads` | Pre-launch interest signups |
+| `payout_history` | Vendor payout records |
+| `vendor_leads` | Pre-launch interest signups |
 
 ### Booking Status Flow
 
@@ -223,6 +223,9 @@ All functions live in `supabase/functions/` and run on Deno.
 | `vendor-set-zone` | POST | Saves vendor's auto-accept geographic zone |
 | `vendor-confirm-zone` | GET/POST | GET: returns zone status; POST: marks zone confirmed for today |
 | `vendor-update-location` | POST | Called every 60s by vendor app while `on_way`; writes `vendor_current_lat/lng` to vendors table for customer live tracking map; also detects zone drift |
+| `photo-consent-request` | POST | Vendor requests permission to use a booking photo in their portfolio — creates a consent record with 72-hour expiry, notifies customer |
+| `photo-consent-respond` | POST | Customer approves or declines a photo consent request |
+| `photo-consent-expire` | POST (cron) | Cancels any pending photo consent requests older than 72 hours; notifies vendor |
 | `vendor-suggest-reschedule` | POST | Vendor proposes a new time — sets status to `rescheduled_pending`, writes `suggested_scheduled_at`, starts 1-hour expiry clock |
 | `customer-accept-reschedule` | POST | Customer accepts vendor's proposed time — booking returns to `accepted` with updated `scheduled_at` |
 | `customer-decline-reschedule` | POST | Customer declines — booking cancelled with full refund |
