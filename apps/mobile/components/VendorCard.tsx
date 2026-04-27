@@ -78,13 +78,17 @@ export function VendorCard({ vendor, returnTo }: Props) {
             </Text>
           )}
           <View style={styles.ratingRow}>
-            <StarFilledIcon size={13} color={Colors.star} />
-            <Text style={styles.ratingText}>
-              {vendor.avg_rating.toFixed(1)}
-              {vendor.total_reviews > 0 && (
-                <Text style={styles.reviewCount}> ({vendor.total_reviews})</Text>
-              )}
-            </Text>
+            {vendor.total_reviews === 0 ? (
+              <Text style={styles.newOnVars}>New on VARS</Text>
+            ) : (
+              <>
+                <StarFilledIcon size={13} color={Colors.star} />
+                <Text style={styles.ratingText}>
+                  {vendor.avg_rating.toFixed(1)}
+                  <Text style={styles.reviewCount}> ({vendor.total_reviews})</Text>
+                </Text>
+              </>
+            )}
           </View>
         </View>
 
@@ -145,6 +149,7 @@ const styles = StyleSheet.create({
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   ratingText: { fontSize: 12, fontWeight: '600', color: Colors.text },
   reviewCount: { fontWeight: '400', color: Colors.textSecondary },
+  newOnVars: { fontSize: 12, fontWeight: '600', color: Colors.badgeNew },
   price: { fontSize: 13, color: Colors.textSecondary },
   priceAmount: { fontWeight: '700', color: Colors.text },
 });

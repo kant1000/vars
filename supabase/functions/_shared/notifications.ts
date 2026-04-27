@@ -77,7 +77,7 @@ export async function sendNotification(payload: NotificationPayload): Promise<vo
 export function msg_paymentAuthorized(vendorName: string) {
   return {
     title: 'Booking confirmed',
-    body: `You're all set — ${vendorName} has 2 hours to confirm your booking. We'll let you know.`,
+    body: `You're all set — ${vendorName} has 1 hour to confirm your booking. We'll let you know.`,
   };
 }
 
@@ -279,7 +279,7 @@ export function msg_vendor_serviceRenderReminder(clientFirstName: string) {
   };
 }
 
-export function msg_vendor_cancelledFullRefund(date: string, time: string) {
+export function msg_bookingCancelledFullRefund(date: string, time: string) {
   return {
     title: 'Booking cancelled',
     body: `Your booking for ${date} at ${time} has been cancelled by your vendor. You've been fully refunded — no charges applied.`,

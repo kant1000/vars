@@ -131,15 +131,6 @@ Then inspect:
 - admin/mobile auth flow consistency
 - booking, payment, cancellation, reschedule, and dispute flows
 
-## Current Known Risk Areas
-
-These should be checked first during cleanup:
-
-- Dirty worktree with unresolved conflict in `apps/mobile/package.json`.
-- Supabase migrations and Edge Functions changed locally.
-- Mobile generated files and assets are untracked.
-- Environment files exist locally and must remain uncommitted.
-
 ## Permanent Access Checklist
 
 Use this as the durable setup list for future sessions:

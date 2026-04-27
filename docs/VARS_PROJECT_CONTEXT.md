@@ -22,7 +22,7 @@ The README is the canonical record of what is implemented. It covers:
 - Full tech stack
 - All mobile screens (customer + vendor routes)
 - Every edge function and its purpose
-- Database schema (all 14 migrations)
+- Database schema (all 17 migrations)
 - Payment flow (full escrow lifecycle)
 - Auto-Accept system mechanics
 - KYC flow
@@ -33,8 +33,8 @@ The README is the canonical record of what is implemented. It covers:
 Before asking "is X built?", check the README edge functions table and mobile screens table. If it's not listed there, it isn't built.
 
 **In-flight (not yet in README):**
-- Vendor reschedule flow (`rescheduled_pending` status, `suggested_scheduled_at` column, 3 new edge functions) — built on branch `claude/build-app-from-spec-6QwSN`, not yet merged
-- Reschedule 1-hour expiry cron — written in notifications.ts but the edge function, migration column, and cron schedule are not yet built
+- None — reschedule flow (edge functions, migrations 014/015, mobile screens) is now merged and documented.
+- Reschedule expiry cron (`reschedule-expire-hourly`) still needs scheduling via Supabase Dashboard → Database → SQL Editor (can't be done in code). See prior session notes for the exact SQL.
 
 ---
 
@@ -82,7 +82,7 @@ All push and in-app notification copy lives here as exported functions. Do not w
 | `msg_vendor_verificationFailed(reason)` | Vendor | KYC rejected |
 | `msg_vendor_autoAccepted(clientFirstName, service, date, time)` | Vendor | Auto-accept fired |
 | `msg_vendor_serviceRenderReminder(clientFirstName)` | Vendor | Overdue — mark service complete |
-| `msg_vendor_cancelledFullRefund(date, time)` | Vendor | Vendor's own cancellation confirmed |
+| `msg_bookingCancelledFullRefund(date, time)` | Customer | Vendor cancelled — customer notified of full refund |
 | `msg_vendor_selfCancelled(clientFirstName, service)` | Vendor | Vendor cancelled summary |
 | `msg_disputeRaised_vendor(clientFirstName)` | Vendor | Customer raised dispute |
 | `msg_vendor_consentApproved()` | Vendor | Customer approved portfolio photo |

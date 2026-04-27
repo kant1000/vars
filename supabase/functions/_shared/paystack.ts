@@ -253,13 +253,30 @@ export function calculateCancellationFee(params: {
 
 /**
  * Calculate settlement split on completion.
- * VARS takes 20% commission per spec §8.
+ * Vendor always receives 80%. All platform costs (Paystack charge fee +
+ * stamp duty) come out of VARS' 20% commission.
+ *
+ * Paystack charge fee: 1.5% + ₦100 (capped ₦2,000). The ₦100 flat is
+ * waived on transactions below ₦2,500.
+ * Stamp duty: ₦50 on transactions ≥ ₦10,000 (per CBN regulation).
  */
 export function calculateSettlement(servicePriceKobo: number): {
   vendorAmountKobo: number;
   varsCommissionKobo: number;
+  paystackFeeKobo: number;
+  stampDutyKobo: number;
+  varsNetKobo: number;
 } {
-  const varsCommissionKobo = Math.round(servicePriceKobo * 0.2);
-  const vendorAmountKobo = servicePriceKobo - varsCommissionKobo;
-  return { vendorAmountKobo, varsCommissionKobo };
+  const vendorAmountKobo = Math.round(servicePriceKobo * 0.8);
+  const varsCommissionKobo = servicePriceKobo - vendorAmountKobo;
+
+  const paystackFeeKobo = servicePriceKobo < 250_000
+    ? Math.round(servicePriceKobo * 0.015)
+    : Math.min(Math.round(servicePriceKobo * 0.015) + 10_000, 200_000);
+
+  const stampDutyKobo = servicePriceKobo >= 1_000_000 ? 5_000 : 0;
+
+  const varsNetKobo = varsCommissionKobo - paystackFeeKobo - stampDutyKobo;
+
+  return { vendorAmountKobo, varsCommissionKobo, paystackFeeKobo, stampDutyKobo, varsNetKobo };
 }

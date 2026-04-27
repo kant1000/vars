@@ -125,7 +125,7 @@ vars/
 
 ## Database Schema
 
-Thirteen migration files build up the schema incrementally:
+Seventeen migration files build up the schema incrementally:
 
 | Migration | Contents |
 |---|---|
@@ -142,6 +142,10 @@ Thirteen migration files build up the schema incrementally:
 | `011_booking_access_details` | `access_building`, `access_floor`, `access_flat`, `access_code`, `user_location_lat`, `user_location_lng` on bookings |
 | `012_disputes_rename_statement` | Rename `disputes.statement` → `disputes.reason` to align with edge functions and admin panel |
 | `013_dispute_category` | `dispute_category` enum + `category` column on disputes for structured triage |
+| `014_reschedule_pending` | `suggested_scheduled_at` column on bookings for vendor reschedule proposals |
+| `015_reschedule_expires_at` | `reschedule_expires_at` column; cron cancels stale `rescheduled_pending` bookings after 1 hour |
+| `016_booking_status_trigger` | Postgres trigger blocking invalid status jumps from JWT clients; edge functions (service role) bypass freely |
+| `017_remove_available_block_state` | Removes the vestigial `available` value from `block_state_enum`; available slots carry no DB row |
 
 ### Key Tables
 
@@ -152,11 +156,11 @@ Thirteen migration files build up the schema incrementally:
 | `services` | Master service catalogue |
 | `vendor_services` | A vendor's offered services with price and duration |
 | `bookings` | All bookings; holds Paystack reference, escrow state, access details (`access_building/floor/flat/code`), and customer location (`user_location_lat/lng`) |
-| `vendor_calendar` | Per-slot availability with state: `unavailable` / `auto_accept` / `transport_buffer` |
+| `vendor_calendar` | Blocked slot records — state: `unavailable` / `auto_accept` / `transport_buffer`. No row = slot is open. |
 | `reviews` | Star ratings + comments |
 | `disputes` | Customer-raised issues; includes `category` enum for instant triage |
-| `payouts` | Vendor payout records |
-| `pioneer_leads` | Pre-launch interest signups |
+| `payout_history` | Vendor payout records |
+| `vendor_leads` | Pre-launch interest signups |
 
 ### Booking Status Flow
 
@@ -182,6 +186,16 @@ service_rendered
    ├── (user confirm / auto-release 1hr after sched. end) ──────────► completed
    │
    └── (user dispute) ──────────────────────────────────────────────► disputed
+
+accepted / pending
+   │
+   └── (vendor suggests reschedule) ────────────────────────────────► rescheduled_pending
+          │
+          ├── (customer accepts) ───────────────────────────────────► accepted
+          │
+          ├── (customer declines) ──────────────────────────────────► cancelled
+          │
+          └── (1hr no customer response — cron) ───────────────────► cancelled
 ```
 
 ---
@@ -210,6 +224,30 @@ All functions live in `supabase/functions/` and run on Deno.
 | `vendor-set-zone` | POST | Saves vendor's auto-accept geographic zone |
 | `vendor-confirm-zone` | GET/POST | GET: returns zone status; POST: marks zone confirmed for today |
 | `vendor-update-location` | POST | Called every 60s by vendor app while `on_way`; writes `vendor_current_lat/lng` to vendors table for customer live tracking map; also detects zone drift |
+| `photo-consent-request` | POST | Vendor requests permission to use a booking photo in their portfolio — creates a consent record with 72-hour expiry, notifies customer |
+| `photo-consent-respond` | POST | Customer approves or declines a photo consent request |
+| `photo-consent-expire` | POST (cron) | Cancels any pending photo consent requests older than 72 hours; notifies vendor |
+| `vendor-suggest-reschedule` | POST | Vendor proposes a new time — sets status to `rescheduled_pending`, writes `suggested_scheduled_at`, starts 1-hour expiry clock |
+| `customer-accept-reschedule` | POST | Customer accepts vendor's proposed time — booking returns to `accepted` with updated `scheduled_at` |
+| `customer-decline-reschedule` | POST | Customer declines — booking cancelled with full refund |
+| `reschedule-expire` | POST (cron, hourly) | Cancels any `rescheduled_pending` booking where `reschedule_expires_at` is in the past; notifies both parties |
+
+---
+
+## Cron Jobs
+
+All cron jobs are registered manually in the Supabase dashboard (Database → SQL Editor using `cron.schedule()`). They are not in migration files. If you need to recreate them on a new project, run each of these:
+
+| Job name | Schedule | Function called |
+|---|---|---|
+| `booking-expire-every-5min` | `*/5 * * * *` | `paystack-release` |
+| `auto-release-every-5min` | `*/5 * * * *` | `paystack-settle` |
+| `phone-reveal-every-5min` | `*/5 * * * *` | `phone-reveal` |
+| `send-reminders-every-5min` | `*/5 * * * *` | `send-reminders` |
+| `reschedule-expire-hourly` | `0 * * * *` | `reschedule-expire` |
+| `check-cron-health` | `0 */2 * * *` | `check_cron_health()` (DB function, not edge function) |
+
+All edge function cron jobs call their function via `net.http_post` with the `x-vars-cron-secret` header. The `check-cron-health` job calls the Postgres function directly via `SELECT check_cron_health()`.
 
 ---
 
