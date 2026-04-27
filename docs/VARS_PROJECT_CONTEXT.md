@@ -82,7 +82,7 @@ All push and in-app notification copy lives here as exported functions. Do not w
 | `msg_vendor_verificationFailed(reason)` | Vendor | KYC rejected |
 | `msg_vendor_autoAccepted(clientFirstName, service, date, time)` | Vendor | Auto-accept fired |
 | `msg_vendor_serviceRenderReminder(clientFirstName)` | Vendor | Overdue — mark service complete |
-| `msg_vendor_cancelledFullRefund(date, time)` | Vendor | Vendor's own cancellation confirmed |
+| `msg_bookingCancelledFullRefund(date, time)` | Customer | Vendor cancelled — customer notified of full refund |
 | `msg_vendor_selfCancelled(clientFirstName, service)` | Vendor | Vendor cancelled summary |
 | `msg_disputeRaised_vendor(clientFirstName)` | Vendor | Customer raised dispute |
 | `msg_vendor_consentApproved()` | Vendor | Customer approved portfolio photo |

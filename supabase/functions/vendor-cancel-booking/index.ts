@@ -13,7 +13,7 @@ import { PaystackClient } from '../_shared/paystack.ts';
 import {
   sendNotification,
   msg_vendor_selfCancelled,
-  msg_vendor_cancelledFullRefund,
+  msg_bookingCancelledFullRefund,
   formatDate,
   formatTime,
 } from '../_shared/notifications.ts';
@@ -121,7 +121,7 @@ Deno.serve(async (req: Request) => {
     const clientFirstName = (userProfile?.full_name ?? 'Your client').split(' ')[0];
 
     // 6. Notify user — full refund, vendor cancelled
-    const userMsg = msg_vendor_cancelledFullRefund(serviceDate, serviceTime);
+    const userMsg = msg_bookingCancelledFullRefund(serviceDate, serviceTime);
     await sendNotification({
       recipientId: booking.user_id,
       recipientType: 'user',

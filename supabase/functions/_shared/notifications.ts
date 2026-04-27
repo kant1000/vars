@@ -279,7 +279,7 @@ export function msg_vendor_serviceRenderReminder(clientFirstName: string) {
   };
 }
 
-export function msg_vendor_cancelledFullRefund(date: string, time: string) {
+export function msg_bookingCancelledFullRefund(date: string, time: string) {
   return {
     title: 'Booking cancelled',
     body: `Your booking for ${date} at ${time} has been cancelled by your vendor. You've been fully refunded — no charges applied.`,
