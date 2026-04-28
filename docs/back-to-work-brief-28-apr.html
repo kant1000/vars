@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Back to Work Brief — 28 April 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1a1a;
+    --paper: #f5f0e8;
+    --cream: #ede8dc;
+    --red: #c0392b;
+    --amber: #d35400;
+    --green: #1e7a4a;
+    --rule: rgba(26,26,26,0.15);
+    --muted: rgba(26,26,26,0.45);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    min-height: 100vh;
+    padding: 0 0 80px;
+  }
+
+  /* ── MASTHEAD ── */
+  .masthead {
+    border-bottom: 2px solid var(--ink);
+    padding: 24px 48px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    position: sticky;
+    top: 0;
+    background: var(--paper);
+    z-index: 100;
+  }
+
+  .masthead-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 24px;
+    letter-spacing: -0.5px;
+    line-height: 1.15;
+  }
+
+  .masthead-title em {
+    font-style: italic;
+    color: var(--muted);
+    font-size: 16px;
+  }
+
+  .masthead-meta {
+    text-align: right;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.9;
+  }
+
+  /* ── CONTEXT BANNER ── */
+  .context-banner {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 9px 48px;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    display: flex;
+    gap: 28px;
+    flex-wrap: wrap;
+  }
+
+  .context-banner span { opacity: 0.55; margin-right: 4px; }
+
+  /* ── TABS ── */
+  .tab-nav {
+    display: flex;
+    border-bottom: 1px solid var(--rule);
+    background: var(--cream);
+    padding: 0 48px;
+    overflow-x: auto;
+    /* hide scrollbar but keep scrollable on mobile */
+    scrollbar-width: none;
+  }
+  .tab-nav::-webkit-scrollbar { display: none; }
+
+  .tab-btn {
+    padding: 11px 18px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    color: var(--muted);
+    transition: color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+    margin-bottom: -1px;
+    user-select: none;
+  }
+
+  .tab-btn:hover { color: var(--ink); }
+  .tab-btn.active { color: var(--ink); border-bottom-color: var(--ink); }
+
+  /* ── PANELS ── */
+  .tab-panel { display: none; padding: 36px 48px; max-width: 860px; }
+  .tab-panel.active { display: block; }
+
+  /* ── TYPOGRAPHY ── */
+  .section-label {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+    padding-bottom: 7px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  p { line-height: 1.75; }
+
+  /* ── CARDS ── */
+  .card {
+    background: white;
+    border: 1px solid var(--rule);
+    padding: 18px 22px;
+    margin-bottom: 14px;
+  }
+
+  .card-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 15px;
+    margin-bottom: 8px;
+  }
+
+  .card p { color: rgba(26,26,26,0.72); margin-bottom: 6px; }
+  .card p:last-child { margin-bottom: 0; }
+
+  /* ── STATUS DOTS ── */
+  .dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 6px; /* align with first line of text */
+  }
+  .dot-red   { background: var(--red); }
+  .dot-amber { background: var(--amber); }
+  .dot-green { background: var(--green); }
+
+  /* ── UPDATE LINES ── */
+  .update-line {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .update-line:last-child { border-bottom: none; }
+
+  .update-text { flex: 1; }
+  .update-text strong { font-weight: 500; }
+
+  /* ── BRIEF ROWS ── */
+  .brief-section { margin-bottom: 28px; }
+
+  .brief-row {
+    display: grid;
+    grid-template-columns: 148px 1fr;
+    gap: 20px;
+    padding: 13px 0;
+    border-bottom: 1px solid var(--rule);
+    align-items: start;
+  }
+
+  .brief-row:last-child { border-bottom: none; }
+
+  .brief-label {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding-top: 2px;
+    line-height: 1.5;
+  }
+
+  /* ── EXPLAINERS ── */
+  .explainer-block { margin-bottom: 32px; }
+
+  .explainer-block h3 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 17px;
+    margin-bottom: 10px;
+    line-height: 1.3;
+  }
+
+  .explainer-block .sub {
+    color: var(--muted);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .explainer-block p { color: rgba(26,26,26,0.78); margin-top: 8px; }
+
+  .quote-block {
+    border-left: 3px solid var(--ink);
+    padding: 8px 16px;
+    margin: 14px 0;
+    background: var(--cream);
+    font-family: 'DM Serif Display', serif;
+    font-style: italic;
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  /* ── TODO LIST ── */
+  .todo-item {
+    display: flex;
+    gap: 14px;
+    padding: 13px 0;
+    border-bottom: 1px solid var(--rule);
+    align-items: flex-start;
+  }
+
+  .todo-item:last-child { border-bottom: none; }
+
+  .todo-check {
+    width: 16px;
+    height: 16px;
+    border: 1.5px solid var(--ink);
+    border-radius: 2px;
+    flex-shrink: 0;
+    margin-top: 3px;
+    cursor: pointer;
+    position: relative;
+    transition: background 0.12s;
+  }
+
+  .todo-check:hover { background: var(--cream); }
+
+  .todo-check.checked { background: var(--ink); }
+
+  .todo-check.checked::after {
+    content: '';
+    position: absolute;
+    left: 3px;
+    top: 1px;
+    width: 6px;
+    height: 9px;
+    border: 2px solid var(--paper);
+    border-top: none;
+    border-left: none;
+    transform: rotate(45deg);
+  }
+
+  .todo-body { flex: 1; }
+
+  .todo-body .todo-title {
+    font-weight: 500;
+    margin-bottom: 4px;
+    line-height: 1.5;
+  }
+
+  /* strike through title when checked */
+  .todo-item.done .todo-title {
+    text-decoration: line-through;
+    color: var(--muted);
+  }
+
+  .todo-body .todo-detail {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.65;
+  }
+
+  .todo-meta {
+    display: flex;
+    gap: 8px;
+    margin-top: 7px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .priority-tag {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 1px 7px;
+    border: 1px solid;
+  }
+
+  .p-urgent { border-color: var(--red);   color: var(--red); }
+  .p-soon   { border-color: var(--amber); color: var(--amber); }
+  .p-watch  { border-color: var(--muted); color: var(--muted); }
+
+  .person-tag {
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .tab-panel.active > * { animation: fadeUp 0.22s ease both; }
+  .tab-panel.active > *:nth-child(2) { animation-delay: 0.04s; }
+  .tab-panel.active > *:nth-child(3) { animation-delay: 0.08s; }
+  .tab-panel.active > *:nth-child(4) { animation-delay: 0.12s; }
+  .tab-panel.active > *:nth-child(5) { animation-delay: 0.16s; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 640px) {
+    .masthead, .tab-panel { padding-left: 20px; padding-right: 20px; }
+    .tab-nav { padding: 0 20px; }
+    .context-banner { padding-left: 20px; padding-right: 20px; gap: 12px; flex-direction: column; }
+    .brief-row { grid-template-columns: 1fr; gap: 4px; }
+    .brief-label { border-bottom: none; }
+    .masthead-title { font-size: 20px; }
+    .masthead-title em { font-size: 14px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div>
+    <div class="masthead-title">Back to Work Brief<br><em>Wholesale Market Strategy</em></div>
+  </div>
+  <div class="masthead-meta">
+    28 April 2026<br>
+    Prepared on return<br>
+    NESO / Internal
+  </div>
+</div>
+
+<div class="context-banner">
+  <div><span>Context:</span> Away several days — returning today</div>
+  <div><span>Big news while away:</span> RNP Delivery Plan published 21 Apr 2026</div>
+  <div><span>Hot:</span> Saskia gives Markets &amp; Ops Board update 12 May</div>
+</div>
+
+<div class="tab-nav">
+  <button class="tab-btn active" onclick="showTab('team', this)">① Team Update</button>
+  <button class="tab-btn" onclick="showTab('manager', this)">② Manager Brief</button>
+  <button class="tab-btn" onclick="showTab('explainer', this)">③ What's Going On</button>
+  <button class="tab-btn" onclick="showTab('todo', this)">④ Todo List</button>
+</div>
+
+<!-- TAB 1: TEAM UPDATE -->
+<div class="tab-panel active" id="tab-team">
+  <div class="section-label">Quick team standup message — verbal or message</div>
+
+  <div class="card">
+    <div class="card-title">What to say to the team</div>
+    <p style="font-style:italic; font-size:13px; line-height:1.85; color: var(--ink);">
+      "Back today — spent the morning catching up on the pre-gate and gas-sets-price threads, plus the new RNP Delivery Plan which landed while I was out. Main priorities on my end are strengthening the analytical spine on the PG-CM recommendation based on Saskia's comments, and getting across the gas methodology debate ahead of the ESNZ briefing work. Happy to sync with Jo or Ben on where things sit with the CBA assurance and RAPID process. Agnes — flagged for a follow-up on the balancing cost update that Izzie mentioned, given the CBA exposure."
+    </p>
+  </div>
+
+  <div class="section-label" style="margin-top:28px;">Key things that happened while you were away</div>
+
+  <div class="update-line">
+    <div class="dot dot-red"></div>
+    <div class="update-text"><strong>RNP Delivery Plan published (21 Apr).</strong> DESNZ dropped the full plan including a siting and investment levers consultation open until 2 June. Big deal — it's the delivery blueprint post-REMA. Directly relevant to everything your team is working on.</div>
+  </div>
+
+  <div class="update-line">
+    <div class="dot dot-red"></div>
+    <div class="update-text"><strong>Saskia gave detailed feedback on your PG-CM Recommendation.</strong> She's broadly supportive but wants more analytical depth — particularly on contextualising constraint volumes against BM volumes and sharpening the pre-gate vs wholesale framing.</div>
+  </div>
+
+  <div class="update-line">
+    <div class="dot dot-red"></div>
+    <div class="update-text"><strong>Gas-sets-price work escalated.</strong> NESO senior leadership needed defensible lines for the ESNZ Select Committee. Anthony Belcher's DA-based SRMC proxy is the agreed methodology; group has landed on ~80–85% of periods showing gas marginal. Messaging is now "flat trend + uncertainty", not a single definitive number.</div>
+  </div>
+
+  <div class="update-line">
+    <div class="dot dot-amber"></div>
+    <div class="update-text"><strong>CBA assurance process kicking off.</strong> Izzie's team will double-check Agnes's CBA. There's also an upcoming update to balancing cost estimates that could materially shift the numbers — Agnes needs to stay aligned with Izzie's team.</div>
+  </div>
+
+  <div class="update-line">
+    <div class="dot dot-amber"></div>
+    <div class="update-text"><strong>Saskia to give Markets &amp; Ops Board update 12 May.</strong> This is a progress update (not a recommendation) on pre-gate actions. A RAPID is being drafted to close out the governance on pre-gate actions.</div>
+  </div>
+
+  <div class="update-line">
+    <div class="dot dot-amber"></div>
+    <div class="update-text"><strong>Jo raised storage in modelling scope.</strong> Suggested extending beyond CCGTs to include storage behaviour in CMM modelling, given future gas price projections — even without full Plexos capability.</div>
+  </div>
+
+  <div class="update-line">
+    <div class="dot dot-green"></div>
+    <div class="update-text"><strong>Stan's leaving.</strong> Card coordination underway — check if you need to sign.</div>
+  </div>
+</div>
+
+<!-- TAB 2: MANAGER BRIEF -->
+<div class="tab-panel" id="tab-manager">
+  <div class="section-label">Brief for your conversation with Saskia — today</div>
+
+  <div class="card">
+    <div class="card-title">The shape of this conversation</div>
+    <p>Saskia already knows the terrain. She wants to hear your read on the feedback she gave, what you're doing with it, and any blockers or questions you have. Keep it short and directive — she'll appreciate you having a view, not just asking what to do.</p>
+  </div>
+
+  <div class="brief-section" style="margin-top:28px;">
+    <div class="section-label">What to cover</div>
+
+    <div class="brief-row">
+      <div class="brief-label">PG-CM Paper</div>
+      <div>You've read her feedback. The two things you're taking forward: (1) better contextualising constraint volumes against BM — you'll pull numbers to anchor that, and (2) sharpening the pre-gate vs wholesale framing, and the legality vs net consumer benefit distinction. Ask: is there a particular framing she prefers on the legality point, or is that yours to shape?</div>
+    </div>
+
+    <div class="brief-row">
+      <div class="brief-label">12 May Board Update</div>
+      <div>You know Saskia is presenting a progress update (not a recommendation) on pre-gate actions at the Markets &amp; Ops Board. Seyi's earlier paper is a starting point. Offer to help structure or sense-check the update — but only if she wants that. Don't over-offer.</div>
+    </div>
+
+    <div class="brief-row">
+      <div class="brief-label">CBA exposure</div>
+      <div>Flag that you're aware of the balancing cost update that could affect Agnes's CBA numbers. Worth confirming whether that lands before or after 12 May, and whether it changes what she says to the Board.</div>
+    </div>
+
+    <div class="brief-row">
+      <div class="brief-label">RNP Delivery Plan</div>
+      <div>Acknowledge it dropped while you were away — you're getting across it. Worth asking whether there are any immediate implications she wants you to note for your work, or whether it's more of a "track it" for now.</div>
+    </div>
+
+    <div class="brief-row">
+      <div class="brief-label">Gas methodology</div>
+      <div>You're up to speed on where the group landed — DA-based SRMC proxy, flat trend narrative, caveated messaging. Anything she needs from you on the ESNZ briefing, or is that sitting with Corporate Affairs now?</div>
+    </div>
+  </div>
+
+  <div class="card" style="border-left: 3px solid var(--ink); margin-top: 8px;">
+    <div class="card-title">One thing to land clearly</div>
+    <p>You've come back with a clear sense of priorities and you're not waiting to be told what to do. The PG-CM paper is your most urgent deliverable and you have a plan for it.</p>
+  </div>
+</div>
+
+<!-- TAB 3: EXPLAINER -->
+<div class="tab-panel" id="tab-explainer">
+  <div class="section-label">What's actually going on — plain English</div>
+
+  <div class="explainer-block">
+    <div class="sub">Thread 1 · Pre-gate actions &amp; CMMs</div>
+    <h3>Your paper is trying to prove that "Constraint Management Mechanisms" are worth doing — and Saskia wants the argument tighter.</h3>
+    <p>Constraint costs are what NESO pays to manage the fact that the grid can't move power from where it's generated to where it's needed. These are projected to hit £7–8bn/year by 2030 if nothing changes. CMMs (Constraint Management Mechanisms) are market tools that could help reduce those costs by paying generators or flexible assets to alter their output around constraints.</p>
+    <p style="margin-top:10px;">Your paper — the PG-CM Recommendation — is arguing for a particular approach. Saskia is supportive but wants you to:</p>
+    <div class="quote-block">"Contextualise the volumes — how big is this relative to what already happens in the Balancing Mechanism? And how much of the constraint problem can CMMs actually address?"</div>
+    <p>The CBA (cost-benefit analysis) that Agnes is running is the evidence base. But there's an upcoming update to the baseline balancing cost projections that could shift the numbers — so the CBA might need to move too. Izzie's team is helping quality-assure it.</p>
+    <p style="margin-top:10px;">The BM Plexos model (used for the modelling) has known limitations — it doesn't capture transmission outages well. The group agreed that CMMs should focus on structural constraints Plexos can model, not unpredictable outage-driven ones.</p>
+  </div>
+
+  <div class="explainer-block">
+    <div class="sub">Thread 2 · Gas sets the price</div>
+    <h3>NESO needed a defensible number for Parliament. The group built one — carefully.</h3>
+    <p>The ESNZ Select Committee was asking: "How often does gas set the electricity price?" This sounds simple but isn't — gas can be running without setting the price, and gas can set the price even when renewables are generating a lot.</p>
+    <p style="margin-top:10px;">You can't directly observe the marginal (price-setting) plant, so the team built a proxy. Anthony Belcher's approach: compare the day-ahead electricity price against the Short Run Marginal Cost (SRMC) of running a gas plant. If electricity price is above what it costs to run gas, gas is probably marginal. This gives ~80–85% of settlement periods, depending on year and assumptions.</p>
+    <div class="quote-block">The answer is roughly "most of the time" — but the framing matters more than the number.</div>
+    <p>Externally (e.g. Modo, LinkedIn analysis) there are claims of a downward trend. NESO's internal numbers show it's broadly flat. The agreed position: present it as flat with uncertainty, explain the methodology clearly, and don't claim it as definitive. An alternative methodology surfaced (ECIU's SAP-offset approach) but wasn't adopted.</p>
+  </div>
+
+  <div class="explainer-block">
+    <div class="sub">Thread 3 · RNP Delivery Plan (external, dropped while you were away)</div>
+    <h3>DESNZ published the blueprint for everything you're working on.</h3>
+    <p>The RNP Delivery Plan landed on 21 April. It's the government's plan for how GB electricity market reforms will happen post-REMA (which concluded in July 2025, retaining national pricing). It covers three challenge areas: locational investment signals, balancing and dispatch reform, and constraint management.</p>
+    <p style="margin-top:10px;">Key points relevant to your work: constraint management is explicitly in scope; the plan acknowledges operational reforms can cut constraint costs quickly (LCP Delta analysis suggests £6.1bn → £2.3bn by 2030 with a combined package); and decisions on siting and investment levers are expected H2 2026. A consultation on siting and investment levers is open until 2 June.</p>
+  </div>
+
+  <div class="explainer-block">
+    <div class="sub">Thread 4 · Governance</div>
+    <h3>Saskia is presenting to the Markets &amp; Ops Board on 12 May — a RAPID is being drafted.</h3>
+    <p>This is a progress update, not a policy recommendation, on pre-gate actions. DESNZ asked for it. A RAPID (a governance/decision document) is being produced to formalise the direction, inputs, and responsibilities across the pre-gate work. This is essentially the team's way of closing out the planning phase and moving to delivery.</p>
+  </div>
+</div>
+
+<!-- TAB 4: TODO -->
+<div class="tab-panel" id="tab-todo">
+  <div class="section-label">Your working week — prioritised</div>
+
+  <div class="section-label" style="margin-top:4px;">🔴 Urgent — this week</div>
+
+  <div class="todo-item" id="todo-1">
+    <div class="todo-check" onclick="toggleTodo('todo-1', this)"></div>
+    <div class="todo-body">
+      <div class="todo-title">Revise PG-CM Recommendation based on Saskia's feedback</div>
+      <div class="todo-detail">Two main jobs: (1) add BM volume context to anchor the constraint volume claim, (2) sharpen the pre-gate vs wholesale distinction and the legality/net consumer benefit framing. This is your priority deliverable.</div>
+      <div class="todo-meta">
+        <span class="priority-tag p-urgent">Priority</span>
+        <span class="person-tag">→ Saskia for review before it goes up</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="todo-item" id="todo-2">
+    <div class="todo-check" onclick="toggleTodo('todo-2', this)"></div>
+    <div class="todo-body">
+      <div class="todo-title">Chat with Saskia — today</div>
+      <div class="todo-detail">Use your manager brief. Land your plan for the PG-CM paper, check the 12 May exposure, ask about gas methodology next steps and RNP Delivery Plan implications.</div>
+      <div class="todo-meta">
+        <span class="priority-tag p-urgent">Today</span>
+        <span class="person-tag">→ Saskia</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="todo-item" id="todo-3">
+    <div class="todo-check" onclick="toggleTodo('todo-3', this)"></div>
+    <div class="todo-body">
+      <div class="todo-title">Read the RNP Delivery Plan</div>
+      <div class="todo-detail">Published 21 April 2026. Focus on the constraint management and balancing/dispatch sections. Note anything that shifts your CMM framing or creates new hooks for the CBA argument.</div>
+      <div class="todo-meta">
+        <span class="priority-tag p-urgent">This week</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label" style="margin-top:28px;">🟠 Important — coordinate this week</div>
+
+  <div class="todo-item" id="todo-4">
+    <div class="todo-check" onclick="toggleTodo('todo-4', this)"></div>
+    <div class="todo-body">
+      <div class="todo-title">Check in with Agnes on CBA status and balancing cost update</div>
+      <div class="todo-detail">Izzie flagged an upcoming update to balancing cost estimates that could materially affect the CBA results. Find out when that lands and whether Agnes needs to factor it in before the 12 May board update.</div>
+      <div class="todo-meta">
+        <span class="priority-tag p-soon">This week</span>
+        <span class="person-tag">→ Agnes</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="todo-item" id="todo-5">
+    <div class="todo-check" onclick="toggleTodo('todo-5', this)"></div>
+    <div class="todo-body">
+      <div class="todo-title">Sync with Jo or Ben on pre-gate RAPID and 12 May prep</div>
+      <div class="todo-detail">The RAPID is being drafted to close out pre-gate actions governance. Find out if there's anything you need to contribute, and whether the 12 May board update needs any input from you.</div>
+      <div class="todo-meta">
+        <span class="priority-tag p-soon">This week</span>
+        <span class="person-tag">→ Jo / Ben</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="todo-item" id="todo-6">
+    <div class="todo-check" onclick="toggleTodo('todo-6', this)"></div>
+    <div class="todo-body">
+      <div class="todo-title">Gas methodology — understand where this sits now</div>
+      <div class="todo-detail">The ESNZ briefing work (2-3 page exec brief) was in progress. Find out if there's anything landing on your desk — particularly around the "flat trend, caveated" messaging and whether Corporate Affairs needs anything more from Wholesale.</div>
+      <div class="todo-meta">
+        <span class="priority-tag p-soon">This week</span>
+        <span class="person-tag">→ Check with Anthony / CA</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label" style="margin-top:28px;">🟡 On radar — no immediate action</div>
+
+  <div class="todo-item" id="todo-7">
+    <div class="todo-check" onclick="toggleTodo('todo-7', this)"></div>
+    <div class="todo-body">
+      <div class="todo-title">CMP469 / GC0186 and CMP414 / CMP470 code consultations</div>
+      <div class="todo-detail">Both open with mid-May deadlines. CMP469 covers cost recovery for non-contracted Restoration Service Providers. Relevant to FMD and wholesale if you need to feed into a response — check with Jo.</div>
+      <div class="todo-meta">
+        <span class="priority-tag p-watch">Monitor</span>
+        <span class="person-tag">→ Deadline 19 May</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="todo-item" id="todo-8">
+    <div class="todo-check" onclick="toggleTodo('todo-8', this)"></div>
+    <div class="todo-body">
+      <div class="todo-title">RNP siting &amp; investment levers consultation</div>
+      <div class="todo-detail">Open until 2 June 2026. DESNZ seeking views on how to combine levers to deliver the SSEP. Check whether your team is submitting a response.</div>
+      <div class="todo-meta">
+        <span class="priority-tag p-watch">2 June deadline</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="todo-item" id="todo-9">
+    <div class="todo-check" onclick="toggleTodo('todo-9', this)"></div>
+    <div class="todo-body">
+      <div class="todo-title">Stan's leaving card</div>
+      <div class="todo-detail">Check whether you need to sign — coordination was happening while you were out.</div>
+      <div class="todo-meta">
+        <span class="priority-tag p-watch">Quick</span>
+        <span class="person-tag">→ Stan</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function showTab(id, btn) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-' + id).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  function toggleTodo(itemId, checkEl) {
+    checkEl.classList.toggle('checked');
+    document.getElementById(itemId).classList.toggle('done');
+  }
+</script>
+</body>
+</html>
