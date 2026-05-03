@@ -9,7 +9,7 @@ WebBrowser.maybeCompleteAuthSession();
  * Sign in with Google via Supabase OAuth.
  * Uses Expo AuthSession for the OAuth redirect flow.
  */
-export async function signInWithGoogle() {
+export async function signInWithGoogle(): Promise<boolean> {
   const redirectUrl = AuthSession.makeRedirectUri({ scheme: 'vars', path: 'auth/callback' });
 
   const { data, error } = await supabase.auth.signInWithOAuth({
@@ -25,24 +25,25 @@ export async function signInWithGoogle() {
 
   const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
 
-  if (result.type === 'success' && result.url) {
-    const { queryParams } = Linking.parse(result.url);
-    const error = queryParams?.error;
-    const errorDescription = queryParams?.error_description;
-    if (typeof error === 'string') {
-      throw new Error(typeof errorDescription === 'string' ? errorDescription : error);
-    }
+  if (result.type !== 'success' || !result.url) return false;
 
-    // Exchange the code for a session
-    const { error: sessionError } = await supabase.auth.exchangeCodeForSession(result.url);
-    if (sessionError) throw sessionError;
+  const { queryParams } = Linking.parse(result.url);
+  const oauthError = queryParams?.error;
+  const errorDescription = queryParams?.error_description;
+  if (typeof oauthError === 'string') {
+    throw new Error(typeof errorDescription === 'string' ? errorDescription : oauthError);
   }
+
+  const { error: sessionError } = await supabase.auth.exchangeCodeForSession(result.url);
+  if (sessionError) throw sessionError;
+
+  return true;
 }
 
 /**
  * Sign in with Facebook via Supabase OAuth.
  */
-export async function signInWithFacebook() {
+export async function signInWithFacebook(): Promise<boolean> {
   const redirectUrl = AuthSession.makeRedirectUri({ scheme: 'vars', path: 'auth/callback' });
 
   const { data, error } = await supabase.auth.signInWithOAuth({
@@ -58,10 +59,12 @@ export async function signInWithFacebook() {
 
   const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
 
-  if (result.type === 'success' && result.url) {
-    const { error: sessionError } = await supabase.auth.exchangeCodeForSession(result.url);
-    if (sessionError) throw sessionError;
-  }
+  if (result.type !== 'success' || !result.url) return false;
+
+  const { error: sessionError } = await supabase.auth.exchangeCodeForSession(result.url);
+  if (sessionError) throw sessionError;
+
+  return true;
 }
 
 /**

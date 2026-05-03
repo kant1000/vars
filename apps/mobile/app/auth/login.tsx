@@ -55,8 +55,8 @@ export default function LoginScreen() {
   const handleGoogle = async () => {
     setLoadingProvider('google');
     try {
-      await signInWithGoogle();
-      handleSuccess();
+      const completed = await signInWithGoogle();
+      if (completed) handleSuccess();
     } catch (err: any) {
       Alert.alert('Error', err.message ?? 'Sign in failed. Please try again.');
     } finally {
@@ -67,8 +67,8 @@ export default function LoginScreen() {
   const handleFacebook = async () => {
     setLoadingProvider('facebook');
     try {
-      await signInWithFacebook();
-      handleSuccess();
+      const completed = await signInWithFacebook();
+      if (completed) handleSuccess();
     } catch (err: any) {
       Alert.alert('Error', err.message ?? 'Sign in failed. Please try again.');
     } finally {

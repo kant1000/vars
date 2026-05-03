@@ -65,6 +65,12 @@ function RootNavigator() {
   useEffect(() => {
     const handleUrl = async ({ url }: { url: string }) => {
       if (url.includes('auth/callback')) {
+        // Check if session already established (e.g. by the OAuth WebBrowser flow)
+        const { data: { session: existing } } = await supabase.auth.getSession();
+        if (existing) {
+          router.replace('/(tabs)');
+          return;
+        }
         const { data, error } = await supabase.auth.exchangeCodeForSession(url);
         if (!error && data.session) {
           router.replace('/(tabs)');
