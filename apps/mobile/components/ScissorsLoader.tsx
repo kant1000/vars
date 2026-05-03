@@ -56,15 +56,11 @@ export function ScissorsLoader({ size = 'small', color = 'dark' }: Props) {
   }, []);
 
   const blade1Props = useAnimatedProps(() => ({
-    rotation: angle.value,
-    originX: PIVOT_X,
-    originY: PIVOT_Y,
+    transform: `rotate(${angle.value}, ${PIVOT_X}, ${PIVOT_Y})`,
   }));
 
   const blade2Props = useAnimatedProps(() => ({
-    rotation: -angle.value,
-    originX: PIVOT_X,
-    originY: PIVOT_Y,
+    transform: `rotate(${-angle.value}, ${PIVOT_X}, ${PIVOT_Y})`,
   }));
 
   const { w, h } = SIZES[size];

@@ -113,19 +113,24 @@ export default function HomeScreen() {
     offsetRef.current = offset + results.length;
   }, [coords]);
 
-  // Re-fetch when location, category or search changes
+  // Re-fetch when location or category changes (search is handled via debounce only)
   useEffect(() => {
     if (!coords) return;
     offsetRef.current = 0;
     setHasMore(true);
     fetchVendors(activeCategory, search, 0, false);
-  }, [coords, activeCategory, search, fetchVendors]);
+  }, [coords, activeCategory, fetchVendors]);
 
   const onRefresh = () => {
     setRefreshing(true);
     offsetRef.current = 0;
     fetchVendors(activeCategory, search, 0, false);
   };
+
+  const renderItem = useCallback(
+    ({ item }: { item: VendorCardData }) => <VendorCard vendor={item} />,
+    [],
+  );
 
   const onEndReached = () => {
     if (hasMore && !loading) {
@@ -205,7 +210,7 @@ export default function HomeScreen() {
         <FlatList
           data={vendors}
           keyExtractor={(v) => v.id}
-          renderItem={({ item }) => <VendorCard vendor={item} />}
+          renderItem={renderItem}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           refreshControl={
