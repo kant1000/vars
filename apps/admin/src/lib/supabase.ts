@@ -8,8 +8,10 @@ const SUPABASE_URL      = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const SERVICE_ROLE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-// Browser client — for admin auth session only
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Browser client — for admin auth session only (lazy: deferred to call time)
+export function browserClient() {
+  return createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
 
 // Server-side admin client — service role, bypasses RLS
 export function adminClient() {

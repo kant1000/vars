@@ -3,6 +3,8 @@
 // Filter by kyc_status. Approve / reject vendors.
 // Toggle VARS Choice badge.
 // ============================================================
+export const dynamic = 'force-dynamic';
+
 import { adminClient } from '@/lib/supabase';
 import VendorActions from './VendorActions';
 

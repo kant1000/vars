@@ -2,6 +2,8 @@
 // VARS Admin — Dashboard overview
 // Shows key platform stats fetched server-side.
 // ============================================================
+export const dynamic = 'force-dynamic';
+
 import { adminClient } from '@/lib/supabase';
 
 interface SystemAlert {

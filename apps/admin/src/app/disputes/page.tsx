@@ -1,6 +1,8 @@
 // ============================================================
 // VARS Admin — Disputes list + resolution
 // ============================================================
+export const dynamic = 'force-dynamic';
+
 import { adminClient } from '@/lib/supabase';
 import DisputeActions from './DisputeActions';
 import { fmtPrice } from '@/lib/format';

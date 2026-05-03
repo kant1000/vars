@@ -2,6 +2,8 @@
 // VARS Admin — Bookings list
 // Filter by status. View booking details. Issue manual refund.
 // ============================================================
+export const dynamic = 'force-dynamic';
+
 import { adminClient } from '@/lib/supabase';
 import { fmtPrice } from '@/lib/format';
 
