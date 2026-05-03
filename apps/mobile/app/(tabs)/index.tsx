@@ -8,7 +8,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   FlatList, RefreshControl,
   StyleSheet, Text, TouchableOpacity, View,
-  ScrollView, TextInput,
+  TextInput,
 } from 'react-native';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import * as Location from 'expo-location';
@@ -171,11 +171,7 @@ export default function HomeScreen() {
       </View>
 
       {/* ── Category tabs ── */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.tabs}
-      >
+      <View style={styles.tabs}>
         {CATEGORIES.map((cat) => {
           const active = activeCategory === cat.slug;
           return (
@@ -191,7 +187,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
           );
         })}
-      </ScrollView>
+      </View>
 
       {/* ── Location error banner ── */}
       {locError && (
@@ -270,9 +266,9 @@ const styles = StyleSheet.create({
     fontSize: 15, color: Colors.text,
     borderWidth: 1, borderColor: Colors.border,
   },
-  tabs: { paddingHorizontal: 16, paddingBottom: 12, gap: 8 },
+  tabs: { flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 12, gap: 8 },
   tab: {
-    paddingHorizontal: 18, paddingVertical: 8,
+    flex: 1, paddingVertical: 8, alignItems: 'center',
     borderRadius: 20, borderWidth: 1.5, borderColor: Colors.border,
     backgroundColor: Colors.background,
   },
