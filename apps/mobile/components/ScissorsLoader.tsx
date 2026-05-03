@@ -1,11 +1,17 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { G, Path } from 'react-native-svg';
+
+const AnimatedG = Animated.createAnimatedComponent(G);
 
 const W = 28;
 const H = 36;
 const VB_W = 555;
 const VB_H = 718;
+const PIVOT_X = 277.095;
+const PIVOT_Y = 436.009;
+// Tips are ~65° apart at rest; rotate each blade ~33° to bring them together
+const CLOSE_DEG = 33;
 
 const FILLS = {
   light: '#FFFFFF',
@@ -30,30 +36,40 @@ export function ScissorsLoader({ color = 'dark' }: Props) {
 
   useEffect(() => {
     const anim = Animated.loop(
-      Animated.timing(angle, {
-        toValue: 1,
-        duration: 1000,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
+      Animated.sequence([
+        Animated.timing(angle, {
+          toValue: CLOSE_DEG,
+          duration: 350,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: false,
+        }),
+        Animated.timing(angle, {
+          toValue: 0,
+          duration: 350,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: false,
+        }),
+      ])
     );
     anim.start();
     return () => anim.stop();
   }, []);
 
-  const spin = angle.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
+  const negAngle = angle.interpolate({
+    inputRange: [0, CLOSE_DEG],
+    outputRange: [0, -CLOSE_DEG],
   });
 
   const fill = FILLS[color];
 
   return (
-    <Animated.View style={{ width: W, height: H, transform: [{ rotate: spin }] }}>
-      <Svg width={W} height={H} viewBox={`0 0 ${VB_W} ${VB_H}`} fill="none">
+    <Svg width={W} height={H} viewBox={`0 0 ${VB_W} ${VB_H}`} fill="none">
+      <AnimatedG rotation={angle} originX={PIVOT_X} originY={PIVOT_Y}>
         <Path fillRule="evenodd" clipRule="evenodd" d={PATH_LEFT} fill={fill} />
+      </AnimatedG>
+      <AnimatedG rotation={negAngle} originX={PIVOT_X} originY={PIVOT_Y}>
         <Path fillRule="evenodd" clipRule="evenodd" d={PATH_RIGHT} fill={fill} />
-      </Svg>
-    </Animated.View>
+      </AnimatedG>
+    </Svg>
   );
 }
