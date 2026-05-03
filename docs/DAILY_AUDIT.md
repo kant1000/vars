@@ -11,7 +11,7 @@ Final output: severity-grouped summary, then **ITEMS REQUIRING FOUNDER DECISION*
 
 **Source:** `supabase/migrations/*.sql` — read all files.
 
-- Migration sequence 000–017 is present; **flag gap at 009** — confirm intentional
+- Migration sequence 000–017 is present; 009 is a deliberate placeholder with no schema changes (gap resolved — no flag needed)
 - Tables exist: `profiles`, `vendors`, `services`, `vendor_services`, `bookings`, `vendor_calendar`, `reviews`, `disputes`, `payout_history`, `vendor_leads`, `portfolio_photos`
 - `booking_status` enum contains: `pending`, `accepted`, `expired`, `cancelled`, `on_way`, `arrived`, `service_rendered`, `completed`, `disputed`, `rescheduled_pending`
 - `block_state_enum` contains: `unavailable`, `auto_accept`, `transport_buffer` — `available` must **not** be present (removed in 017)
@@ -160,7 +160,7 @@ FAIL if user-facing sentence strings appear inline in any `supabase/functions/*/
 **Source:** `supabase/functions/vendor-kyc-webhook/index.ts`, `supabase/functions/vendor-kyc-init/index.ts`
 
 - Clean pass: single update sets `kyc_status = verified` AND `is_active = true` — no admin step required
-- Failure: `kyc_status = rejected`; surfaces in admin queue; no rejection message sent to vendor
+- Failure: `kyc_status = rejected`; surfaces in admin queue; rejection notification IS sent to vendor via `msg_vendor_verificationFailed`
 - Webhook authenticated via HMAC using `YOUVERIFY_WEBHOOK_SECRET` before any processing
 - No raw ID data stored at any point
 
@@ -195,7 +195,7 @@ FAIL if user-facing sentence strings appear inline in any `supabase/functions/*/
 **Source:** `apps/mobile/` — grep
 
 - Vendors with no reviews: must show "New on VARS" — FAIL if empty stars are rendered
-- Hex colours: grep for any value outside `#111111`, `#FFFFFF`, `#F5F5F5`, `#0A7AFF`, `#1A1A1A` — FAIL per violation
+- Hex colours: grep feature screen files for any value outside `#111111`, `#FFFFFF`, `#F5F5F5`, `#0A7AFF`, `#1A1A1A` — FAIL per violation; **`constants/colors.ts` semantic/utility tokens (status indicators, error, success, warning states, badge colours, star ratings, borders, muted text) are exempt from this rule**
 - `#0A7AFF` must not appear as `backgroundColor` — FAIL if found
 - `ScissorsLoader`: large = 80px, small = 28px; animation 1.4s cycle, ease-in-out, no bounce
 

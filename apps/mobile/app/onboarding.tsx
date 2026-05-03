@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   ctaButton: {
-    backgroundColor: '#0A7AFF',
+    backgroundColor: '#111111',
     borderRadius: 14,
     paddingVertical: 18,
     alignItems: 'center',
@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   dotActive: {
-    backgroundColor: '#0A7AFF',
+    backgroundColor: '#111111',
     width: 20,
   },
   dotInactive: {

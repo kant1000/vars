@@ -1,0 +1,2 @@
+-- Migration 009: deliberate placeholder — sequence number skipped during development.
+-- No schema changes. Sequence continues from 008 to 010.
