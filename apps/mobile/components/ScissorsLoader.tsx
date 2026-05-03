@@ -11,7 +11,7 @@ const PIVOT_Y = 436.009;
 const OPEN_DEG = 15;
 
 const SIZES = {
-  large: { w: 80, h: 103 },
+  large: { w: 40, h: 52 },
   small: { w: 28, h: 36 },
 };
 

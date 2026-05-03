@@ -202,6 +202,10 @@ export default function HomeScreen() {
           <ScissorsLoader size="small" color="dark" />
           <Text style={styles.loadingText}>Finding your location…</Text>
         </View>
+      ) : loading && vendors.length === 0 && !refreshing ? (
+        <View style={styles.centered}>
+          <ScissorsLoader size="small" color="dark" />
+        </View>
       ) : (
         <FlatList
           data={vendors}
@@ -219,26 +223,13 @@ export default function HomeScreen() {
           }
           onEndReached={onEndReached}
           onEndReachedThreshold={0.4}
-          ListHeaderComponent={
-            refreshing ? (
-              <View style={{ alignItems: 'center', paddingVertical: 12 }}>
-                <ScissorsLoader size="small" color="dark" />
-              </View>
-            ) : loading && vendors.length === 0 ? (
-              <View style={styles.centered}>
-                <ScissorsLoader size="small" color="dark" />
-              </View>
-            ) : null
-          }
           ListEmptyComponent={
-            !loading ? (
-              <View style={styles.empty}>
-                <Text style={styles.emptyTitle}>No vendors nearby</Text>
-                <Text style={styles.emptyBody}>
-                  We're growing fast. Check back soon or try a wider search.
-                </Text>
-              </View>
-            ) : null
+            <View style={styles.empty}>
+              <Text style={styles.emptyTitle}>No vendors nearby</Text>
+              <Text style={styles.emptyBody}>
+                We're growing fast. Check back soon or try a wider search.
+              </Text>
+            </View>
           }
           ListFooterComponent={
             hasMore && vendors.length > 0 ? (
