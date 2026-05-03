@@ -27,7 +27,7 @@ module.exports = {
     },
     android: {
       adaptiveIcon: {
-        foregroundImage: './assets/images/icon.png',
+        foregroundImage: './assets/images/icon-padded.png',
         backgroundColor: '#FFFFFF',
       },
       config: {

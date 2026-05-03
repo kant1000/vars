@@ -1,12 +1,5 @@
-import React, { useEffect } from 'react';
-import Animated, {
-  useSharedValue,
-  useAnimatedProps,
-  withRepeat,
-  withSequence,
-  withTiming,
-  Easing,
-} from 'react-native-reanimated';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Easing } from 'react-native';
 import Svg, { G, Path } from 'react-native-svg';
 
 const AnimatedG = Animated.createAnimatedComponent(G);
@@ -42,36 +35,43 @@ interface Props {
 }
 
 export function ScissorsLoader({ size = 'small', color = 'dark' }: Props) {
-  const angle = useSharedValue(0);
+  const angle = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    angle.value = withRepeat(
-      withSequence(
-        withTiming(OPEN_DEG, { duration: 700, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0, { duration: 700, easing: Easing.inOut(Easing.ease) }),
-      ),
-      -1,
-      false,
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(angle, {
+          toValue: OPEN_DEG,
+          duration: 700,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: false,
+        }),
+        Animated.timing(angle, {
+          toValue: 0,
+          duration: 700,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: false,
+        }),
+      ])
     );
+    anim.start();
+    return () => anim.stop();
   }, []);
 
-  const blade1Props = useAnimatedProps(() => ({
-    transform: `rotate(${angle.value}, ${PIVOT_X}, ${PIVOT_Y})`,
-  }));
-
-  const blade2Props = useAnimatedProps(() => ({
-    transform: `rotate(${-angle.value}, ${PIVOT_X}, ${PIVOT_Y})`,
-  }));
+  const negAngle = angle.interpolate({
+    inputRange: [0, OPEN_DEG],
+    outputRange: [0, -OPEN_DEG],
+  });
 
   const { w, h } = SIZES[size];
   const fill = FILLS[color];
 
   return (
     <Svg width={w} height={h} viewBox={`0 0 ${VB_W} ${VB_H}`} fill="none">
-      <AnimatedG animatedProps={blade1Props}>
+      <AnimatedG rotation={angle} originX={PIVOT_X} originY={PIVOT_Y}>
         <Path fillRule="evenodd" clipRule="evenodd" d={PATH_LEFT} fill={fill} />
       </AnimatedG>
-      <AnimatedG animatedProps={blade2Props}>
+      <AnimatedG rotation={negAngle} originX={PIVOT_X} originY={PIVOT_Y}>
         <Path fillRule="evenodd" clipRule="evenodd" d={PATH_RIGHT} fill={fill} />
       </AnimatedG>
     </Svg>
