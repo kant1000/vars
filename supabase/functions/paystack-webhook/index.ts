@@ -162,11 +162,14 @@ async function handleChargeSuccess(
   const now = new Date();
   const graceExpiry = new Date(now.getTime() + 5 * 60 * 1000); // +5 min
 
-  // auto_release_at = scheduled end time + 1 hour (fixed wall-clock, not relative to service_rendered)
+  // Initial auto_release_at = scheduled end + 2 hours.
+  // The DB trigger fn_set_auto_release_at (migration 001) overrides this to
+  // service_rendered_at + 2 hours when the vendor marks service complete, so
+  // the settle cron always fires 2 hours after service_rendered in practice.
   const scheduledEnd = new Date(
     new Date(scheduledStr).getTime() + (service_duration_blocks as number) * 30 * 60 * 1000
   );
-  const autoReleaseAt = new Date(scheduledEnd.getTime() + 60 * 60 * 1000);
+  const autoReleaseAt = new Date(scheduledEnd.getTime() + 2 * 60 * 60 * 1000);
 
   const { data: booking, error: bookingError } = await supabase
     .from('bookings')

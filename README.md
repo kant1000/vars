@@ -100,7 +100,7 @@ vars/
 - **Booking detail screen** — unified screen for all booking states; status timeline with timestamps; live vendor tracking map while `on_way`; action buttons change per status (cancel, confirm service, dispute)
 - **Paystack checkout** — card charged immediately; funds held in VARS Paystack balance (escrow) until vendor is paid
 - **Live tracking** — map polls vendor GPS every 30 seconds while en route; phone number and full access details revealed 15 minutes before appointment
-- **Confirm & settle** — customer taps "Confirm service done" to release escrow; auto-releases 1 hour after the scheduled booking end time if the customer takes no action
+- **Confirm & settle** — customer taps "Confirm service done" to release escrow; auto-releases 2 hours after the vendor marks service rendered if the customer takes no action
 - **Reviews** — 1–5 star rating + comment after completion
 - **Disputes** — raise an issue from the live or booking detail screen; choose a structured category (Vendor didn't show up / Arrived very late / Service not completed / Poor quality / Wrong service / Other) before adding optional free-text detail; escrow freezes immediately pending admin review
 
@@ -183,7 +183,7 @@ arrived ── (user dispute) ────────────────�
    ▼
 service_rendered
    │
-   ├── (user confirm / auto-release 1hr after sched. end) ──────────► completed
+   ├── (user confirm / auto-release 2hrs after service_rendered) ───► completed
    │
    └── (user dispute) ──────────────────────────────────────────────► disputed
 
@@ -210,7 +210,7 @@ All functions live in `supabase/functions/` and run on Deno.
 | `paystack-webhook` | POST | Handles Paystack events: creates booking on `charge.success` (card already charged), auto-accepts if conditions met, creates transport buffers for auto-accepted bookings |
 | `paystack-capture` | POST | Vendor accepts a pending booking — updates booking status to `accepted`, creates transport buffer blocks (same as auto-accept path) |
 | `paystack-release` | POST | Vendor declines or booking expires — issues a full Paystack refund to the customer |
-| `paystack-settle` | POST | Customer confirms service done, or 1-hr auto-release fires after scheduled end — initiates Paystack transfer to vendor (80/20 split; Pioneer vendors: 100%) |
+| `paystack-settle` | POST | Customer confirms service done, or 2-hr auto-release fires after service_rendered — initiates Paystack transfer to vendor (80/20 split; Pioneer vendors: 100%) |
 | `paystack-cancel` | POST | Customer cancels — tiered refund (0–15 min: 15% fee; 15 min–1 hr: 50% fee; within 1 hr of service: non-refundable); releases transport buffers |
 | `paystack-verify-bank` | POST | Verifies vendor bank account via Paystack during onboarding |
 | `vendor-cancel-booking` | POST | Vendor cancels an accepted/in-progress booking — full refund to customer, transport buffers released, rolling 30-day cancellation count incremented, flags vendor at 3+ |
@@ -338,7 +338,7 @@ Paystack Checkout (WebView)
         ▼
 paystack-webhook
   • Card is charged at this point — funds move to VARS Paystack balance (escrow)
-  • Creates booking record (sets auto_release_at = scheduled_end + 1hr)
+  • Creates booking record (sets auto_release_at = scheduled_end + 2hrs; DB trigger overrides to service_rendered_at + 2hrs when vendor marks service complete)
   • If auto-accept conditions met → status = accepted, 5-min grace window opens,
     2× transport buffer blocks inserted after booking end
   • Otherwise → status = pending, vendor has 1 hour to accept
@@ -372,7 +372,7 @@ Service completed → status = service_rendered
    ├── User confirms (paystack-settle / user_confirmed)
    │
    └── Auto-release fires at auto_release_at (paystack-settle / auto_release)
-         • 1 hour after scheduled booking END time
+         • 2 hours after vendor marks service_rendered (DB trigger sets auto_release_at = service_rendered_at + 2 hrs)
          • Same 80/20 split as manual confirm
 
 paystack-settle
