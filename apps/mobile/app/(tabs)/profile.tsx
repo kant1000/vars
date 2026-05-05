@@ -429,7 +429,7 @@ const s = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
   settingsIcon: { width: 24, alignItems: 'center' as const, justifyContent: 'center' as const },
-  settingsLabel: { flex: 1, fontSize: 15, fontWeight: '600', color: Colors.text },
+  settingsLabel: { flex: 1, fontSize: 16, fontWeight: '600', color: Colors.text },
 
   // Sign out
   signOutWrap: { alignItems: 'center', paddingTop: 32, paddingBottom: 8, gap: 12 },

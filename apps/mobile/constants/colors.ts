@@ -29,7 +29,7 @@ export const Colors = {
 
   // Badge colours
   badgeVarsChoice: '#0A7AFF',
-  badgeTopRated: '#F59E0B',
+  badgeTopRated: '#22C55E',
   badgeVerified: '#22C55E',
   badgeNew: '#6B7280',
 

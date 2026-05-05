@@ -181,7 +181,7 @@ const st = StyleSheet.create({
     paddingHorizontal: 20, paddingVertical: 14,
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: Colors.text },
+  headerTitle: { fontSize: 28, fontWeight: '800', color: Colors.text },
   sectionLabel: {
     fontSize: 12, fontWeight: '700', color: Colors.textMuted,
     textTransform: 'uppercase', letterSpacing: 0.5,
@@ -189,7 +189,7 @@ const st = StyleSheet.create({
   },
   card: {
     marginHorizontal: 16, marginBottom: 10,
-    backgroundColor: Colors.surface, borderRadius: 16,
+    backgroundColor: Colors.surface, borderRadius: 12,
     padding: 16, borderWidth: 1, borderColor: Colors.border, gap: 4,
   },
   cardTop: {
@@ -197,8 +197,8 @@ const st = StyleSheet.create({
     alignItems: 'center', marginBottom: 4,
   },
   vendorName: { fontSize: 15, fontWeight: '700', color: Colors.text },
-  statusPill: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
-  statusText: { fontSize: 11, fontWeight: '700' },
+  statusPill: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+  statusText: { fontSize: 12, fontWeight: '700' },
   serviceName: { fontSize: 14, color: Colors.textSecondary },
   cardBottom: {
     flexDirection: 'row', justifyContent: 'space-between',

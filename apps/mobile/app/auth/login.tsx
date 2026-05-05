@@ -93,7 +93,16 @@ export default function LoginScreen() {
     setIsLoading(true);
     try {
       if (mode === 'signup') {
-        await signUpWithEmail({ email, password, fullName, phoneNumber: phone });
+        const { needsConfirmation } = await signUpWithEmail({ email, password, fullName, phoneNumber: phone });
+        if (needsConfirmation) {
+          Alert.alert(
+            'Check your email',
+            'We sent a confirmation link to ' + email + '. Click it to activate your account, then sign in.',
+          );
+          setMode('signin');
+          setPassword('');
+          return;
+        }
       } else {
         await signInWithEmail(email, password);
       }

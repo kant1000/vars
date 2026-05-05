@@ -78,14 +78,17 @@ export async function signInWithEmail(email: string, password: string) {
 /**
  * Sign up with email and password.
  * Full name and phone are stored in user metadata — trigger creates profile row.
+ * Returns needsConfirmation=true when Supabase requires email verification
+ * before a session is issued (the default). Callers must handle this case
+ * and NOT navigate into the app — there is no real session yet.
  */
 export async function signUpWithEmail(params: {
   email: string;
   password: string;
   fullName: string;
   phoneNumber: string;
-}) {
-  const { error } = await supabase.auth.signUp({
+}): Promise<{ needsConfirmation: boolean }> {
+  const { data, error } = await supabase.auth.signUp({
     email: params.email,
     password: params.password,
     options: {
@@ -97,6 +100,7 @@ export async function signUpWithEmail(params: {
     },
   });
   if (error) throw error;
+  return { needsConfirmation: !data.session };
 }
 
 /**

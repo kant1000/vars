@@ -4,8 +4,6 @@ import Svg, { G, Path } from 'react-native-svg';
 
 const AnimatedG = Animated.createAnimatedComponent(G);
 
-const W = 28;
-const H = 36;
 const VB_W = 555;
 const VB_H = 718;
 const PIVOT_X = 277.095;
@@ -13,9 +11,15 @@ const PIVOT_Y = 436.009;
 // Tips are ~65° apart at rest; rotate each blade ~33° to bring them together
 const CLOSE_DEG = 33;
 
+const SIZES = {
+  small:  { w: 24, h: 31 },
+  medium: { w: 40, h: 52 },
+  large:  { w: 64, h: 83 },
+};
+
 const FILLS = {
   light: '#FFFFFF',
-  dark: '#1A1A1A',
+  dark:  '#1A1A1A',
 };
 
 const PATH_LEFT =
@@ -24,14 +28,15 @@ const PATH_LEFT =
 const PATH_RIGHT =
   'M26.5287 672.105C-5.1621 535.219 96.0492 552.486 129.703 540.342C165.081 481.05 190.509 484.919 222.563 445.126L554.191 0C484.249 145.85 391.906 311.966 290.36 486.394C228.051 499.036 184.59 524.789 173.921 573.355C151.817 607.622 202.116 707.119 56.0071 697.168C51.774 717.06 37.3987 718.707 0 716.322C21.9221 701.037 35.1864 694.4 26.5287 672.105ZM277.095 452.865C286.404 452.865 293.951 445.318 293.951 436.009C293.951 426.69 286.404 419.144 277.095 419.144C267.787 419.144 260.24 426.69 260.24 436.009C260.24 445.318 267.787 452.865 277.095 452.865ZM91.567 677.133C119.341 677.133 141.847 654.617 141.847 626.843C141.847 599.079 119.341 576.563 91.567 576.563C63.7933 576.563 41.287 599.079 41.287 626.843C41.287 654.617 63.7933 677.133 91.567 677.133Z';
 
+type Size = 'small' | 'medium' | 'large';
 type Color = 'light' | 'dark';
 
 interface Props {
-  size?: 'small' | 'large';
+  size?: Size;
   color?: Color;
 }
 
-export function ScissorsLoader({ color = 'dark' }: Props) {
+export function ScissorsLoader({ size = 'small', color = 'dark' }: Props) {
   const angle = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -55,19 +60,33 @@ export function ScissorsLoader({ color = 'dark' }: Props) {
     return () => anim.stop();
   }, []);
 
-  const negAngle = angle.interpolate({
+  // Bake the pivot point into the SVG rotate() string so react-native-svg
+  // always rotates around the scissor joint regardless of element position.
+  const leftTransform = angle.interpolate({
     inputRange: [0, CLOSE_DEG],
-    outputRange: [0, -CLOSE_DEG],
+    outputRange: [
+      `rotate(0, ${PIVOT_X}, ${PIVOT_Y})`,
+      `rotate(${CLOSE_DEG}, ${PIVOT_X}, ${PIVOT_Y})`,
+    ],
   });
 
+  const rightTransform = angle.interpolate({
+    inputRange: [0, CLOSE_DEG],
+    outputRange: [
+      `rotate(0, ${PIVOT_X}, ${PIVOT_Y})`,
+      `rotate(${-CLOSE_DEG}, ${PIVOT_X}, ${PIVOT_Y})`,
+    ],
+  });
+
+  const { w, h } = SIZES[size];
   const fill = FILLS[color];
 
   return (
-    <Svg width={W} height={H} viewBox={`0 0 ${VB_W} ${VB_H}`} fill="none">
-      <AnimatedG rotation={angle} originX={PIVOT_X} originY={PIVOT_Y}>
+    <Svg width={w} height={h} viewBox={`0 0 ${VB_W} ${VB_H}`} fill="none">
+      <AnimatedG transform={leftTransform}>
         <Path fillRule="evenodd" clipRule="evenodd" d={PATH_LEFT} fill={fill} />
       </AnimatedG>
-      <AnimatedG rotation={negAngle} originX={PIVOT_X} originY={PIVOT_Y}>
+      <AnimatedG transform={rightTransform}>
         <Path fillRule="evenodd" clipRule="evenodd" d={PATH_RIGHT} fill={fill} />
       </AnimatedG>
     </Svg>

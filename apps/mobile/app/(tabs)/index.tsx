@@ -62,7 +62,7 @@ export default function HomeScreen() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [vendors, setVendors] = useState<VendorCardData[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const offsetRef = useRef(0);
@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
   subGreeting: { fontSize: 14, color: Colors.textSecondary, marginTop: 2 },
   searchWrap: { paddingHorizontal: 16, paddingVertical: 10 },
   searchInput: {
-    backgroundColor: Colors.surface, borderRadius: 12,
+    backgroundColor: Colors.surface, borderRadius: 10,
     paddingHorizontal: 16, paddingVertical: 11,
     fontSize: 15, color: Colors.text,
     borderWidth: 1, borderColor: Colors.border,

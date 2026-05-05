@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
   },
   sub: {
     fontSize: 16,
-    color: '#555555',
+    color: '#6B7280',
     lineHeight: 24,
     marginTop: 8,
   },
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
   nextText: {
     color: '#1A1A1A',
     fontSize: 17,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   stylistLink: {
     alignItems: 'center',

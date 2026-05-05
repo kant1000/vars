@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row', gap: 14,
     backgroundColor: Colors.background,
-    borderRadius: 16, padding: 14,
+    borderRadius: 12, padding: 14,
     borderWidth: 1, borderColor: Colors.border,
     marginHorizontal: 16, marginBottom: 12,
   },
@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
   distance: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
   badge: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-  badgeText: { fontSize: 11, fontWeight: '600' },
+  badgeText: { fontSize: 12, fontWeight: '700' },
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   category: { fontSize: 12, color: Colors.textSecondary, flex: 1 },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
