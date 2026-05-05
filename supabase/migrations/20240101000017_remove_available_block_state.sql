@@ -10,6 +10,10 @@
 -- Step 1: drop column default so we can alter the type
 ALTER TABLE vendor_calendar ALTER COLUMN block_state DROP DEFAULT;
 
+-- Step 1b: drop partial index whose predicate references block_state_enum by value;
+-- PostgreSQL cannot revalidate a cross-type predicate during ALTER COLUMN TYPE.
+DROP INDEX IF EXISTS idx_vendor_calendar_auto_accept;
+
 -- Step 2: swap to a new enum without 'available'
 CREATE TYPE block_state_enum_new AS ENUM (
   'unavailable',
@@ -26,3 +30,8 @@ ALTER TABLE vendor_calendar ALTER COLUMN block_state SET DEFAULT 'unavailable';
 
 DROP TYPE block_state_enum;
 ALTER TYPE block_state_enum_new RENAME TO block_state_enum;
+
+-- Step 4: recreate the partial index against the renamed type
+CREATE INDEX IF NOT EXISTS idx_vendor_calendar_auto_accept
+  ON vendor_calendar (vendor_id, block_state)
+  WHERE block_state = 'auto_accept';
