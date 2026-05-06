@@ -146,6 +146,7 @@ Seventeen migration files build up the schema incrementally:
 | `015_reschedule_expires_at` | `reschedule_expires_at` column; cron cancels stale `rescheduled_pending` bookings after 1 hour |
 | `016_booking_status_trigger` | Postgres trigger blocking invalid status jumps from JWT clients; edge functions (service role) bypass freely |
 | `017_remove_available_block_state` | Removes the vestigial `available` value from `block_state_enum`; available slots carry no DB row |
+| `018_fix_rescheduled_pending_enum` | Adds the missing `rescheduled_pending` value to `booking_status_enum`; migration 014 was a no-op because it referenced the wrong type name (`booking_status` instead of `booking_status_enum`) |
 
 ### Key Tables
 
@@ -304,9 +305,21 @@ All loading states across the app use a custom `ScissorsLoader` component (`apps
 ### ScissorsLoader
 
 - Renders the VARS scissors logo mark as an animated SVG using `react-native-svg`
-- Two blades rotate ±15° around a shared pivot point in a continuous open/close loop, driven by `react-native-reanimated` v3 (`useSharedValue`, `withRepeat`, `withSequence`)
-- Props: `size: 'large' | 'small'` (80×103 px / 28×36 px) and `color: 'light' | 'dark'` (#FFFFFF / #1A1A1A)
+- Two blades rotate ±33° around the scissor joint pivot in a snip-and-return loop (close → open → repeat), driven by `react-native-reanimated` v3 via `Animated.sequence` + `Animated.loop`. The pivot is baked into the SVG `rotate(deg, cx, cy)` string to ensure both blades always rotate around the joint regardless of element position.
+- Props: `size: 'small' | 'medium' | 'large'` (24×31 / 40×52 / 64×83 px) and `color: 'light' | 'dark'` (#FFFFFF / #1A1A1A)
 - Color rule: `light` on dark/primary-colour button backgrounds; `dark` on white or surface backgrounds
+
+### VendorPriceInput
+
+`components/VendorPriceInput.tsx` is a reusable price input for vendor-facing screens that shows a live earnings preview as the vendor types.
+
+- Renders a `₦` prefix + numeric `TextInput`, with a read-only preview line beneath it
+- Preview is hidden when the field is empty or zero; updates on every keystroke
+- Pioneer window: if `vendor.pioneer === true` and `vendor.pioneer_bookings_completed < 3`, preview shows 100% (`"You keep 100% — Pioneer booking · ₦X,XXX"`); otherwise shows 80% (`"You'll receive: ₦X,XXX"`)
+- Pioneer data is passed as props — no per-keystroke fetch
+- Used in: vendor onboarding step 2 (service price inputs)
+
+---
 
 ### Launch Transition
 
@@ -493,7 +506,7 @@ A scheduled cron runs every hour. Any `pending` booking older than **1 hour** is
 ### Auto-Release (`paystack-settle` cron)
 
 A scheduled cron fires every 15 minutes. Any `service_rendered` booking where `auto_release_at ≤ now` is settled:
-- `auto_release_at` = `scheduled_at + (duration_blocks × 30min) + 1hr`
+- `auto_release_at` is set by a DB trigger to `service_rendered_at + 2 hrs` when the vendor marks the booking `service_rendered`
 - Standard 80/20 settlement — functionally identical to a user confirmation
 - User and vendor notified
 
@@ -560,6 +573,7 @@ yarn db:types
 ```
 EXPO_PUBLIC_SUPABASE_URL=
 EXPO_PUBLIC_SUPABASE_ANON_KEY=
+EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=
 ```
 
 ### Edge Functions (Supabase Secrets)

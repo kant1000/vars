@@ -33,7 +33,7 @@ The README is the canonical record of what is implemented. It covers:
 Before asking "is X built?", check the README edge functions table and mobile screens table. If it's not listed there, it isn't built.
 
 **In-flight (not yet in README):**
-- None — reschedule flow (edge functions, migrations 014/015, mobile screens) is now merged and documented.
+- None — all features through migration 018 are merged and documented.
 - Reschedule expiry cron (`reschedule-expire-hourly`) still needs scheduling via Supabase Dashboard → Database → SQL Editor (can't be done in code). See prior session notes for the exact SQL.
 
 ---
@@ -96,7 +96,7 @@ All push and in-app notification copy lives here as exported functions. Do not w
 
 ## 4. Youverify KYC Integration
 
-**Status: SDK integrated in onboarding; specifics of their webhook format still being confirmed with their sales team.**
+**Status: Fully verified. API keys received. Integration is live-ready.**
 
 What is built:
 - `vendor-kyc-init` edge function initiates a Youverify session
@@ -104,12 +104,7 @@ What is built:
 - Webhook is authenticated via HMAC signature using `YOUVERIFY_WEBHOOK_SECRET`
 - API key stored as `YOUVERIFY_API_KEY` in Supabase secrets
 
-What is not confirmed:
-- Exact webhook payload schema from Youverify (field names, failure reason format)
-- Whether the SDK version in use is current or needs updating before go-live
-- Any sandbox/test mode behaviour differences
-
-If building or modifying the KYC flow, do not assume the webhook payload shape — confirm with the current Youverify docs or sales contact before writing against it.
+The business relationship with Youverify is confirmed and production API keys are in hand. Before deploying to production, verify that the `YOUVERIFY_API_KEY` and `YOUVERIFY_WEBHOOK_SECRET` in Supabase secrets are the production values (not sandbox), and confirm the webhook endpoint registered with Youverify points to the production edge function URL.
 
 ---
 
@@ -123,16 +118,16 @@ A marketing extension partnership is being explored as a customer acquisition ch
 
 ## 6. Monnify Payment Bridge
 
-**Status: Under exploration as a contingency.**
+**Status: Contingency no longer likely — Nigerian business registration is in progress, which will unblock Paystack live mode.**
 
-VARS is currently registered offshore while the Nigerian company registration completes. Paystack is live in test mode. If Paystack live mode cannot be activated before launch (due to registration requirements), Monnify is being explored as an interim payment processor.
+Business registration is underway. Once complete, Paystack live mode can be activated and the platform goes fully live on Paystack. Monnify is no longer being actively explored as an interim processor.
 
-This has no code impact right now — Paystack is the only integration built. If Monnify becomes necessary:
-- The payment layer is contained in `supabase/functions/paystack-*` edge functions and `_shared/paystack.ts`
-- A Monnify equivalent would need to replace or parallel those functions
-- The escrow model (funds held in platform balance, vendor paid on settlement) would need to be validated against Monnify's product capability
+No code changes are needed. When business registration completes:
+1. Activate Paystack live mode in the Paystack dashboard
+2. Swap `PAYSTACK_SECRET_KEY` in Supabase secrets from the test key to the live key
+3. Verify all Paystack webhook endpoints are registered against the production URLs
 
-Flag this to the founder before building anything Monnify-related — the decision has not been made.
+The payment layer is fully contained in `supabase/functions/paystack-*` and `_shared/paystack.ts` — no other files need touching for the test→live switch.
 
 ---
 

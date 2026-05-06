@@ -5,10 +5,10 @@
 // ============================================================
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  TextInput, Alert,
+  View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert,
 } from 'react-native';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
+import { VendorPriceInput } from '@/components/VendorPriceInput';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -48,6 +48,7 @@ export default function Step2Services() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const [vendorPioneer, setVendorPioneer] = useState<{ pioneer: boolean; pioneer_bookings_completed: number } | null>(null);
 
   useEffect(() => {
     loadServices();
@@ -61,6 +62,14 @@ export default function Step2Services() {
     setCategories(cats ?? []);
     setServices(svcs ?? []);
     if (cats?.length) setExpandedCategory(cats[0].id);
+    if (user) {
+      const { data } = await supabase
+        .from('vendors')
+        .select('pioneer, pioneer_bookings_completed')
+        .eq('id', user.id)
+        .single();
+      setVendorPioneer(data ?? null);
+    }
     setIsLoading(false);
   };
 
@@ -174,17 +183,12 @@ export default function Step2Services() {
                       {/* Price + duration fields when selected */}
                       {sel && (
                         <View style={styles.serviceConfig}>
-                          <View style={styles.priceRow}>
-                            <Text style={styles.nairaSign}>₦</Text>
-                            <TextInput
-                              style={styles.priceInput}
-                              placeholder="Price"
-                              placeholderTextColor={Colors.textMuted}
-                              value={sel.price_naira}
-                              onChangeText={(v) => updateSelected(svc.id, { price_naira: v })}
-                              keyboardType="numeric"
-                            />
-                          </View>
+                          <VendorPriceInput
+                            value={sel.price_naira}
+                            onChangeText={(v) => updateSelected(svc.id, { price_naira: v })}
+                            pioneer={vendorPioneer?.pioneer}
+                            pioneerBookingsCompleted={vendorPioneer?.pioneer_bookings_completed}
+                          />
                           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                             <View style={styles.durationRow}>
                               {DURATION_OPTIONS.map((opt) => (
@@ -274,9 +278,6 @@ const styles = StyleSheet.create({
   serviceName: { flex: 1, fontSize: 15, color: Colors.text, fontWeight: '500' },
   infoOnly: { fontSize: 11, color: Colors.textMuted, fontStyle: 'italic' },
   serviceConfig: { marginLeft: 46, marginBottom: 8, gap: 8 },
-  priceRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  nairaSign: { fontSize: 18, fontWeight: '600', color: Colors.text },
-  priceInput: { flex: 1, height: 44, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 10, paddingHorizontal: 12, fontSize: 16, color: Colors.text },
   durationRow: { flexDirection: 'row', gap: 8 },
   durationChip: { paddingVertical: 6, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1.5, borderColor: Colors.border },
   durationChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
