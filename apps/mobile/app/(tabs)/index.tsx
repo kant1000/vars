@@ -10,12 +10,12 @@ import {
   StyleSheet, Text, TouchableOpacity, View,
   TextInput,
 } from 'react-native';
-import { ScissorsLoader } from '@/components/ScissorsLoader';
 import * as Location from 'expo-location';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { VendorCard, VendorCardData } from '@/components/VendorCard';
+import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { Colors } from '@/constants/colors';
 
 // ── Category tabs ──────────────────────────────────────────
@@ -30,34 +30,36 @@ const RADIUS_KM = 25;
 const PAGE_SIZE = 20;
 
 // ── Hook: device location ──────────────────────────────────
+// Permission is requested during onboarding (Get Started CTA).
+// Home screen defaults to Lagos immediately so vendors load without delay,
+// then updates with real GPS if permission was granted.
 function useLocation() {
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [locError, setLocError] = useState<string | null>(null);
+  const [coords, setCoords] = useState<{ lat: number; lng: number }>({ lat: 6.4531, lng: 3.3958 });
+  const [permissionDenied, setPermissionDenied] = useState(false);
 
   useEffect(() => {
     (async () => {
       const { status } = await Location.getForegroundPermissionsAsync();
       if (status !== 'granted') {
-        const { status: asked } = await Location.requestForegroundPermissionsAsync();
-        if (asked !== 'granted') {
-          setLocError('Location permission denied. Showing vendors in Lagos.');
-          // Default to Lagos Island
-          setCoords({ lat: 6.4531, lng: 3.3958 });
-          return;
-        }
+        setPermissionDenied(true);
+        return;
       }
-      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      setCoords({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+      try {
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        setCoords({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+      } catch {
+        // keep default Lagos coords
+      }
     })();
   }, []);
 
-  return { coords, locError };
+  return { coords, permissionDenied };
 }
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { profile } = useAuth();
-  const { coords, locError } = useLocation();
+  const { coords, permissionDenied } = useLocation();
 
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -189,24 +191,15 @@ export default function HomeScreen() {
         })}
       </View>
 
-      {/* ── Location error banner ── */}
-      {locError && (
+      {/* ── Location permission banner ── */}
+      {permissionDenied && (
         <View style={styles.locBanner}>
-          <Text style={styles.locBannerText}>{locError}</Text>
+          <Text style={styles.locBannerText}>Showing vendors in Lagos — location access was denied.</Text>
         </View>
       )}
 
       {/* ── Vendor list ── */}
-      {!coords && !locError ? (
-        <View style={styles.centered}>
-          <ScissorsLoader size="small" color="dark" />
-          <Text style={styles.loadingText}>Finding your location…</Text>
-        </View>
-      ) : loading && vendors.length === 0 && !refreshing ? (
-        <View style={styles.centered}>
-          <ScissorsLoader size="small" color="dark" />
-        </View>
-      ) : (
+      {(
         <FlatList
           data={vendors}
           keyExtractor={(v) => v.id}
@@ -224,16 +217,18 @@ export default function HomeScreen() {
           onEndReached={onEndReached}
           onEndReachedThreshold={0.4}
           ListEmptyComponent={
-            <View style={styles.empty}>
-              <Text style={styles.emptyTitle}>No vendors nearby</Text>
-              <Text style={styles.emptyBody}>
-                We're growing fast. Check back soon or try a wider search.
-              </Text>
-            </View>
+            !loading ? (
+              <View style={styles.empty}>
+                <Text style={styles.emptyTitle}>No vendors nearby</Text>
+                <Text style={styles.emptyBody}>
+                  We're growing fast. Check back soon or try a wider search.
+                </Text>
+              </View>
+            ) : null
           }
           ListFooterComponent={
             hasMore && vendors.length > 0 ? (
-              <View style={{ marginVertical: 20, alignItems: 'center' }}><ScissorsLoader size="small" color="dark" /></View>
+              <View style={styles.centered}><ScissorsLoader size="small" color="dark" /></View>
             ) : null
           }
         />
@@ -274,7 +269,6 @@ const styles = StyleSheet.create({
   locBannerText: { fontSize: 12, color: Colors.warning, fontWeight: '500' },
   list: { paddingTop: 4, paddingBottom: 40 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60, gap: 10 },
-  loadingText: { fontSize: 14, color: Colors.textSecondary },
   empty: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 40 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: Colors.text, marginBottom: 8 },
   emptyBody: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },

@@ -47,6 +47,7 @@ const SLIDES = [
 
 export default function OnboardingScreen() {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [starting, setStarting] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
   const onViewableItemsChanged = useRef(
@@ -58,9 +59,15 @@ export default function OnboardingScreen() {
   ).current;
 
   const handleGetStarted = async () => {
-    await Location.requestForegroundPermissionsAsync();
-    await AsyncStorage.setItem('vars_onboarding_done', '1');
-    router.replace('/(tabs)');
+    if (starting) return;
+    setStarting(true);
+    try {
+      await Location.requestForegroundPermissionsAsync();
+      await AsyncStorage.setItem('vars_onboarding_done', '1');
+      router.replace('/(tabs)');
+    } finally {
+      setStarting(false);
+    }
   };
 
   const handleNext = () => {
@@ -98,11 +105,14 @@ export default function OnboardingScreen() {
               {item.isCta ? (
                 <>
                   <TouchableOpacity
-                    style={styles.ctaButton}
+                    style={[styles.ctaButton, starting && { opacity: 0.7 }]}
                     onPress={handleGetStarted}
+                    disabled={starting}
                     activeOpacity={0.85}
                   >
-                    <Text style={styles.ctaText}>Get Started</Text>
+                    <Text style={styles.ctaText}>
+                      {starting ? 'Just a moment…' : 'Get Started'}
+                    </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.stylistLink}

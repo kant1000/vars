@@ -1,7 +1,4 @@
-// Entry point — immediately redirects.
-// Actual routing logic is in _layout.tsx.
-import { Redirect } from 'expo-router';
-
+// Entry point — routing handled entirely by _layout.tsx
 export default function Index() {
-  return <Redirect href="/(tabs)" />;
+  return null;
 }
