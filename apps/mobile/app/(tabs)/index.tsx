@@ -6,12 +6,11 @@
 // ============================================================
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  FlatList, Image, RefreshControl,
+  FlatList, RefreshControl,
   StyleSheet, Text, TouchableOpacity, View,
   TextInput,
 } from 'react-native';
 import * as Location from 'expo-location';
-import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -72,7 +71,6 @@ export default function HomeScreen() {
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const firstName = profile?.full_name?.split(' ')[0] ?? 'there';
-  const avatarInitial = firstName[0]?.toUpperCase() ?? 'U';
 
   const fetchVendors = useCallback(async (
     cat: string | null,
@@ -159,19 +157,6 @@ export default function HomeScreen() {
           <Text style={styles.greeting}>Hey, {firstName} 👋</Text>
           <Text style={styles.subGreeting}>Who's coming to you today?</Text>
         </View>
-        <TouchableOpacity
-          style={styles.avatarBtn}
-          onPress={() => router.push('/(tabs)/profile')}
-          activeOpacity={0.8}
-        >
-          {profile?.profile_photo_url ? (
-            <Image source={{ uri: profile.profile_photo_url }} style={styles.avatar} />
-          ) : (
-            <View style={styles.avatarFallback}>
-              <Text style={styles.avatarInitial}>{avatarInitial}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
       </View>
 
       {/* ── Search bar ── */}
@@ -277,18 +262,11 @@ const styles = StyleSheet.create({
     borderRadius: 20, borderWidth: 1.5, borderColor: Colors.border,
     backgroundColor: Colors.background,
   },
-  avatarBtn: { marginTop: 2 },
-  avatar: { width: 38, height: 38, borderRadius: 19 },
-  avatarFallback: {
-    width: 38, height: 38, borderRadius: 19,
-    backgroundColor: Colors.primary,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  avatarInitial: { fontSize: 16, fontWeight: '800', color: '#FFF' },
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   tabActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   tabText: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
   tabTextActive: { color: '#FFF' },
+  loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   locBanner: {
     marginHorizontal: 16, marginBottom: 8,
     backgroundColor: Colors.warning + '20',
