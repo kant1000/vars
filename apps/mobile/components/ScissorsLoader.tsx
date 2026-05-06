@@ -60,22 +60,11 @@ export function ScissorsLoader({ size = 'small', color = 'dark' }: Props) {
     return () => anim.stop();
   }, []);
 
-  // Bake the pivot point into the SVG rotate() string so react-native-svg
-  // always rotates around the scissor joint regardless of element position.
-  const leftTransform = angle.interpolate({
+  // Use numeric rotation/originX/originY props rather than a string transform
+  // attribute — string-valued animated props crash on Android new architecture.
+  const rightAngle = angle.interpolate({
     inputRange: [0, CLOSE_DEG],
-    outputRange: [
-      `rotate(0, ${PIVOT_X}, ${PIVOT_Y})`,
-      `rotate(${CLOSE_DEG}, ${PIVOT_X}, ${PIVOT_Y})`,
-    ],
-  });
-
-  const rightTransform = angle.interpolate({
-    inputRange: [0, CLOSE_DEG],
-    outputRange: [
-      `rotate(0, ${PIVOT_X}, ${PIVOT_Y})`,
-      `rotate(${-CLOSE_DEG}, ${PIVOT_X}, ${PIVOT_Y})`,
-    ],
+    outputRange: [0, -CLOSE_DEG],
   });
 
   const { w, h } = SIZES[size];
@@ -83,10 +72,10 @@ export function ScissorsLoader({ size = 'small', color = 'dark' }: Props) {
 
   return (
     <Svg width={w} height={h} viewBox={`0 0 ${VB_W} ${VB_H}`} fill="none">
-      <AnimatedG transform={leftTransform}>
+      <AnimatedG rotation={angle} originX={PIVOT_X} originY={PIVOT_Y}>
         <Path fillRule="evenodd" clipRule="evenodd" d={PATH_LEFT} fill={fill} />
       </AnimatedG>
-      <AnimatedG transform={rightTransform}>
+      <AnimatedG rotation={rightAngle} originX={PIVOT_X} originY={PIVOT_Y}>
         <Path fillRule="evenodd" clipRule="evenodd" d={PATH_RIGHT} fill={fill} />
       </AnimatedG>
     </Svg>
