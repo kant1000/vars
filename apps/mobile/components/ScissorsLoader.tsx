@@ -8,8 +8,12 @@ const VB_W = 555;
 const VB_H = 718;
 const PIVOT_X = 277.095;
 const PIVOT_Y = 436.009;
-// Tips are ~65° apart at rest; rotate each blade ~33° to bring them together
-const CLOSE_DEG = 33;
+// Tips are ~65° apart at rest; rotate each blade ~32° to bring them together
+const CLOSE_DEG = 32;
+
+// Pre-computed SVG transform strings (static — only computed once)
+const TRANSLATE_TO_PIVOT   = `translate(${PIVOT_X} ${PIVOT_Y})`;
+const TRANSLATE_FROM_PIVOT = `translate(${-PIVOT_X} ${-PIVOT_Y})`;
 
 const SIZES = {
   small:  { w: 24, h: 31 },
@@ -60,8 +64,7 @@ export function ScissorsLoader({ size = 'small', color = 'dark' }: Props) {
     return () => anim.stop();
   }, []);
 
-  // Use numeric rotation/originX/originY props rather than a string transform
-  // attribute — string-valued animated props crash on Android new architecture.
+  // Mirror for the right blade — opposite direction
   const rightAngle = angle.interpolate({
     inputRange: [0, CLOSE_DEG],
     outputRange: [0, -CLOSE_DEG],
@@ -70,14 +73,25 @@ export function ScissorsLoader({ size = 'small', color = 'dark' }: Props) {
   const { w, h } = SIZES[size];
   const fill = FILLS[color];
 
+  // Rotate each blade around the screw pivot using the translate-rotate-untranslate
+  // pattern. This is more reliable than originX/originY on Animated components
+  // across React Native's new architecture on Android.
   return (
     <Svg width={w} height={h} viewBox={`0 0 ${VB_W} ${VB_H}`} fill="none">
-      <AnimatedG rotation={angle} originX={PIVOT_X} originY={PIVOT_Y}>
-        <Path fillRule="evenodd" clipRule="evenodd" d={PATH_LEFT} fill={fill} />
-      </AnimatedG>
-      <AnimatedG rotation={rightAngle} originX={PIVOT_X} originY={PIVOT_Y}>
-        <Path fillRule="evenodd" clipRule="evenodd" d={PATH_RIGHT} fill={fill} />
-      </AnimatedG>
+      <G transform={TRANSLATE_TO_PIVOT}>
+        <AnimatedG rotation={angle}>
+          <G transform={TRANSLATE_FROM_PIVOT}>
+            <Path fillRule="evenodd" clipRule="evenodd" d={PATH_LEFT} fill={fill} />
+          </G>
+        </AnimatedG>
+      </G>
+      <G transform={TRANSLATE_TO_PIVOT}>
+        <AnimatedG rotation={rightAngle}>
+          <G transform={TRANSLATE_FROM_PIVOT}>
+            <Path fillRule="evenodd" clipRule="evenodd" d={PATH_RIGHT} fill={fill} />
+          </G>
+        </AnimatedG>
+      </G>
     </Svg>
   );
 }
