@@ -278,6 +278,7 @@ export default function LiveScreen() {
   const { isOnline: isConnected } = useNetworkState();
 
   const [booking, setBooking] = useState<BookingData | null>(null);
+  const bookingRef = useRef<BookingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [confirming, setConfirming] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
@@ -346,6 +347,7 @@ export default function LiveScreen() {
       vendor_live_lat: vendorLat,
       vendor_live_lng: vendorLng,
     };
+    bookingRef.current = fresh;
     setBooking(fresh);
     cacheSet(`live_booking_${bookingId}`, fresh, 30_000).catch(() => {});
     setLoading(false);
@@ -376,11 +378,12 @@ export default function LiveScreen() {
         filter: `id=eq.${booking.vendor_id}`,
       }, (payload) => {
         const loc = (payload.new as any)?.live_location;
+        const cur = bookingRef.current;
         if (!loc) {
           // Only count as a miss if we're in an active tracking status and had a prior location
           if (
-            booking?.vendor_live_lat != null &&
-            ['on_way', 'arrived'].includes(booking?.status ?? '')
+            cur?.vendor_live_lat != null &&
+            ['on_way', 'arrived'].includes(cur?.status ?? '')
           ) {
             staleLocCount.current += 1;
             if (staleLocCount.current >= 3) setStaleLocWarning(true);
