@@ -15,10 +15,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 import { fmtPrice, fmtDateTime } from '@/lib/format';
-
-type BookingStatus =
-  | 'pending' | 'accepted' | 'on_way' | 'arrived'
-  | 'service_rendered' | 'completed' | 'cancelled' | 'expired' | 'disputed';
+import { BookingStatus, BOOKING_STATUS } from '@vars/shared';
 
 interface BookingSummary {
   id: string;
@@ -41,7 +38,10 @@ const STATUS_LABEL: Record<BookingStatus, { text: string; color: string }> = {
   disputed:         { text: 'Under review',       color: Colors.statusDisputed  },
 };
 
-const ACTIVE: BookingStatus[] = ['pending', 'accepted', 'on_way', 'arrived', 'service_rendered'];
+const ACTIVE: BookingStatus[] = [
+  BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ON_WAY,
+  BOOKING_STATUS.ARRIVED, BOOKING_STATUS.SERVICE_RENDERED,
+];
 
 type ListItem =
   | { type: 'header'; label: string }

@@ -27,13 +27,11 @@ import { fetchWithRetry } from '@/lib/fetchWithRetry';
 import { useNetworkState } from '@/lib/useNetworkState';
 import { cacheSet, cacheGet } from '@/lib/cache';
 import { OfflineBanner } from '@/components/OfflineBanner';
+import { BookingStatus, BOOKING_STATUS } from '@vars/shared';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
 // ── Types ───────────────────────────────────────────────────
-type BookingStatus =
-  | 'pending' | 'accepted' | 'on_way' | 'arrived'
-  | 'service_rendered' | 'completed' | 'cancelled' | 'expired' | 'disputed';
 
 interface BookingData {
   id: string;
@@ -72,7 +70,8 @@ const STATUS_CONFIG: Record<BookingStatus, { label: string; color: string; Icon:
 };
 
 const STATUS_ORDER: BookingStatus[] = [
-  'pending', 'accepted', 'on_way', 'arrived', 'service_rendered', 'completed',
+  BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ON_WAY,
+  BOOKING_STATUS.ARRIVED, BOOKING_STATUS.SERVICE_RENDERED, BOOKING_STATUS.COMPLETED,
 ];
 
 // ── Helpers ─────────────────────────────────────────────────
@@ -383,7 +382,7 @@ export default function LiveScreen() {
           // Only count as a miss if we're in an active tracking status and had a prior location
           if (
             cur?.vendor_live_lat != null &&
-            ['on_way', 'arrived'].includes(cur?.status ?? '')
+            [BOOKING_STATUS.ON_WAY, BOOKING_STATUS.ARRIVED].includes(cur?.status ?? '' as BookingStatus)
           ) {
             staleLocCount.current += 1;
             if (staleLocCount.current >= 3) setStaleLocWarning(true);
@@ -409,7 +408,7 @@ export default function LiveScreen() {
   const cancelBooking = () => {
     if (!session || !booking) return;
     // Cancellation is only permitted while pending or accepted — not once vendor is on their way
-    if (!['pending', 'accepted'].includes(booking.status)) return;
+    if (![BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED].includes(booking.status)) return;
 
     Alert.alert(
       'Cancel booking?',
@@ -486,20 +485,20 @@ export default function LiveScreen() {
   }
 
   const cfg = STATUS_CONFIG[booking.status] ?? STATUS_CONFIG.pending;
-  const showMap = ['on_way', 'arrived'].includes(booking.status)
+  const showMap = [BOOKING_STATUS.ON_WAY, BOOKING_STATUS.ARRIVED].includes(booking.status)
     && booking.vendor_live_lat != null && booking.vendor_live_lng != null;
 
   const minsUntil = minutesUntil(booking.scheduled_at);
   const showPhone = booking.phone_revealed && booking.vendor_phone;
   const showPhoneCountdown = !booking.phone_revealed
-    && booking.status === 'accepted'
+    && booking.status === BOOKING_STATUS.ACCEPTED
     && minsUntil > 0 && minsUntil <= 30;
 
-  const canConfirm = booking.status === 'service_rendered';
+  const canConfirm = booking.status === BOOKING_STATUS.SERVICE_RENDERED;
   // Customer can only cancel before vendor departs — once on_way or later it's locked
-  const canCancel  = ['pending', 'accepted'].includes(booking.status);
-  const canDispute = ['on_way', 'arrived', 'service_rendered'].includes(booking.status);
-  const isTerminal = ['completed', 'cancelled', 'expired', 'disputed'].includes(booking.status);
+  const canCancel  = [BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED].includes(booking.status);
+  const canDispute = [BOOKING_STATUS.ON_WAY, BOOKING_STATUS.ARRIVED, BOOKING_STATUS.SERVICE_RENDERED].includes(booking.status);
+  const isTerminal = [BOOKING_STATUS.COMPLETED, BOOKING_STATUS.CANCELLED, BOOKING_STATUS.EXPIRED, BOOKING_STATUS.DISPUTED].includes(booking.status);
 
   return (
     <View style={[s.container, { paddingTop: insets.top }]}>
@@ -580,7 +579,7 @@ export default function LiveScreen() {
         )}
 
         {/* Auto-release notice */}
-        {booking.status === 'service_rendered' && booking.auto_release_at && (
+        {booking.status === BOOKING_STATUS.SERVICE_RENDERED && booking.auto_release_at && (
           <View style={s.autoReleaseBox}>
             <Text style={s.autoReleaseText}>
               Payment auto-releases to your vendor at {fmtTime(booking.auto_release_at)} if you don't confirm.
@@ -636,7 +635,7 @@ export default function LiveScreen() {
       )}
 
       {/* Completed CTA */}
-      {booking.status === 'completed' && (
+      {booking.status === BOOKING_STATUS.COMPLETED && (
         <View style={[s.actions, { paddingBottom: insets.bottom + 12 }]}>
           <TouchableOpacity
             style={s.confirmBtn}

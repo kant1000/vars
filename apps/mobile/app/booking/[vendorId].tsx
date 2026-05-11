@@ -22,6 +22,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 import { fmtPrice, fmtDuration, fmtTime, fmtDate } from '@/lib/format';
 import { LightningIcon, CheckIcon, CloseIcon, PinIcon } from '@/components/icons';
+import { BOOKING_STATUS } from '@vars/shared';
 
 const SCREEN_W = Dimensions.get('window').width;
 const BLOCK_MINS = 30;
@@ -188,7 +189,7 @@ function Step2({
       .from('bookings')
       .select('scheduled_at, service_duration_blocks')
       .eq('vendor_id', vendorId)
-      .in('status', ['pending', 'accepted', 'on_way', 'arrived'])
+      .in('status', [BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ON_WAY, BOOKING_STATUS.ARRIVED])
       .gte('scheduled_at', dayStart.toISOString())
       .lt('scheduled_at', dayEnd.toISOString());
 
