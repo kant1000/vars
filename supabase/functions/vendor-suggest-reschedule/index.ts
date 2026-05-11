@@ -84,7 +84,7 @@ Deno.serve(async (req: Request) => {
 
     console.log(`Booking ${booking_id}: vendor ${user.id} suggested reschedule to ${suggested_at}`);
 
-    return jsonResponse({ success: true, booking_id, status: 'rescheduled_pending' });
+    return jsonResponse({ success: true, booking_id, status: BOOKING_STATUS.RESCHEDULED_PENDING });
   } catch (err) {
     console.error('vendor-suggest-reschedule error:', err);
     return errorResponse(err instanceof Error ? err.message : 'Internal error', 500);

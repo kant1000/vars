@@ -141,7 +141,7 @@ function buildTimeline(b: BookingDetail): TimelineStep[] {
   }
 
   const ORDER: BookingStatus[] = [BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ON_WAY, BOOKING_STATUS.ARRIVED, BOOKING_STATUS.SERVICE_RENDERED, BOOKING_STATUS.COMPLETED];
-  const currentIdx = ORDER.indexOf(s === 'rescheduled_pending' ? 'pending' : s);
+  const currentIdx = ORDER.indexOf(s === BOOKING_STATUS.RESCHEDULED_PENDING ? BOOKING_STATUS.PENDING : s);
 
   const steps: TimelineStep[] = [
     { label: 'Booking placed',   ts: b.created_at,           reached: true },
