@@ -15,7 +15,8 @@ export type BookingStatus =
   | 'completed'
   | 'cancelled'
   | 'expired'
-  | 'disputed';
+  | 'disputed'
+  | 'rescheduled_pending';
 
 export type DisputeStatus = 'open' | 'resolved';
 export type DisputeResolution = 'released_to_vendor' | 'refunded_to_user';

@@ -78,6 +78,7 @@ export const BOOKING_STATUS = {
   CANCELLED: 'cancelled',
   EXPIRED: 'expired',
   DISPUTED: 'disputed',
+  RESCHEDULED_PENDING: 'rescheduled_pending',
 } as const;
 
 /** Top Rated badge threshold */
