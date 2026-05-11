@@ -22,7 +22,7 @@ The README is the canonical record of what is implemented. It covers:
 - Full tech stack
 - All mobile screens (customer + vendor routes)
 - Every edge function and its purpose
-- Database schema (all 17 migrations)
+- Database schema (all 18 migrations)
 - Payment flow (full escrow lifecycle)
 - Auto-Accept system mechanics
 - KYC flow
