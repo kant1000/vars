@@ -34,7 +34,7 @@ Before asking "is X built?", check the README edge functions table and mobile sc
 
 **In-flight (not yet in README):**
 - None — all features through migration 018 are merged and documented.
-- Reschedule expiry cron (`reschedule-expire-hourly`) still needs scheduling via Supabase Dashboard → Database → SQL Editor (can't be done in code). See prior session notes for the exact SQL.
+- Reschedule 1-hour expiry cron — built and live as `reschedule-expire-hourly`. Edge function at `supabase/functions/reschedule-expire/index.ts`, registered in migration `20240101000015`. The `claude/build-app-from-spec-6QwSN` branch contains the full reschedule flow build and is still pending review before merging.
 
 ---
 
