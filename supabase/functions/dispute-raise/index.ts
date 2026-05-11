@@ -10,6 +10,7 @@
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient, createAuthClient } from '../_shared/supabase.ts';
+import { BOOKING_STATUS } from '../_shared/constants.ts';
 import {
   sendNotification,
   msg_disputeRaised_user,
@@ -51,7 +52,7 @@ Deno.serve(async (req: Request) => {
     // Dispute is available once the vendor is en route or beyond.
     // This covers the case where vendor marks on_way then disappears —
     // at that point the customer can't cancel (locked out) so needs dispute as recourse.
-    const disputeableStatuses = ['on_way', 'arrived', 'service_rendered'];
+    const disputeableStatuses = [BOOKING_STATUS.ON_WAY, BOOKING_STATUS.ARRIVED, BOOKING_STATUS.SERVICE_RENDERED];
     if (!disputeableStatuses.includes(booking.status)) {
       return errorResponse(`Cannot dispute booking with status: ${booking.status}`);
     }
@@ -71,7 +72,7 @@ Deno.serve(async (req: Request) => {
     //    This prevents auto-release cron from firing (cron only queries 'service_rendered')
     await supabase
       .from('bookings')
-      .update({ status: 'disputed' })
+      .update({ status: BOOKING_STATUS.DISPUTED })
       .eq('id', booking_id);
 
     // 2. Create dispute record

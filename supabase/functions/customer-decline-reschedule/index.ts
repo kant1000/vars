@@ -7,6 +7,7 @@
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient, createAuthClient } from '../_shared/supabase.ts';
 import { PaystackClient } from '../_shared/paystack.ts';
+import { BOOKING_STATUS } from '../_shared/constants.ts';
 import {
   sendNotification,
   msg_reschedule_declined_vendor,
@@ -38,7 +39,7 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (bookingError || !booking) return errorResponse('Booking not found', 404);
-    if (booking.status !== 'rescheduled_pending') {
+    if (booking.status !== BOOKING_STATUS.RESCHEDULED_PENDING) {
       return errorResponse(`Booking is not awaiting a reschedule response (current: ${booking.status})`);
     }
 
@@ -46,7 +47,7 @@ Deno.serve(async (req: Request) => {
     await supabase
       .from('bookings')
       .update({
-        status: 'cancelled',
+        status: BOOKING_STATUS.CANCELLED,
         cancelled_by: 'user',
         cancellation_reason: 'Customer declined reschedule suggestion',
         cancellation_fee_percent: 0,

@@ -11,6 +11,7 @@
 // ============================================================
 
 import { createAdminClient } from '../_shared/supabase.ts';
+import { BOOKING_STATUS } from '../_shared/constants.ts';
 import { verifyWebhookSignature, PaystackClient } from '../_shared/paystack.ts';
 import { createTransportBuffers } from '../_shared/calendar.ts';
 import {
@@ -189,7 +190,7 @@ async function handleChargeSuccess(
       access_floor: (access_floor as string) ?? null,
       access_flat: (access_flat as string) ?? null,
       access_code: (access_code as string) ?? null,
-      status: autoAcceptResult.shouldAutoAccept ? 'accepted' : 'pending',
+      status: autoAcceptResult.shouldAutoAccept ? BOOKING_STATUS.ACCEPTED : BOOKING_STATUS.PENDING,
       paystack_reference: reference,
       paystack_authorization_code: (data.authorization as Record<string, unknown>)?.authorization_code ?? null,
       payment_captured: false,

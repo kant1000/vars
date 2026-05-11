@@ -11,6 +11,7 @@
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient, createAuthClient } from '../_shared/supabase.ts';
 import { PaystackClient } from '../_shared/paystack.ts';
+import { BOOKING_STATUS } from '../_shared/constants.ts';
 import {
   sendNotification,
   msg_vendorDeclines,
@@ -52,7 +53,7 @@ Deno.serve(async (req: Request) => {
       // Mark as completed (dispute closed)
       await supabase
         .from('bookings')
-        .update({ status: 'completed', cancelled_by: 'admin', cancellation_reason: 'Dispute resolved — user refunded' })
+        .update({ status: BOOKING_STATUS.COMPLETED, cancelled_by: 'admin', cancellation_reason: 'Dispute resolved — user refunded' })
         .eq('id', booking_id);
 
       // Issue full refund via Paystack
@@ -92,7 +93,7 @@ Deno.serve(async (req: Request) => {
       const { data: expiredBookings } = await supabase
         .from('bookings')
         .select('id, user_id, vendor_id, paystack_reference, service_price_kobo')
-        .eq('status', 'pending')
+        .eq('status', BOOKING_STATUS.PENDING)
         .lt('created_at', oneHourAgo);
 
       if (!expiredBookings || expiredBookings.length === 0) {
@@ -126,7 +127,7 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (bookingError || !booking) return errorResponse('Booking not found', 404);
-    if (booking.status !== 'pending') {
+    if (booking.status !== BOOKING_STATUS.PENDING) {
       return errorResponse(`Cannot decline booking with status: ${booking.status}`);
     }
 
@@ -157,7 +158,7 @@ async function expireBooking(
   await supabase
     .from('bookings')
     .update({
-      status: 'expired',
+      status: BOOKING_STATUS.EXPIRED,
       cancelled_by: 'system',
       cancellation_reason: reason === 'decline' ? 'Vendor declined' : 'Vendor did not respond',
     })

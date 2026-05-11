@@ -266,7 +266,6 @@ const styles = StyleSheet.create({
   tabActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   tabText: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
   tabTextActive: { color: '#FFF' },
-  loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   locBanner: {
     marginHorizontal: 16, marginBottom: 8,
     backgroundColor: Colors.warning + '20',

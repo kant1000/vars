@@ -7,6 +7,7 @@
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient, createAuthClient } from '../_shared/supabase.ts';
+import { BOOKING_STATUS } from '../_shared/constants.ts';
 import {
   sendNotification,
   msg_consentRequest,
@@ -38,7 +39,7 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (!booking) return errorResponse('Booking not found', 404);
-    if (booking.status !== 'completed') return errorResponse('Booking must be completed to add a photo');
+    if (booking.status !== BOOKING_STATUS.COMPLETED) return errorResponse('Booking must be completed to add a photo');
 
     // One photo per booking
     const { count: existingForBooking } = await supabase

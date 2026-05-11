@@ -9,6 +9,7 @@
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient, createAuthClient } from '../_shared/supabase.ts';
 import { PaystackClient, generateReference } from '../_shared/paystack.ts';
+import { BOOKING_STATUS } from '../_shared/constants.ts';
 
 Deno.serve(async (req: Request) => {
   const cors = handleCors(req);
@@ -79,7 +80,7 @@ Deno.serve(async (req: Request) => {
       .from('bookings')
       .select('id')
       .eq('vendor_id', vendorService.vendor.id)
-      .in('status', ['pending', 'accepted', 'on_way', 'arrived', 'service_rendered'])
+      .in('status', [BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ON_WAY, BOOKING_STATUS.ARRIVED, BOOKING_STATUS.SERVICE_RENDERED])
       .lt('scheduled_at', slotEnd.toISOString())
       .gt('scheduled_at', new Date(scheduledDate.getTime() - durationMs).toISOString());
 
