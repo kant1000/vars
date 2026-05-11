@@ -8,6 +8,7 @@
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient, createAuthClient } from '../_shared/supabase.ts';
 import { createTransportBuffers } from '../_shared/calendar.ts';
+import { BOOKING_STATUS } from '../_shared/constants.ts';
 import {
   sendNotification,
   msg_reschedule_accepted_vendor,
@@ -45,7 +46,7 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (bookingError || !booking) return errorResponse('Booking not found', 404);
-    if (booking.status !== 'rescheduled_pending') {
+    if (booking.status !== BOOKING_STATUS.RESCHEDULED_PENDING) {
       return errorResponse(`Booking is not awaiting a reschedule response (current: ${booking.status})`);
     }
     if (!booking.suggested_scheduled_at) {
@@ -56,7 +57,7 @@ Deno.serve(async (req: Request) => {
     const { error: updateError } = await supabase
       .from('bookings')
       .update({
-        status: 'accepted',
+        status: BOOKING_STATUS.ACCEPTED,
         payment_captured: true,
         auto_accepted: false,
         accepted_at: new Date().toISOString(),

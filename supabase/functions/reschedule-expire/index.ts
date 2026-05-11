@@ -7,6 +7,7 @@
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient } from '../_shared/supabase.ts';
 import { PaystackClient } from '../_shared/paystack.ts';
+import { BOOKING_STATUS } from '../_shared/constants.ts';
 import {
   sendNotification,
   msg_reschedule_expired_vendor,
@@ -26,7 +27,7 @@ Deno.serve(async (req: Request) => {
     const { data: expiredBookings } = await supabase
       .from('bookings')
       .select('id, user_id, vendor_id, service_price_kobo, paystack_reference')
-      .eq('status', 'rescheduled_pending')
+      .eq('status', BOOKING_STATUS.RESCHEDULED_PENDING)
       .lte('reschedule_expires_at', nowIso);
 
     let expiredCount = 0;
@@ -36,7 +37,7 @@ Deno.serve(async (req: Request) => {
         await supabase
           .from('bookings')
           .update({
-            status: 'cancelled',
+            status: BOOKING_STATUS.CANCELLED,
             cancelled_by: 'system',
             cancellation_reason: 'Reschedule suggestion expired — customer did not respond in time',
             cancellation_fee_percent: 0,

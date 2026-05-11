@@ -15,6 +15,7 @@
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient, createAuthClient } from '../_shared/supabase.ts';
 import { PaystackClient } from '../_shared/paystack.ts';
+import { BOOKING_STATUS } from '../_shared/constants.ts';
 import {
   sendNotification,
   msg_bookingCancelledByVendor,
@@ -86,7 +87,7 @@ Deno.serve(async (req: Request) => {
   }
 
   // Check booking is still in accepted state and not already cancelled
-  if (booking.status !== 'accepted') {
+  if (booking.status !== BOOKING_STATUS.ACCEPTED) {
     return errorResponse(`Booking cannot be cancelled — current status: ${booking.status}`, 409);
   }
 
@@ -98,7 +99,7 @@ Deno.serve(async (req: Request) => {
   const { error: cancelError } = await supabase
     .from('bookings')
     .update({
-      status: 'cancelled',
+      status: BOOKING_STATUS.CANCELLED,
       grace_cancelled: true,
       cancelled_by: 'vendor',
       cancellation_reason: 'Vendor cancelled during auto-accept grace period',

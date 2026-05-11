@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 
 import { adminClient } from '@/lib/supabase';
 import { fmtPrice } from '@/lib/format';
+import { BOOKING_STATUS } from '@vars/shared';
 
 const PAGE_SIZE = 30;
 
@@ -13,7 +14,18 @@ interface Props {
   searchParams: { status?: string; page?: string; q?: string };
 }
 
-const STATUS_LIST = ['all','pending','accepted','vendor_on_way','vendor_arrived','service_rendered','completed','cancelled','expired','disputed'];
+const STATUS_LIST = [
+  'all',
+  BOOKING_STATUS.PENDING,
+  BOOKING_STATUS.ACCEPTED,
+  BOOKING_STATUS.ON_WAY,
+  BOOKING_STATUS.ARRIVED,
+  BOOKING_STATUS.SERVICE_RENDERED,
+  BOOKING_STATUS.COMPLETED,
+  BOOKING_STATUS.CANCELLED,
+  BOOKING_STATUS.EXPIRED,
+  BOOKING_STATUS.DISPUTED,
+];
 
 async function getBookings(status: string, page: number, q: string) {
   const db = adminClient();
@@ -91,10 +103,10 @@ export default async function BookingsPage({ searchParams }: Props) {
                 </td>
                 <td>
                   <span className={`badge badge-${
-                    ['completed'].includes(b.status) ? 'completed' :
-                    ['cancelled','expired'].includes(b.status) ? 'cancelled' :
-                    ['disputed'].includes(b.status) ? 'rejected' :
-                    ['pending'].includes(b.status) ? 'pending' : 'active'
+                    b.status === BOOKING_STATUS.COMPLETED ? 'completed' :
+                    [BOOKING_STATUS.CANCELLED, BOOKING_STATUS.EXPIRED].includes(b.status) ? 'cancelled' :
+                    b.status === BOOKING_STATUS.DISPUTED ? 'rejected' :
+                    b.status === BOOKING_STATUS.PENDING ? 'pending' : 'active'
                   }`}>
                     {b.status.replace(/_/g, ' ')}
                   </span>

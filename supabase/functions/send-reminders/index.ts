@@ -8,6 +8,7 @@
 
 import { jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient } from '../_shared/supabase.ts';
+import { BOOKING_STATUS } from '../_shared/constants.ts';
 import {
   sendNotification,
   msg_reminder24h,
@@ -44,7 +45,7 @@ Deno.serve(async (req: Request) => {
       profiles:user_id (full_name, push_token),
       vendors:vendor_id (full_name, push_token)
     `)
-    .in('status', ['accepted', 'on_way'])
+    .in('status', [BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ON_WAY])
     .gte('scheduled_at', h24lo)
     .lte('scheduled_at', h24hi);
 
@@ -96,7 +97,7 @@ Deno.serve(async (req: Request) => {
       profiles:user_id (full_name, push_token),
       vendors:vendor_id (full_name, push_token)
     `)
-    .in('status', ['accepted', 'on_way'])
+    .in('status', [BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ON_WAY])
     .gte('scheduled_at', h1lo)
     .lte('scheduled_at', h1hi);
 

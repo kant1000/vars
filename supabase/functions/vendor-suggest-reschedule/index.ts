@@ -7,6 +7,7 @@
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient, createAuthClient } from '../_shared/supabase.ts';
+import { BOOKING_STATUS } from '../_shared/constants.ts';
 import {
   sendNotification,
   msg_reschedule_suggested_customer,
@@ -40,7 +41,7 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (bookingError || !booking) return errorResponse('Booking not found', 404);
-    if (booking.status !== 'pending') {
+    if (booking.status !== BOOKING_STATUS.PENDING) {
       return errorResponse(`Can only suggest reschedule for pending bookings (current: ${booking.status})`);
     }
 
@@ -49,7 +50,7 @@ Deno.serve(async (req: Request) => {
     const { error: updateError } = await supabase
       .from('bookings')
       .update({
-        status: 'rescheduled_pending',
+        status: BOOKING_STATUS.RESCHEDULED_PENDING,
         suggested_scheduled_at: suggested_at,
         reschedule_expires_at: expiresAt,
         updated_at: new Date().toISOString(),

@@ -15,7 +15,8 @@ export type BookingStatus =
   | 'completed'
   | 'cancelled'
   | 'expired'
-  | 'disputed';
+  | 'disputed'
+  | 'rescheduled_pending';
 
 export type DisputeStatus = 'open' | 'resolved';
 export type DisputeResolution = 'released_to_vendor' | 'refunded_to_user';
@@ -78,6 +79,8 @@ export interface BookingSummary {
 }
 
 // ---- Notification payload ----
+// NOTE: keep in sync with supabase/functions/_shared/notifications.ts — Deno cannot resolve @vars/shared
+// The edge-function version adds pushToken (edge-function-only field).
 export interface NotificationPayload {
   recipientId: string;
   recipientType: RecipientType;

@@ -3,7 +3,9 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@vars/shared": ["../../packages/shared/src/index.ts"],
+      "@vars/shared/*": ["../../packages/shared/src/*"]
     }
   }
 }

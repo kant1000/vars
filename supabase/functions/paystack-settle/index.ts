@@ -21,6 +21,7 @@ import {
   generateReference,
   calculateSettlement,
 } from '../_shared/paystack.ts';
+import { BOOKING_STATUS } from '../_shared/constants.ts';
 import {
   sendNotification,
   msg_paymentReleased,
@@ -89,7 +90,7 @@ Deno.serve(async (req: Request) => {
       const { data: dueBookings } = await supabase
         .from('bookings')
         .select('id, user_id, vendor_id, service_price_kobo, paystack_reference')
-        .eq('status', 'service_rendered')
+        .eq('status', BOOKING_STATUS.SERVICE_RENDERED)
         .lte('auto_release_at', nowIso);
 
       let settledCount = 0;
@@ -105,7 +106,7 @@ Deno.serve(async (req: Request) => {
       const { data: arrivedBookings } = await supabase
         .from('bookings')
         .select('id, vendor_id, scheduled_at, service_duration_blocks, profiles(full_name, push_token), vendors(push_token)')
-        .eq('status', 'arrived')
+        .eq('status', BOOKING_STATUS.ARRIVED)
         .lt('scheduled_at', fortyFiveMinsAgo);
 
       let remindedCount = 0;
@@ -163,7 +164,7 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (bookingError || !booking) return errorResponse('Booking not found', 404);
-    if (booking.status !== 'service_rendered') {
+    if (booking.status !== BOOKING_STATUS.SERVICE_RENDERED) {
       return errorResponse(`Cannot confirm booking with status: ${booking.status}`);
     }
 
@@ -195,7 +196,7 @@ async function settleBooking(
     .single();
 
   if (!booking) throw new Error(`Booking ${bookingId} not found`);
-  if (booking.status === 'completed') {
+  if (booking.status === BOOKING_STATUS.COMPLETED) {
     console.log(`Booking ${bookingId} already completed — skipping`);
     return;
   }
@@ -238,7 +239,7 @@ async function settleBooking(
   await supabase
     .from('bookings')
     .update({
-      status: 'completed',
+      status: BOOKING_STATUS.COMPLETED,
       completed_at: new Date().toISOString(),
     })
     .eq('id', bookingId);

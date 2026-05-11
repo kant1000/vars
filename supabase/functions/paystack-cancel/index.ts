@@ -8,6 +8,7 @@
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient, createAuthClient } from '../_shared/supabase.ts';
 import { PaystackClient, calculateCancellationFee } from '../_shared/paystack.ts';
+import { BOOKING_STATUS } from '../_shared/constants.ts';
 import {
   sendNotification,
   msg_cancelTier1,
@@ -49,7 +50,7 @@ Deno.serve(async (req: Request) => {
     if (bookingError || !booking) return errorResponse('Booking not found', 404);
 
     // Only pending or accepted bookings can be cancelled by user
-    if (!['pending', 'accepted'].includes(booking.status)) {
+    if (![BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED].includes(booking.status)) {
       return errorResponse(`Cannot cancel booking with status: ${booking.status}`);
     }
 
@@ -66,7 +67,7 @@ Deno.serve(async (req: Request) => {
     await supabase
       .from('bookings')
       .update({
-        status: 'cancelled',
+        status: BOOKING_STATUS.CANCELLED,
         cancelled_by: 'user',
         cancellation_reason: reason ?? 'User cancelled',
         cancellation_fee_percent: feePercent,
@@ -99,7 +100,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // 3. Transfer vendor's cancellation share (if any)
-    if (vendorAmountKobo > 0 && booking.status === 'accepted') {
+    if (vendorAmountKobo > 0 && booking.status === BOOKING_STATUS.ACCEPTED) {
       const { data: vendor } = await supabase
         .from('vendors')
         .select('paystack_recipient_code, full_name, push_token')

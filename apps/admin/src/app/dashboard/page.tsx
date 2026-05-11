@@ -5,6 +5,7 @@
 export const dynamic = 'force-dynamic';
 
 import { adminClient } from '@/lib/supabase';
+import { BOOKING_STATUS } from '@vars/shared';
 
 interface SystemAlert {
   id: string;
@@ -41,14 +42,14 @@ async function getStats() {
   const verifiedVendors = vendorData.filter((v) => v.kyc_status === 'verified').length;
 
   const totalBookings   = bookingData.length;
-  const activeBookings  = bookingData.filter((b) => ['pending','accepted','vendor_on_way','vendor_arrived','service_rendered'].includes(b.status)).length;
-  const completedBookings = bookingData.filter((b) => b.status === 'completed').length;
+  const activeBookings  = bookingData.filter((b) => [BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ON_WAY, BOOKING_STATUS.ARRIVED, BOOKING_STATUS.SERVICE_RENDERED].includes(b.status)).length;
+  const completedBookings = bookingData.filter((b) => b.status === BOOKING_STATUS.COMPLETED).length;
 
   const openDisputes    = disputeData.filter((d) => d.status === 'open').length;
 
   // VARS revenue = 20% of completed booking values
   const completedRevKobo = bookingData
-    .filter((b) => b.status === 'completed')
+    .filter((b) => b.status === BOOKING_STATUS.COMPLETED)
     .reduce((s: number, b: any) => s + (b.service_price_kobo ?? 0), 0);
   const varsRevenueKobo = Math.round(completedRevKobo * 0.2);
 

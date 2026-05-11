@@ -19,8 +19,7 @@ import { pickAndUploadImage } from '@/lib/storage';
 import { Colors } from '@/constants/colors';
 import { fmtPrice, fmtLongDate } from '@/lib/format';
 import { HeartIcon, BellIcon, EditIcon, ChevronRightIcon } from '@/components/icons';
-
-type BookingStatus = 'pending'|'accepted'|'on_way'|'arrived'|'service_rendered'|'completed'|'cancelled'|'expired'|'disputed';
+import { BookingStatus, BOOKING_STATUS } from '@vars/shared';
 
 interface PastBooking {
   id: string;
@@ -147,10 +146,10 @@ export default function ProfileScreen() {
   }
 
   const activeBookings = bookings.filter((b) =>
-    !['completed','cancelled','expired'].includes(b.status)
+    ![BOOKING_STATUS.COMPLETED, BOOKING_STATUS.CANCELLED, BOOKING_STATUS.EXPIRED].includes(b.status)
   );
   const pastBookings = bookings.filter((b) =>
-    ['completed','cancelled','expired'].includes(b.status)
+    [BOOKING_STATUS.COMPLETED, BOOKING_STATUS.CANCELLED, BOOKING_STATUS.EXPIRED].includes(b.status)
   );
 
   return (

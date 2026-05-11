@@ -10,6 +10,7 @@
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient, createAuthClient } from '../_shared/supabase.ts';
 import { PaystackClient } from '../_shared/paystack.ts';
+import { BOOKING_STATUS } from '../_shared/constants.ts';
 import {
   sendNotification,
   msg_vendor_selfCancelled,
@@ -50,7 +51,7 @@ Deno.serve(async (req: Request) => {
     if (bookingError || !booking) return errorResponse('Booking not found', 404);
 
     // Vendor can only cancel pending or accepted bookings
-    if (!['pending', 'accepted'].includes(booking.status)) {
+    if (![BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED].includes(booking.status)) {
       return errorResponse(`Cannot cancel booking with status: ${booking.status}`);
     }
 
@@ -65,7 +66,7 @@ Deno.serve(async (req: Request) => {
     await supabase
       .from('bookings')
       .update({
-        status: 'cancelled',
+        status: BOOKING_STATUS.CANCELLED,
         cancelled_by: 'vendor',
         cancellation_reason: reason ?? 'Vendor cancelled',
         cancellation_fee_percent: 0,

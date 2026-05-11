@@ -21,16 +21,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 import { fmtPrice, fmtDuration, fmtTime, fmtDate } from '@/lib/format';
 import { CloseIcon, PinIcon, LockIcon, LightningIcon, CarIcon } from '@/components/icons';
+import { BookingStatus, BOOKING_STATUS } from '@vars/shared';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
 // ── Types ─────────────────────────────────────────────────────
 type BlockState = 'unavailable' | 'available' | 'auto_accept' | 'transport_buffer';
-
-type BookingStatus =
-  | 'pending' | 'accepted' | 'on_way' | 'arrived'
-  | 'service_rendered' | 'completed' | 'cancelled' | 'expired' | 'disputed'
-  | 'rescheduled_pending';
 
 interface CalendarBlock {
   id: string;
@@ -65,7 +61,10 @@ export interface VendorBooking {
 const SCREEN_W = Dimensions.get('window').width;
 const SLOT_W   = (SCREEN_W - 32 - 20) / 4;
 const STORAGE_KEY = 'vars_vendor_schedule_view';
-const ACTIVE_STATUSES: BookingStatus[] = ['pending', 'accepted', 'on_way', 'arrived', 'service_rendered', 'rescheduled_pending'];
+const ACTIVE_STATUSES: BookingStatus[] = [
+  BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ON_WAY,
+  BOOKING_STATUS.ARRIVED, BOOKING_STATUS.SERVICE_RENDERED, BOOKING_STATUS.RESCHEDULED_PENDING,
+];
 
 const STATE_STYLE = {
   default:          { border: Colors.border,        bg: Colors.background, text: Colors.primary },
@@ -191,7 +190,7 @@ function BookingBottomSheet({
         supabase.from('bookings')
           .select('id, scheduled_at, service_duration_blocks')
           .eq('vendor_id', vendorId)
-          .in('status', ['pending', 'accepted', 'on_way', 'arrived', 'rescheduled_pending'])
+          .in('status', [BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ON_WAY, BOOKING_STATUS.ARRIVED, BOOKING_STATUS.RESCHEDULED_PENDING])
           .neq('id', booking.id)
           .gte('scheduled_at', dayStart.toISOString())
           .lt('scheduled_at', dayEnd.toISOString()),
@@ -281,9 +280,9 @@ function BookingBottomSheet({
     try {
       if (action === 'accept')   await callEdgeFn('paystack-capture', { booking_id: booking.id });
       if (action === 'decline')  await callEdgeFn('vendor-cancel-booking', { booking_id: booking.id });
-      if (action === 'on_way')         await updateStatus('on_way');
-      if (action === 'arrived')        await updateStatus('arrived');
-      if (action === 'service_rendered') await updateStatus('service_rendered');
+      if (action === 'on_way')           await updateStatus(BOOKING_STATUS.ON_WAY);
+      if (action === 'arrived')          await updateStatus(BOOKING_STATUS.ARRIVED);
+      if (action === 'service_rendered') await updateStatus(BOOKING_STATUS.SERVICE_RENDERED);
       onAction();
       onClose();
     } catch (err: any) {
@@ -374,7 +373,7 @@ function BookingBottomSheet({
             </View>
 
             {/* Auto-accept grace window banner */}
-            {booking.auto_accepted && booking.status === 'accepted' && graceSecondsLeft > 0 && (
+            {booking.auto_accepted && booking.status === BOOKING_STATUS.ACCEPTED && graceSecondsLeft > 0 && (
               <View style={bs.graceBanner}>
                 <View style={{ flex: 1 }}>
                   <Text style={bs.graceTitle}>Auto-accepted booking</Text>
@@ -401,7 +400,7 @@ function BookingBottomSheet({
             )}
 
             {/* Action buttons */}
-            {booking.status === 'pending' && !showReschedulePicker && (
+            {booking.status === BOOKING_STATUS.PENDING && !showReschedulePicker && (
               <>
                 <View style={bs.actionRow}>
                   <TouchableOpacity
@@ -430,7 +429,7 @@ function BookingBottomSheet({
             )}
 
             {/* Inline reschedule picker */}
-            {booking.status === 'pending' && showReschedulePicker && (
+            {booking.status === BOOKING_STATUS.PENDING && showReschedulePicker && (
               <View style={bs.rescheduleWrap}>
                 <Text style={bs.rescheduleHeading}>Suggest another time</Text>
                 {loadingRescheduleSlots ? (
@@ -489,13 +488,13 @@ function BookingBottomSheet({
               </View>
             )}
 
-            {booking.status === 'rescheduled_pending' && (
+            {booking.status === BOOKING_STATUS.RESCHEDULED_PENDING && (
               <View style={bs.waitingBox}>
                 <Text style={bs.waitingText}>Reschedule suggestion sent — waiting for customer response</Text>
               </View>
             )}
 
-            {booking.status === 'accepted' && (
+            {booking.status === BOOKING_STATUS.ACCEPTED && (
               <TouchableOpacity
                 style={[bs.primaryBtn, acting && bs.actionBtnDisabled]}
                 onPress={() => handleAction('on_way')}
@@ -505,7 +504,7 @@ function BookingBottomSheet({
               </TouchableOpacity>
             )}
 
-            {booking.status === 'on_way' && (
+            {booking.status === BOOKING_STATUS.ON_WAY && (
               <TouchableOpacity
                 style={[bs.primaryBtn, acting && bs.actionBtnDisabled]}
                 onPress={() => handleAction('arrived')}
@@ -515,7 +514,7 @@ function BookingBottomSheet({
               </TouchableOpacity>
             )}
 
-            {booking.status === 'arrived' && (
+            {booking.status === BOOKING_STATUS.ARRIVED && (
               <TouchableOpacity
                 style={[bs.primaryBtn, acting && bs.actionBtnDisabled]}
                 onPress={() => handleAction('service_rendered')}
@@ -525,7 +524,7 @@ function BookingBottomSheet({
               </TouchableOpacity>
             )}
 
-            {booking.status === 'service_rendered' && (
+            {booking.status === BOOKING_STATUS.SERVICE_RENDERED && (
               <View style={bs.waitingBox}>
                 <Text style={bs.waitingText}>Awaiting client confirmation to release payment</Text>
               </View>
@@ -686,7 +685,7 @@ export default function ScheduleScreen() {
 
   // ── Live location push while on_way ───────────────────────────
   useEffect(() => {
-    const isOnWay = [...bookings, ...listBookings].some((b) => b.status === 'on_way');
+    const isOnWay = [...bookings, ...listBookings].some((b) => b.status === BOOKING_STATUS.ON_WAY);
     if (!isOnWay || !session?.access_token) return;
 
     const pushLocation = async () => {

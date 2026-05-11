@@ -23,14 +23,11 @@ import { useNetworkState } from '@/lib/useNetworkState';
 import { cacheSet, cacheGet } from '@/lib/cache';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { PinIcon } from '@/components/icons';
+import { BookingStatus, BOOKING_STATUS } from '@vars/shared';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
 // ── Types ─────────────────────────────────────────────────────
-type BookingStatus =
-  | 'pending' | 'accepted' | 'on_way' | 'arrived'
-  | 'service_rendered' | 'completed' | 'cancelled' | 'expired' | 'disputed'
-  | 'rescheduled_pending';
 
 interface BookingDetail {
   id: string;
@@ -123,19 +120,19 @@ interface TimelineStep {
 function buildTimeline(b: BookingDetail): TimelineStep[] {
   const s = b.status;
 
-  if (s === 'cancelled') {
+  if (s === BOOKING_STATUS.CANCELLED) {
     return [
       { label: 'Booking placed',  ts: b.created_at,    reached: true  },
       { label: 'Cancelled',       ts: b.cancelled_at,  reached: true  },
     ];
   }
-  if (s === 'expired') {
+  if (s === BOOKING_STATUS.EXPIRED) {
     return [
       { label: 'Booking placed',  ts: b.created_at,   reached: true  },
       { label: 'Expired',         ts: b.expired_at,   reached: true  },
     ];
   }
-  if (s === 'disputed') {
+  if (s === BOOKING_STATUS.DISPUTED) {
     return [
       { label: 'Booking placed',     ts: b.created_at,           reached: true },
       { label: 'Confirmed',          ts: b.accepted_at,          reached: !!b.accepted_at },
@@ -143,7 +140,7 @@ function buildTimeline(b: BookingDetail): TimelineStep[] {
     ];
   }
 
-  const ORDER: BookingStatus[] = ['pending', 'accepted', 'on_way', 'arrived', 'service_rendered', 'completed'];
+  const ORDER: BookingStatus[] = [BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ON_WAY, BOOKING_STATUS.ARRIVED, BOOKING_STATUS.SERVICE_RENDERED, BOOKING_STATUS.COMPLETED];
   const currentIdx = ORDER.indexOf(s === 'rescheduled_pending' ? 'pending' : s);
 
   const steps: TimelineStep[] = [
@@ -459,7 +456,7 @@ export default function BookingDetailScreen() {
   const cfg = STATUS_CONFIG[booking.status];
   const hasMap = booking.user_location_lat != null && booking.user_location_lng != null;
   const hasAccess = booking.access_building || booking.access_floor || booking.access_flat || booking.access_code;
-  const isTerminal = ['completed', 'cancelled', 'expired', 'disputed'].includes(booking.status);
+  const isTerminal = [BOOKING_STATUS.COMPLETED, BOOKING_STATUS.CANCELLED, BOOKING_STATUS.EXPIRED, BOOKING_STATUS.DISPUTED].includes(booking.status);
 
   return (
     <View style={[s.container, { paddingTop: insets.top }]}>
@@ -512,9 +509,9 @@ export default function BookingDetailScreen() {
         {hasMap && (
           <View style={s.section}>
             <Text style={s.sectionTitle}>
-              {booking.status === 'on_way' ? 'Vendor tracking' : 'Location'}
+              {booking.status === BOOKING_STATUS.ON_WAY ? 'Vendor tracking' : 'Location'}
             </Text>
-            {booking.status === 'on_way' ? (
+            {booking.status === BOOKING_STATUS.ON_WAY ? (
               <LiveTrackingMap
                 vendorId={booking.vendor_id}
                 clientLat={booking.user_location_lat!}
@@ -563,7 +560,7 @@ export default function BookingDetailScreen() {
         {/* ── Action area ─────────────────────────────── */}
 
         {/* Confirm service (service_rendered) */}
-        {booking.status === 'service_rendered' && (
+        {booking.status === BOOKING_STATUS.SERVICE_RENDERED && (
           <View style={s.actionSection}>
             <TouchableOpacity
               style={[s.primaryBtn, actionLoading && s.btnDisabled]}
@@ -586,7 +583,7 @@ export default function BookingDetailScreen() {
         )}
 
         {/* Cancel (pending / accepted only) */}
-        {(booking.status === 'pending' || booking.status === 'accepted') && (
+        {(booking.status === BOOKING_STATUS.PENDING || booking.status === BOOKING_STATUS.ACCEPTED) && (
           <View style={s.actionSection}>
             <TouchableOpacity
               style={[s.cancelBtn, actionLoading && s.btnDisabled]}
@@ -602,7 +599,7 @@ export default function BookingDetailScreen() {
         )}
 
         {/* Expired — find another vendor */}
-        {booking.status === 'expired' && (
+        {booking.status === BOOKING_STATUS.EXPIRED && (
           <View style={s.actionSection}>
             <TouchableOpacity
               style={s.primaryBtn}
@@ -662,7 +659,7 @@ export default function BookingDetailScreen() {
       )}
 
       {/* ── Reschedule suggestion modal ─────────────── */}
-      {booking.status === 'rescheduled_pending' && !!booking.suggested_scheduled_at && (
+      {booking.status === BOOKING_STATUS.RESCHEDULED_PENDING && !!booking.suggested_scheduled_at && (
         <Modal visible transparent animationType="fade" onRequestClose={() => {}}>
           <View style={s.rescheduleOverlay}>
             <View style={s.rescheduleSheet}>

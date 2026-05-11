@@ -29,15 +29,13 @@ import { flushQueue } from '@/lib/actionQueue';
 import { cacheSet, cacheGet } from '@/lib/cache';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { LightningIcon } from '@/components/icons';
+import { BookingStatus, BOOKING_STATUS } from '@vars/shared';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
 const LOCATION_UPDATE_INTERVAL_MS = 5 * 60_000; // every 5 min while online
 
 // ── Types ───────────────────────────────────────────────────
-type BookingStatus =
-  | 'pending' | 'accepted' | 'on_way' | 'arrived'
-  | 'service_rendered' | 'completed' | 'cancelled' | 'expired';
 
 interface VendorBooking {
   id: string;
@@ -252,9 +250,9 @@ function PendingCard({
 
 // ── Active job card ──────────────────────────────────────────
 const FLOW_ACTIONS: Partial<Record<BookingStatus, { label: string; next: BookingStatus; color: string }>> = {
-  accepted:  { label: "I'm on my way",   next: 'on_way',           color: Colors.statusOnWay },
-  on_way:    { label: "I've arrived",    next: 'arrived',           color: Colors.statusArrived },
-  arrived:   { label: 'Service rendered', next: 'service_rendered', color: Colors.primary },
+  accepted:  { label: "I'm on my way",    next: BOOKING_STATUS.ON_WAY,           color: Colors.statusOnWay },
+  on_way:    { label: "I've arrived",     next: BOOKING_STATUS.ARRIVED,          color: Colors.statusArrived },
+  arrived:   { label: 'Service rendered', next: BOOKING_STATUS.SERVICE_RENDERED, color: Colors.primary },
 };
 
 function ActiveCard({
@@ -280,9 +278,9 @@ function ActiveCard({
     setActing(true);
     setAdvanceError(null);
     const update: Record<string, any> = { status: action.next };
-    if (action.next === 'on_way')           update.on_way_at = new Date().toISOString();
-    if (action.next === 'arrived')          update.arrived_at = new Date().toISOString();
-    if (action.next === 'service_rendered') update.service_rendered_at = new Date().toISOString();
+    if (action.next === BOOKING_STATUS.ON_WAY)           update.on_way_at = new Date().toISOString();
+    if (action.next === BOOKING_STATUS.ARRIVED)          update.arrived_at = new Date().toISOString();
+    if (action.next === BOOKING_STATUS.SERVICE_RENDERED) update.service_rendered_at = new Date().toISOString();
 
     const { error } = await supabase.from('bookings').update(update).eq('id', booking.id);
     if (error) setAdvanceError("Couldn't save — tap to retry");
@@ -372,12 +370,12 @@ function ActiveCard({
         </TouchableOpacity>
       )}
       {advanceError && <Text style={c.inlineError}>{advanceError}</Text>}
-      {booking.status === 'service_rendered' && (
+      {booking.status === BOOKING_STATUS.SERVICE_RENDERED && (
         <View style={c.waitingBox}>
           <Text style={c.waitingText}>Waiting for customer to confirm. Payment auto-releases 1 hour after the scheduled end time.</Text>
         </View>
       )}
-      {['accepted', 'on_way', 'arrived'].includes(booking.status) && (
+      {[BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ON_WAY, BOOKING_STATUS.ARRIVED].includes(booking.status) && (
         <TouchableOpacity
           style={[c.vendorCancelBtn, cancelling && c.btnDisabled]}
           onPress={handleCancel}
@@ -603,7 +601,7 @@ export default function VendorJobsScreen() {
         auto_accepted, auto_accept_grace_expires_at, grace_cancelled,
         profiles(full_name, phone_number)
       `)
-      .in('status', ['completed', 'cancelled', 'expired'])
+      .in('status', [BOOKING_STATUS.COMPLETED, BOOKING_STATUS.CANCELLED, BOOKING_STATUS.EXPIRED])
       .order('scheduled_at', { ascending: false })
       .limit(20);
 
@@ -751,7 +749,7 @@ export default function VendorJobsScreen() {
     };
   }, [isOnline, session]);
 
-  const pending  = bookings.filter((b) => b.status === 'pending');
+  const pending  = bookings.filter((b) => b.status === BOOKING_STATUS.PENDING);
   // Grace bookings: auto-accepted, still within 5-min grace, not yet cancelled
   const graceBookings = bookings.filter((b) =>
     b.status === 'accepted' &&
@@ -761,17 +759,17 @@ export default function VendorJobsScreen() {
     new Date(b.auto_accept_grace_expires_at) > new Date()
   );
   const active   = bookings.filter((b) =>
-    ['accepted','on_way','arrived','service_rendered'].includes(b.status) &&
+    [BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ON_WAY, BOOKING_STATUS.ARRIVED, BOOKING_STATUS.SERVICE_RENDERED].includes(b.status) &&
     !graceBookings.some((g) => g.id === b.id)
   );
-  const upcoming = bookings.filter((b) => b.status === 'accepted' && new Date(b.scheduled_at) > new Date() && !graceBookings.some((g) => g.id === b.id));
+  const upcoming = bookings.filter((b) => b.status === BOOKING_STATUS.ACCEPTED && new Date(b.scheduled_at) > new Date() && !graceBookings.some((g) => g.id === b.id));
   // Remove from active if scheduled far in future (show only today's jobs)
   const todayActive = active.filter((b) => {
     const d = new Date(b.scheduled_at);
     const now = new Date();
     return d.toDateString() === now.toDateString() || b.status !== 'accepted';
   });
-  const history  = bookings.filter((b) => ['completed','cancelled','expired'].includes(b.status));
+  const history  = bookings.filter((b) => [BOOKING_STATUS.COMPLETED, BOOKING_STATUS.CANCELLED, BOOKING_STATUS.EXPIRED].includes(b.status));
 
   // Show spinner only when there's genuinely nothing to display yet (cache not yet seeded)
   if (loading && bookings.length === 0) return <View style={c.centered}><ScissorsLoader size="large" color="dark" /></View>;

@@ -16,6 +16,7 @@ import {
   formatDate,
   formatTime,
 } from '../_shared/notifications.ts';
+import { BOOKING_STATUS } from '../_shared/constants.ts';
 
 Deno.serve(async (req: Request) => {
   const cors = handleCors(req);
@@ -48,7 +49,7 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (bookingError || !booking) return errorResponse('Booking not found', 404);
-    if (booking.status !== 'pending') {
+    if (booking.status !== BOOKING_STATUS.PENDING) {
       return errorResponse(`Cannot accept booking with status: ${booking.status}`);
     }
 
@@ -59,7 +60,7 @@ Deno.serve(async (req: Request) => {
       // Auto-expire: should have been handled by cron, but guard here too
       await supabase
         .from('bookings')
-        .update({ status: 'expired', updated_at: new Date().toISOString() })
+        .update({ status: BOOKING_STATUS.EXPIRED, updated_at: new Date().toISOString() })
         .eq('id', booking_id);
       return errorResponse('Booking response window has expired');
     }
@@ -68,7 +69,7 @@ Deno.serve(async (req: Request) => {
     const { error: updateError } = await supabase
       .from('bookings')
       .update({
-        status: 'accepted',
+        status: BOOKING_STATUS.ACCEPTED,
         payment_captured: true,
         accepted_at: new Date().toISOString(),
       })

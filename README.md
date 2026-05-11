@@ -46,7 +46,7 @@ The platform operates a **two-sided marketplace**:
 |---|---|
 | Mobile app | Expo SDK 52, React Native 0.76, Expo Router 4 |
 | Maps | react-native-maps |
-| Animations | react-native-reanimated 3, react-native-svg 15.8.0 |
+| Animations | React Native `Animated` API, react-native-svg 15.8.0 |
 | Auth | Supabase Auth (email + phone OTP) |
 | Database | Supabase Postgres (PostGIS enabled) |
 | Realtime | Supabase Realtime (booking status + vendor location) |
@@ -125,7 +125,7 @@ vars/
 
 ## Database Schema
 
-Seventeen migration files build up the schema incrementally:
+Eighteen migration files build up the schema incrementally:
 
 | Migration | Contents |
 |---|---|
@@ -306,8 +306,9 @@ All loading states across the app use a custom `ScissorsLoader` component (`apps
 ### ScissorsLoader
 
 - Renders the VARS scissors logo mark as an animated SVG using `react-native-svg`
-- Two blades rotate ±33° around the scissor joint pivot in a snip-and-return loop (close → open → repeat), driven by `react-native-reanimated` v3 via `Animated.sequence` + `Animated.loop`. The pivot is baked into the SVG `rotate(deg, cx, cy)` string to ensure both blades always rotate around the joint regardless of element position.
-- Props: `size: 'small' | 'medium' | 'large'` (24×31 / 40×52 / 64×83 px) and `color: 'light' | 'dark'` (#FFFFFF / #1A1A1A)
+- Two blades rotate ±32° around the scissor joint pivot in a snip-and-return loop (close → open → repeat), driven by the React Native `Animated` API (`Animated.sequence` + `Animated.loop`). Rotation is applied via a nested `translate(pivot) → AnimatedG rotation → translate(-pivot)` pattern, which reliably produces the correct pivot on Android new architecture (React Native 0.76 / Fabric).
+- The SVG viewBox is expanded to `-120 -90 800 820` (original content space: 555×718) so the blade tips and handles do not clip during the full ±32° swing.
+- Props: `size: 'small' | 'medium' | 'large'` (35×36 / 58×59 / 92×95 px) and `color: 'light' | 'dark'` (#FFFFFF / #1A1A1A)
 - Color rule: `light` on dark/primary-colour button backgrounds; `dark` on white or surface backgrounds
 
 ### VendorPriceInput
@@ -324,7 +325,13 @@ All loading states across the app use a custom `ScissorsLoader` component (`apps
 
 ### Launch Transition
 
-After `SplashScreen.hideAsync()` the app shows a full-screen dark overlay with the large ScissorsLoader centred. The overlay holds for 800 ms then fades out over 400 ms using the React Native `Animated` API.
+The root layout (`app/_layout.tsx`) preloads both authentication state and the `vars_onboarding_done` flag from AsyncStorage in parallel before calling `SplashScreen.hideAsync()`. Once both are ready, a single deterministic redirect fires:
+
+- **Not authenticated or onboarding incomplete** → `/onboarding`
+- **Authenticated, onboarding complete** → `/(tabs)`
+- **Authenticated but phone OTP missing** → `/auth/phone`
+
+`app/index.tsx` returns `null`; it never redirects itself. The guard ref `didInitRoute` ensures the redirect fires exactly once. There is no intermediate overlay or ScissorsLoader between the splash screen and the destination screen.
 
 ### Pull-to-Refresh
 
