@@ -34,7 +34,7 @@ Before asking "is X built?", check the README edge functions table and mobile sc
 
 **In-flight (not yet in README):**
 - None — all features through migration 018 are merged and documented.
-- Reschedule 1-hour expiry cron — built and live as `reschedule-expire-hourly`. Edge function at `supabase/functions/reschedule-expire/index.ts`, registered in migration `20240101000015`. The `claude/build-app-from-spec-6QwSN` branch contains the full reschedule flow build and is still pending review before merging.
+- Reschedule flow — merged into main. Edge functions: `vendor-suggest-reschedule`, `customer-accept-reschedule`, `customer-decline-reschedule`. Status: `rescheduled_pending` (constant in `packages/shared/src/constants.ts` + Deno mirror in `supabase/functions/_shared/constants.ts`). Column: `suggested_scheduled_at` on `bookings`. Expiry cron live as `reschedule-expire-hourly`.
 
 ---
 
