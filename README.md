@@ -239,16 +239,17 @@ All functions live in `supabase/functions/` and run on Deno.
 
 All cron jobs are registered manually in the Supabase dashboard (Database → SQL Editor using `cron.schedule()`). They are not in migration files. If you need to recreate them on a new project, run each of these:
 
-| Job name | Schedule | Function called |
+| Job | Schedule | Target |
 |---|---|---|
 | `booking-expire-every-5min` | `*/5 * * * *` | `paystack-release` |
-| `auto-release-every-5min` | `*/5 * * * *` | `paystack-settle` |
-| `phone-reveal-every-5min` | `*/5 * * * *` | `phone-reveal` |
-| `send-reminders-every-5min` | `*/5 * * * *` | `send-reminders` |
+| `paystack-settle-cron` | `*/5 * * * *` | `paystack-settle` |
+| `phone-reveal` | `*/5 * * * *` | `phone-reveal` |
+| `send-reminders` | `*/5 * * * *` | `send-reminders` |
+| `photo-consent-expire-cron` | `0 * * * *` | `photo-consent-expire` |
 | `reschedule-expire-hourly` | `0 * * * *` | `reschedule-expire` |
-| `check-cron-health` | `0 */2 * * *` | `check_cron_health()` (DB function, not edge function) |
+| `cron-health-check` | `0 */2 * * *` | `check_cron_health()` DB function |
 
-All edge function cron jobs call their function via `net.http_post` with the `x-vars-cron-secret` header. The `check-cron-health` job calls the Postgres function directly via `SELECT check_cron_health()`.
+All edge function cron jobs call their function via `net.http_post` with the `x-vars-cron-secret` header. The `cron-health-check` job calls the Postgres function directly via `SELECT check_cron_health()`.
 
 ---
 
