@@ -6,6 +6,8 @@
 
 import { createAdminClient } from './supabase.ts';
 
+// NOTE: keep in sync with packages/shared/src/types.ts — Deno cannot resolve @vars/shared
+// This extends the shared NotificationPayload with pushToken, which is edge-function-only.
 export interface NotificationPayload {
   recipientId: string;
   recipientType: 'user' | 'vendor';

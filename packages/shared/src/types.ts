@@ -79,6 +79,8 @@ export interface BookingSummary {
 }
 
 // ---- Notification payload ----
+// NOTE: keep in sync with supabase/functions/_shared/notifications.ts — Deno cannot resolve @vars/shared
+// The edge-function version adds pushToken (edge-function-only field).
 export interface NotificationPayload {
   recipientId: string;
   recipientType: RecipientType;
