@@ -27,7 +27,16 @@ async function getCounts() {
     draft:    draft.count    ?? 0,
     approved: approved.count ?? 0,
     sent:     sent.count     ?? 0,
+    _error:   total.error?.message ?? null,
   };
+}
+
+async function debugProbe() {
+  const db = adminClient();
+  const { count, error } = await db
+    .from('vendor_lead_outreach')
+    .select('*', { count: 'exact', head: true });
+  return { count, error: error?.message ?? null, url: process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'MISSING' };
 }
 
 async function getQueue(status: string, leadState: string, channel: string, page: number) {
@@ -58,10 +67,11 @@ export default async function OutreachQueuePage({ searchParams }: Props) {
   const channel   = searchParams.channel   ?? '';
   const page      = Number(searchParams.page ?? 1);
 
-  const [admin, counts, { records, total }] = await Promise.all([
+  const [admin, counts, { records, total }, probe] = await Promise.all([
     requireAdmin(),
     getCounts(),
     getQueue(status, leadState, channel, page),
+    debugProbe(),
   ]);
 
   const pages = Math.ceil(total / PAGE_SIZE);
@@ -72,6 +82,11 @@ export default async function OutreachQueuePage({ searchParams }: Props) {
         <h1 className="page-title">Outreach Queue</h1>
         <span style={{ color: 'var(--text2)', fontSize: 13 }}>{counts.total} total messages</span>
       </div>
+
+      {/* DEBUG — remove after diagnosis */}
+      <pre style={{ background: '#111', color: '#0f0', padding: 12, borderRadius: 8, fontSize: 11, marginBottom: 16, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+        {JSON.stringify({ probe, countsError: counts._error }, null, 2)}
+      </pre>
 
       {/* Metrics */}
       <div className="stats">
