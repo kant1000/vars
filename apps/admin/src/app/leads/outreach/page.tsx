@@ -32,17 +32,20 @@ async function getCounts() {
 }
 
 async function debugProbe() {
-  const db = adminClient();
-  const { count, error } = await db
-    .from('vendor_lead_outreach')
-    .select('*', { count: 'exact', head: true });
-  return {
-    count,
-    error: error ? { message: error.message, code: (error as any).code, details: (error as any).details, hint: (error as any).hint, status: (error as any).status } : null,
-    url: process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'MISSING',
-    keyPresent: !!(process.env.SUPABASE_SERVICE_ROLE_KEY),
-    keyPrefix: process.env.SUPABASE_SERVICE_ROLE_KEY?.slice(0, 20) ?? 'MISSING',
-  };
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'MISSING';
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? 'MISSING';
+  let raw: any = null;
+  let fetchErr: any = null;
+  try {
+    const res = await fetch(`${url}/rest/v1/vendor_lead_outreach?select=id&limit=1`, {
+      headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' },
+    });
+    const body = await res.text();
+    raw = { status: res.status, statusText: res.statusText, body: body.slice(0, 300) };
+  } catch (e: any) {
+    fetchErr = { name: e?.name, message: e?.message, cause: String(e?.cause) };
+  }
+  return { url, keyPresent: !!key, keyPrefix: key.slice(0, 20), raw, fetchErr };
 }
 
 async function getQueue(status: string, leadState: string, channel: string, page: number) {
