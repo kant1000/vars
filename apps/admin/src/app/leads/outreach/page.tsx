@@ -36,7 +36,13 @@ async function debugProbe() {
   const { count, error } = await db
     .from('vendor_lead_outreach')
     .select('*', { count: 'exact', head: true });
-  return { count, error: error?.message ?? null, url: process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'MISSING' };
+  return {
+    count,
+    error: error ? { message: error.message, code: (error as any).code, details: (error as any).details, hint: (error as any).hint, status: (error as any).status } : null,
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'MISSING',
+    keyPresent: !!(process.env.SUPABASE_SERVICE_ROLE_KEY),
+    keyPrefix: process.env.SUPABASE_SERVICE_ROLE_KEY?.slice(0, 20) ?? 'MISSING',
+  };
 }
 
 async function getQueue(status: string, leadState: string, channel: string, page: number) {
