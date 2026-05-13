@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 import { adminClient } from '@/lib/supabase';
 import { requireAdmin } from '@/lib/auth';
-import OutreachActions from './OutreachActions';
+import OutreachTable from './OutreachTable';
 
 const PAGE_SIZE = 50;
 
@@ -119,59 +119,8 @@ export default async function OutreachQueuePage({ searchParams }: Props) {
         <button type="submit" className="btn btn-primary">Filter</button>
       </form>
 
-      {/* Table */}
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Lead</th>
-              <th>Email</th>
-              <th>Type</th>
-              <th>Channel</th>
-              <th>Status</th>
-              <th>Message</th>
-              <th>Created</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {records.length === 0 && (
-              <tr>
-                <td colSpan={8} style={{ textAlign: 'center', color: 'var(--text2)', padding: 32 }}>
-                  No messages in queue
-                </td>
-              </tr>
-            )}
-            {(records as any[]).map((r) => (
-              <tr key={r.id}>
-                <td>
-                  <div style={{ fontWeight: 700 }}>{r.vendor_leads.full_name}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text2)' }}>{r.vendor_leads.lead_state}</div>
-                </td>
-                <td style={{ fontSize: 12 }}>{r.vendor_leads.email}</td>
-                <td>
-                  <span className="badge badge-pending">{r.message_type}</span>
-                </td>
-                <td style={{ fontWeight: 700, fontSize: 12, textTransform: 'uppercase' }}>{r.channel}</td>
-                <td>
-                  <span className={`badge badge-${r.status}`}>{r.status}</span>
-                </td>
-                <td style={{ fontSize: 12 }}>
-                  <div style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {r.message_body}
-                  </div>
-                </td>
-                <td style={{ color: 'var(--text2)', fontSize: 12, whiteSpace: 'nowrap' }}>
-                  {new Date(r.created_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })}
-                </td>
-                <td>
-                  <OutreachActions record={r} adminId={admin?.id ?? null} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {/* Table with bulk actions */}
+      <OutreachTable records={records as any[]} adminId={admin?.id ?? null} />
 
       {pages > 1 && (
         <div className="pagination">

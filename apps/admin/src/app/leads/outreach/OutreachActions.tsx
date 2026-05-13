@@ -1,26 +1,35 @@
 'use client';
-// ============================================================
-// VARS Admin — Outreach action buttons (client component)
-// Approve (with inline edit), reject, and send queued messages.
-// ============================================================
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
-const SUPABASE_URL     = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SERVICE_ROLE_KEY = process.env.NEXT_PUBLIC_ADMIN_SERVICE_KEY ?? '';
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const ANON_KEY     = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 async function patchOutreach(id: string, patch: Record<string, unknown>) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/vendor_lead_outreach?id=eq.${id}`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
-      apikey: SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+      apikey: ANON_KEY,
+      Authorization: `Bearer ${ANON_KEY}`,
       Prefer: 'return=minimal',
     },
     body: JSON.stringify(patch),
   });
   return res.ok;
+}
+
+async function markLeadOutreach(leadId: string) {
+  await fetch(`${SUPABASE_URL}/rest/v1/vendor_leads?id=eq.${leadId}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: ANON_KEY,
+      Authorization: `Bearer ${ANON_KEY}`,
+      Prefer: 'return=minimal',
+    },
+    body: JSON.stringify({ last_outreach: new Date().toISOString() }),
+  });
 }
 
 interface Props {
@@ -30,9 +39,10 @@ interface Props {
 
 export default function OutreachActions({ record, adminId }: Props) {
   const router  = useRouter();
-  const [editing, setEditing] = useState(false);
-  const [body,    setBody]    = useState<string>(record.message_body);
-  const [loading, setLoading] = useState(false);
+  const [editing,  setEditing]  = useState(false);
+  const [body,     setBody]     = useState<string>(record.message_body);
+  const [channel,  setChannel]  = useState<string>(record.channel);
+  const [loading,  setLoading]  = useState(false);
 
   const act = async (patch: Record<string, unknown>) => {
     setLoading(true);
@@ -46,6 +56,15 @@ export default function OutreachActions({ record, adminId }: Props) {
     if (editing) {
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <select
+            value={channel}
+            onChange={e => setChannel(e.target.value)}
+            style={{ padding: '6px 8px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 12 }}
+          >
+            <option value="whatsapp">WhatsApp</option>
+            <option value="sms">SMS</option>
+            <option value="email">Email</option>
+          </select>
           <textarea
             value={body}
             onChange={e => setBody(e.target.value)}
@@ -57,6 +76,7 @@ export default function OutreachActions({ record, adminId }: Props) {
             disabled={loading}
             onClick={() => act({
               status:       'approved',
+              channel,
               message_body: body,
               approved_by:  adminId,
               approved_at:  new Date().toISOString(),
@@ -64,11 +84,7 @@ export default function OutreachActions({ record, adminId }: Props) {
           >
             {loading ? 'Saving…' : 'Approve'}
           </button>
-          <button
-            className="btn btn-ghost"
-            disabled={loading}
-            onClick={() => setEditing(false)}
-          >
+          <button className="btn btn-ghost" disabled={loading} onClick={() => setEditing(false)}>
             Cancel
           </button>
         </div>
@@ -77,10 +93,7 @@ export default function OutreachActions({ record, adminId }: Props) {
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <button
-          className="btn btn-primary"
-          onClick={() => setEditing(true)}
-        >
+        <button className="btn btn-primary" onClick={() => setEditing(true)}>
           Edit & Approve
         </button>
         <button
@@ -99,11 +112,17 @@ export default function OutreachActions({ record, adminId }: Props) {
       <button
         className="btn btn-success"
         disabled={loading}
-        onClick={() => act({
-          status:              'sent',
-          sent_at:             new Date().toISOString(),
-          provider_message_id: `phase-a-${record.id}`,
-        })}
+        onClick={async () => {
+          setLoading(true);
+          await patchOutreach(record.id, {
+            status:              'sent',
+            sent_at:             new Date().toISOString(),
+            provider_message_id: `phase-a-${record.id}`,
+          });
+          await markLeadOutreach(record.lead_id);
+          setLoading(false);
+          router.refresh();
+        }}
       >
         {loading ? 'Sending…' : 'Send Now'}
       </button>
