@@ -1,17 +1,17 @@
 // ============================================================
 // VARS Admin — Lead Outreach Queue
-// Review, edit, approve, and send queued outreach messages.
 // ============================================================
 export const dynamic = 'force-dynamic';
 
 import { adminClient } from '@/lib/supabase';
 import { requireAdmin } from '@/lib/auth';
 import OutreachTable from './OutreachTable';
+import ComposePanel from './ComposePanel';
 
 const PAGE_SIZE = 50;
 
 interface Props {
-  searchParams: { status?: string; leadState?: string; channel?: string; page?: string };
+  searchParams: { status?: string; leadState?: string; channel?: string; serviceType?: string; page?: string };
 }
 
 async function getCounts() {
@@ -30,7 +30,7 @@ async function getCounts() {
   };
 }
 
-async function getQueue(status: string, leadState: string, channel: string, page: number) {
+async function getQueue(status: string, leadState: string, channel: string, serviceType: string, page: number) {
   const db   = adminClient();
   const from = (page - 1) * PAGE_SIZE;
   const to   = from + PAGE_SIZE - 1;
@@ -38,7 +38,7 @@ async function getQueue(status: string, leadState: string, channel: string, page
   let query = db
     .from('vendor_lead_outreach')
     .select(
-      'id, lead_id, state_from, message_type, channel, message_body, status, approved_by, approved_at, sent_at, response_status, response_text, created_at, vendor_leads!inner(id, full_name, email, phone, lead_state)',
+      'id, lead_id, state_from, message_type, channel, message_body, status, approved_by, approved_at, sent_at, response_status, response_text, created_at, vendor_leads!inner(id, full_name, email, phone, lead_state, service_type)',
       { count: 'exact' }
     )
     .order('created_at', { ascending: false })
@@ -47,21 +47,23 @@ async function getQueue(status: string, leadState: string, channel: string, page
   if (status && status !== 'all') query = query.eq('status', status);
   if (leadState)                  query = query.eq('vendor_leads.lead_state', leadState);
   if (channel)                    query = query.eq('channel', channel);
+  if (serviceType)                query = query.eq('vendor_leads.service_type', serviceType);
 
   const { data, count } = await query;
   return { records: data ?? [], total: count ?? 0 };
 }
 
 export default async function OutreachQueuePage({ searchParams }: Props) {
-  const status    = searchParams.status    ?? 'draft';
-  const leadState = searchParams.leadState ?? '';
-  const channel   = searchParams.channel   ?? '';
-  const page      = Number(searchParams.page ?? 1);
+  const status      = searchParams.status      ?? 'draft';
+  const leadState   = searchParams.leadState   ?? '';
+  const channel     = searchParams.channel     ?? '';
+  const serviceType = searchParams.serviceType ?? '';
+  const page        = Number(searchParams.page ?? 1);
 
   const [admin, counts, { records, total }] = await Promise.all([
     requireAdmin(),
     getCounts(),
-    getQueue(status, leadState, channel, page),
+    getQueue(status, leadState, channel, serviceType, page),
   ]);
 
   const pages = Math.ceil(total / PAGE_SIZE);
@@ -93,6 +95,9 @@ export default async function OutreachQueuePage({ searchParams }: Props) {
         </div>
       </div>
 
+      {/* Compose custom message for a segment */}
+      <ComposePanel adminId={admin?.id ?? null} />
+
       {/* Filters */}
       <form className="filters" method="GET">
         <select name="status" defaultValue={status}>
@@ -116,6 +121,13 @@ export default async function OutreachQueuePage({ searchParams }: Props) {
           <option value="sms">SMS</option>
           <option value="email">Email</option>
         </select>
+        <select name="serviceType" defaultValue={serviceType}>
+          <option value="">All Service Types</option>
+          <option value="hair_styling">Hair Styling</option>
+          <option value="barbing">Barbing</option>
+          <option value="makeovers">Makeovers</option>
+          <option value="other">Other</option>
+        </select>
         <button type="submit" className="btn btn-primary">Filter</button>
       </form>
 
@@ -126,18 +138,12 @@ export default async function OutreachQueuePage({ searchParams }: Props) {
         <div className="pagination">
           <span>Page {page} of {pages}</span>
           {page > 1 && (
-            <a
-              href={`?status=${status}&leadState=${leadState}&channel=${channel}&page=${page - 1}`}
-              className="btn btn-ghost"
-            >
+            <a href={`?status=${status}&leadState=${leadState}&channel=${channel}&serviceType=${serviceType}&page=${page - 1}`} className="btn btn-ghost">
               ← Prev
             </a>
           )}
           {page < pages && (
-            <a
-              href={`?status=${status}&leadState=${leadState}&channel=${channel}&page=${page + 1}`}
-              className="btn btn-ghost"
-            >
+            <a href={`?status=${status}&leadState=${leadState}&channel=${channel}&serviceType=${serviceType}&page=${page + 1}`} className="btn btn-ghost">
               Next →
             </a>
           )}

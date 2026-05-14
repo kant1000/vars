@@ -46,7 +46,7 @@ export default function OutreachTable({ records, adminId }: Props) {
   const bulkAct = async (patch: Record<string, unknown>) => {
     if (selected.size === 0) return;
     setLoading(true);
-    await patchMany([...selected], patch);
+    await patchMany(Array.from(selected), patch);
     setSelected(new Set());
     setLoading(false);
     router.refresh();
