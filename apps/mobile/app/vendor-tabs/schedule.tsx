@@ -367,7 +367,7 @@ function BookingBottomSheet({
               ) : (
                 <View style={bs.lockedRow}>
                   <LockIcon size={16} color={Colors.textMuted} />
-                  <Text style={bs.lockedText}>Available 15 minutes before your arrival</Text>
+                  <Text style={bs.lockedText}>Access details are locked to protect customer privacy. They unlock automatically 15 minutes before your arrival.</Text>
                 </View>
               )}
             </View>
