@@ -38,7 +38,7 @@ export default function OutreachTable({ records, adminId }: Props) {
   const allDraftsSelected = draftIds.length > 0 && draftIds.every(id => selected.has(id));
 
   const toggle = (id: string) =>
-    setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    setSelected(prev => { const n = new Set(Array.from(prev)); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   const toggleAll = () =>
     setSelected(allDraftsSelected ? new Set() : new Set(draftIds));

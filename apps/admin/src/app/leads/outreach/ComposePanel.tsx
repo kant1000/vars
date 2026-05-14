@@ -51,8 +51,9 @@ export default function ComposePanel({ adminId }: { adminId: string | null }) {
     const params = new URLSearchParams({ serviceType: st, converted: String(converted) });
     const [leadsRes, pendingRes] = await Promise.all([
       fetch(`/api/leads?${params}`),
+      // Only block on other custom messages — nurture drafts don't block a manual blast
       fetch(
-        `${SUPABASE_URL}/rest/v1/vendor_lead_outreach?status=in.(draft,approved)&select=lead_id`,
+        `${SUPABASE_URL}/rest/v1/vendor_lead_outreach?status=in.(draft,approved)&message_type=eq.custom&select=lead_id`,
         { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } }
       ),
     ]);
@@ -78,7 +79,7 @@ export default function ComposePanel({ adminId }: { adminId: string | null }) {
   };
 
   const toggle = (id: string) =>
-    setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    setSelected(prev => { const n = new Set(Array.from(prev)); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   const selectable  = leads.filter(l => !l.hasPending);
   const allSelected = selectable.length > 0 && selectable.every(l => selected.has(l.id));
@@ -114,13 +115,14 @@ export default function ComposePanel({ adminId }: { adminId: string | null }) {
     });
 
     if (res.ok) {
-      const skipped = leads.filter(l => l.hasPending && !selected.has(l.id)).length;
+      const skipped = leads.filter(l => l.hasPending).length;
       setResult(`✓ ${targets.length} messages queued${skipped ? ` · ${skipped} skipped (pending)` : ''}`);
       setBody('');
       setSelected(new Set());
       router.refresh();
     } else {
-      setResult('Something went wrong. Please try again.');
+      const errText = await res.text().catch(() => res.status.toString());
+      setResult(`Error: ${errText}`);
     }
     setLoading(false);
   };
