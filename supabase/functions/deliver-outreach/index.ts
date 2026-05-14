@@ -188,8 +188,12 @@ Deno.serve(async (req: Request) => {
         provider_message_id: providerId,
       }).eq('id', record.id);
 
-      // Stamp last_outreach so the cron cadence resets correctly
-      await db.from('vendor_leads').update({ last_outreach: now }).eq('id', record.lead_id);
+      // Stamp last_outreach only for phone-based channels.
+      // Email is a parallel channel — delivering an email must not reset the
+      // WhatsApp cadence clock, or the intro CTE (last_outreach IS NULL) never fires.
+      if (record.channel !== 'email') {
+        await db.from('vendor_leads').update({ last_outreach: now }).eq('id', record.lead_id);
+      }
 
       delivered++;
     } catch (err) {
