@@ -489,6 +489,11 @@ export default function BookingDetailScreen() {
             <Text style={[s.statusPillText, { color: cfg.color }]}>{cfg.label}</Text>
           </View>
           <Text style={s.statusDescription}>{cfg.description}</Text>
+          {(booking.status === BOOKING_STATUS.PENDING || booking.status === BOOKING_STATUS.ACCEPTED) && (
+            <Text style={s.escrowNote}>
+              Your {fmtPrice(booking.service_price_kobo)} is held securely by VARS until you confirm the service.
+            </Text>
+          )}
         </View>
 
         {/* Booking summary card */}
@@ -775,6 +780,7 @@ const s = StyleSheet.create({
   statusPill: { alignSelf: 'flex-start', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 5 },
   statusPillText: { fontSize: 14, fontWeight: '700' },
   statusDescription: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20 },
+  escrowNote: { fontSize: 13, color: Colors.textMuted, lineHeight: 18 },
 
   section: { paddingHorizontal: 16, paddingTop: 20 },
   sectionTitle: {
