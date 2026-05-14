@@ -16,6 +16,7 @@
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient } from '../_shared/supabase.ts';
+import { welcomeEmail } from '../_shared/lead-copy.ts';
 
 const PIONEER_MAX = 50;
 
@@ -27,15 +28,12 @@ Deno.serve(async (req: Request) => {
 
   // ── GET: return current pioneer spot count ──────────────────
   if (req.method === 'GET') {
-    // Count from vendor_leads only — all pioneers register here first.
-    // Converted leads stay in the table (converted = TRUE) so the count
-    // remains accurate without double-counting full vendor accounts.
     const { count: pioneerLeadCount } = await supabase
       .from('vendor_leads')
       .select('id', { count: 'exact', head: true })
       .eq('pioneer', true);
 
-    const spotsUsed = pioneerLeadCount ?? 0;
+    const spotsUsed      = pioneerLeadCount ?? 0;
     const spotsRemaining = Math.max(0, PIONEER_MAX - spotsUsed);
 
     return jsonResponse({ spots_remaining: spotsRemaining, spots_total: PIONEER_MAX });
@@ -62,29 +60,24 @@ Deno.serve(async (req: Request) => {
 
     const { full_name, email, phone, service_type, location } = body;
 
-    // Validate required fields
-    if (!full_name?.trim()) return errorResponse('full_name is required');
-    if (!email?.trim()) return errorResponse('email is required');
-    if (!phone?.trim()) return errorResponse('phone is required');
+    if (!full_name?.trim())    return errorResponse('full_name is required');
+    if (!email?.trim())        return errorResponse('email is required');
+    if (!phone?.trim())        return errorResponse('phone is required');
     if (!service_type?.trim()) return errorResponse('service_type is required');
-    if (!location?.trim()) return errorResponse('location is required');
+    if (!location?.trim())     return errorResponse('location is required');
 
-    // Basic email format check
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return errorResponse('Invalid email address');
     }
 
-    // Count from vendor_leads only — all pioneers register here first.
-    // Converted leads remain with pioneer = TRUE so the count never
-    // double-counts full vendor accounts.
     const { count: pioneerLeadCount } = await supabase
       .from('vendor_leads')
       .select('id', { count: 'exact', head: true })
       .eq('pioneer', true);
 
-    const spotsUsed = pioneerLeadCount ?? 0;
+    const spotsUsed      = pioneerLeadCount ?? 0;
     const spotsRemaining = Math.max(0, PIONEER_MAX - spotsUsed);
-    const isPioneer = spotsRemaining > 0;
+    const isPioneer      = spotsRemaining > 0;
 
     // Check for duplicate email
     const { data: existing } = await supabase
@@ -95,35 +88,62 @@ Deno.serve(async (req: Request) => {
 
     if (existing) {
       return jsonResponse({
-        status: existing.pioneer ? 'pioneer' : 'waitlist',
-        spots_remaining: isPioneer ? spotsRemaining : 0,
+        status:             existing.pioneer ? 'pioneer' : 'waitlist',
+        spots_remaining:    isPioneer ? spotsRemaining : 0,
         already_registered: true,
       });
     }
 
-    // Insert lead — pioneer flag set based on current spot count
-    const { error: insertError } = await supabase
+    // Insert lead — return ID so we can create the outreach record
+    const { data: newLead, error: insertError } = await supabase
       .from('vendor_leads')
       .insert({
-        full_name: full_name.trim(),
-        email: email.toLowerCase().trim(),
-        phone: phone.trim(),
+        full_name:    full_name.trim(),
+        email:        email.toLowerCase().trim(),
+        phone:        phone.trim(),
         service_type: service_type.trim(),
-        location: location.trim(),
-        pioneer: isPioneer,
-        waitlist: !isPioneer,
-      });
+        location:     location.trim(),
+        pioneer:      isPioneer,
+        waitlist:     !isPioneer,
+      })
+      .select('id')
+      .single();
 
-    if (insertError) {
+    if (insertError || !newLead) {
       console.error('vendor_leads insert error:', insertError);
       return errorResponse('Registration failed — please try again', 500);
     }
 
-    // Return updated spots remaining after this registration
+    // Queue Day 0 welcome email — auto-approved, ready to deliver when provider is live
+    const emailCopy = welcomeEmail(
+      full_name.trim(),
+      service_type.trim(),
+      isPioneer,
+      Math.max(0, spotsRemaining - 1), // remaining after this registration
+    );
+
+    const { error: outreachError } = await supabase
+      .from('vendor_lead_outreach')
+      .insert({
+        lead_id:          newLead.id,
+        state_from:       'PROSPECT',
+        message_type:     'welcome_email',
+        channel:          'email',
+        message_template: emailCopy.subject, // subject stored here for email channel
+        message_body:     emailCopy.text,
+        status:           'approved',
+        approved_at:      new Date().toISOString(),
+      });
+
+    if (outreachError) {
+      // Log but don't block — registration already succeeded
+      console.error('vendor-register-lead: outreach insert failed:', outreachError.message);
+    }
+
     const newSpotsRemaining = isPioneer ? Math.max(0, spotsRemaining - 1) : 0;
 
     return jsonResponse({
-      status: isPioneer ? 'pioneer' : 'waitlist',
+      status:          isPioneer ? 'pioneer' : 'waitlist',
       spots_remaining: newSpotsRemaining,
     });
   } catch (err) {
