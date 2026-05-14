@@ -3,7 +3,7 @@
 // KYC handled entirely by Youverify SDK — VARS never stores raw ID data.
 // Bank account verified via Paystack (uses paystack-verify-bank edge fn).
 // ============================================================
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
   ScrollView, Alert, KeyboardAvoidingView, Platform,
@@ -15,7 +15,8 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 
-type KycState = 'idle' | 'loading' | 'webview' | 'done';
+// 'failed' covers both in-session WebView failures and returning after a webhook rejection
+type KycState = 'idle' | 'loading' | 'webview' | 'failed' | 'done';
 
 interface BankInfo {
   accountNumber: string;
@@ -32,6 +33,7 @@ export default function Step4Kyc() {
   const [kycState, setKycState] = useState<KycState>('idle');
   const [kycUrl, setKycUrl] = useState('');
   const [kycVerified, setKycVerified] = useState(false);
+  const [kycErrorReason, setKycErrorReason] = useState<string | null>(null);
 
   // Bank account state
   const [accountNumber, setAccountNumber] = useState('');
@@ -40,9 +42,42 @@ export default function Step4Kyc() {
   const [accountName, setAccountName] = useState('');
   const [isVerifyingBank, setIsVerifyingBank] = useState(false);
   const [bankVerified, setBankVerified] = useState(false);
+  // True when bank was already saved in a prior session (paystack_recipient_code exists).
+  // In that case we skip the paystack save call on submit since bank_code is not stored in DB.
+  const [bankAlreadySaved, setBankAlreadySaved] = useState(false);
   const [banks, setBanks] = useState<{ name: string; code: string }[]>([]);
   const [showBankPicker, setShowBankPicker] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  // On mount: if this vendor was previously rejected, show the reason and
+  // pre-load their existing bank details so they don't re-verify from scratch.
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { data } = await supabase
+        .from('vendors')
+        .select('kyc_status, kyc_rejection_reason, bank_account_number, bank_name, bank_account_name, paystack_recipient_code')
+        .eq('id', user.id)
+        .single();
+      if (!data) return;
+
+      if (data.kyc_status === 'rejected') {
+        setKycState('failed');
+        setKycErrorReason(data.kyc_rejection_reason ?? null);
+      }
+
+      // Pre-load saved bank account if one exists
+      if (data.bank_account_number && data.bank_name && data.bank_account_name) {
+        setAccountNumber(data.bank_account_number);
+        setBankName(data.bank_name);
+        setAccountName(data.bank_account_name);
+        if (data.paystack_recipient_code) {
+          setBankVerified(true);
+          setBankAlreadySaved(true);
+        }
+      }
+    })();
+  }, [user]);
 
   const callEdgeFn = async (fn: string, body: object) => {
     const { data: { session: s } } = await supabase.auth.getSession();
@@ -66,6 +101,7 @@ export default function Step4Kyc() {
   const handleStartKyc = async () => {
     if (!user) return;
     setKycState('loading');
+    setKycErrorReason(null);
     try {
       const data = await callEdgeFn('vendor-kyc-init', { vendor_id: user.id });
       setKycUrl(data.verification_url);
@@ -76,7 +112,8 @@ export default function Step4Kyc() {
     }
   };
 
-  // Youverify WebView posts a message when verification is complete
+  // Youverify WebView posts a message when verification is complete.
+  // The callback is binary — no specific error code is documented for the JS bridge.
   const handleWebViewMessage = (event: any) => {
     try {
       const msg = JSON.parse(event.nativeEvent.data);
@@ -84,8 +121,8 @@ export default function Step4Kyc() {
         setKycState('done');
         setKycVerified(true);
       } else if (msg.type === 'kyc_failed') {
-        Alert.alert('Verification failed', 'Please try again or contact VARS support.');
-        setKycState('idle');
+        setKycState('failed');
+        setKycErrorReason(null);
       }
     } catch {
       // Non-JSON messages from WebView — ignore
@@ -135,13 +172,15 @@ export default function Step4Kyc() {
 
     setIsSaving(true);
     try {
-      await callEdgeFn('paystack-verify-bank', {
-        action: 'save',
-        account_number: accountNumber,
-        bank_code: bankCode,
-        bank_name: bankName,
-        account_name: accountName,
-      });
+      if (!bankAlreadySaved) {
+        await callEdgeFn('paystack-verify-bank', {
+          action: 'save',
+          account_number: accountNumber,
+          bank_code: bankCode,
+          bank_name: bankName,
+          account_name: accountName,
+        });
+      }
       router.replace('/vendor-onboarding/step-5-pending');
     } catch (err: any) {
       Alert.alert('Error', err.message);
@@ -186,6 +225,18 @@ export default function Step4Kyc() {
           <Text style={styles.sectionTitle}>Identity verification</Text>
           <Text style={styles.sectionSub}>NIN, BVN, or government ID — takes about 2 minutes.</Text>
 
+          {kycState === 'failed' && (
+            <View style={styles.errorCallout}>
+              <Text style={styles.errorCalloutTitle}>Identity check didn't go through</Text>
+              {kycErrorReason ? (
+                <Text style={styles.errorCalloutBody}>{kycErrorReason}</Text>
+              ) : null}
+              <Text style={styles.errorCalloutHint}>
+                Make sure your ID is valid and well-lit, with all four corners visible. Take your selfie in natural light.
+              </Text>
+            </View>
+          )}
+
           {kycVerified ? (
             <View style={styles.verifiedBadge}>
               <Text style={styles.verifiedText}>✓ Identity verified</Text>
@@ -199,7 +250,9 @@ export default function Step4Kyc() {
             >
               {kycState === 'loading'
                 ? <ScissorsLoader size="small" color="light" />
-                : <Text style={styles.kycButtonText}>Start identity check</Text>}
+                : <Text style={styles.kycButtonText}>
+                    {kycState === 'failed' ? 'Try identity check again' : 'Start identity check'}
+                  </Text>}
             </TouchableOpacity>
           )}
         </View>
@@ -229,6 +282,7 @@ export default function Step4Kyc() {
                       setBankName(b.name);
                       setShowBankPicker(false);
                       setBankVerified(false);
+                      setBankAlreadySaved(false);
                       setAccountName('');
                     }}
                   >
@@ -244,7 +298,7 @@ export default function Step4Kyc() {
             placeholder="Account number"
             placeholderTextColor={Colors.textMuted}
             value={accountNumber}
-            onChangeText={(t) => { setAccountNumber(t); setBankVerified(false); setAccountName(''); }}
+            onChangeText={(t) => { setAccountNumber(t); setBankVerified(false); setBankAlreadySaved(false); setAccountName(''); }}
             keyboardType="numeric"
             maxLength={10}
           />
@@ -293,6 +347,10 @@ const styles = StyleSheet.create({
   section: { marginBottom: 28, padding: 20, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 16, gap: 12 },
   sectionTitle: { fontSize: 17, fontWeight: '700', color: Colors.text },
   sectionSub: { fontSize: 14, color: Colors.textSecondary },
+  errorCallout: { backgroundColor: '#FEF2F2', borderRadius: 12, padding: 14, gap: 6 },
+  errorCalloutTitle: { fontSize: 15, fontWeight: '700', color: Colors.error },
+  errorCalloutBody: { fontSize: 14, color: Colors.error, opacity: 0.85 },
+  errorCalloutHint: { fontSize: 13, color: Colors.textSecondary, lineHeight: 18 },
   kycButton: { height: 50, backgroundColor: Colors.primary, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   kycButtonText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
   verifiedBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0FDF4', borderRadius: 10, padding: 12 },

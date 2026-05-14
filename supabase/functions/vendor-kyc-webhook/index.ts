@@ -83,11 +83,13 @@ Deno.serve(async (req: Request) => {
 
   // Update vendor: clean pass → also set is_active so vendor goes live immediately.
   // Rejected → is_active stays false; case appears in admin panel for review.
+  const reason: string = payload?.data?.reason ?? payload?.reason ?? 'Verification could not be completed';
+
   const { error: updateErr } = await adminClient
     .from('vendors')
     .update(isVerified
-      ? { kyc_status: 'verified', is_active: true }
-      : { kyc_status: 'rejected' }
+      ? { kyc_status: 'verified', is_active: true, kyc_rejection_reason: null }
+      : { kyc_status: 'rejected', kyc_rejection_reason: reason }
     )
     .eq('id', vendorId);
 
@@ -116,7 +118,6 @@ Deno.serve(async (req: Request) => {
         data: { screen: '/vendor-tabs' },
       });
     } else {
-      const reason: string = payload?.data?.reason ?? payload?.reason ?? 'Verification could not be completed';
       const msg = msg_vendor_verificationFailed(reason);
       await sendNotification({
         recipientId: vendorId,

@@ -148,6 +148,7 @@ Eighteen migration files build up the schema incrementally:
 | `016_booking_status_trigger` | Postgres trigger blocking invalid status jumps from JWT clients; edge functions (service role) bypass freely |
 | `017_remove_available_block_state` | Removes the vestigial `available` value from `block_state_enum`; available slots carry no DB row |
 | `018_fix_rescheduled_pending_enum` | Adds the missing `rescheduled_pending` value to `booking_status_enum`; migration 014 was a no-op because it referenced the wrong type name (`booking_status` instead of `booking_status_enum`) |
+| `019_kyc_rejection_reason` | `kyc_rejection_reason TEXT` column on vendors; populated by `vendor-kyc-webhook` on rejection, cleared on each new attempt |
 
 ### Key Tables
 
@@ -549,9 +550,16 @@ Tapping a slot cycles through the three user-controlled states: Available → Bl
 Vendors complete identity verification via the **Youverify SDK** during onboarding.
 
 - **Clean pass** — `vendor-kyc-webhook` sets `kyc_status = verified` AND `is_active = true` in a single update. The vendor goes live **instantly**, no admin action required.
-- **Rejection / flagged** — `kyc_status = rejected`. The case surfaces in the admin Vendors panel (which defaults to the rejected queue). Admin can:
+- **Rejection / flagged** — `kyc_status = rejected`, `kyc_rejection_reason` set from the Youverify payload. The case surfaces in the admin Vendors panel (which defaults to the rejected queue). Admin can:
   - **Override & approve** — manually set `kyc_status = verified, is_active = true`
   - **Reset KYC** — send vendor back to pending for re-submission
+
+**Vendor recovery flow** — when a vendor's KYC is rejected:
+1. Push notification sent with the rejection reason; deep-link opens `step-4-kyc`
+2. On re-login, `vendor-login` routes `kyc_status = rejected` directly to `step-4-kyc` (not vendor-tabs)
+3. `step-4-kyc` loads on mount: reads `kyc_rejection_reason` from DB and shows it inline; pre-loads previously verified bank details so the vendor doesn't re-enter them
+4. Vendor taps "Try identity check again" → `vendor-kyc-init` clears the reason and starts a fresh Youverify session
+5. On success: navigates to `step-5-pending`, which polls every 8 s and navigates to `/(vendor-tabs)` on approval or back to `step-4-kyc` on a second rejection
 
 The admin panel never needs to action a clean pass. The queue stays focused on problem cases only.
 

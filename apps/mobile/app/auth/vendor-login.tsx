@@ -79,6 +79,8 @@ export default function VendorLoginScreen() {
         }
         if (vendor.kyc_status === 'pending') {
           router.replace('/vendor-onboarding/step-5-pending');
+        } else if (vendor.kyc_status === 'rejected') {
+          router.replace('/vendor-onboarding/step-4-kyc');
         } else {
           router.replace('/(vendor-tabs)');
         }

@@ -69,10 +69,10 @@ Deno.serve(async (req: Request) => {
       return errorResponse('Could not obtain verification URL.', 502);
     }
 
-    // Mark kyc_status as 'pending' so we know initiation happened
+    // Mark kyc_status as 'pending' and clear any previous rejection reason
     await adminClient
       .from('vendors')
-      .update({ kyc_status: 'pending' })
+      .update({ kyc_status: 'pending', kyc_rejection_reason: null })
       .eq('id', vendor_id);
 
     return jsonResponse({ verification_url: verificationUrl });

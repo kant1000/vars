@@ -2,6 +2,7 @@
 // VARS — Vendor Onboarding Step 5: Pending Review (§6.1)
 // Shown after KYC + bank submission. Vendor waits for VARS approval.
 // kyc_status: 'pending' → 'verified' or 'rejected' via Youverify webhook.
+// Polls every 8 seconds and navigates once a terminal status is reached.
 // ============================================================
 import React, { useEffect, useRef } from 'react';
 import {
@@ -9,9 +10,14 @@ import {
   Animated, Easing,
 } from 'react-native';
 import { router } from 'expo-router';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 
+const POLL_INTERVAL_MS = 8000;
+
 export default function Step5Pending() {
+  const { user } = useAuth();
   const pulse = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -22,6 +28,27 @@ export default function Step5Pending() {
       ])
     ).start();
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const poll = async () => {
+      const { data } = await supabase
+        .from('vendors')
+        .select('kyc_status')
+        .eq('id', user.id)
+        .single();
+
+      if (data?.kyc_status === 'verified') {
+        router.replace('/(vendor-tabs)');
+      } else if (data?.kyc_status === 'rejected') {
+        router.replace('/vendor-onboarding/step-4-kyc');
+      }
+    };
+
+    const interval = setInterval(poll, POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [user]);
 
   return (
     <View style={styles.container}>

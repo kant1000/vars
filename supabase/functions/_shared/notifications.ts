@@ -248,7 +248,7 @@ export function msg_vendor_verificationApproved() {
 export function msg_vendor_verificationFailed(reason: string) {
   return {
     title: 'Verification failed',
-    body: `We couldn't verify your details. ${reason}. Try again or contact VARS support.`,
+    body: `We couldn't verify your details. ${reason}. Open VARS to try again.`,
   };
 }
 
