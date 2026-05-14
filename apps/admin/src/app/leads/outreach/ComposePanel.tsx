@@ -11,6 +11,7 @@ interface Lead {
   email: string;
   phone: string;
   lead_state: string;
+  converted: boolean;
   hasPending: boolean;
 }
 
@@ -38,19 +39,18 @@ export default function ComposePanel({ adminId }: { adminId: string | null }) {
   const [fetching,    setFetching]    = useState(false);
   const [loading,     setLoading]     = useState(false);
   const [result,      setResult]      = useState<string | null>(null);
+  const [showConverted, setShowConverted] = useState(false);
 
-  const loadLeads = async (st: string) => {
+  const loadLeads = async (st: string, converted: boolean) => {
     setLeads([]);
     setSelected(new Set());
     setResult(null);
     if (!st) return;
     setFetching(true);
 
+    const params = new URLSearchParams({ serviceType: st, converted: String(converted) });
     const [leadsRes, pendingRes] = await Promise.all([
-      fetch(
-        `${SUPABASE_URL}/rest/v1/vendor_leads?service_type=eq.${st}&converted=eq.false&select=id,full_name,email,phone,lead_state&order=full_name.asc`,
-        { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } }
-      ),
+      fetch(`/api/leads?${params}`),
       fetch(
         `${SUPABASE_URL}/rest/v1/vendor_lead_outreach?status=in.(draft,approved)&select=lead_id`,
         { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } }
@@ -63,18 +63,27 @@ export default function ComposePanel({ adminId }: { adminId: string | null }) {
 
     const enriched = rawLeads.map(l => ({ ...l, hasPending: pendingSet.has(l.id) }));
     setLeads(enriched);
-    // Pre-select only leads without a pending message
     setSelected(new Set(enriched.filter(l => !l.hasPending).map(l => l.id)));
     setFetching(false);
+  };
+
+  const handleServiceTypeChange = (st: string) => {
+    setServiceType(st);
+    loadLeads(st, showConverted);
+  };
+
+  const handleConvertedToggle = (converted: boolean) => {
+    setShowConverted(converted);
+    loadLeads(serviceType, converted);
   };
 
   const toggle = (id: string) =>
     setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
-  const noPending  = leads.filter(l => !l.hasPending);
-  const allSelected = noPending.length > 0 && noPending.every(l => selected.has(l.id));
-  const toggleAll  = () =>
-    setSelected(allSelected ? new Set() : new Set(noPending.map(l => l.id)));
+  const selectable  = leads.filter(l => !l.hasPending);
+  const allSelected = selectable.length > 0 && selectable.every(l => selected.has(l.id));
+  const toggleAll   = () =>
+    setSelected(allSelected ? new Set() : new Set(selectable.map(l => l.id)));
 
   const queue = async () => {
     const targets = leads.filter(l => selected.has(l.id));
@@ -106,7 +115,7 @@ export default function ComposePanel({ adminId }: { adminId: string | null }) {
 
     if (res.ok) {
       const skipped = leads.filter(l => l.hasPending && !selected.has(l.id)).length;
-      setResult(`✓ ${targets.length} messages queued as approved${skipped ? ` · ${skipped} skipped (already have pending)` : ''}`);
+      setResult(`✓ ${targets.length} messages queued${skipped ? ` · ${skipped} skipped (pending)` : ''}`);
       setBody('');
       setSelected(new Set());
       router.refresh();
@@ -135,7 +144,7 @@ export default function ComposePanel({ adminId }: { adminId: string | null }) {
               <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase' }}>Service type</label>
               <select
                 value={serviceType}
-                onChange={e => { setServiceType(e.target.value); loadLeads(e.target.value); }}
+                onChange={e => handleServiceTypeChange(e.target.value)}
                 style={{ padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13 }}
               >
                 <option value="">Select…</option>
@@ -176,11 +185,41 @@ export default function ComposePanel({ adminId }: { adminId: string | null }) {
             <div style={{ color: 'var(--text2)', fontSize: 13 }}>Loading leads…</div>
           )}
 
+          {/* Converted toggle — visible whenever a service type is selected */}
+          {!fetching && serviceType && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 12, color: 'var(--text2)' }}>Showing:</span>
+              <button
+                onClick={() => handleConvertedToggle(false)}
+                style={{
+                  padding: '4px 10px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                  background: !showConverted ? 'var(--blue)' : 'var(--border)',
+                  color: !showConverted ? '#fff' : 'var(--text2)',
+                  border: 'none',
+                }}
+              >
+                Unconverted
+              </button>
+              <button
+                onClick={() => handleConvertedToggle(true)}
+                style={{
+                  padding: '4px 10px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                  background: showConverted ? 'var(--blue)' : 'var(--border)',
+                  color: showConverted ? '#fff' : 'var(--text2)',
+                  border: 'none',
+                }}
+              >
+                Converted
+              </button>
+            </div>
+          )}
+
           {!fetching && leads.length > 0 && (
             <>
               <div style={{ fontSize: 12, color: 'var(--text2)' }}>
-                {leads.length} leads · {noPending.length} available · {leads.length - noPending.length} have pending messages
+                {leads.length} leads · {selectable.length} available · {leads.length - selectable.length} have pending messages
               </div>
+
               <div className="table-wrap" style={{ maxHeight: 300, overflowY: 'auto' }}>
                 <table>
                   <thead>
@@ -203,6 +242,7 @@ export default function ComposePanel({ adminId }: { adminId: string | null }) {
                             type="checkbox"
                             checked={selected.has(l.id)}
                             onChange={() => toggle(l.id)}
+                            disabled={l.hasPending}
                           />
                         </td>
                         <td style={{ fontWeight: 600 }}>{l.full_name}</td>
@@ -245,7 +285,9 @@ export default function ComposePanel({ adminId }: { adminId: string | null }) {
           )}
 
           {!fetching && serviceType && leads.length === 0 && (
-            <div style={{ color: 'var(--text2)', fontSize: 13 }}>No unconverted leads in this category.</div>
+            <div style={{ color: 'var(--text2)', fontSize: 13 }}>
+              No {showConverted ? 'converted' : 'unconverted'} leads in this category.
+            </div>
           )}
         </div>
       )}

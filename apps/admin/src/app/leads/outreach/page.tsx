@@ -11,7 +11,7 @@ import ComposePanel from './ComposePanel';
 const PAGE_SIZE = 50;
 
 interface Props {
-  searchParams: { status?: string; leadState?: string; channel?: string; serviceType?: string; page?: string };
+  searchParams: { page?: string };
 }
 
 async function getCounts() {
@@ -30,12 +30,12 @@ async function getCounts() {
   };
 }
 
-async function getQueue(status: string, leadState: string, channel: string, serviceType: string, page: number) {
+async function getQueue(page: number) {
   const db   = adminClient();
   const from = (page - 1) * PAGE_SIZE;
   const to   = from + PAGE_SIZE - 1;
 
-  let query = db
+  const { data, count } = await db
     .from('vendor_lead_outreach')
     .select(
       'id, lead_id, state_from, message_type, channel, message_body, status, approved_by, approved_at, sent_at, response_status, response_text, created_at, vendor_leads!inner(id, full_name, email, phone, lead_state, service_type)',
@@ -44,26 +44,16 @@ async function getQueue(status: string, leadState: string, channel: string, serv
     .order('created_at', { ascending: false })
     .range(from, to);
 
-  if (status && status !== 'all') query = query.eq('status', status);
-  if (leadState)                  query = query.eq('vendor_leads.lead_state', leadState);
-  if (channel)                    query = query.eq('channel', channel);
-  if (serviceType)                query = query.eq('vendor_leads.service_type', serviceType);
-
-  const { data, count } = await query;
   return { records: data ?? [], total: count ?? 0 };
 }
 
 export default async function OutreachQueuePage({ searchParams }: Props) {
-  const status      = searchParams.status      ?? 'draft';
-  const leadState   = searchParams.leadState   ?? '';
-  const channel     = searchParams.channel     ?? '';
-  const serviceType = searchParams.serviceType ?? '';
-  const page        = Number(searchParams.page ?? 1);
+  const page = Number(searchParams.page ?? 1);
 
   const [admin, counts, { records, total }] = await Promise.all([
     requireAdmin(),
     getCounts(),
-    getQueue(status, leadState, channel, serviceType, page),
+    getQueue(page),
   ]);
 
   const pages = Math.ceil(total / PAGE_SIZE);
@@ -98,39 +88,6 @@ export default async function OutreachQueuePage({ searchParams }: Props) {
       {/* Compose custom message for a segment */}
       <ComposePanel adminId={admin?.id ?? null} />
 
-      {/* Filters */}
-      <form className="filters" method="GET">
-        <select name="status" defaultValue={status}>
-          <option value="all">All Statuses</option>
-          <option value="draft">Draft</option>
-          <option value="approved">Approved</option>
-          <option value="sent">Sent</option>
-          <option value="failed">Failed</option>
-          <option value="blocked">Blocked</option>
-        </select>
-        <select name="leadState" defaultValue={leadState}>
-          <option value="">All States</option>
-          <option value="PROSPECT">Prospect</option>
-          <option value="COLD">Cold</option>
-          <option value="VERIFIED">Verified</option>
-          <option value="CONVERTED">Converted</option>
-        </select>
-        <select name="channel" defaultValue={channel}>
-          <option value="">All Channels</option>
-          <option value="whatsapp">WhatsApp</option>
-          <option value="sms">SMS</option>
-          <option value="email">Email</option>
-        </select>
-        <select name="serviceType" defaultValue={serviceType}>
-          <option value="">All Service Types</option>
-          <option value="hair_styling">Hair Styling</option>
-          <option value="barbing">Barbing</option>
-          <option value="makeovers">Makeovers</option>
-          <option value="other">Other</option>
-        </select>
-        <button type="submit" className="btn btn-primary">Filter</button>
-      </form>
-
       {/* Table with bulk actions */}
       <OutreachTable records={records as any[]} adminId={admin?.id ?? null} />
 
@@ -138,14 +95,10 @@ export default async function OutreachQueuePage({ searchParams }: Props) {
         <div className="pagination">
           <span>Page {page} of {pages}</span>
           {page > 1 && (
-            <a href={`?status=${status}&leadState=${leadState}&channel=${channel}&serviceType=${serviceType}&page=${page - 1}`} className="btn btn-ghost">
-              ← Prev
-            </a>
+            <a href={`?page=${page - 1}`} className="btn btn-ghost">← Prev</a>
           )}
           {page < pages && (
-            <a href={`?status=${status}&leadState=${leadState}&channel=${channel}&serviceType=${serviceType}&page=${page + 1}`} className="btn btn-ghost">
-              Next →
-            </a>
+            <a href={`?page=${page + 1}`} className="btn btn-ghost">Next →</a>
           )}
         </div>
       )}
