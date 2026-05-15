@@ -1,10 +1,12 @@
 'use server';
 import { adminClient } from '@/lib/supabase';
+import { requireAdmin } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 
 export async function updateDispute(disputeId: string, patch: Record<string, unknown>) {
+  if (!(await requireAdmin())) throw new Error('Unauthorised');
   const db = adminClient();
   const { error } = await db.from('disputes').update(patch).eq('id', disputeId);
   if (error) throw new Error(error.message);
@@ -12,6 +14,7 @@ export async function updateDispute(disputeId: string, patch: Record<string, unk
 }
 
 export async function callSettlementEdgeFn(fnName: 'paystack-release' | 'paystack-settle', bookingId: string) {
+  if (!(await requireAdmin())) throw new Error('Unauthorised');
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
   const res = await fetch(`${SUPABASE_URL}/functions/v1/${fnName}`, {
