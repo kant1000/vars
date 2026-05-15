@@ -4,6 +4,7 @@
 'use client';
 import { useState } from 'react';
 import { loginAction } from './actions';
+import VarsLogo from '@/components/VarsLogo';
 
 export default function LoginPage() {
   const [error,   setError]   = useState<string | null>(null);
@@ -31,7 +32,9 @@ export default function LoginPage() {
         borderRadius: 'var(--radius)', padding: '40px 36px', width: '100%', maxWidth: 380,
       }}>
         <div style={{ marginBottom: 28, textAlign: 'center' }}>
-          <img src="/admin-sidebar.svg" alt="VARS" style={{ height: 32, width: 'auto', marginBottom: 16 }} />
+          <div style={{ display: 'inline-block', marginBottom: 16 }}>
+            <VarsLogo height={32} />
+          </div>
           <h1 style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>Admin sign in</h1>
         </div>
 

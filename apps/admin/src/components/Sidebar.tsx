@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { logoutAction } from '@/app/login/actions';
+import VarsLogo from './VarsLogo';
 
 const NAV = [
   { href: '/dashboard', icon: '📊', label: 'Dashboard' },
@@ -16,7 +17,7 @@ export default function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="sidebar-logo">
-        <img src="/admin-sidebar.svg" alt="VARS" style={{ height: 28, width: 'auto' }} />
+        <VarsLogo height={28} />
       </div>
       {NAV.map((n) => (
         <Link
