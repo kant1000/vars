@@ -1,3 +1,7 @@
+# Windows shell metadata
+desktop.ini
+Thumbs.db
+
 # Supabase CLI temp files
 supabase/.temp/
 
