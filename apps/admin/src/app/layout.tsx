@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import './globals.css';
 import Sidebar from '@/components/Sidebar';
 
@@ -9,13 +10,18 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const isAuth = !!cookies().get('sb-access-token')?.value;
   return (
     <html lang="en">
       <body>
-        <div className="layout">
-          <Sidebar />
-          <main className="main">{children}</main>
-        </div>
+        {isAuth ? (
+          <div className="layout">
+            <Sidebar />
+            <main className="main">{children}</main>
+          </div>
+        ) : (
+          <>{children}</>
+        )}
       </body>
     </html>
   );

@@ -24,7 +24,7 @@ export default function LoginPage() {
   return (
     <div style={{
       minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'var(--bg)',
+      background: 'var(--surface)',
     }}>
       <div style={{
         background: 'var(--white)', border: '1px solid var(--border)',
