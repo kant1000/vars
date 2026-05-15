@@ -280,9 +280,9 @@ function BookingBottomSheet({
     try {
       if (action === 'accept')   await callEdgeFn('paystack-capture', { booking_id: booking.id });
       if (action === 'decline')  await callEdgeFn('vendor-cancel-booking', { booking_id: booking.id });
-      if (action === 'on_way')           await updateStatus(BOOKING_STATUS.ON_WAY);
-      if (action === 'arrived')          await updateStatus(BOOKING_STATUS.ARRIVED);
-      if (action === 'service_rendered') await updateStatus(BOOKING_STATUS.SERVICE_RENDERED);
+      if (action === 'on_way')           await callEdgeFn('vendor-update-job-status', { booking_id: booking.id, new_status: 'on_way' });
+      if (action === 'arrived')          await callEdgeFn('vendor-update-job-status', { booking_id: booking.id, new_status: 'arrived' });
+      if (action === 'service_rendered') await callEdgeFn('vendor-update-job-status', { booking_id: booking.id, new_status: 'service_rendered' });
       onAction();
       onClose();
     } catch (err: any) {

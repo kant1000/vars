@@ -184,15 +184,15 @@ export function msg_vendor_newBooking(clientFirstName: string, service: string, 
 
 export function msg_vendor_reminder30min(clientFirstName: string) {
   return {
-    title: 'Don\'t miss this',
-    body: `Don't miss this — ${clientFirstName} is waiting for your confirmation. 30 minutes left.`,
+    title: 'Booking needs a response',
+    body: `${clientFirstName} is waiting. You have 30 minutes to accept or the booking expires.`,
   };
 }
 
 export function msg_vendor_bookingExpired() {
   return {
     title: 'Booking expired',
-    body: `This booking expired. Stay active to keep your bookings coming in.`,
+    body: `This booking wasn't confirmed in time and has been cancelled. The customer has been refunded.`,
   };
 }
 
@@ -206,7 +206,7 @@ export function msg_vendor_reminder24h(time: string, service: string, clientFirs
 export function msg_vendor_reminder1h(clientFirstName: string) {
   return {
     title: '1 hour to go',
-    body: `1 hour to go. ${clientFirstName}'s number will be shared with you at the 15-minute mark.`,
+    body: `Head out in about 45 minutes for ${clientFirstName}'s appointment. Their number unlocks at the 15-minute mark.`,
   };
 }
 
@@ -247,8 +247,8 @@ export function msg_vendor_verificationApproved() {
 
 export function msg_vendor_verificationFailed(reason: string) {
   return {
-    title: 'Verification failed',
-    body: `We couldn't verify your details. ${reason}. Open VARS to try again.`,
+    title: 'Verification needs another try',
+    body: `We couldn't verify your ID. ${reason}. Tap to retry — it only takes 2 minutes.`,
   };
 }
 
@@ -270,7 +270,7 @@ export function msg_bookingCancelledByVendor(date: string, time: string) {
 export function msg_vendor_autoAccepted(clientFirstName: string, service: string, date: string, time: string) {
   return {
     title: 'Auto-accepted booking',
-    body: `Auto-accepted: ${service} for ${clientFirstName} on ${date} at ${time}. You have 5 minutes to cancel if needed.`,
+    body: `Auto-accepted: ${service} for ${clientFirstName} on ${date} at ${time}. Cancel penalty-free in the next 5 minutes.`,
   };
 }
 

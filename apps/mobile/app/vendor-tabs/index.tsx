@@ -277,14 +277,25 @@ function ActiveCard({
     if (!action) return;
     setActing(true);
     setAdvanceError(null);
-    const update: Record<string, any> = { status: action.next };
-    if (action.next === BOOKING_STATUS.ON_WAY)           update.on_way_at = new Date().toISOString();
-    if (action.next === BOOKING_STATUS.ARRIVED)          update.arrived_at = new Date().toISOString();
-    if (action.next === BOOKING_STATUS.SERVICE_RENDERED) update.service_rendered_at = new Date().toISOString();
-
-    const { error } = await supabase.from('bookings').update(update).eq('id', booking.id);
-    if (error) setAdvanceError("Couldn't save — tap to retry");
-    else onUpdated();
+    try {
+      const { data: { session: s } } = await supabase.auth.getSession();
+      const res = await fetchWithRetry(`${SUPABASE_URL}/functions/v1/vendor-update-job-status`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${s?.access_token ?? ''}`,
+        },
+        body: JSON.stringify({ booking_id: booking.id, new_status: action.next }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setAdvanceError(data.error ?? "Couldn't save — tap to retry");
+      } else {
+        onUpdated();
+      }
+    } catch {
+      setAdvanceError("Couldn't save — tap to retry");
+    }
     setActing(false);
   };
 

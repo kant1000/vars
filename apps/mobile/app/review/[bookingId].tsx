@@ -15,6 +15,8 @@ import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
+
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 import { StarFilledIcon, StarEmptyIcon } from '@/components/icons';
@@ -57,30 +59,36 @@ export default function ReviewScreen() {
   const submit = async () => {
     if (!user || !booking || rating === 0) return;
     setSubmitting(true);
-    const { error } = await supabase.from('reviews').insert({
-      booking_id: bookingId,
-      user_id:    user.id,
-      vendor_id:  booking.vendor_id,
-      rating,
-      comment:    comment.trim() || null,
-    });
-    setSubmitting(false);
-
-    if (error) {
-      if (error.code === '23505') {
-        Alert.alert('Already reviewed', "You've already left a review for this booking.");
-        router.back();
-      } else {
-        Alert.alert('Error', error.message);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/submit-review`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token ?? ''}`,
+        },
+        body: JSON.stringify({ booking_id: bookingId, rating, comment: comment.trim() || null }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (res.status === 409) {
+          Alert.alert('Already reviewed', "You've already left a review for this booking.");
+          router.back();
+        } else {
+          Alert.alert('Error', data.error ?? 'Something went wrong. Please try again.');
+        }
+        return;
       }
-      return;
+      Alert.alert(
+        'Thanks for your review! ⭐',
+        'Your feedback helps the VARS community find the best vendors.',
+        [{ text: 'Done', onPress: () => router.replace('/(tabs)/profile') }],
+      );
+    } catch {
+      Alert.alert('Error', 'Something went wrong. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
-
-    Alert.alert(
-      'Thanks for your review! ⭐',
-      'Your feedback helps the VARS community find the best vendors.',
-      [{ text: 'Done', onPress: () => router.replace('/(tabs)/profile') }],
-    );
   };
 
   if (loading) {

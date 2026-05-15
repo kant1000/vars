@@ -214,14 +214,16 @@ All functions live in `supabase/functions/` and run on Deno.
 | `paystack-webhook` | POST | Handles Paystack events: creates booking on `charge.success` (card already charged), auto-accepts if conditions met, creates transport buffers for auto-accepted bookings |
 | `paystack-capture` | POST | Vendor accepts a pending booking — updates booking status to `accepted`, creates transport buffer blocks (same as auto-accept path) |
 | `paystack-release` | POST | Vendor declines or booking expires — issues a full Paystack refund to the customer |
-| `paystack-settle` | POST | Customer confirms service done, or 2-hr auto-release fires after service_rendered — initiates Paystack transfer to vendor (80/20 split; Pioneer vendors: 100%) |
+| `paystack-settle` | POST | Customer confirms service done, or 2-hr auto-release fires after service_rendered — initiates Paystack transfer to vendor (80/20 split; Pioneer vendors: 100%); also sends customer a warning notification 30 min before auto-release |
 | `paystack-cancel` | POST | Customer cancels — tiered refund (0–15 min: 15% fee; 15 min–1 hr: 50% fee; within 1 hr of service: non-refundable); releases transport buffers |
 | `paystack-verify-bank` | POST | Verifies vendor bank account via Paystack during onboarding |
 | `vendor-cancel-booking` | POST | Vendor cancels an accepted/in-progress booking — full refund to customer, transport buffers released, rolling 30-day cancellation count incremented, flags vendor at 3+ |
 | `vendor-cancel-grace` | POST | Vendor cancels an auto-accepted booking within the 5-minute grace period (penalty-free, full refund) |
 | `dispute-raise` | POST | User raises a dispute — requires a structured `category`; free-text `reason` optional unless category is `other`; booking status set to `disputed` (freezes auto-release), inserts into `disputes`, notifies both parties |
 | `phone-reveal` | POST (cron, every 5 min) | Finds accepted bookings within 15 min of `scheduled_at`, sets `phone_revealed = true`, notifies vendor ("Head out now") and customer ("They're on their way") |
-| `send-reminders` | POST (cron, every 5 min) | Sends 24-hour and 1-hour before-appointment reminders to both customer and vendor; idempotent via notifications table |
+| `vendor-update-job-status` | POST | Vendor advances a booking through `on_way → arrived → service_rendered`; validates the transition, stamps the timestamp, notifies the customer |
+| `submit-review` | POST | Customer submits a star rating (1–5, required) + optional comment for a completed booking; DB trigger updates vendor `avg_rating`; notifies vendor; 409 on duplicate |
+| `send-reminders` | POST (cron, every 5 min) | Sends 24-hour and 1-hour before-appointment reminders to both customer and vendor, plus a 30-minute pending-acceptance reminder to the vendor; idempotent via notifications table |
 | `vendor-kyc-init` | POST | Initiates Youverify KYC session |
 | `vendor-kyc-webhook` | POST | Receives Youverify result — clean pass: `kyc_status = verified` + `is_active = true` (instant activation); failure: `kyc_status = rejected`, appears in admin queue |
 | `vendor-register-lead` | POST/GET | Captures a pioneer programme lead; GET returns current pioneer spot count. On successful POST: inserts into `vendor_leads`, creates an auto-approved `welcome_email` outreach record ready for delivery |

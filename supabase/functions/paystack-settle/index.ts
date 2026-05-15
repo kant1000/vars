@@ -28,6 +28,7 @@ import {
   msg_vendor_paymentReleased,
   msg_vendor_serviceRenderReminder,
   msg_disputeResolved_vendorPaid,
+  msg_autoReleaseWarning,
   formatNaira,
 } from '../_shared/notifications.ts';
 
@@ -141,8 +142,44 @@ Deno.serve(async (req: Request) => {
         remindedCount++;
       }
 
-      console.log(`paystack-settle cron: settled=${settledCount}, reminded=${remindedCount}`);
-      return jsonResponse({ settled: settledCount, reminded: remindedCount });
+      // 3. Warn customers 30 min before auto-release so they can dispute in time
+      const warnLo = new Date(now.getTime() + 25 * 60 * 1000).toISOString();
+      const warnHi = new Date(now.getTime() + 35 * 60 * 1000).toISOString();
+      const { data: warnBookings } = await supabase
+        .from('bookings')
+        .select('id, user_id, vendor_id, auto_release_at, profiles:user_id (push_token), vendors:vendor_id (full_name)')
+        .eq('status', BOOKING_STATUS.SERVICE_RENDERED)
+        .gte('auto_release_at', warnLo)
+        .lte('auto_release_at', warnHi);
+
+      let warnedCount = 0;
+      for (const b of (warnBookings ?? [])) {
+        const { data: existing } = await supabase
+          .from('notifications')
+          .select('id')
+          .eq('booking_id', b.id)
+          .eq('type', 'auto_release_warning')
+          .maybeSingle();
+        if (existing) continue;
+
+        const profile = (b as any).profiles as { push_token: string | null } | null;
+        const vendorName = (b as any).vendors?.full_name ?? 'your vendor';
+        const msg = msg_autoReleaseWarning(vendorName);
+        await sendNotification({
+          recipientId: b.user_id,
+          recipientType: 'user',
+          type: 'auto_release_warning',
+          title: msg.title,
+          body: msg.body,
+          bookingId: b.id,
+          pushToken: profile?.push_token ?? null,
+          data: { bookingId: b.id },
+        });
+        warnedCount++;
+      }
+
+      console.log(`paystack-settle cron: settled=${settledCount}, reminded=${remindedCount}, warned=${warnedCount}`);
+      return jsonResponse({ settled: settledCount, reminded: remindedCount, warned: warnedCount });
     }
 
     // --------------------------------------------------------

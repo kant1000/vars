@@ -15,6 +15,7 @@ import {
   msg_reminder1h,
   msg_vendor_reminder24h,
   msg_vendor_reminder1h,
+  msg_vendor_reminder30min,
   formatTime,
 } from '../_shared/notifications.ts';
 
@@ -33,6 +34,7 @@ Deno.serve(async (req: Request) => {
 
   let sent24h = 0;
   let sent1h = 0;
+  let sent30min = 0;
 
   // ── 24-hour reminders ────────────────────────────────────────
   const h24lo = new Date(now.getTime() + (24 * 60 - WINDOW_MINS) * 60 * 1000).toISOString();
@@ -137,5 +139,48 @@ Deno.serve(async (req: Request) => {
     console.log(`send-reminders: 1h reminder sent for booking ${b.id}`);
   }
 
-  return jsonResponse({ sent_24h: sent24h, sent_1h: sent1h });
+  // ── 30-min pending booking nudge ─────────────────────────────
+  // Vendor has 1 hour to accept. Nudge them at the halfway mark.
+  const min30lo = new Date(now.getTime() - (30 + WINDOW_MINS) * 60 * 1000).toISOString();
+  const min30hi = new Date(now.getTime() - (30 - WINDOW_MINS) * 60 * 1000).toISOString();
+
+  const { data: pending30 } = await supabase
+    .from('bookings')
+    .select(`
+      id, vendor_id, user_id,
+      profiles:user_id (full_name),
+      vendors:vendor_id (push_token)
+    `)
+    .eq('status', BOOKING_STATUS.PENDING)
+    .gte('created_at', min30lo)
+    .lte('created_at', min30hi);
+
+  for (const b of pending30 ?? []) {
+    const { data: existing } = await supabase
+      .from('notifications')
+      .select('id')
+      .eq('booking_id', b.id)
+      .eq('type', 'vendor_reminder_30min')
+      .maybeSingle();
+    if (existing) continue;
+
+    const profile = (b as any).profiles as { full_name: string } | null;
+    const vendor  = (b as any).vendors  as { push_token: string | null } | null;
+    const clientFirstName = (profile?.full_name ?? 'Client').split(' ')[0];
+    const msg = msg_vendor_reminder30min(clientFirstName);
+    await sendNotification({
+      recipientId: b.vendor_id,
+      recipientType: 'vendor',
+      type: 'vendor_reminder_30min',
+      title: msg.title,
+      body: msg.body,
+      bookingId: b.id,
+      pushToken: vendor?.push_token ?? null,
+      data: { bookingId: b.id },
+    });
+    sent30min++;
+    console.log(`send-reminders: 30min nudge sent for booking ${b.id}`);
+  }
+
+  return jsonResponse({ sent_24h: sent24h, sent_1h: sent1h, sent_30min: sent30min });
 });
