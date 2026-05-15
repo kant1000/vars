@@ -145,12 +145,9 @@ export default function ProfileScreen() {
     );
   }
 
-  const activeBookings = bookings.filter((b) =>
-    ![BOOKING_STATUS.COMPLETED, BOOKING_STATUS.CANCELLED, BOOKING_STATUS.EXPIRED].includes(b.status)
-  );
-  const pastBookings = bookings.filter((b) =>
-    [BOOKING_STATUS.COMPLETED, BOOKING_STATUS.CANCELLED, BOOKING_STATUS.EXPIRED].includes(b.status)
-  );
+  const TERMINAL = [BOOKING_STATUS.COMPLETED, BOOKING_STATUS.CANCELLED, BOOKING_STATUS.EXPIRED] as BookingStatus[];
+  const activeBookings = bookings.filter((b) => !TERMINAL.includes(b.status));
+  const pastBookings   = bookings.filter((b) =>  TERMINAL.includes(b.status));
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>

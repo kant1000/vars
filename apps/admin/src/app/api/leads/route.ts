@@ -1,7 +1,11 @@
 import { adminClient } from '@/lib/supabase';
+import { requireAdmin } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
+  const admin = await requireAdmin();
+  if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const { searchParams } = new URL(request.url);
   const serviceType = searchParams.get('serviceType');
   const converted   = searchParams.get('converted'); // 'true' | 'false'

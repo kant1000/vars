@@ -2,36 +2,20 @@
 // ============================================================
 // VARS Admin — Vendor action buttons (client component)
 // Approve / Reject KYC, toggle VARS Choice badge.
-// Uses Next.js Server Actions via form POST.
+// Uses server actions — no client-side service-role key.
 // ============================================================
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-
-const SUPABASE_URL      = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SERVICE_ROLE_KEY  = process.env.NEXT_PUBLIC_ADMIN_SERVICE_KEY ?? ''; // set in .env.local
-
-async function updateVendor(vendorId: string, patch: Record<string, any>) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/vendors?id=eq.${vendorId}`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      apikey: SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
-      Prefer: 'return=minimal',
-    },
-    body: JSON.stringify(patch),
-  });
-  return res.ok;
-}
+import { updateVendor } from './actions';
 
 export default function VendorActions({ vendor }: { vendor: any }) {
-  const router = useRouter();
+  const router  = useRouter();
   const [loading, setLoading] = useState(false);
 
-  const act = async (patch: Record<string, any>) => {
+  const act = async (patch: Record<string, unknown>) => {
     setLoading(true);
-    await updateVendor(vendor.id, patch);
-    setLoading(false);
+    try { await updateVendor(vendor.id, patch); }
+    finally { setLoading(false); }
     router.refresh();
   };
 

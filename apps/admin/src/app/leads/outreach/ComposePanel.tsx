@@ -1,9 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const ANON_KEY     = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+import { createOutreachMessages } from './actions';
 
 interface Lead {
   id: string;
@@ -51,11 +49,7 @@ export default function ComposePanel({ adminId }: { adminId: string | null }) {
     const params = new URLSearchParams({ serviceType: st, converted: String(converted) });
     const [leadsRes, pendingRes] = await Promise.all([
       fetch(`/api/leads?${params}`),
-      // Only block on other custom messages — nurture drafts don't block a manual blast
-      fetch(
-        `${SUPABASE_URL}/rest/v1/vendor_lead_outreach?status=in.(draft,approved)&message_type=eq.custom&select=lead_id`,
-        { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } }
-      ),
+      fetch('/api/outreach/pending'),
     ]);
 
     const rawLeads: Omit<Lead, 'hasPending'>[] = await leadsRes.json();
@@ -93,15 +87,8 @@ export default function ComposePanel({ adminId }: { adminId: string | null }) {
     setResult(null);
 
     const now = new Date().toISOString();
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/vendor_lead_outreach`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: ANON_KEY,
-        Authorization: `Bearer ${ANON_KEY}`,
-        Prefer: 'return=minimal',
-      },
-      body: JSON.stringify(targets.map(l => ({
+    try {
+      await createOutreachMessages(targets.map(l => ({
         lead_id:          l.id,
         state_from:       'CUSTOM',
         message_type:     'custom',
@@ -111,20 +98,17 @@ export default function ComposePanel({ adminId }: { adminId: string | null }) {
         status:           'approved',
         approved_by:      adminId,
         approved_at:      now,
-      }))),
-    });
-
-    if (res.ok) {
+      })));
       const skipped = leads.filter(l => l.hasPending).length;
       setResult(`✓ ${targets.length} messages queued${skipped ? ` · ${skipped} skipped (pending)` : ''}`);
       setBody('');
       setSelected(new Set());
       router.refresh();
-    } else {
-      const errText = await res.text().catch(() => res.status.toString());
-      setResult(`Error: ${errText}`);
+    } catch (err) {
+      setResult(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -140,7 +124,6 @@ export default function ComposePanel({ adminId }: { adminId: string | null }) {
       {open && (
         <div style={{ padding: '0 20px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-          {/* Compose controls */}
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase' }}>Service type</label>
@@ -182,12 +165,10 @@ export default function ComposePanel({ adminId }: { adminId: string | null }) {
             </div>
           </div>
 
-          {/* Lead table */}
           {fetching && (
             <div style={{ color: 'var(--text2)', fontSize: 13 }}>Loading leads…</div>
           )}
 
-          {/* Converted toggle — visible whenever a service type is selected */}
           {!fetching && serviceType && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ fontSize: 12, color: 'var(--text2)' }}>Showing:</span>

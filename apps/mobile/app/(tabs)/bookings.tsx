@@ -33,9 +33,10 @@ const STATUS_LABEL: Record<BookingStatus, { text: string; color: string }> = {
   arrived:          { text: 'Arrived',            color: Colors.statusArrived   },
   service_rendered: { text: 'Service complete',   color: Colors.primary         },
   completed:        { text: 'Completed',          color: Colors.statusCompleted },
-  cancelled:        { text: 'Cancelled',          color: Colors.statusCancelled },
-  expired:          { text: 'Expired',            color: Colors.statusExpired   },
-  disputed:         { text: 'Under review',       color: Colors.statusDisputed  },
+  cancelled:          { text: 'Cancelled',          color: Colors.statusCancelled },
+  expired:            { text: 'Expired',            color: Colors.statusExpired   },
+  disputed:           { text: 'Under review',       color: Colors.statusDisputed  },
+  rescheduled_pending:{ text: 'Reschedule pending', color: Colors.statusPending   },
 };
 
 const ACTIVE: BookingStatus[] = [

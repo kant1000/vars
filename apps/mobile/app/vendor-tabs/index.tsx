@@ -386,7 +386,7 @@ function ActiveCard({
           <Text style={c.waitingText}>Waiting for customer to confirm. Payment auto-releases 1 hour after the scheduled end time.</Text>
         </View>
       )}
-      {[BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ON_WAY, BOOKING_STATUS.ARRIVED].includes(booking.status) && (
+      {([BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ON_WAY, BOOKING_STATUS.ARRIVED] as BookingStatus[]).includes(booking.status) && (
         <TouchableOpacity
           style={[c.vendorCancelBtn, cancelling && c.btnDisabled]}
           onPress={handleCancel}
@@ -769,8 +769,10 @@ export default function VendorJobsScreen() {
     b.auto_accept_grace_expires_at != null &&
     new Date(b.auto_accept_grace_expires_at) > new Date()
   );
+  const ACTIVE_STATUSES  = [BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ON_WAY, BOOKING_STATUS.ARRIVED, BOOKING_STATUS.SERVICE_RENDERED] as BookingStatus[];
+  const HISTORY_STATUSES = [BOOKING_STATUS.COMPLETED, BOOKING_STATUS.CANCELLED, BOOKING_STATUS.EXPIRED] as BookingStatus[];
   const active   = bookings.filter((b) =>
-    [BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ON_WAY, BOOKING_STATUS.ARRIVED, BOOKING_STATUS.SERVICE_RENDERED].includes(b.status) &&
+    ACTIVE_STATUSES.includes(b.status) &&
     !graceBookings.some((g) => g.id === b.id)
   );
   const upcoming = bookings.filter((b) => b.status === BOOKING_STATUS.ACCEPTED && new Date(b.scheduled_at) > new Date() && !graceBookings.some((g) => g.id === b.id));
@@ -780,7 +782,7 @@ export default function VendorJobsScreen() {
     const now = new Date();
     return d.toDateString() === now.toDateString() || b.status !== 'accepted';
   });
-  const history  = bookings.filter((b) => [BOOKING_STATUS.COMPLETED, BOOKING_STATUS.CANCELLED, BOOKING_STATUS.EXPIRED].includes(b.status));
+  const history  = bookings.filter((b) => HISTORY_STATUSES.includes(b.status));
 
   // Show spinner only when there's genuinely nothing to display yet (cache not yet seeded)
   if (loading && bookings.length === 0) return <View style={c.centered}><ScissorsLoader size="large" color="dark" /></View>;

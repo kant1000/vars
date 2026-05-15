@@ -456,7 +456,7 @@ export default function BookingDetailScreen() {
   const cfg = STATUS_CONFIG[booking.status];
   const hasMap = booking.user_location_lat != null && booking.user_location_lng != null;
   const hasAccess = booking.access_building || booking.access_floor || booking.access_flat || booking.access_code;
-  const isTerminal = [BOOKING_STATUS.COMPLETED, BOOKING_STATUS.CANCELLED, BOOKING_STATUS.EXPIRED, BOOKING_STATUS.DISPUTED].includes(booking.status);
+  const isTerminal = ([BOOKING_STATUS.COMPLETED, BOOKING_STATUS.CANCELLED, BOOKING_STATUS.EXPIRED, BOOKING_STATUS.DISPUTED] as BookingStatus[]).includes(booking.status);
 
   return (
     <View style={[s.container, { paddingTop: insets.top }]}>

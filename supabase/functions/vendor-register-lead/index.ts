@@ -70,48 +70,33 @@ Deno.serve(async (req: Request) => {
       return errorResponse('Invalid email address');
     }
 
-    const { count: pioneerLeadCount } = await supabase
-      .from('vendor_leads')
-      .select('id', { count: 'exact', head: true })
-      .eq('pioneer', true);
-
-    const spotsUsed      = pioneerLeadCount ?? 0;
-    const spotsRemaining = Math.max(0, PIONEER_MAX - spotsUsed);
-    const isPioneer      = spotsRemaining > 0;
-
-    // Check for duplicate email
-    const { data: existing } = await supabase
-      .from('vendor_leads')
-      .select('id, pioneer, waitlist')
-      .eq('email', email.toLowerCase().trim())
-      .maybeSingle();
-
-    if (existing) {
-      return jsonResponse({
-        status:             existing.pioneer ? 'pioneer' : 'waitlist',
-        spots_remaining:    isPioneer ? spotsRemaining : 0,
-        already_registered: true,
+    // Atomic pioneer slot grant via DB function — prevents race conditions
+    const { data: regRows, error: regError } = await supabase
+      .rpc('register_vendor_lead', {
+        p_full_name:    full_name.trim(),
+        p_email:        email.toLowerCase().trim(),
+        p_phone:        phone.trim(),
+        p_service_type: service_type.trim(),
+        p_location:     location.trim(),
+        p_pioneer_max:  PIONEER_MAX,
       });
+
+    if (regError || !regRows?.[0]) {
+      console.error('register_vendor_lead rpc error:', regError);
+      return errorResponse('Registration failed — please try again', 500);
     }
 
-    // Insert lead — return ID so we can create the outreach record
-    const { data: newLead, error: insertError } = await supabase
-      .from('vendor_leads')
-      .insert({
-        full_name:    full_name.trim(),
-        email:        email.toLowerCase().trim(),
-        phone:        phone.trim(),
-        service_type: service_type.trim(),
-        location:     location.trim(),
-        pioneer:      isPioneer,
-        waitlist:     !isPioneer,
-      })
-      .select('id')
-      .single();
+    const reg           = regRows[0];
+    const newLead       = { id: reg.lead_id as string };
+    const isPioneer     = reg.is_pioneer as boolean;
+    const spotsRemaining = reg.spots_remaining as number;
 
-    if (insertError || !newLead) {
-      console.error('vendor_leads insert error:', insertError);
-      return errorResponse('Registration failed — please try again', 500);
+    if (reg.already_existed) {
+      return jsonResponse({
+        status:             isPioneer ? 'pioneer' : 'waitlist',
+        spots_remaining:    spotsRemaining,
+        already_registered: true,
+      });
     }
 
     // Queue Day 0 welcome email — auto-approved, ready to deliver when provider is live
@@ -119,7 +104,7 @@ Deno.serve(async (req: Request) => {
       full_name.trim(),
       service_type.trim(),
       isPioneer,
-      Math.max(0, spotsRemaining - 1), // remaining after this registration
+      spotsRemaining,
     );
 
     const { error: outreachError } = await supabase
@@ -140,11 +125,9 @@ Deno.serve(async (req: Request) => {
       console.error('vendor-register-lead: outreach insert failed:', outreachError.message);
     }
 
-    const newSpotsRemaining = isPioneer ? Math.max(0, spotsRemaining - 1) : 0;
-
     return jsonResponse({
       status:          isPioneer ? 'pioneer' : 'waitlist',
-      spots_remaining: newSpotsRemaining,
+      spots_remaining: spotsRemaining,
     });
   } catch (err) {
     console.error('vendor-register-lead error:', err);

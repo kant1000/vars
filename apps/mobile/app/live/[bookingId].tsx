@@ -64,9 +64,10 @@ const STATUS_CONFIG: Record<BookingStatus, { label: string; color: string; Icon:
   arrived:          { label: 'Vendor has arrived',   color: Colors.statusArrived,   Icon: PinIcon },
   service_rendered: { label: 'Service complete',     color: Colors.primary,         Icon: SparkleIcon },
   completed:        { label: 'All done',             color: Colors.statusCompleted, Icon: StarIcon },
-  cancelled:        { label: 'Cancelled',            color: Colors.statusCancelled, Icon: XCircleIcon },
-  expired:          { label: 'Expired',              color: Colors.statusExpired,   Icon: ClockIcon },
-  disputed:         { label: 'Under review',         color: Colors.statusDisputed,  Icon: WarningIcon },
+  cancelled:          { label: 'Cancelled',            color: Colors.statusCancelled, Icon: XCircleIcon },
+  expired:            { label: 'Expired',              color: Colors.statusExpired,   Icon: ClockIcon },
+  disputed:           { label: 'Under review',         color: Colors.statusDisputed,  Icon: WarningIcon },
+  rescheduled_pending:{ label: 'Reschedule pending',   color: Colors.statusPending,   Icon: HourglassIcon },
 };
 
 const STATUS_ORDER: BookingStatus[] = [
@@ -382,7 +383,7 @@ export default function LiveScreen() {
           // Only count as a miss if we're in an active tracking status and had a prior location
           if (
             cur?.vendor_live_lat != null &&
-            [BOOKING_STATUS.ON_WAY, BOOKING_STATUS.ARRIVED].includes(cur?.status ?? '' as BookingStatus)
+            ([BOOKING_STATUS.ON_WAY, BOOKING_STATUS.ARRIVED] as BookingStatus[]).includes(cur?.status ?? '' as BookingStatus)
           ) {
             staleLocCount.current += 1;
             if (staleLocCount.current >= 3) setStaleLocWarning(true);
@@ -408,7 +409,7 @@ export default function LiveScreen() {
   const cancelBooking = () => {
     if (!session || !booking) return;
     // Cancellation is only permitted while pending or accepted — not once vendor is on their way
-    if (![BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED].includes(booking.status)) return;
+    if (!([BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED] as BookingStatus[]).includes(booking.status)) return;
 
     Alert.alert(
       'Cancel booking?',
@@ -485,7 +486,7 @@ export default function LiveScreen() {
   }
 
   const cfg = STATUS_CONFIG[booking.status] ?? STATUS_CONFIG.pending;
-  const showMap = [BOOKING_STATUS.ON_WAY, BOOKING_STATUS.ARRIVED].includes(booking.status)
+  const showMap = ([BOOKING_STATUS.ON_WAY, BOOKING_STATUS.ARRIVED] as BookingStatus[]).includes(booking.status)
     && booking.vendor_live_lat != null && booking.vendor_live_lng != null;
 
   const minsUntil = minutesUntil(booking.scheduled_at);
@@ -496,9 +497,9 @@ export default function LiveScreen() {
 
   const canConfirm = booking.status === BOOKING_STATUS.SERVICE_RENDERED;
   // Customer can only cancel before vendor departs — once on_way or later it's locked
-  const canCancel  = [BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED].includes(booking.status);
-  const canDispute = [BOOKING_STATUS.ON_WAY, BOOKING_STATUS.ARRIVED, BOOKING_STATUS.SERVICE_RENDERED].includes(booking.status);
-  const isTerminal = [BOOKING_STATUS.COMPLETED, BOOKING_STATUS.CANCELLED, BOOKING_STATUS.EXPIRED, BOOKING_STATUS.DISPUTED].includes(booking.status);
+  const canCancel  = ([BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED] as BookingStatus[]).includes(booking.status);
+  const canDispute = ([BOOKING_STATUS.ON_WAY, BOOKING_STATUS.ARRIVED, BOOKING_STATUS.SERVICE_RENDERED] as BookingStatus[]).includes(booking.status);
+  const isTerminal = ([BOOKING_STATUS.COMPLETED, BOOKING_STATUS.CANCELLED, BOOKING_STATUS.EXPIRED, BOOKING_STATUS.DISPUTED] as BookingStatus[]).includes(booking.status);
 
   return (
     <View style={[s.container, { paddingTop: insets.top }]}>

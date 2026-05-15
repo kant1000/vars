@@ -15,7 +15,7 @@ import { fmtPrice, fmtLongDate } from '@/lib/format';
 
 interface Payout {
   id: string;
-  amount_kobo: number;
+  vendor_amount_kobo: number;
   status: string;
   created_at: string;
   booking_id: string;
@@ -37,13 +37,13 @@ export default function EarningsScreen() {
   const load = async () => {
     const { data } = await supabase
       .from('payout_history')
-      .select('id, amount_kobo, status, created_at, booking_id, bookings(service_name)')
+      .select('id, vendor_amount_kobo, status, created_at, booking_id, bookings(service_name)')
       .order('created_at', { ascending: false })
       .limit(50);
 
     setPayouts((data ?? []).map((p: any) => ({
       id: p.id,
-      amount_kobo: p.amount_kobo,
+      vendor_amount_kobo: p.vendor_amount_kobo,
       status: p.status,
       created_at: p.created_at,
       booking_id: p.booking_id,
@@ -55,8 +55,8 @@ export default function EarningsScreen() {
 
   useEffect(() => { load(); }, []);
 
-  const totalKobo   = payouts.filter((p) => p.status === 'success').reduce((s, p) => s + p.amount_kobo, 0);
-  const pendingKobo = payouts.filter((p) => p.status === 'pending').reduce((s, p) => s + p.amount_kobo, 0);
+  const totalKobo   = payouts.filter((p) => p.status === 'success').reduce((s, p) => s + p.vendor_amount_kobo, 0);
+  const pendingKobo = payouts.filter((p) => p.status === 'pending').reduce((s, p) => s + p.vendor_amount_kobo, 0);
 
   if (loading) return <View style={s.centered}><ScissorsLoader size="small" color="dark" /></View>;
 
@@ -102,7 +102,7 @@ export default function EarningsScreen() {
                 <Text style={s.rowDate}>{fmtLongDate(p.created_at)}</Text>
               </View>
               <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                <Text style={s.rowAmount}>{fmtPrice(p.amount_kobo)}</Text>
+                <Text style={s.rowAmount}>{fmtPrice(p.vendor_amount_kobo)}</Text>
                 <View style={[s.statusPill, { backgroundColor: (STATUS_COLOR[p.status] ?? Colors.textMuted) + '20' }]}>
                   <Text style={[s.statusText, { color: STATUS_COLOR[p.status] ?? Colors.textMuted }]}>
                     {p.status}

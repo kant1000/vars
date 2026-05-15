@@ -1,36 +1,7 @@
 'use client';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const ANON_KEY     = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-async function patchOutreach(id: string, patch: Record<string, unknown>) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/vendor_lead_outreach?id=eq.${id}`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      apikey: ANON_KEY,
-      Authorization: `Bearer ${ANON_KEY}`,
-      Prefer: 'return=minimal',
-    },
-    body: JSON.stringify(patch),
-  });
-  return res.ok;
-}
-
-async function markLeadOutreach(leadId: string) {
-  await fetch(`${SUPABASE_URL}/rest/v1/vendor_leads?id=eq.${leadId}`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      apikey: ANON_KEY,
-      Authorization: `Bearer ${ANON_KEY}`,
-      Prefer: 'return=minimal',
-    },
-    body: JSON.stringify({ last_outreach: new Date().toISOString() }),
-  });
-}
+import { updateOutreach, markLeadOutreach } from './actions';
 
 interface Props {
   record:  any;
@@ -46,9 +17,8 @@ export default function OutreachActions({ record, adminId }: Props) {
 
   const act = async (patch: Record<string, unknown>) => {
     setLoading(true);
-    await patchOutreach(record.id, patch);
-    setLoading(false);
-    setEditing(false);
+    try { await updateOutreach(record.id, patch); }
+    finally { setLoading(false); setEditing(false); }
     router.refresh();
   };
 
@@ -114,13 +84,16 @@ export default function OutreachActions({ record, adminId }: Props) {
         disabled={loading}
         onClick={async () => {
           setLoading(true);
-          await patchOutreach(record.id, {
-            status:              'sent',
-            sent_at:             new Date().toISOString(),
-            provider_message_id: `phase-a-${record.id}`,
-          });
-          await markLeadOutreach(record.lead_id);
-          setLoading(false);
+          try {
+            await updateOutreach(record.id, {
+              status:              'sent',
+              sent_at:             new Date().toISOString(),
+              provider_message_id: `phase-a-${record.id}`,
+            });
+            await markLeadOutreach(record.lead_id);
+          } finally {
+            setLoading(false);
+          }
           router.refresh();
         }}
       >

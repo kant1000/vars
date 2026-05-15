@@ -17,12 +17,11 @@ export async function requireAdmin() {
   const { data: { user }, error } = await admin.auth.getUser(accessToken);
   if (error || !user) return null;
 
-  // Check admin_users table
+  // Check admin_users table (id is PK = auth.users.id)
   const { data: adminRow } = await admin
     .from('admin_users')
-    .select('id, email, role')
-    .eq('email', user.email!)
-    .eq('is_active', true)
+    .select('id, email')
+    .eq('id', user.id)
     .single();
 
   return adminRow ?? null;

@@ -2,26 +2,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import OutreachActions from './OutreachActions';
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const ANON_KEY     = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-async function patchMany(ids: string[], patch: Record<string, unknown>) {
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/vendor_lead_outreach?id=in.(${ids.join(',')})`,
-    {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: ANON_KEY,
-        Authorization: `Bearer ${ANON_KEY}`,
-        Prefer: 'return=minimal',
-      },
-      body: JSON.stringify(patch),
-    }
-  );
-  return res.ok;
-}
+import { updateManyOutreach } from './actions';
 
 interface Props {
   records: any[];
@@ -46,9 +27,9 @@ export default function OutreachTable({ records, adminId }: Props) {
   const bulkAct = async (patch: Record<string, unknown>) => {
     if (selected.size === 0) return;
     setLoading(true);
-    await patchMany(Array.from(selected), patch);
+    try { await updateManyOutreach(Array.from(selected), patch); }
+    finally { setLoading(false); }
     setSelected(new Set());
-    setLoading(false);
     router.refresh();
   };
 

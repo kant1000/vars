@@ -2,38 +2,11 @@
 // ============================================================
 // VARS Admin — Dispute resolution actions (client component)
 // Options: mark under_review, refund_user, pay_vendor, split.
-// Calls Supabase REST + paystack-settle/release edge fns.
+// Uses server actions — no client-side service-role key.
 // ============================================================
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-
-const SUPABASE_URL     = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SERVICE_ROLE_KEY = process.env.NEXT_PUBLIC_ADMIN_SERVICE_KEY ?? '';
-
-async function patchDispute(disputeId: string, patch: Record<string, any>) {
-  await fetch(`${SUPABASE_URL}/rest/v1/disputes?id=eq.${disputeId}`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      apikey: SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
-      Prefer: 'return=minimal',
-    },
-    body: JSON.stringify(patch),
-  });
-}
-
-async function callEdgeFn(fnName: string, body: Record<string, any>) {
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/${fnName}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
-    },
-    body: JSON.stringify(body),
-  });
-  return res.ok;
-}
+import { updateDispute, callSettlementEdgeFn } from './actions';
 
 export default function DisputeActions({
   disputeId, bookingId, currentStatus,
@@ -43,34 +16,34 @@ export default function DisputeActions({
   currentStatus: string;
 }) {
   const router  = useRouter();
-  const [notes, setNotes]     = useState('');
+  const [notes,   setNotes]   = useState('');
   const [loading, setLoading] = useState(false);
 
   const resolve = async (resolution: 'refund_user' | 'pay_vendor' | 'split') => {
     setLoading(true);
-    // 1. Update dispute record
-    await patchDispute(disputeId, {
-      status: 'resolved',
-      resolution,
-      admin_notes: notes.trim() || null,
-    });
+    try {
+      await updateDispute(disputeId, {
+        status:      'resolved',
+        resolution,
+        admin_notes: notes.trim() || null,
+      });
 
-    // 2. Trigger appropriate payment action
-    if (resolution === 'refund_user') {
-      await callEdgeFn('paystack-release', { booking_id: bookingId, trigger: 'admin_dispute' });
-    } else if (resolution === 'pay_vendor') {
-      await callEdgeFn('paystack-settle', { booking_id: bookingId, trigger: 'admin_dispute' });
+      if (resolution === 'refund_user') {
+        await callSettlementEdgeFn('paystack-release', bookingId);
+      } else if (resolution === 'pay_vendor') {
+        await callSettlementEdgeFn('paystack-settle', bookingId);
+      }
+      // 'split' requires a custom manual Paystack operation — admin handles out-of-band
+    } finally {
+      setLoading(false);
     }
-    // 'split' requires a custom manual Paystack operation — admin handles out-of-band
-
-    setLoading(false);
     router.refresh();
   };
 
   const markUnderReview = async () => {
     setLoading(true);
-    await patchDispute(disputeId, { status: 'under_review' });
-    setLoading(false);
+    try { await updateDispute(disputeId, { status: 'under_review' }); }
+    finally { setLoading(false); }
     router.refresh();
   };
 

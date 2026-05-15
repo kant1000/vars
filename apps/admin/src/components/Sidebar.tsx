@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { logoutAction } from '@/app/login/actions';
 
 const NAV = [
   { href: '/dashboard', icon: '📊', label: 'Dashboard' },
@@ -27,6 +28,16 @@ export default function Sidebar() {
           {n.label}
         </Link>
       ))}
+      <form action={logoutAction} style={{ marginTop: 'auto' }}>
+        <button
+          type="submit"
+          className="sidebar-link"
+          style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer' }}
+        >
+          <span className="icon">↩</span>
+          Sign out
+        </button>
+      </form>
     </aside>
   );
 }
