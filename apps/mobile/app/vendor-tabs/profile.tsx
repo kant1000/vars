@@ -36,8 +36,8 @@ interface PortfolioPhoto {
 }
 
 const CONSENT_LABEL: Record<string, { text: string; color: string }> = {
-  unverified: { text: 'Unverified', color: Colors.textMuted },
-  pending:    { text: 'Awaiting approval', color: Colors.warning },
+  unverified: { text: 'Uploaded', color: Colors.textMuted },
+  pending:    { text: 'Sent to client', color: Colors.warning },
   approved:   { text: 'Verified', color: Colors.success },
 };
 
@@ -94,9 +94,9 @@ export default function VendorProfileScreen() {
     confirmedToday;
 
   const zoneStatusLabel = () => {
-    if (!zoneConfigured) return { text: 'Not set up', color: Colors.textMuted };
-    if (!zoneInfo?.auto_accept_enabled) return { text: 'Disabled', color: Colors.textMuted };
-    if (zoneInfo?.auto_accept_paused_due_to_drift) return { text: 'Paused — outside zone', color: Colors.warning };
+    if (!zoneConfigured) return { text: 'No zone set', color: Colors.textMuted };
+    if (!zoneInfo?.auto_accept_enabled) return { text: 'Off', color: Colors.textMuted };
+    if (zoneInfo?.auto_accept_paused_due_to_drift) return { text: 'Outside your zone', color: Colors.warning };
     if (!confirmedToday) return { text: 'Needs daily confirmation', color: Colors.warning };
     return { text: `Active · ${zoneInfo.auto_accept_zone_radius_km} km radius`, color: Colors.success };
   };
@@ -266,7 +266,7 @@ export default function VendorProfileScreen() {
 
               {!canAddUnverified && totalPhotoCount < 10 && (
                 <Text style={s.photoHint}>
-                  Max 3 unverified photos. Add more via completed bookings.
+                  Your starter photos are set. Complete bookings to add verified photos.
                 </Text>
               )}
               {totalPhotoCount >= 10 && (

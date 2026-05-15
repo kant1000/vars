@@ -16,6 +16,7 @@ VARS is a mobile marketplace that connects customers in Lagos with verified beau
 - [Mobile App Screens](#mobile-app-screens)
 - [Payment Flow](#payment-flow)
 - [Auto-Accept System](#auto-accept-system)
+- [Copy Voice & Tone](#copy-voice--tone)
 - [Getting Started](#getting-started)
 - [Environment Variables](#environment-variables)
 - [Deployment](#deployment)
@@ -619,6 +620,56 @@ A scheduled cron fires every 15 minutes. Any `service_rendered` booking where `a
 - User and vendor notified
 
 **Dependency:** auto-release only fires once the vendor has marked the booking as `service_rendered`. If the vendor never taps "Service rendered," `auto_release_at` is irrelevant and the funds remain in escrow. To avoid this, 15 minutes after the scheduled service end time the same cron sends a one-time push notification to the vendor reminding them to mark the job complete. The vendor's jobs screen also shows a persistent in-app banner for any `arrived` booking past its scheduled end time.
+
+---
+
+## Copy Voice & Tone
+
+All user-facing copy — notifications, status labels, in-app hints, error states — follows one principle: **lead with forward momentum, not with failure or judgment**.
+
+### The Rule
+
+Never frame a state as a deficit. Frame it as what happens next, what the user can do, or what is already true.
+
+| Instead of | Write |
+|---|---|
+| `"Unverified"` (badge) | `"Uploaded"` |
+| `"Awaiting approval"` (badge) | `"Sent to client"` |
+| `"Not set up"` | `"No zone set"` |
+| `"Disabled"` | `"Off"` |
+| `"Paused — outside zone"` | `"Outside your zone"` |
+| `"Identity check didn't go through"` | `"Let's try that again"` |
+| `"Make sure your ID is..."` | `"For best results: ID well-lit..."` |
+| `"Something went wrong"` (button) | `"Report an issue"` |
+| `"Your vendor did not respond in time"` | `"This booking expired"` |
+| `"couldn't confirm this time"` | `"isn't available for this slot"` |
+| `"didn't approve this photo"` | `"preferred not to include this photo"` |
+| `"didn't respond within 72 hours"` | `"72-hour window closed"` |
+| `"didn't accept your suggested time"` | `"went with a different time"` |
+| `"wasn't confirmed in time"` | `"expired before it was confirmed"` |
+| `"Awaiting vendor"` | `"Confirming..."` |
+| `"if something went wrong"` | `"if you need to raise a dispute"` |
+| `"deleted permanently"` | `"removed from their profile entirely"` |
+
+### Patterns to avoid
+
+**Passive blame** — `"wasn't confirmed"`, `"didn't respond"`, `"couldn't verify"` places failure on the subject. Describe the state neutrally (`"expired"`, `"window closed"`) or flip to forward framing (`"needs one more try"`).
+
+**Imperative criticism** — `"Make sure you..."` in an error state reads as accusation. Use `"For best results:"` instead.
+
+**Deficit labels** — Badges and status chips that brand something as insufficient (`"Unverified"`, `"Disabled"`, `"Awaiting"`) should describe the current state neutrally or point toward the next positive state.
+
+**Consequence-led copy** — `"If you decline, the photo is deleted permanently"` leads with loss. Lead with the action: `"Declining removes this photo from their profile entirely."`
+
+### Where copy lives
+
+| Copy type | File |
+|---|---|
+| Push & in-app notifications | `supabase/functions/_shared/notifications.ts` |
+| Lead outreach messages | `supabase/functions/_shared/lead-copy.ts` |
+| In-app status labels & hints | Inline in each screen component |
+
+Re-read this section before adding or editing anything in `notifications.ts` or any user-facing string.
 
 ---
 

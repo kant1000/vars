@@ -142,8 +142,8 @@ export default function ConsentScreen() {
       <View style={[styles.centered, { paddingTop: insets.top }]}>
         <Text style={styles.errorText}>
           {photo.consent_state === 'approved'
-            ? 'You have already approved this photo.'
-            : 'This photo request is no longer active.'}
+            ? 'This photo is already live on their profile.'
+            : 'This photo request has already expired.'}
         </Text>
         <TouchableOpacity onPress={() => router.replace('/(tabs)')} style={styles.backBtn}>
           <Text style={styles.backBtnText}>Back to home</Text>
@@ -192,7 +192,7 @@ export default function ConsentScreen() {
       </View>
 
       <Text style={styles.hint}>
-        If you decline, the photo is deleted permanently and won't appear anywhere.
+        Declining removes this photo from their profile entirely.
       </Text>
     </View>
   );

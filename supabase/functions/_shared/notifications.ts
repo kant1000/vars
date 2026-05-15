@@ -93,7 +93,7 @@ export function msg_vendorAccepts(vendorName: string, date: string, time: string
 export function msg_vendorDeclines(vendorName: string) {
   return {
     title: 'Vendor unavailable',
-    body: `Your vendor couldn't confirm this time. Let's find you another one.`,
+    body: `${vendorName} isn't available for this slot. Let's find you another one.`,
   };
 }
 
@@ -142,7 +142,7 @@ export function msg_serviceRendered(vendorName: string) {
 export function msg_autoReleaseWarning(vendorName: string) {
   return {
     title: 'Payment releasing soon',
-    body: `We'll release payment to ${vendorName} in 30 minutes. Raise an issue if something went wrong.`,
+    body: `We'll release payment to ${vendorName} in 30 minutes. Tap here if you need to raise a dispute.`,
   };
 }
 
@@ -185,14 +185,14 @@ export function msg_vendor_newBooking(clientFirstName: string, service: string, 
 export function msg_vendor_reminder30min(clientFirstName: string) {
   return {
     title: 'Booking needs a response',
-    body: `${clientFirstName} is waiting. You have 30 minutes to accept or the booking expires.`,
+    body: `30 minutes left to confirm ${clientFirstName}'s booking. Accept now to secure it.`,
   };
 }
 
 export function msg_vendor_bookingExpired() {
   return {
     title: 'Booking expired',
-    body: `This booking wasn't confirmed in time and has been cancelled. The customer has been refunded.`,
+    body: `This booking expired before it was confirmed. The customer has been fully refunded.`,
   };
 }
 
@@ -248,7 +248,7 @@ export function msg_vendor_verificationApproved() {
 export function msg_vendor_verificationFailed(reason: string) {
   return {
     title: 'Verification needs another try',
-    body: `We couldn't verify your ID. ${reason}. Tap to retry — it only takes 2 minutes.`,
+    body: `Your verification needs one more try. ${reason}. Tap to retry — it only takes 2 minutes.`,
   };
 }
 
@@ -341,15 +341,15 @@ export function msg_vendor_consentApproved() {
 
 export function msg_vendor_consentDeclined() {
   return {
-    title: 'Photo not approved',
-    body: `Your client didn't approve this photo. That's okay — it has been removed.`,
+    title: 'Photo removed',
+    body: `Your client preferred not to include this photo. It's been removed from your profile.`,
   };
 }
 
 export function msg_vendor_consentExpired() {
   return {
     title: 'Photo request expired',
-    body: `Your client didn't respond to the photo request within 72 hours. The photo has been removed.`,
+    body: `The 72-hour window for this photo request closed. The photo has been removed from your profile.`,
   };
 }
 
@@ -371,15 +371,15 @@ export function msg_reschedule_accepted_vendor(clientFirstName: string, day: str
 
 export function msg_reschedule_declined_vendor(clientFirstName: string) {
   return {
-    title: 'Reschedule declined',
-    body: `${clientFirstName} didn't accept your suggested time. The booking has been cancelled and they've been fully refunded.`,
+    title: 'Reschedule not taken up',
+    body: `${clientFirstName} went with a different time. The booking has been cancelled and they've been fully refunded.`,
   };
 }
 
 export function msg_reschedule_expired_vendor(clientFirstName: string) {
   return {
     title: 'Reschedule expired',
-    body: `Your reschedule suggestion for ${clientFirstName} was not accepted in time. The booking has been cancelled.`,
+    body: `The reschedule window for ${clientFirstName}'s booking closed. The booking has been cancelled.`,
   };
 }
 

@@ -82,6 +82,11 @@ Keep this file under 200 lines total. Add project-specific rules below these 12.
 - Never alter migration files that have already been applied.
 - Never force-push main.
 
+### Copy Voice & Tone
+- Before writing any notification or UI copy, re-read the [Copy Voice & Tone](README.md#copy-voice--tone) section.
+- Lead with forward momentum, not failure. "Let's try that again" not "Identity check didn't go through". "Confirming..." not "Awaiting vendor". "Outside your zone" not "Paused — outside zone".
+- Passive blame and deficit labels (`"Unverified"`, `"couldn't"`, `"didn't"`, `"wasn't"`) are banned from user-facing copy.
+
 ### Constants and Types
 - `BookingStatus` type and `BOOKING_STATUS` constant live in `packages/shared/src/constants.ts` and `types.ts`.
 - Mobile and admin import from `@vars/shared`. Edge functions import from `supabase/functions/_shared/constants.ts` (Deno cannot resolve workspace packages — keep the mirror in sync manually).

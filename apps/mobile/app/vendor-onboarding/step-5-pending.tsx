@@ -4,7 +4,7 @@
 // kyc_status: 'pending' → 'verified' or 'rejected' via Youverify webhook.
 // Polls every 8 seconds and navigates once a terminal status is reached.
 // ============================================================
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   Animated, Easing,
@@ -19,6 +19,8 @@ const POLL_INTERVAL_MS = 8000;
 export default function Step5Pending() {
   const { user } = useAuth();
   const pulse = useRef(new Animated.Value(1)).current;
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [isLive, setIsLive] = useState(false);
 
   useEffect(() => {
     Animated.loop(
@@ -40,25 +42,27 @@ export default function Step5Pending() {
         .single();
 
       if (data?.kyc_status === 'verified') {
-        router.replace('/(vendor-tabs)');
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        setIsLive(true);
       } else if (data?.kyc_status === 'rejected') {
         router.replace('/vendor-onboarding/step-4-kyc');
       }
     };
 
     const interval = setInterval(poll, POLL_INTERVAL_MS);
+    intervalRef.current = interval;
     return () => clearInterval(interval);
   }, [user]);
 
   return (
     <View style={styles.container}>
-      {/* Animated dot */}
       <Animated.View style={[styles.orb, { transform: [{ scale: pulse }] }]} />
 
-      <Text style={styles.title}>You're in the queue.</Text>
+      <Text style={styles.title}>{isLive ? 'You\'re live.' : 'You\'re in the queue.'}</Text>
       <Text style={styles.body}>
-        We're reviewing your profile and verification. Most vendors go live within 24 hours.
-        We'll send you a notification the moment you're approved.
+        {isLive
+          ? 'Your profile and portfolio are now visible to customers. Time to get your first booking.'
+          : 'We\'re reviewing your profile and verification. Most vendors go live within 24 hours. We\'ll send you a notification the moment you\'re approved.'}
       </Text>
 
       <View style={styles.steps}>
@@ -66,20 +70,21 @@ export default function Step5Pending() {
         <Row icon="✓" text="Services set" done />
         <Row icon="✓" text="Portfolio uploaded" done />
         <Row icon="✓" text="Identity & bank verified" done />
-        <Row icon="⏳" text="VARS review — in progress" />
+        <Row icon={isLive ? '✓' : '⏳'} text={isLive ? 'VARS review — approved' : 'VARS review — in progress'} done={isLive} />
       </View>
 
       <Text style={styles.note}>
-        While you wait, make sure your phone is on and notifications are enabled.
-        Your first client could be right around the corner.
+        {isLive
+          ? 'Your first client could find you today. Make sure notifications are on.'
+          : 'While you wait, make sure your phone is on and notifications are enabled. Your first client could be right around the corner.'}
       </Text>
 
       <TouchableOpacity
         style={styles.button}
-        onPress={() => router.replace('/')}
+        onPress={() => isLive ? router.replace('/(vendor-tabs)') : router.replace('/')}
         activeOpacity={0.85}
       >
-        <Text style={styles.buttonText}>Back to home</Text>
+        <Text style={styles.buttonText}>{isLive ? 'Let\'s go' : 'Back to home'}</Text>
       </TouchableOpacity>
     </View>
   );

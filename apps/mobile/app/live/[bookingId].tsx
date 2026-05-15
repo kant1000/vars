@@ -58,7 +58,7 @@ interface BookingData {
 
 // ── Status config ────────────────────────────────────────────
 const STATUS_CONFIG: Record<BookingStatus, { label: string; color: string; Icon: React.ComponentType<{ size?: number; color?: string }> }> = {
-  pending:          { label: 'Awaiting vendor',      color: Colors.statusPending,   Icon: HourglassIcon },
+  pending:          { label: 'Confirming...',         color: Colors.statusPending,   Icon: HourglassIcon },
   accepted:         { label: 'Booking confirmed',    color: Colors.statusAccepted,  Icon: CheckCircleIcon },
   on_way:           { label: 'Vendor on their way',  color: Colors.statusOnWay,     Icon: CarIcon },
   arrived:          { label: 'Vendor has arrived',   color: Colors.statusArrived,   Icon: PinIcon },

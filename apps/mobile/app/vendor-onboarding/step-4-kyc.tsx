@@ -227,12 +227,12 @@ export default function Step4Kyc() {
 
           {kycState === 'failed' && (
             <View style={styles.errorCallout}>
-              <Text style={styles.errorCalloutTitle}>Identity check didn't go through</Text>
+              <Text style={styles.errorCalloutTitle}>Let's try that again</Text>
               {kycErrorReason ? (
                 <Text style={styles.errorCalloutBody}>{kycErrorReason}</Text>
               ) : null}
               <Text style={styles.errorCalloutHint}>
-                Make sure your ID is valid and well-lit, with all four corners visible. Take your selfie in natural light.
+                For best results: ID well-lit with all four corners visible, selfie in natural light.
               </Text>
             </View>
           )}
@@ -251,7 +251,7 @@ export default function Step4Kyc() {
               {kycState === 'loading'
                 ? <ScissorsLoader size="small" color="light" />
                 : <Text style={styles.kycButtonText}>
-                    {kycState === 'failed' ? 'Try identity check again' : 'Start identity check'}
+                    {kycState === 'failed' ? 'Try again' : 'Start identity check'}
                   </Text>}
             </TouchableOpacity>
           )}

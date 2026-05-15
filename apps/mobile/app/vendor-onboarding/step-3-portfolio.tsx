@@ -104,7 +104,7 @@ export default function Step3Portfolio() {
 
       <View style={styles.note}>
         <Text style={styles.noteText}>
-          These photos will show on your profile as "Unverified" until clients approve them from their completed bookings.
+          After each booking, you can ask clients to verify a photo from your session. Verified photos carry the most weight on your profile.
         </Text>
       </View>
 
