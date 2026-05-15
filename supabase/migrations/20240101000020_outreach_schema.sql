@@ -55,11 +55,11 @@ CREATE POLICY "vlo_admin_all"
 -- ── 4. RLS: extend vendor_leads for admin reads/updates ─────
 
 -- Admins can read all leads
-CREATE POLICY IF NOT EXISTS "vendor_leads_admin_select"
+CREATE POLICY "vendor_leads_admin_select"
   ON vendor_leads FOR SELECT
   USING (is_admin());
 
 -- Admins can update leads (lead_state, last_outreach, converted)
-CREATE POLICY IF NOT EXISTS "vendor_leads_admin_update"
+CREATE POLICY "vendor_leads_admin_update"
   ON vendor_leads FOR UPDATE
   USING (is_admin()) WITH CHECK (is_admin());

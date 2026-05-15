@@ -25,17 +25,15 @@ async function getAlerts(): Promise<SystemAlert[]> {
 
 async function getStats() {
   const db = adminClient();
-  const [vendors, bookings, disputes, revenue] = await Promise.all([
+  const [vendors, bookings, disputes] = await Promise.all([
     db.from('vendors').select('id, kyc_status', { count: 'exact', head: false }),
     db.from('bookings').select('id, status, service_price_kobo', { count: 'exact', head: false }),
     db.from('disputes').select('id, status', { count: 'exact', head: false }),
-    db.from('payout_history').select('amount_kobo').eq('status', 'success'),
   ]);
 
   const vendorData    = vendors.data    ?? [];
   const bookingData   = bookings.data   ?? [];
   const disputeData   = disputes.data   ?? [];
-  const payoutData    = revenue.data    ?? [];
 
   const totalVendors    = vendorData.length;
   const pendingKyc      = vendorData.filter((v) => v.kyc_status === 'pending').length;
