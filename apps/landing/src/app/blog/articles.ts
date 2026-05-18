@@ -25,11 +25,11 @@ export const articles: Article[] = [
     readTime: '8 min read',
     image: '/blog/the-culture-of-shame.png',
     imageAlt: 'Man in thought at a table',
-    body: `<p>Two sisters sit in the same room. Same argument. One gives her version of events and the other shakes her head. Then the second speaks, and the first says "when?" She was right there. She watched the whole thing. She has no memory of it.</p>
+    body: `<p>Two sisters sit in the same room. Same argument. One gives her version of events and the other shakes her head. When the second has finished speaking, the first looks up: "When did that happen?" She had been present the whole time. She watched it unfold. She has no memory of it.</p>
 
-<p>The insight from watching this happen is simple and exact: the mind locks like a missile. Once it decides what it wants to see, no amount of evidence from the outside will move it.</p>
+<p>The mind does not record what it has decided not to see. Once it settles on a reading of events, no evidence from outside will move it. From the inside, this feels like certainty.</p>
 
-<p>Scale that from a family argument to a country of 200 million, and something starts to make sense about how Nigerians relate to one another.</p>
+<p>Take that from one family argument to a country of 200 million, and something about how Nigerians relate to one another comes into focus.</p>
 
 <h2>The Culture Nobody Named</h2>
 
@@ -77,7 +77,9 @@ export const articles: Article[] = [
 
 <p>Schools can teach love the same way they teach mathematics. Repeat it every year from primary school to graduation and something accumulates. They can teach collaboration instead of ranking. They can teach public behaviour, emotional intelligence, how to disagree without humiliating. They can end the practice of students punishing students, which exists nowhere in the education systems of countries that Nigerians keep pointing to as models.</p>
 
-<p>A society that addresses its shame does not become soft. It becomes confident enough to stop performing and start building.</p>`,
+<p>A society that addresses its shame does not become soft. It becomes confident enough to stop performing and start building.</p>
+
+<p><em>The conversation this piece draws from is <a href="https://www.youtube.com/watch?v=EMAgbt3m5Gs" target="_blank" rel="noopener noreferrer">available here</a>.</em></p>`,
     related: ['talent-without-trust', 'family-tax-trap', 'compounding-is-obvious'],
   },
   {
@@ -85,11 +87,11 @@ export const articles: Article[] = [
     title: 'Lagos Has the Talent. The Infrastructure Is What\'s Missing.',
     cardTitle: 'The talent is there. The trust is not.',
     gist: "The trust gap between a Lagos stylist and their next client has nothing to do with skill. It never did.",
-    category: 'Money & Investing',
+    category: 'Vars',
     author: 'Seyi Ibitoye',
     date: 'May 25, 2026',
     readTime: '6 min read',
-    image: 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=1200&q=80',
+    image: '/blog/talent-without-trust.png',
     imageAlt: 'Lagos barber at work',
     body: `<p>A Lagos barber arrives at a home visit. The client has made food. He films himself at the table, caption reading: "Went for HomeServices. Them give me this kind food. Shey them go pay me bayi?" The clip circulates widely. The comments fill with people who know exactly what that anxiety feels like.</p>
 

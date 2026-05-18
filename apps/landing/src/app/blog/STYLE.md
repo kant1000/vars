@@ -104,7 +104,7 @@ Add a new entry to the `articles` array in `apps/landing/src/app/blog/articles.t
   title: 'Article Title Here',
   gist: 'One or two sentences. The sharpest version of the thesis.',
   category: 'Mindset',
-  // valid categories: Mindset | Money & Investing | Crypto | Society | Family | The Long Game
+  // valid categories: Mindset | Money & Investing | Crypto | Society | Family | The Long Game | Vars
   author: 'Seyi Ibitoye',
   date: 'Month DD, YYYY',
   readTime: 'X min read',
