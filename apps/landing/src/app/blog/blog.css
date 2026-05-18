@@ -290,6 +290,23 @@ img { display: block; width: 100%; height: auto; }
 .article-body li { margin-bottom: 8px; }
 .article-body a { color: var(--accent); }
 
+/* inline figures */
+.article-figure {
+  margin: 40px 0;
+}
+.article-figure img {
+  width: 100%;
+  height: auto;
+  border-radius: 2px;
+  border: 1px solid var(--rule);
+}
+.article-figure figcaption {
+  font-size: 12px;
+  color: var(--mid);
+  margin-top: 10px;
+  line-height: 1.5;
+}
+
 /* pull quote */
 .pull-quote {
   margin: 48px -24px;

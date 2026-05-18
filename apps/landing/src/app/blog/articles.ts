@@ -158,6 +158,95 @@ export const articles: Article[] = [
     related: ['the-culture-of-shame', 'why-nigerians-save-wrong', 'compounding-is-obvious'],
   },
   {
+    slug: 'the-number-in-your-head',
+    title: 'The Number in Your Head Is Lying to You',
+    cardTitle: 'The number in your head is lying to you.',
+    gist: "Nigerians were never taught inflation. Not the real version. The one that has been quietly eating every salary, every savings account, and every pension for the last 40 years.",
+    category: 'Money & Investing',
+    author: 'Seyi Ibitoye',
+    date: 'May 19, 2026',
+    readTime: '7 min read',
+    image: '/blog/the-number-in-your-head.png',
+    imageAlt: 'Man sitting at a table with naira notes',
+    keywords: [
+      'inflation Nigeria',
+      'Nigerian inflation explained',
+      'purchasing power naira',
+      'naira devaluation history',
+      'Nigeria pension scheme problems',
+      'inflation and savings Nigeria',
+      'what inflation does to money',
+      'Nigerian financial literacy',
+    ],
+    body: `<p>A civil servant saves ₦300,000. It takes years. He knows exactly what he wants to do with it: buy his son a keke, something to generate income with. He has done the maths. By the time the money is ready, the keke costs ₦2.7 million. The ₦300,000 can cover a set of tyres and a few spare parts.</p>
+
+<p>No one stole the money. No one moved it. The number sat where he put it, and still he could not buy what he was saving for.</p>
+
+<p>This is inflation. Not a newspaper story. Not a government statistic. The specific experience of saving a real number for a real thing and finding that the number no longer reaches.</p>
+
+<h2>The Number We Never Update</h2>
+
+<p>Every adult carries a number in their head. A figure that represents safety, comfort, or arrival: a salary target, a savings goal, a threshold that means things are okay. The number was formed at a specific moment. It was probably realistic then. And then it stopped updating.</p>
+
+<p>The price of everything around the number kept moving. The number did not. The gap between what it was supposed to buy and what it actually buys today: that is inflation. It is not abstract. It is the distance between the plan and the reality.</p>
+
+<p>Nigerian schools never named this gap. Inflation appeared in textbooks as a word to define, a cause of something, an effect of something else. Not as a force with a rate and a direction that is working on you right now, whether you think about it or not.</p>
+
+<h2>What the Keke Shows</h2>
+
+<p>A brand new keke in 2013 cost between ₦300,000 and ₦600,000. In 2025, it costs ₦2.7 million to ₦3 million. A savings target that would have bought one outright twelve years ago now covers a set of tyres and a few spare parts.</p>
+
+<p>A 50kg bag of rice cost ₦2,500 in 2000. In 2024, the same bag hit ₦95,000 to ₦105,000. That is a 40-fold increase over 24 years.</p>
+
+<p>The minimum wage in 1981 was ₦125 per month. At that year's exchange rate, that was roughly $200. The 2024 minimum wage of ₦70,000 converts to approximately $48 at current rates. The 2024 worker earns four times less in real dollar terms than their 1981 equivalent, despite 43 years of nominal increases.</p>
+
+<div class="pull-quote"><p>"No one announced the day a savings target became an amount that barely covers repairs. The number on the wall kept looking like progress."</p></div>
+
+<h2>Every Currency Does This. The Naira Just Does It Faster.</h2>
+
+<p>The Naira has lost 99.8% of its purchasing power since the early 1970s. Most people who lived through it felt it. Few had a name for it.</p>
+
+<figure class="article-figure">
+  <img src="/blog/the-number-in-your-head-naira.png" alt="Naira to dollar exchange rate, 1973 to 2026" />
+  <figcaption>The Naira went from stronger than the dollar in 1973 to ₦1,600 per dollar by 2025. Source: CBN / Trading Economics.</figcaption>
+</figure>
+
+<p>The dollar has lost roughly 85% in the same period. The pound has lost 94%. These are the world's most trusted reserve currencies, backed by the largest economies on earth.</p>
+
+<p>The direction is the same for all three. The speed is not. The difference between the Naira chart and the dollar chart is the difference between a blowout and a slow puncture.</p>
+
+<figure class="article-figure">
+  <img src="/blog/the-number-in-your-head-usd.png" alt="USD purchasing power decline since 1971" />
+  <figcaption>The US dollar has lost roughly 85% of its purchasing power since 1971. Source: Bureau of Labor Statistics CPI data.</figcaption>
+</figure>
+
+<figure class="article-figure">
+  <img src="/blog/the-number-in-your-head-gbp.png" alt="GBP purchasing power decline since 1971" />
+  <figcaption>The British pound has lost 94% of its purchasing power since 1971. Source: Bank of England / ONS.</figcaption>
+</figure>
+
+<h2>The Pension Does the Same Thing, Slower</h2>
+
+<p>The Contributory Pension Scheme was introduced in 2004. Workers contribute 18% of gross salary monthly. The money is held, invested mostly in government bonds, and paid out at retirement. The assumption is that time and compounding will handle the rest.</p>
+
+<p>What the scheme does not account for: Nigeria's average inflation rate from 1960 to 2025 was 16.4% per year. Government bonds in 2024 yielded between 18% and 28%. Inflation that year was 34.8%. Every bond in every pension fund returned a negative real result in 2024. The nominal balance grew. The real balance shrank.</p>
+
+<p>The average monthly pension payout under the current system is approximately ₦35,000. That is not a retirement. It is a demonstration of what happens when a number grows in one column while everything it was supposed to buy grows faster in another.</p>
+
+<p>A pensioner receiving ₦200,000 per month in 2020 would have needed ₦600,000 per month by 2024 to maintain the same standard of living. Most pensions do not adjust. The law does not require them to. The system is not broken. This is the system.</p>
+
+<h2>The Only Useful Response</h2>
+
+<p>The answer is not to stop saving. It is to understand what saving in naira, in a high-inflation economy, over time, actually produces.</p>
+
+<p>A naira savings account earning 6% while inflation runs at 16% is not growing. It is losing, with extra steps. The question worth asking is not how much is in the account. It is what that amount represents in real terms, and what it will represent in ten years.</p>
+
+<p>Savings in dollars, in assets that gain real value, in a viable business: that is where the gap between good intentions and actual financial security is either closed or left open.</p>
+
+<p>The number in your head was formed in a specific year, under specific conditions. It has been lying to you about your progress ever since. The first step is simply knowing it is there.</p>`,
+    related: ['why-nigerians-save-wrong', 'compounding-is-obvious', 'bitcoin-only-hedge'],
+  },
+  {
     slug: 'why-nigerians-save-wrong',
     title: 'Why Most Nigerians Save Wrong (And What To Do Instead)',
     cardTitle: 'Saving in naira is a slow leak.',
