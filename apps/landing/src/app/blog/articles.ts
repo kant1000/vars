@@ -91,7 +91,7 @@ export const articles: Article[] = [
 <p>A society that addresses its shame does not become soft. It becomes confident enough to stop performing and start building.</p>
 
 <p><em>The conversation this piece draws from is <a href="https://www.youtube.com/watch?v=EMAgbt3m5Gs" target="_blank" rel="noopener noreferrer">available here</a>.</em></p>`,
-    related: ['talent-without-trust', 'family-tax-trap', 'compounding-is-obvious'],
+    related: ['talent-without-trust', 'the-number-in-your-head', 'family-tax-trap'],
   },
   {
     slug: 'talent-without-trust',
@@ -155,7 +155,7 @@ export const articles: Article[] = [
 <p>The barber in that video no longer has to wonder. The hairstylist who has been excellent at their craft for five years but invisible beyond their neighbourhood now has a profile anyone in Lagos can find, book, and pay through without a WhatsApp negotiation.</p>
 
 <p>The market is large and the talent is there. What has been missing is the layer between them that makes trust transferable to a stranger. That layer is now being built.</p>`,
-    related: ['the-culture-of-shame', 'why-nigerians-save-wrong', 'compounding-is-obvious'],
+    related: ['the-culture-of-shame', 'the-number-in-your-head', 'why-nigerians-save-wrong'],
   },
   {
     slug: 'the-number-in-your-head',
@@ -244,7 +244,7 @@ export const articles: Article[] = [
 <p>Savings in dollars, in assets that gain real value, in a viable business: that is where the gap between good intentions and actual financial security is either closed or left open.</p>
 
 <p>The number in your head was formed in a specific year, under specific conditions. It has been lying to you about your progress ever since. The first step is simply knowing it is there.</p>`,
-    related: ['why-nigerians-save-wrong', 'compounding-is-obvious', 'bitcoin-only-hedge'],
+    related: ['the-culture-of-shame', 'talent-without-trust', 'why-nigerians-save-wrong'],
   },
   {
     slug: 'why-nigerians-save-wrong',
