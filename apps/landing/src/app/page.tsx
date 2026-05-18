@@ -333,6 +333,8 @@ export default async function HomePage() {
           <a href="/privacy">Privacy</a>
           &nbsp;&nbsp;|&nbsp;&nbsp;
           <a href="/terms">Terms</a>
+          &nbsp;&nbsp;|&nbsp;&nbsp;
+          <a href="/blog">Blog</a>
         </p>
         <p style={{ marginTop: 16 }}>
           &copy; {new Date().getFullYear()} VARS. All rights reserved.
