@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import type { Metadata } from 'next';
 import { articles, getArticle } from '../articles';
 import ShareBar from '../ShareBar';
@@ -119,8 +120,14 @@ export default function ArticlePage({ params }: { params: { slug: string } }) {
         </div>
 
         <div className="article-hero">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={article.image} alt={article.imageAlt} />
+          <Image
+            src={article.image}
+            alt={article.imageAlt}
+            fill
+            style={{ objectFit: 'cover' }}
+            sizes="(max-width: 728px) 100vw, 680px"
+            priority
+          />
         </div>
 
         {article.body ? (

@@ -207,7 +207,7 @@ export const articles: Article[] = [
 <p>The Naira has lost 99.8% of its purchasing power since the early 1970s. Most people who lived through it felt it. Few had a name for it.</p>
 
 <figure class="article-figure">
-  <img src="/blog/the-number-in-your-head-naira.png" alt="Naira to dollar exchange rate, 1973 to 2026" />
+  <img src="/blog/the-number-in-your-head-naira.png" alt="Naira to dollar exchange rate, 1973 to 2026" loading="lazy" />
   <figcaption>The Naira went from stronger than the dollar in 1973 to ₦1,600 per dollar by 2025. Source: CBN / Trading Economics.</figcaption>
 </figure>
 
@@ -216,12 +216,12 @@ export const articles: Article[] = [
 <p>The direction is the same for all three. The speed is not. The difference between the Naira chart and the dollar chart is the difference between a blowout and a slow puncture.</p>
 
 <figure class="article-figure">
-  <img src="/blog/the-number-in-your-head-usd.png" alt="USD purchasing power decline since 1971" />
+  <img src="/blog/the-number-in-your-head-usd.png" alt="USD purchasing power decline since 1971" loading="lazy" />
   <figcaption>The US dollar has lost roughly 85% of its purchasing power since 1971. Source: Bureau of Labor Statistics CPI data.</figcaption>
 </figure>
 
 <figure class="article-figure">
-  <img src="/blog/the-number-in-your-head-gbp.png" alt="GBP purchasing power decline since 1971" />
+  <img src="/blog/the-number-in-your-head-gbp.png" alt="GBP purchasing power decline since 1971" loading="lazy" />
   <figcaption>The British pound has lost 94% of its purchasing power since 1971. Source: Bank of England / ONS.</figcaption>
 </figure>
 

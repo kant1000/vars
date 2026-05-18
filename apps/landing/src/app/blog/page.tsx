@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import type { Metadata } from 'next';
 import { articles } from './articles';
 
@@ -55,8 +56,13 @@ export default function BlogIndexPage() {
               <article key={article.slug} className="article-card">
                 <Link href={`/blog/${article.slug}`} className="card-img-link">
                   <div className="card-img">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={article.image} alt={article.imageAlt} />
+                    <Image
+                      src={article.image}
+                      alt={article.imageAlt}
+                      fill
+                      style={{ objectFit: 'cover' }}
+                      sizes="(max-width: 640px) 100vw, (max-width: 900px) 45vw, 280px"
+                    />
                   </div>
                 </Link>
                 <div className="card-meta-row">
@@ -81,8 +87,13 @@ export default function BlogIndexPage() {
             {comingSoonArticles.map((article) => (
               <article key={article.slug} className="article-card article-card--muted">
                 <div className="card-img">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={article.image} alt={article.imageAlt} />
+                  <Image
+                    src={article.image}
+                    alt={article.imageAlt}
+                    fill
+                    style={{ objectFit: 'cover' }}
+                    sizes="(max-width: 640px) 100vw, (max-width: 900px) 45vw, 280px"
+                  />
                 </div>
                 <div className="card-meta-row">
                   <span className="card-cat">{article.category}</span>
