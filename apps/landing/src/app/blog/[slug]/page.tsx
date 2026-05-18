@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import { articles, getArticle } from '../articles';
 import ShareBar from '../ShareBar';
 import ProgressBar from '../ProgressBar';
+import CommentSection from '../CommentSection';
 
 const SITE = 'https://www.bookwithvars.com';
 
@@ -161,6 +162,8 @@ export default function ArticlePage({ params }: { params: { slug: string } }) {
             </div>
           </div>
         )}
+
+        {isLive && <CommentSection slug={article.slug} />}
 
         <div className="cta-block">
           <div className="cta-top">From the team behind this blog</div>

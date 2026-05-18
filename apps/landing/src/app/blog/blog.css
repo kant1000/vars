@@ -420,6 +420,95 @@ img { display: block; width: 100%; height: auto; }
 }
 .related-item a:hover { color: var(--accent); }
 
+/* ─── COMMENTS ──────────────────────────────────────────── */
+.comment-section {
+  margin-top: 64px;
+  padding-top: 32px;
+  border-top: 1px solid var(--rule);
+}
+.comment-heading {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mid);
+  margin-bottom: 24px;
+}
+.comment-empty {
+  font-size: 14px;
+  color: var(--mid);
+  margin-bottom: 32px;
+}
+.comment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-bottom: 40px;
+}
+.comment-item {
+  padding: 20px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.comment-item:first-child { padding-top: 0; }
+.comment-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.comment-name { font-size: 14px; font-weight: 700; color: var(--black); }
+.comment-date { font-size: 12px; color: var(--mid); }
+.comment-body { font-size: 15px; line-height: 1.65; color: var(--black); }
+.comment-form { margin-top: 32px; }
+.comment-form-heading { font-size: 13px; font-weight: 700; color: var(--black); margin-bottom: 20px; }
+.comment-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.comment-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.comment-form-row .comment-field { margin-bottom: 0; }
+.comment-field label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--mid);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.comment-email-note { font-weight: 400; text-transform: none; letter-spacing: 0; }
+.comment-field input,
+.comment-field textarea {
+  font-size: 15px;
+  font-family: inherit;
+  color: var(--black);
+  background: var(--white);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 10px 12px;
+  outline: none;
+  transition: border-color 0.15s;
+  resize: vertical;
+}
+.comment-field input:focus,
+.comment-field textarea:focus { border-color: var(--black); }
+.comment-error { font-size: 13px; color: #c0392b; margin-bottom: 12px; }
+.comment-success { font-size: 13px; color: #2e7d32; margin-bottom: 12px; }
+.comment-submit {
+  background: var(--black);
+  color: var(--white);
+  font-size: 14px;
+  font-weight: 700;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity 0.15s;
+}
+.comment-submit:hover { opacity: 0.8; }
+.comment-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
 /* ─── CTA BLOCK ──────────────────────────────────────────── */
 .cta-block {
   margin-top: 64px;
@@ -494,4 +583,5 @@ footer.site-footer a:hover { color: var(--black); }
   .pull-quote { margin: 40px 0; }
   .related-list { grid-template-columns: 1fr; }
   .section-block + .section-block { margin-top: 40px; }
+  .comment-form-row { grid-template-columns: 1fr; }
 }
