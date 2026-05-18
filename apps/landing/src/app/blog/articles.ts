@@ -1,6 +1,7 @@
 export interface Article {
   slug: string;
   title: string;
+  cardTitle?: string;
   gist: string;
   category: string;
   author: string;
@@ -16,6 +17,7 @@ export const articles: Article[] = [
   {
     slug: 'the-culture-of-shame',
     title: 'Nigeria Has Over 250 Cultures. Shame Is the One We All Share.',
+    cardTitle: 'Shame is the one culture we all share.',
     gist: "It hides in plain sight. Nigerians practise it across every tribe, every generation, every dinner table. Nobody calls it what it is.",
     category: 'Society',
     author: 'Seyi Ibitoye',
@@ -81,6 +83,7 @@ export const articles: Article[] = [
   {
     slug: 'talent-without-trust',
     title: 'Lagos Has the Talent. The Infrastructure Is What\'s Missing.',
+    cardTitle: 'The talent is there. The trust is not.',
     gist: "The trust gap between a Lagos stylist and their next client has nothing to do with skill. It never did.",
     category: 'Money & Investing',
     author: 'Seyi Ibitoye',
@@ -132,6 +135,7 @@ export const articles: Article[] = [
   {
     slug: 'why-nigerians-save-wrong',
     title: 'Why Most Nigerians Save Wrong (And What To Do Instead)',
+    cardTitle: 'Saving in naira is a slow leak.',
     gist: "Saving in naira while inflation runs at 30% isn't discipline. It's a slow leak.",
     category: 'Money & Investing',
     author: 'Seyi Ibitoye',
@@ -145,6 +149,7 @@ export const articles: Article[] = [
   {
     slug: 'bitcoin-only-hedge',
     title: "Bitcoin Isn't Magic. But It Might Be the Only Hedge That Makes Sense Here.",
+    cardTitle: "Bitcoin is not magic. But it might be all you've got.",
     gist: "Not a prediction. A cold look at what crypto actually offers someone living in a devaluing currency.",
     category: 'Crypto',
     author: 'Seyi Ibitoye',
@@ -158,6 +163,7 @@ export const articles: Article[] = [
   {
     slug: 'ajo-problem',
     title: "The Ajo Problem: Why Our Best Financial Tool Has No App",
+    cardTitle: "Ajo is our best financial tool. Nobody talks about it.",
     gist: "Rotating savings circles predate every fintech startup. Why are we embarrassed by them?",
     category: 'Society',
     author: 'Seyi Ibitoye',
@@ -171,6 +177,7 @@ export const articles: Article[] = [
   {
     slug: 'family-tax-trap',
     title: "When Family Tax Becomes a Trap: Drawing a Line Without Burning It",
+    cardTitle: "Family tax can kill your 30s.",
     gist: "Supporting family is noble. Doing it without a plan is how ambition dies quietly in your 30s.",
     category: 'Family',
     author: 'Seyi Ibitoye',
@@ -184,6 +191,7 @@ export const articles: Article[] = [
   {
     slug: 'compounding-is-obvious',
     title: "Compounding Is Obvious. Why Don't More of Us Do It?",
+    cardTitle: "Everyone knows compounding works. Nobody does it.",
     gist: "Everyone knows compound interest works. Something else is stopping us. It is not math.",
     category: 'The Long Game',
     author: 'Seyi Ibitoye',

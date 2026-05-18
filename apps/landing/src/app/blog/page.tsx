@@ -10,6 +10,9 @@ export const metadata: Metadata = {
 };
 
 export default function BlogIndexPage() {
+  const liveArticles = articles.filter((a) => a.body !== null);
+  const comingSoonArticles = articles.filter((a) => a.body === null);
+
   return (
     <>
       <header className="site-header">
@@ -26,21 +29,56 @@ export default function BlogIndexPage() {
         <p className="long-game-tagline">Playing The Long Game.</p>
       </section>
 
-      <main className="article-grid">
-        {articles.map((article) => (
-          <article key={article.slug} className="article-card">
-            <div className="card-img">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={article.image} alt={article.imageAlt} />
-            </div>
-            <span className="card-cat">{article.category}</span>
-            <h2>
-              <Link href={`/blog/${article.slug}`}>{article.title}</Link>
-            </h2>
-            <p className="card-gist">{article.gist}</p>
-            <span className="card-meta">{article.readTime}</span>
-          </article>
-        ))}
+      <main>
+        <div className="section-block">
+          <div className="section-label-row">
+            <span className="section-label">Live now</span>
+          </div>
+          <div className="article-grid">
+            {liveArticles.map((article) => (
+              <article key={article.slug} className="article-card">
+                <Link href={`/blog/${article.slug}`} className="card-img-link">
+                  <div className="card-img">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={article.image} alt={article.imageAlt} />
+                  </div>
+                </Link>
+                <div className="card-meta-row">
+                  <span className="card-cat">{article.category}</span>
+                  <span className="badge badge-live">Live</span>
+                </div>
+                <h2>
+                  <Link href={`/blog/${article.slug}`}>{article.cardTitle ?? article.title}</Link>
+                </h2>
+                <p className="card-gist">{article.gist}</p>
+                <span className="card-meta">{article.readTime}</span>
+              </article>
+            ))}
+          </div>
+        </div>
+
+        <div className="section-block">
+          <div className="section-label-row">
+            <span className="section-label">Coming soon</span>
+          </div>
+          <div className="article-grid article-grid--muted">
+            {comingSoonArticles.map((article) => (
+              <article key={article.slug} className="article-card article-card--muted">
+                <div className="card-img">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={article.image} alt={article.imageAlt} />
+                </div>
+                <div className="card-meta-row">
+                  <span className="card-cat">{article.category}</span>
+                  <span className="badge badge-soon">Coming soon</span>
+                </div>
+                <h2>{article.cardTitle ?? article.title}</h2>
+                <p className="card-gist">{article.gist}</p>
+                <span className="card-meta">{article.readTime}</span>
+              </article>
+            ))}
+          </div>
+        </div>
       </main>
 
       <footer className="site-footer">
