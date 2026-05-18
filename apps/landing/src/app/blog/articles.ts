@@ -204,44 +204,32 @@ export const articles: Article[] = [
 
 <h2>Every Currency Does This. The Naira Just Does It Faster.</h2>
 
-<p>The Naira has lost 99.8% of its purchasing power since the early 1970s. Most people who lived through it felt it. Few had a name for it.</p>
+<p>The Naira was worth more than a dollar when it launched in 1973. One policy decision in 1986 — the Structural Adjustment Programme — sent it from ₦0.89 to ₦2 per dollar overnight. It never recovered. By 2025, one dollar costs ₦1,600. Every drop on this line is someone's salary, someone's savings, someone's plan that no longer reached.</p>
 
 <figure class="article-figure">
   <img src="/blog/the-number-in-your-head-naira.png" alt="Naira to dollar exchange rate, 1973 to 2026" loading="lazy" />
   <figcaption>The Naira went from stronger than the dollar in 1973 to ₦1,600 per dollar by 2025. Source: CBN / Trading Economics.</figcaption>
 </figure>
 
-<p>The dollar has lost roughly 85% in the same period. The pound has lost 94%. These are the world's most trusted reserve currencies, backed by the largest economies on earth.</p>
-
-<p>The direction is the same for all three. The speed is not. The difference between the Naira chart and the dollar chart is the difference between a blowout and a slow puncture.</p>
+<p>This is the currency most Nigerians reach for as a hedge. The US dollar has lost roughly 85% of its purchasing power since 1971 — the year America unlinked it from gold and made every dollar a government promise instead of a claim on something real. The line still goes one way.</p>
 
 <figure class="article-figure">
   <img src="/blog/the-number-in-your-head-usd.png" alt="USD purchasing power decline since 1971" loading="lazy" />
   <figcaption>The US dollar has lost roughly 85% of its purchasing power since 1971. Source: Bureau of Labor Statistics CPI data.</figcaption>
 </figure>
 
+<p>The British pound — the currency Nigeria was originally pegged to — has lost 94% since 1971. More than the dollar. The most trusted currencies on earth all move in the same direction. The Naira just moves faster.</p>
+
 <figure class="article-figure">
   <img src="/blog/the-number-in-your-head-gbp.png" alt="GBP purchasing power decline since 1971" loading="lazy" />
   <figcaption>The British pound has lost 94% of its purchasing power since 1971. Source: Bank of England / ONS.</figcaption>
 </figure>
 
-<h2>The Pension Does the Same Thing, Slower</h2>
-
-<p>The Contributory Pension Scheme was introduced in 2004. Workers contribute 18% of gross salary monthly. The money is held, invested mostly in government bonds, and paid out at retirement. The assumption is that time and compounding will handle the rest.</p>
-
-<p>What the scheme does not account for: Nigeria's average inflation rate from 1960 to 2025 was 16.4% per year. Government bonds in 2024 yielded between 18% and 28%. Inflation that year was 34.8%. Every bond in every pension fund returned a negative real result in 2024. The nominal balance grew. The real balance shrank.</p>
-
-<p>The average monthly pension payout under the current system is approximately ₦35,000. That is not a retirement. It is a demonstration of what happens when a number grows in one column while everything it was supposed to buy grows faster in another.</p>
-
-<p>A pensioner receiving ₦200,000 per month in 2020 would have needed ₦600,000 per month by 2024 to maintain the same standard of living. Most pensions do not adjust. The law does not require them to. The system is not broken. This is the system.</p>
+<p>The difference between the Naira chart and the dollar chart is not the direction. It is the speed. A blowout and a slow puncture both leave you stranded.</p>
 
 <h2>The Only Useful Response</h2>
 
-<p>The answer is not to stop saving. It is to understand what saving in naira, in a high-inflation economy, over time, actually produces.</p>
-
-<p>A naira savings account earning 6% while inflation runs at 16% is not growing. It is losing, with extra steps. The question worth asking is not how much is in the account. It is what that amount represents in real terms, and what it will represent in ten years.</p>
-
-<p>Savings in dollars, in assets that gain real value, in a viable business: that is where the gap between good intentions and actual financial security is either closed or left open.</p>
+<p>The answer is not to stop saving. It is to understand what saving in naira, in a high-inflation economy, over time, actually produces. A naira savings account earning 6% while inflation runs at 16% is not growing. It is losing, with extra steps.</p>
 
 <p>The number in your head was formed in a specific year, under specific conditions. It has been lying to you about your progress ever since. The first step is simply knowing it is there.</p>`,
     related: ['the-culture-of-shame', 'talent-without-trust', 'why-nigerians-save-wrong'],
