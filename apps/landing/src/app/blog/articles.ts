@@ -76,7 +76,58 @@ export const articles: Article[] = [
 <p>Schools can teach love the same way they teach mathematics. Repeat it every year from primary school to graduation and something accumulates. They can teach collaboration instead of ranking. They can teach public behaviour, emotional intelligence, how to disagree without humiliating. They can end the practice of students punishing students, which exists nowhere in the education systems of countries that Nigerians keep pointing to as models.</p>
 
 <p>A society that addresses its shame does not become soft. It becomes confident enough to stop performing and start building.</p>`,
-    related: ['why-nigerians-save-wrong', 'family-tax-trap', 'compounding-is-obvious'],
+    related: ['talent-without-trust', 'family-tax-trap', 'compounding-is-obvious'],
+  },
+  {
+    slug: 'talent-without-trust',
+    title: 'Lagos Has the Talent. The Infrastructure Is What\'s Missing.',
+    gist: "The trust gap between a Lagos stylist and their next client has nothing to do with skill. It never did.",
+    category: 'Money & Investing',
+    author: 'Seyi Ibitoye',
+    date: 'May 25, 2026',
+    readTime: '6 min read',
+    image: 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=1200&q=80',
+    imageAlt: 'Lagos barber at work',
+    body: `<p>A Lagos barber arrives at a home visit. The client has made food. He films himself at the table, caption reading: "Went for HomeServices. Them give me this kind food. Shey them go pay me bayi?" The clip circulates widely. The comments fill with people who know exactly what that anxiety feels like.</p>
+
+<p>That video is not really a joke. It is a structural failure compressed into six seconds.</p>
+
+<p>The best beauty professionals in Lagos are not struggling because they lack skill. They are struggling because the system around them has no way to prove that skill to a stranger, protect their time, or guarantee they get paid.</p>
+
+<h2>The People Nobody Can Find</h2>
+
+<p>There is likely an excellent barber within a few streets of most people in Lagos. The referral chain will never reach them. Discovery is capped at the size of whoever's WhatsApp contacts happen to include the right person.</p>
+
+<p>The dominant booking channel for independent stylists, MUAs, and barbers in Lagos is WhatsApp combined with Instagram DMs. There are no booking records, no confirmed appointments, no standardised pricing. A skilled professional working this way is, for practical purposes, invisible beyond their existing clients.</p>
+
+<p>This is not a small inefficiency in a small market. Nigeria's hair care market alone is projected to reach $1.31 billion in 2024, growing at over 10% annually. Fashion and beauty is among the top four categories in Nigeria's informal economy by number of businesses. The demand is there. The pipeline to it is not.</p>
+
+<h2>What a Booking Actually Costs a Stylist</h2>
+
+<p>A client DMs a stylist. Price is negotiated informally. The appointment is confirmed on WhatsApp with no deposit and no paper trail. On the day, either side may cancel with no consequence to them.</p>
+
+<p>If the client refuses to pay after a home visit, the stylist has spent between one and four hours in Lagos traffic, materials purchased out of pocket, and their skill, with no mechanism for recovery. A 2018 PayPal study found 58% of freelancers across four Southeast Asian markets had experienced non-payment. Nigeria, where 92% of the employed population works informally and gig work carries no legal protections, is unlikely to be better.</p>
+
+<p>The power is not equal. If the stylist cancels, the client is inconvenienced. If the client refuses to pay after a home visit, the stylist absorbs the full cost. And because the relationship is informal, seeking any kind of recourse risks being seen as the difficult one.</p>
+
+<div class="pull-quote"><p>"The income uplift came not from improving skill, but from attaching trust, visibility, and guaranteed payment infrastructure to the same skill."</p></div>
+
+<h2>What India Showed About Infrastructure</h2>
+
+<p>India had the same problem before Urban Company arrived. Skilled beauticians, no visibility, uncertain pricing, payment anxiety on both sides. The platform introduced verified profiles, in-app payment released after service completion, and ratings built from real completed jobs.</p>
+
+<p>Third-party analysis found that Urban Company salon partners earn roughly four times more than offline beauticians doing the same work. The income uplift came not from improving skill, but from attaching trust, visibility, and guaranteed payment infrastructure to the same skill.</p>
+
+<p>Talent was never the variable. Infrastructure was.</p>
+
+<h2>What Vars Is Building in Lagos</h2>
+
+<p>Vars connects Lagos stylists with clients for home service bookings. Clients pay through the platform before the visit. Payment is released to the stylist after the service is complete. Each stylist builds a verified profile with KYC checks and ratings earned from real completed jobs.</p>
+
+<p>The barber in that video no longer has to wonder. The hairstylist who has been excellent at their craft for five years but invisible beyond their neighbourhood now has a profile anyone in Lagos can find, book, and pay through without a WhatsApp negotiation.</p>
+
+<p>The market is large and the talent is there. What has been missing is the layer between them that makes trust transferable to a stranger. That layer is now being built.</p>`,
+    related: ['the-culture-of-shame', 'why-nigerians-save-wrong', 'compounding-is-obvious'],
   },
   {
     slug: 'why-nigerians-save-wrong',
@@ -89,7 +140,7 @@ export const articles: Article[] = [
     image: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=1200&q=80',
     imageAlt: 'Finance',
     body: null,
-    related: ['the-culture-of-shame', 'ajo-problem', 'compounding-is-obvious'],
+    related: ['talent-without-trust', 'ajo-problem', 'compounding-is-obvious'],
   },
   {
     slug: 'bitcoin-only-hedge',
@@ -102,7 +153,7 @@ export const articles: Article[] = [
     image: 'https://images.unsplash.com/photo-1518546305927-5a555bb7020d?w=1200&q=80',
     imageAlt: 'Crypto',
     body: null,
-    related: ['why-nigerians-save-wrong', 'ajo-problem', 'compounding-is-obvious'],
+    related: ['talent-without-trust', 'ajo-problem', 'compounding-is-obvious'],
   },
   {
     slug: 'ajo-problem',
@@ -115,7 +166,7 @@ export const articles: Article[] = [
     image: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=1200&q=80',
     imageAlt: 'Lagos',
     body: null,
-    related: ['the-culture-of-shame', 'why-nigerians-save-wrong', 'compounding-is-obvious'],
+    related: ['the-culture-of-shame', 'talent-without-trust', 'compounding-is-obvious'],
   },
   {
     slug: 'family-tax-trap',
@@ -128,7 +179,7 @@ export const articles: Article[] = [
     image: 'https://images.unsplash.com/photo-1511895426328-dc8714191011?w=1200&q=80',
     imageAlt: 'Family',
     body: null,
-    related: ['the-culture-of-shame', 'why-nigerians-save-wrong', 'compounding-is-obvious'],
+    related: ['the-culture-of-shame', 'talent-without-trust', 'compounding-is-obvious'],
   },
   {
     slug: 'compounding-is-obvious',
@@ -141,7 +192,7 @@ export const articles: Article[] = [
     image: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=1200&q=80',
     imageAlt: 'Long game',
     body: null,
-    related: ['the-culture-of-shame', 'why-nigerians-save-wrong', 'ajo-problem'],
+    related: ['the-culture-of-shame', 'talent-without-trust', 'ajo-problem'],
   },
 ];
 
