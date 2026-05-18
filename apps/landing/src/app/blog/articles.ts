@@ -21,7 +21,7 @@ export const articles: Article[] = [
     author: 'Seyi Ibitoye',
     date: 'May 18, 2026',
     readTime: '8 min read',
-    image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1200&q=80',
+    image: '/blog/the-culture-of-shame.png',
     imageAlt: 'Man in thought at a table',
     body: `<p>Two sisters sit in the same room. Same argument. One gives her version of events and the other shakes her head. Then the second speaks, and the first says "when?" She was right there. She watched the whole thing. She has no memory of it.</p>
 
