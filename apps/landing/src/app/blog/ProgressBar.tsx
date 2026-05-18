@@ -1,17 +1,29 @@
 'use client';
 import { useEffect, useState } from 'react';
 
+function getPct() {
+  const scrolled = window.scrollY;
+  const total = document.documentElement.scrollHeight - window.innerHeight;
+  return total > 0 ? Math.min((scrolled / total) * 100, 100) : 0;
+}
+
 export default function ProgressBar() {
   const [pct, setPct] = useState(0);
 
   useEffect(() => {
-    const onScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
-      const total = scrollHeight - clientHeight;
-      setPct(total > 0 ? (scrollTop / total) * 100 : 0);
+    const update = () => setPct(getPct());
+
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update, { passive: true });
+
+    const ro = new ResizeObserver(update);
+    ro.observe(document.body);
+
+    return () => {
+      window.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+      ro.disconnect();
     };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
   return <div className="progress-bar" style={{ width: `${pct}%` }} />;
