@@ -5,8 +5,9 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
-  ScrollView, Alert, Image, KeyboardAvoidingView, Platform,
+  ScrollView, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';

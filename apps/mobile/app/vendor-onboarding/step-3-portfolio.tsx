@@ -5,9 +5,10 @@
 // ============================================================
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, Image,
+  View, Text, StyleSheet, TouchableOpacity,
   ScrollView, Alert,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';

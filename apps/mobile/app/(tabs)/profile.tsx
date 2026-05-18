@@ -5,10 +5,11 @@
 // ============================================================
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Alert, Image, KeyboardAvoidingView,
+  Alert, KeyboardAvoidingView,
   Platform, RefreshControl, ScrollView, StyleSheet,
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

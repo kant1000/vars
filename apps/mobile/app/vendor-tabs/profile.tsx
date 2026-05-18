@@ -4,9 +4,10 @@
 // ============================================================
 import React, { useEffect, useState } from 'react';
 import {
-  Alert, Dimensions, Image, ScrollView,
+  Alert, Dimensions, ScrollView,
   StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

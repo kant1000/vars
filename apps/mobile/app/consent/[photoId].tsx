@@ -5,9 +5,10 @@
 // ============================================================
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Alert, Image, StyleSheet,
+  Alert, StyleSheet,
   Text, TouchableOpacity, View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -167,7 +168,7 @@ export default function ConsentScreen() {
         Only you can approve this.
       </Text>
 
-      <Image source={{ uri: publicUrl }} style={styles.photo} resizeMode="cover" />
+      <Image source={{ uri: publicUrl }} style={styles.photo} contentFit="cover" />
 
       <View style={styles.actions}>
         <TouchableOpacity

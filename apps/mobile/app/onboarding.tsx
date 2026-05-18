@@ -15,8 +15,8 @@ import {
   FlatList,
   ViewToken,
   StatusBar,
-  Image,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -94,7 +94,7 @@ export default function OnboardingScreen() {
             <Image
               source={item.image}
               style={styles.illustration}
-              resizeMode="cover"
+              contentFit="cover"
             />
 
             {/* Bottom content panel */}

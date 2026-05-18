@@ -6,10 +6,11 @@
 // ============================================================
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Dimensions, FlatList, Image,
+  Dimensions, FlatList,
   Pressable, ScrollView, StyleSheet, Text,
   TouchableOpacity, View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
