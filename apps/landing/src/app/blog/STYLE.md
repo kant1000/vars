@@ -110,7 +110,6 @@ Add a new entry to the `articles` array in `apps/landing/src/app/blog/articles.t
   readTime: 'X min read',
   image: '/blog/your-slug-here.jpg',
   imageAlt: 'Short image description',
-  imagePrompt: `...paste your generated prompt here for reference...`,
   body: `
     <p>...</p>
     <h2>Section heading as a complete thought</h2>
