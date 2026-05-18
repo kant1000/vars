@@ -74,6 +74,7 @@ Keep this file under 200 lines total. Add project-specific rules below these 12.
 - Before touching product behaviour, copy, payments, KYC, or business logic, read `docs/VARS_PROJECT_CONTEXT.md`.
 - Before any multi-file change, read `docs/codex/CLEANUP_ROADMAP.md`.
 - If unsure whether something is built, check `README.md` — it is the canonical record.
+- Before writing, editing, or transforming any Wide Awake blog post, read `apps/landing/src/app/blog/STYLE.md`.
 
 ### Absolute Off-Limits
 - Never modify `packages/shared/src/database.types.ts` — auto-generated, touch kills it.
