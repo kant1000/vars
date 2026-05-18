@@ -2,6 +2,10 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { articles, getArticle } from '../articles';
+import ShareBar from '../ShareBar';
+import ProgressBar from '../ProgressBar';
+
+const SITE = 'https://www.bookwithvars.com';
 
 export function generateStaticParams() {
   return articles.map((a) => ({ slug: a.slug }));
@@ -14,23 +18,31 @@ export function generateMetadata({
 }): Metadata {
   const article = getArticle(params.slug);
   if (!article) return {};
+
+  const isLive = article.body !== null;
+  const imageUrl = article.image.startsWith('/')
+    ? `${SITE}${article.image}`
+    : article.image;
+
   return {
     title: { absolute: `${article.title} | Wide Awake` },
     description: article.gist,
+    keywords: article.keywords,
     alternates: { canonical: `/blog/${article.slug}` },
+    robots: isLive ? undefined : { index: false, follow: false },
     openGraph: {
       title: article.title,
       description: article.gist,
       url: `/blog/${article.slug}`,
       type: 'article',
       siteName: 'Wide Awake by Vars',
-      images: [{ url: article.image, width: 1200, height: 675, alt: article.imageAlt }],
+      images: [{ url: imageUrl, width: 1200, height: 675, alt: article.imageAlt }],
     },
     twitter: {
       card: 'summary_large_image',
       title: article.title,
       description: article.gist,
-      images: [article.image],
+      images: [imageUrl],
     },
   };
 }
@@ -39,12 +51,46 @@ export default function ArticlePage({ params }: { params: { slug: string } }) {
   const article = getArticle(params.slug);
   if (!article) notFound();
 
+  const isLive = article.body !== null;
+  const imageUrl = article.image.startsWith('/')
+    ? `${SITE}${article.image}`
+    : article.image;
+
   const relatedArticles = article.related
     .map((slug) => articles.find((a) => a.slug === slug))
     .filter(Boolean);
 
+  const jsonLd = isLive
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'BlogPosting',
+        headline: article.title,
+        description: article.gist,
+        image: imageUrl,
+        author: { '@type': 'Person', name: article.author },
+        publisher: {
+          '@type': 'Organization',
+          name: 'Wide Awake by Vars',
+          url: SITE,
+        },
+        datePublished: new Date(article.date).toISOString().split('T')[0],
+        mainEntityOfPage: {
+          '@type': 'WebPage',
+          '@id': `${SITE}/blog/${article.slug}`,
+        },
+      }
+    : null;
+
   return (
     <>
+      {jsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      )}
+      <ProgressBar />
+
       <header className="site-header">
         <Link href="/blog" className="wordmark">Wide Awake</Link>
         <span className="byline">by Vars</span>
@@ -88,6 +134,8 @@ export default function ArticlePage({ params }: { params: { slug: string } }) {
             </p>
           </div>
         )}
+
+        {isLive && <ShareBar title={article.title} slug={article.slug} />}
 
         <div className="long-game-callout">
           <span className="long-game-label">The Long Game</span>

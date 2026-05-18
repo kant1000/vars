@@ -9,6 +9,7 @@ export interface Article {
   readTime: string;
   image: string;
   imageAlt: string;
+  keywords?: string[];
   body: string | null;
   related: string[];
 }
@@ -25,6 +26,16 @@ export const articles: Article[] = [
     readTime: '8 min read',
     image: '/blog/the-culture-of-shame.png',
     imageAlt: 'Man in thought at a table',
+    keywords: [
+      'shame in Nigerian society',
+      'Nigerian culture',
+      'Nigerian mindset',
+      'toxic culture Nigeria',
+      'Nigerian social norms',
+      'colonialism Nigeria psychology',
+      'Nigerian education system',
+      'Nigerian identity',
+    ],
     body: `<p>Two sisters sit in the same room. Same argument. One gives her version of events and the other shakes her head. When the second has finished speaking, the first looks up: "When did that happen?" She had been present the whole time. She watched it unfold. She has no memory of it.</p>
 
 <p>The mind does not record what it has decided not to see. Once it settles on a reading of events, no evidence from outside will move it. From the inside, this feels like certainty.</p>
@@ -93,6 +104,16 @@ export const articles: Article[] = [
     readTime: '6 min read',
     image: '/blog/talent-without-trust.png',
     imageAlt: 'Lagos barber at work',
+    keywords: [
+      'home service beauty Lagos',
+      'book stylist Lagos',
+      'Lagos barber home visit',
+      'Vars Lagos',
+      'hair stylist home service Lagos',
+      'beauty platform Nigeria',
+      'Lagos freelance stylist',
+      'beauty tech Nigeria',
+    ],
     body: `<p>A Lagos barber arrives at a home visit. The client has made food. He films himself at the table: "Went for HomeServices. Them give me this kind food. Shey them go pay me bayi?"</p>
 
 <p>The clip goes everywhere. Every comment is from someone who knows that feeling.</p>
