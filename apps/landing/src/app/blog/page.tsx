@@ -2,11 +2,27 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { articles } from './articles';
 
+const blogDescription =
+  "Wide Awake covers money, mindset, culture, and everything Nigerians aren't supposed to talk about openly.";
+
 export const metadata: Metadata = {
-  title: 'Wide Awake — A blog by Vars',
-  description:
-    "Wide Awake covers money, mindset, culture, and everything Nigerians aren't supposed to talk about openly.",
+  title: { absolute: 'Wide Awake — A blog by Vars' },
+  description: blogDescription,
   alternates: { canonical: '/blog' },
+  openGraph: {
+    title: 'Wide Awake — A blog by Vars',
+    description: blogDescription,
+    url: '/blog',
+    type: 'website',
+    siteName: 'Wide Awake by Vars',
+    images: [{ url: '/blog/the-culture-of-shame.png', width: 1200, height: 675, alt: 'Wide Awake — A blog by Vars' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Wide Awake — A blog by Vars',
+    description: blogDescription,
+    images: ['/blog/the-culture-of-shame.png'],
+  },
 };
 
 export default function BlogIndexPage() {

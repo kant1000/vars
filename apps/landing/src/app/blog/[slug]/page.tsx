@@ -15,9 +15,23 @@ export function generateMetadata({
   const article = getArticle(params.slug);
   if (!article) return {};
   return {
-    title: `${article.title} | Wide Awake`,
+    title: { absolute: `${article.title} | Wide Awake` },
     description: article.gist,
     alternates: { canonical: `/blog/${article.slug}` },
+    openGraph: {
+      title: article.title,
+      description: article.gist,
+      url: `/blog/${article.slug}`,
+      type: 'article',
+      siteName: 'Wide Awake by Vars',
+      images: [{ url: article.image, width: 1200, height: 675, alt: article.imageAlt }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: article.title,
+      description: article.gist,
+      images: [article.image],
+    },
   };
 }
 

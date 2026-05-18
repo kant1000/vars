@@ -93,11 +93,13 @@ export const articles: Article[] = [
     readTime: '6 min read',
     image: '/blog/talent-without-trust.png',
     imageAlt: 'Lagos barber at work',
-    body: `<p>A Lagos barber arrives at a home visit. The client has made food. He films himself at the table, caption reading: "Went for HomeServices. Them give me this kind food. Shey them go pay me bayi?" The clip circulates widely. The comments fill with people who know exactly what that anxiety feels like.</p>
+    body: `<p>A Lagos barber arrives at a home visit. The client has made food. He films himself at the table: "Went for HomeServices. Them give me this kind food. Shey them go pay me bayi?"</p>
 
-<p>That video is not really a joke. It is a structural failure compressed into six seconds.</p>
+<p>The clip goes everywhere. Every comment is from someone who knows that feeling.</p>
 
-<p>The best beauty professionals in Lagos are not struggling because they lack skill. They are struggling because the system around them has no way to prove that skill to a stranger, protect their time, or guarantee they get paid.</p>
+<p>That video is not a joke. It is a structural failure compressed into six seconds.</p>
+
+<p>The best beauty professionals in Lagos are not struggling because they lack skill. They are struggling because nothing around them can prove that skill to a stranger, protect their time, or guarantee they get paid.</p>
 
 <h2>The People Nobody Can Find</h2>
 
