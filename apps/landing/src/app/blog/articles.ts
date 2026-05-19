@@ -204,21 +204,21 @@ export const articles: Article[] = [
 
 <h2>Every Currency Does This. The Naira Just Does It Faster.</h2>
 
-<p>The Naira was worth more than a dollar when it launched in 1973. One policy decision in 1986 — the Structural Adjustment Programme — sent it from ₦0.89 to ₦2 per dollar overnight. It never recovered. By 2025, one dollar costs ₦1,600. Every drop on this line is someone's salary, someone's savings, someone's plan that no longer reached.</p>
+<p>The Naira was worth more than a dollar when it launched in 1973. The Structural Adjustment Programme in 1986 sent it from ₦0.89 to ₦2 per dollar overnight. It never recovered. By 2025, one dollar costs ₦1,600. Every drop on this line is someone's salary, someone's savings, someone's plan that no longer reached.</p>
 
 <figure class="article-figure">
   <img src="/blog/the-number-in-your-head-naira.png" alt="Naira to dollar exchange rate, 1973 to 2026" loading="lazy" />
   <figcaption>The Naira went from stronger than the dollar in 1973 to ₦1,600 per dollar by 2025. Source: CBN / Trading Economics.</figcaption>
 </figure>
 
-<p>This is the currency most Nigerians reach for as a hedge. The US dollar has lost roughly 85% of its purchasing power since 1971 — the year America unlinked it from gold and made every dollar a government promise instead of a claim on something real. The line still goes one way.</p>
+<p>This is the currency most Nigerians reach for as a hedge. The US dollar has lost roughly 85% of its purchasing power since 1971: the year America unlinked it from gold and made every dollar a government promise instead of a claim on something real. The line still goes one way.</p>
 
 <figure class="article-figure">
   <img src="/blog/the-number-in-your-head-usd.png" alt="USD purchasing power decline since 1971" loading="lazy" />
   <figcaption>The US dollar has lost roughly 85% of its purchasing power since 1971. Source: Bureau of Labor Statistics CPI data.</figcaption>
 </figure>
 
-<p>The British pound — the currency Nigeria was originally pegged to — has lost 94% since 1971. More than the dollar. The most trusted currencies on earth all move in the same direction. The Naira just moves faster.</p>
+<p>The British pound has lost 94% since 1971. This is the currency Nigeria was originally pegged to. More than the dollar. The most trusted currencies on earth all move in the same direction. The Naira just moves faster.</p>
 
 <figure class="article-figure">
   <img src="/blog/the-number-in-your-head-gbp.png" alt="GBP purchasing power decline since 1971" loading="lazy" />
