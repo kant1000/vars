@@ -211,7 +211,7 @@ export const articles: Article[] = [
   <figcaption>The Naira went from stronger than the dollar in 1973 to ₦1,600 per dollar by 2025. Source: CBN / Trading Economics.</figcaption>
 </figure>
 
-<p>This is the currency most Nigerians reach for as a hedge. The US dollar has lost roughly 85% of its purchasing power since 1971: the year America unlinked it from gold and made every dollar a government promise instead of a claim on something real. The line still goes one way.</p>
+<p>On 15 August 1971, Richard Nixon announced that America would no longer exchange dollars for gold. Every currency on earth became, from that evening, a government promise with no hard anchor. The US dollar has lost roughly 85% of its purchasing power since. This is the currency most Nigerians reach for as a hedge.</p>
 
 <figure class="article-figure">
   <img src="/blog/the-number-in-your-head-usd.png" alt="USD purchasing power decline since 1971" loading="lazy" />
