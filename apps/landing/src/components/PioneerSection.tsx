@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, FormEvent } from 'react';
 
 const PIONEER_MAX = 50;
 const EDGE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -7,17 +7,13 @@ const EDGE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
   : '';
 const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
 
-interface SpotsData {
-  spots_remaining: number;
-  spots_total: number;
-}
-
 interface Props {
-  initialSpots: number;
+  initialVendorCount: number;
 }
 
-export default function PioneerSection({ initialSpots }: Props) {
-  const [spots, setSpots] = useState(initialSpots);
+export default function PioneerSection({ initialVendorCount }: Props) {
+  const vendorCount = initialVendorCount;
+  const spotsRemaining = Math.max(0, PIONEER_MAX - vendorCount);
   const [form, setForm] = useState({
     full_name: '',
     email: '',
@@ -29,23 +25,6 @@ export default function PioneerSection({ initialSpots }: Props) {
   const [result, setResult] = useState<'pioneer' | 'waitlist' | null>(null);
   const [alreadyRegistered, setAlreadyRegistered] = useState(false);
   const [error, setError] = useState('');
-
-  // Refresh spot count on mount (hydrate with live data)
-  useEffect(() => {
-    if (!EDGE_URL) return;
-    fetch(EDGE_URL, {
-      headers: { Authorization: `Bearer ${ANON_KEY}` },
-    })
-      .then((r) => r.json())
-      .then((d: SpotsData) => {
-        if (typeof d.spots_remaining === 'number') {
-          setSpots(d.spots_remaining);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  const filledPct = Math.min(100, ((PIONEER_MAX - spots) / PIONEER_MAX) * 100);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -83,9 +62,6 @@ export default function PioneerSection({ initialSpots }: Props) {
 
       setResult(data.status);
       setAlreadyRegistered(data.already_registered ?? false);
-      if (typeof data.spots_remaining === 'number') {
-        setSpots(data.spots_remaining);
-      }
     } catch {
       setError('Network error — please check your connection and try again.');
     } finally {
@@ -106,57 +82,74 @@ export default function PioneerSection({ initialSpots }: Props) {
               Pioneer Programme
             </div>
             <h2 className="pioneer-title">
-              Be one of the first<br />50 VARS stylists.
+              {spotsRemaining > 0
+                ? <>Be one of the first<br />50 VARS stylists.</>
+                : <>Join VARS as a<br />Lagos stylist.</>}
             </h2>
             <p className="pioneer-sub">
-              Pioneers get a permanent badge that builds trust with every customer
-              and keep 100% of their first 3 bookings. After that, the standard
-              platform fee applies.
+              {spotsRemaining > 0
+                ? 'Pioneers get a permanent badge that builds trust with every customer and keep 100% of their first 3 bookings. After that, the standard platform fee applies.'
+                : 'The Pioneer cohort is complete. Register now to join Lagos\'s growing network of verified home beauty professionals.'}
             </p>
 
-            {/* Live spots counter */}
-            <div
-              className="spots-counter"
-              style={spots === 0 ? { opacity: 0.45 } : undefined}
-            >
-              <div>
-                <div className="spots-number">{spots}</div>
-              </div>
-              <div className="spots-bar-wrap">
-                <div className="spots-label">
-                  {spots === 0 ? 'Pioneer programme full' : 'Pioneer spots remaining'}<br />
-                  <span style={{ color: '#D4A017', fontWeight: 700 }}>
-                    {PIONEER_MAX - spots} of {PIONEER_MAX} claimed
-                  </span>
+            {/* Vendor count */}
+            {vendorCount > 0 && (
+              <div className="spots-counter" style={{ opacity: 0.55 }}>
+                <div>
+                  <div className="spots-number">{vendorCount}</div>
                 </div>
-                <div className="spots-bar-track">
-                  <div
-                    className="spots-bar-fill"
-                    style={{ width: `${filledPct}%` }}
-                  />
+                <div className="spots-bar-wrap">
+                  <div className="spots-label">stylists registered</div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Perks list */}
-            <ul className="pioneer-perks">
-              <li className="pioneer-perk">
-                <span className="perk-icon">0%</span>
-                Zero commission on your first 3 completed bookings
-              </li>
-              <li className="pioneer-perk">
-                <span className="perk-icon">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                  </svg>
-                </span>
-                Permanent Pioneer badge visible to every customer
-              </li>
-              <li className="pioneer-perk">
-                <span className="perk-icon">1</span>
-                Priority ranking in search results at launch
-              </li>
-            </ul>
+            {spotsRemaining > 0 ? (
+              <ul className="pioneer-perks">
+                <li className="pioneer-perk">
+                  <span className="perk-icon">0%</span>
+                  Zero commission on your first 3 completed bookings
+                </li>
+                <li className="pioneer-perk">
+                  <span className="perk-icon">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                    </svg>
+                  </span>
+                  Permanent Pioneer badge visible to every customer
+                </li>
+                <li className="pioneer-perk">
+                  <span className="perk-icon">1</span>
+                  Priority ranking in search results at launch
+                </li>
+              </ul>
+            ) : (
+              <ul className="pioneer-perks">
+                <li className="pioneer-perk">
+                  <span className="perk-icon">&#8358;</span>
+                  In-app payments released after every completed job
+                </li>
+                <li className="pioneer-perk">
+                  <span className="perk-icon">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 2L4 6v6c0 5 3.6 9.7 8 11 4.4-1.3 8-6 8-11V6L12 2z" strokeWidth="2" strokeLinejoin="round"/>
+                      <path d="M9 12l2 2 4-4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </span>
+                  Verified by VARS badge builds customer confidence
+                </li>
+                <li className="pioneer-perk">
+                  <span className="perk-icon">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="12" cy="12" r="9" strokeWidth="2"/>
+                      <path d="M12 7v5l3 3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </span>
+                  Your zone, your hours — full control over your availability
+                </li>
+              </ul>
+            )}
           </div>
 
           {/* Right: form */}
@@ -182,21 +175,21 @@ export default function PioneerSection({ initialSpots }: Props) {
                       ? "You're already registered as a Pioneer!"
                       : "You're a Pioneer!"
                     : alreadyRegistered
-                    ? "You're on the waitlist."
-                    : "You're on the waitlist!"}
+                    ? "You're already registered."
+                    : "You're registered!"}
                 </div>
                 <p className="form-success-sub">
                   {result === 'pioneer'
                     ? `Congratulations! You've secured a Pioneer spot. We'll reach out on WhatsApp with your onboarding steps so you can complete your stylist profile.`
-                    : `All Pioneer spots were claimed. You're on the waitlist and will be notified when new spots open. We'll send your next steps so your profile is ready for launch.`}
+                    : `We'll reach out on WhatsApp with your onboarding steps so you can complete your stylist profile.`}
                 </p>
               </div>
             ) : (
               <>
                 <div className="pioneer-form-title">
-                  {spots > 0
-                    ? `Claim your Pioneer spot`
-                    : 'Join the waitlist'}
+                  {spotsRemaining > 0
+                    ? 'Claim your Pioneer spot'
+                    : 'Register as a VARS stylist'}
                 </div>
                 <form onSubmit={handleSubmit} noValidate>
                   <div className="form-group">
@@ -307,9 +300,9 @@ export default function PioneerSection({ initialSpots }: Props) {
                   >
                     {submitting
                       ? 'Submitting...'
-                      : spots > 0
-                      ? `Claim your Pioneer spot (${spots} left)`
-                      : 'Join the waitlist'}
+                      : spotsRemaining > 0
+                      ? `Claim your Pioneer spot (${spotsRemaining} left)`
+                      : 'Register as a stylist'}
                   </button>
                 </form>
               </>

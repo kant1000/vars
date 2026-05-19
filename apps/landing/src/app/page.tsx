@@ -2,13 +2,12 @@ import PioneerSection from '@/components/PioneerSection';
 
 export const revalidate = 60;
 
-const PIONEER_MAX = 50;
 const siteUrl = 'https://www.bookwithvars.com';
 
-async function getPioneerSpotsRemaining(): Promise<number> {
+async function getVendorCount(): Promise<number> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !serviceKey) return PIONEER_MAX;
+  if (!supabaseUrl || !serviceKey) return 0;
 
   try {
     const res = await fetch(
@@ -23,13 +22,12 @@ async function getPioneerSpotsRemaining(): Promise<number> {
         next: { revalidate: 60 },
       }
     );
-    const leadCount = parseInt(
+    return parseInt(
       res.headers.get('content-range')?.split('/')[1] ?? '0',
       10
     );
-    return Math.max(0, PIONEER_MAX - leadCount);
   } catch {
-    return PIONEER_MAX;
+    return 0;
   }
 }
 
@@ -87,7 +85,7 @@ const structuredData = [
 ];
 
 export default async function HomePage() {
-  const spotsRemaining = await getPioneerSpotsRemaining();
+  const vendorCount = await getVendorCount();
 
   return (
     <>
@@ -119,9 +117,14 @@ export default async function HomePage() {
                 <a href="#stylists" className="btn-primary">
                   I'm a stylist
                 </a>
-                <span className="btn-coming-soon">
-                  Customer app coming soon
-                </span>
+                <a
+                  href="https://www.instagram.com/bookwithvars"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-coming-soon"
+                >
+                  Follow for launch updates
+                </a>
               </div>
             </div>
 
@@ -205,7 +208,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <PioneerSection initialSpots={spotsRemaining} />
+      <PioneerSection initialVendorCount={vendorCount} />
 
       <section className="how-section section-light">
         <div className="container">
@@ -277,22 +280,22 @@ export default async function HomePage() {
               <div className="faq-q">Is VARS available outside Lagos?</div>
               <p className="faq-a">
                 We are launching in Lagos first. Abuja and Port Harcourt are
-                planned for later, but the first Pioneer spots are Lagos-only.
+                planned for later.
               </p>
             </div>
             <div className="faq-item">
               <div className="faq-q">How do I become a VARS stylist?</div>
               <p className="faq-a">
-                Register your interest above. If selected, you will receive
-                onboarding steps to complete verification and prepare your profile.
+                Register above. We will reach out with onboarding steps to
+                complete your verification and set up your profile.
               </p>
             </div>
             <div className="faq-item">
               <div className="faq-q">What is the Pioneer Programme?</div>
               <p className="faq-a">
-                The first 50 stylists get a permanent Pioneer badge and keep
-                100% of their first 3 completed bookings. After that, the standard
-                80/20 split applies.
+                The first 50 VARS stylists received a permanent Pioneer badge
+                and kept 100% commission on their first 3 completed bookings.
+                The Pioneer cohort is now complete.
               </p>
             </div>
             <div className="faq-item">
@@ -313,8 +316,9 @@ export default async function HomePage() {
             <div className="faq-item">
               <div className="faq-q">When does the app launch?</div>
               <p className="faq-a">
-                VARS is currently in the pre-launch stylist acquisition phase.
-                Register now to secure your Pioneer spot before customer bookings open.
+                VARS is actively onboarding stylists in Lagos. The customer
+                app is in final preparation — register now to be live when
+                bookings open.
               </p>
             </div>
           </div>
