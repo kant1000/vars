@@ -205,10 +205,14 @@ export default async function HomePage() {
               </p>
             </div>
           </div>
+
+          <p style={{ marginTop: 40, fontSize: 14 }}>
+            <a href="/blog/talent-without-trust" style={{ color: 'var(--blue)', textDecoration: 'none', fontWeight: 600 }}>
+              The talent is there. The trust is not &rarr;
+            </a>
+          </p>
         </div>
       </section>
-
-      <PioneerSection initialVendorCount={vendorCount} />
 
       <section className="how-section section-light">
         <div className="container">
@@ -247,6 +251,8 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      <PioneerSection initialVendorCount={vendorCount} />
 
       <section className="founder-section">
         <div className="container">
@@ -291,14 +297,6 @@ export default async function HomePage() {
               </p>
             </div>
             <div className="faq-item">
-              <div className="faq-q">What is the Pioneer Programme?</div>
-              <p className="faq-a">
-                The first 50 VARS stylists received a permanent Pioneer badge
-                and kept 100% commission on their first 3 completed bookings.
-                The Pioneer cohort is now complete.
-              </p>
-            </div>
-            <div className="faq-item">
               <div className="faq-q">How does payment protection work?</div>
               <p className="faq-a">
                 Customers pay when they book. Payment is released after the
@@ -319,6 +317,14 @@ export default async function HomePage() {
                 VARS is actively onboarding stylists in Lagos. The customer
                 app is in final preparation — register now to be live when
                 bookings open.
+              </p>
+            </div>
+            <div className="faq-item">
+              <div className="faq-q">What is the Pioneer Programme?</div>
+              <p className="faq-a">
+                The first 50 VARS stylists received a permanent Pioneer badge
+                and kept 100% commission on their first 3 completed bookings.
+                The Pioneer cohort is now complete.
               </p>
             </div>
           </div>

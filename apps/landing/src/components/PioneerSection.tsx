@@ -139,6 +139,9 @@ export default function PioneerSection({ initialVendorCount }: Props) {
                     ? 'Claim your Pioneer spot'
                     : 'Register as a VARS stylist'}
                 </div>
+                <p className="pioneer-form-sub">
+                  Register now and we&apos;ll send you onboarding steps before go-live.
+                </p>
                 <form onSubmit={handleSubmit} noValidate>
                   <div className="form-group">
                     <label className="form-label" htmlFor="full_name">Full name</label>
