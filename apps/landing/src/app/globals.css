@@ -306,8 +306,7 @@ section { width: 100%; }
 .pioneer-inner {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  column-gap: 80px;
-  row-gap: 48px;
+  gap: 80px;
   align-items: flex-start;
 }
 
@@ -348,7 +347,7 @@ section { width: 100%; }
   border: 1px solid rgba(255,255,255,0.1);
   border-radius: 16px;
   padding: 24px;
-  margin-bottom: 32px;
+  margin: 28px 0;
   display: flex;
   align-items: center;
   gap: 20px;
@@ -394,15 +393,6 @@ section { width: 100%; }
   gap: 12px;
 }
 
-.pioneer-perks-row {
-  grid-column: 1 / -1;
-}
-.pioneer-perks-row .pioneer-perks {
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 32px;
-}
-
 .pioneer-perk {
   display: flex;
   align-items: flex-start;
@@ -439,14 +429,7 @@ section { width: 100%; }
   font-size: 20px;
   font-weight: 800;
   color: var(--white);
-  margin-bottom: 8px;
-}
-
-.pioneer-form-sub {
-  font-size: 13px;
-  color: rgba(255,255,255,0.45);
   margin-bottom: 24px;
-  line-height: 1.5;
 }
 
 .form-group {

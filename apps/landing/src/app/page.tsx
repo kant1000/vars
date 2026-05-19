@@ -214,6 +214,8 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <PioneerSection initialVendorCount={vendorCount} />
+
       <section className="how-section section-light">
         <div className="container">
           <span className="section-label">How VARS works</span>
@@ -251,8 +253,6 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
-
-      <PioneerSection initialVendorCount={vendorCount} />
 
       <section className="founder-section">
         <div className="container">
