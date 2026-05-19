@@ -130,6 +130,22 @@ export default function ArticlePage({ params }: { params: { slug: string } }) {
           />
         </div>
 
+        <div className="cta-block">
+          <p>
+            <strong>Wide Awake is a blog. Vars is what we built.</strong>
+          </p>
+          <p>
+            Vars connects stylists, barbers, hair dressers, MUAs and more,
+            with new customers who need these services at home.
+          </p>
+          <p className="cta-question">
+            Do you have any of these skills?
+          </p>
+          <Link href="/" className="cta-btn">
+            Join Vars as a Vendor →
+          </Link>
+        </div>
+
         {article.body ? (
           <div
             className="article-body"
@@ -149,7 +165,7 @@ export default function ArticlePage({ params }: { params: { slug: string } }) {
           <span className="long-game-label">The Long Game</span>
           <p>
             Every article in Wide Awake is written for the version of you
-            that&apos;s building something — slowly, deliberately, without shortcuts.
+            that&apos;s building something: slowly, deliberately, without shortcuts.
           </p>
         </div>
 
@@ -171,30 +187,12 @@ export default function ArticlePage({ params }: { params: { slug: string } }) {
         )}
 
         {isLive && <CommentSection slug={article.slug} />}
-
-        <div className="cta-block">
-          <div className="cta-top">From the team behind this blog</div>
-          <p>
-            <strong>Wide Awake is a blog. Vars is what we built.</strong>
-          </p>
-          <p>
-            Vars connects Nigerian stylists — barbers, hair dressers, MUAs, nail
-            techs — with customers who need beauty and grooming services at their
-            homes.
-          </p>
-          <p className="cta-question">
-            Are you a stylist? We&apos;re open to you only for now.
-          </p>
-          <Link href="/" className="cta-btn">
-            Join Vars as a Vendor →
-          </Link>
-        </div>
       </article>
 
       <footer className="site-footer">
         <span className="f-brand">Wide Awake</span>
         <p>
-          A blog by <Link href="/">Vars</Link> — playing The Long Game.
+          A blog by <Link href="/">Vars</Link>. Playing The Long Game.
         </p>
       </footer>
     </>
