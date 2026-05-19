@@ -78,7 +78,7 @@ export default function PioneerSection({ initialVendorCount }: Props) {
             <h2 className="pioneer-title">
               {spotsRemaining > 0
                 ? <>Be one of the first<br />50 VARS stylists.</>
-                : <>Join VARS as a<br />Lagos stylist.</>}
+                : <>Join VARS as a stylist.</>}
             </h2>
             {/* Vendor count */}
             {vendorCount > 0 && (
@@ -173,10 +173,10 @@ export default function PioneerSection({ initialVendorCount }: Props) {
               </div>
             ) : (
               <>
-                <div className="pioneer-form-title">
+                <div className={spotsRemaining > 0 ? 'pioneer-form-title' : 'pioneer-form-note'}>
                   {spotsRemaining > 0
                     ? 'Claim your Pioneer spot'
-                    : 'Register as a VARS stylist'}
+                    : 'We\'ll communicate next steps soon'}
                 </div>
                 <form onSubmit={handleSubmit} noValidate>
                   <div className="form-group">
