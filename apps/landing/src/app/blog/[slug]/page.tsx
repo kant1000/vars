@@ -138,7 +138,7 @@ export default function ArticlePage({ params }: { params: { slug: string } }) {
             <>
               <div className="article-body" dangerouslySetInnerHTML={{ __html: intro }} />
               <div className="cta-block">
-                <p><strong>Wide Awake is a blog. Vars is what we built.</strong></p>
+                <p><strong>Wide Awake is a blog from Vars</strong></p>
                 <p>
                   Vars connects stylists, barbers, hair dressers, MUAs and more,
                   with new customers who need these services at home.

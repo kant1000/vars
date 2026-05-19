@@ -532,7 +532,7 @@ img { display: block; width: 100%; height: auto; }
   margin-top: 64px;
   border: 1px solid var(--rule);
   border-left: 3px solid var(--accent);
-  padding: 32px 28px;
+  padding: 16px 20px;
   border-radius: 0 2px 2px 0;
 }
 .cta-block .cta-top {
