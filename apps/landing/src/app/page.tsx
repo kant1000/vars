@@ -11,7 +11,7 @@ async function getVendorCount(): Promise<number> {
 
   try {
     const res = await fetch(
-      `${supabaseUrl}/rest/v1/vendor_leads?pioneer=eq.true&select=id`,
+      `${supabaseUrl}/rest/v1/vendor_leads?select=id`,
       {
         headers: {
           apikey: serviceKey,
@@ -69,7 +69,7 @@ const structuredData = [
         name: 'How do I become a VARS stylist?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'Register your interest through the Pioneer Programme form. VARS will contact selected stylists with onboarding steps.',
+          text: 'Register your interest on bookwithvars.com. VARS will reach out with onboarding steps to complete verification and set up your profile.',
         },
       },
       {

@@ -180,13 +180,9 @@ section { width: 100%; }
   font-size: 16px;
   font-weight: 600;
   color: rgba(255,255,255,0.55);
-  cursor: default;
+  cursor: pointer;
   letter-spacing: 0.01em;
-}
-.btn-coming-soon::before {
-  content: '◎';
-  font-size: 14px;
-  color: rgba(255,255,255,0.3);
+  text-decoration: none;
 }
 
 .btn-ghost {
@@ -310,7 +306,8 @@ section { width: 100%; }
 .pioneer-inner {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 80px;
+  column-gap: 80px;
+  row-gap: 48px;
   align-items: flex-start;
 }
 
@@ -395,6 +392,15 @@ section { width: 100%; }
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.pioneer-perks-row {
+  grid-column: 1 / -1;
+}
+.pioneer-perks-row .pioneer-perks {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 32px;
 }
 
 .pioneer-perk {

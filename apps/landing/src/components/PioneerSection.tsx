@@ -75,12 +75,6 @@ export default function PioneerSection({ initialVendorCount }: Props) {
         <div className="pioneer-inner">
           {/* Left: info */}
           <div>
-            <div className="pioneer-badge">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 6, flexShrink: 0 }} xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-              </svg>
-              Pioneer Programme
-            </div>
             <h2 className="pioneer-title">
               {spotsRemaining > 0
                 ? <>Be one of the first<br />50 VARS stylists.</>
@@ -104,52 +98,6 @@ export default function PioneerSection({ initialVendorCount }: Props) {
               </div>
             )}
 
-            {/* Perks list */}
-            {spotsRemaining > 0 ? (
-              <ul className="pioneer-perks">
-                <li className="pioneer-perk">
-                  <span className="perk-icon">0%</span>
-                  Zero commission on your first 3 completed bookings
-                </li>
-                <li className="pioneer-perk">
-                  <span className="perk-icon">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                    </svg>
-                  </span>
-                  Permanent Pioneer badge visible to every customer
-                </li>
-                <li className="pioneer-perk">
-                  <span className="perk-icon">1</span>
-                  Priority ranking in search results at launch
-                </li>
-              </ul>
-            ) : (
-              <ul className="pioneer-perks">
-                <li className="pioneer-perk">
-                  <span className="perk-icon">&#8358;</span>
-                  In-app payments released after every completed job
-                </li>
-                <li className="pioneer-perk">
-                  <span className="perk-icon">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M12 2L4 6v6c0 5 3.6 9.7 8 11 4.4-1.3 8-6 8-11V6L12 2z" strokeWidth="2" strokeLinejoin="round"/>
-                      <path d="M9 12l2 2 4-4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </span>
-                  Verified by VARS badge builds customer confidence
-                </li>
-                <li className="pioneer-perk">
-                  <span className="perk-icon">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
-                      <circle cx="12" cy="12" r="9" strokeWidth="2"/>
-                      <path d="M12 7v5l3 3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </span>
-                  Your zone, your hours — full control over your availability
-                </li>
-              </ul>
-            )}
           </div>
 
           {/* Right: form */}
@@ -306,6 +254,55 @@ export default function PioneerSection({ initialVendorCount }: Props) {
                   </button>
                 </form>
               </>
+            )}
+          </div>
+
+          {/* Perks — full-width row below form */}
+          <div className="pioneer-perks-row">
+            {spotsRemaining > 0 ? (
+              <ul className="pioneer-perks">
+                <li className="pioneer-perk">
+                  <span className="perk-icon">0%</span>
+                  Zero commission on your first 3 completed bookings
+                </li>
+                <li className="pioneer-perk">
+                  <span className="perk-icon">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                    </svg>
+                  </span>
+                  Permanent Pioneer badge visible to every customer
+                </li>
+                <li className="pioneer-perk">
+                  <span className="perk-icon">1</span>
+                  Priority ranking in search results at launch
+                </li>
+              </ul>
+            ) : (
+              <ul className="pioneer-perks">
+                <li className="pioneer-perk">
+                  <span className="perk-icon">&#8358;</span>
+                  In-app payments released after every completed job
+                </li>
+                <li className="pioneer-perk">
+                  <span className="perk-icon">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 2L4 6v6c0 5 3.6 9.7 8 11 4.4-1.3 8-6 8-11V6L12 2z" strokeWidth="2" strokeLinejoin="round"/>
+                      <path d="M9 12l2 2 4-4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </span>
+                  Verified by VARS badge builds customer confidence
+                </li>
+                <li className="pioneer-perk">
+                  <span className="perk-icon">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="12" cy="12" r="9" strokeWidth="2"/>
+                      <path d="M12 7v5l3 3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </span>
+                  Your zone, your hours — full control over your availability
+                </li>
+              </ul>
             )}
           </div>
         </div>
