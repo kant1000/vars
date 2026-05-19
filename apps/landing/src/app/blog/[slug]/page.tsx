@@ -141,7 +141,7 @@ export default function ArticlePage({ params }: { params: { slug: string } }) {
                 <p><strong>Wide Awake is a blog from Vars</strong></p>
                 <p>
                   Vars connects stylists, barbers, hair dressers, MUAs and more,
-                  with new customers who need these services at home.
+                  with customers who need these services at home.
                 </p>
                 <p className="cta-question">Do you have any of these skills?</p>
                 <Link href="/" className="cta-btn">Join Vars as a Vendor →</Link>
