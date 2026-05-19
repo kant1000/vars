@@ -61,10 +61,17 @@ This roadmap tracks the practical path to make the whole app work as intended.
 - Push and open a PR if GitHub write access is available.
 - Keep `docs/codex/PROJECT_HANDOFF.md` updated with major decisions.
 
+## Phase 2b+ Work Done (May 2026)
+
+- Pioneer cohort complete. Landing page (`PioneerSection.tsx`) transitioned from pioneer/waitlist acquisition flow to a single static stylist registration form. All pioneer-specific conditions and dead CSS removed. Done — `e7fcc49`.
+- **Wide Awake blog** launched at `bookwithvars.com/blog`. New route in `apps/landing/src/app/blog/` with article index, individual article pages (`[slug]/`), reading progress bar, mid-article CTA, comment system, and cross-article related links. Content defined in `articles.ts` — no CMS. 3 live articles. Done.
+- Mobile: `react-native` `Image` replaced with `expo-image` across the app for WebP support and automatic caching. Done — `fcc61bf`.
+- Landing page shifted from pioneer acquisition framing to Phase 2 general stylist/customer marketing copy. Done — `e85eff3`, `da27c41`.
+
 ## Immediate Next Steps
 
 - Android APK delivery: use EAS Cloud Build (`eas build --platform android --profile preview`) rather than a local Android Studio build — avoids the Windows PATH/JDK friction and produces a shareable `.apk` or `.aab` without needing `adb` or an emulator on the dev machine.
 - Activate Paystack live credentials. Blocked on Nigerian business registration completion.
 - Activate Youverify credentials. Blocked on pricing negotiation with Ayotomide.
 - Activate Google Maps API key. Set in mobile `.env.local` and Supabase Edge Function secrets; no code changes needed.
-- Phase 2 customer marketing begins when 100 verified vendors are live across 4 Lagos neighbourhoods with all 3 service categories covered (barbing, hair styling, makeup artistry).
+- Phase 2 customer marketing: **underway** — all trigger conditions met as of May 2026 (100+ verified vendors, 4+ Lagos neighbourhoods, all 3 service categories).

@@ -54,7 +54,7 @@ https://github.com/kant1000/vars.git
 
 ## Current State
 
-Last updated: 2026-04-24 (SEO update).
+Last updated: 2026-05-19.
 
 - Current branch: `main`
 - Default branch: `main` (set as default on GitHub 2026-04-24)
@@ -64,13 +64,17 @@ Last updated: 2026-04-24 (SEO update).
 - Corepack: available
 - Yarn: pinned in `package.json` as `yarn@1.22.22`
 - Supabase CLI: available
-- Worktree: **clean** — all audit and SEO fixes committed and pushed
+- Worktree: **clean** — all Phase 2 landing and blog work committed and pushed
 - Landing Phase 1 SEO: **complete and live** at bookwithvars.com
+- **Wide Awake blog**: live at bookwithvars.com/blog — 3 published articles, 5 coming soon. Content in `apps/landing/src/app/blog/articles.ts`.
+- **Pioneer cohort**: complete (50 spots filled). Landing page registration form now presents a single static general stylist registration state — no pioneer/waitlist branching.
+- **Phase 2**: underway — all go-to-market trigger conditions met as of May 2026.
 - Google Search Console: verified via DNS TXT record; sitemap submitted (https://www.bookwithvars.com/sitemap.xml, 3 pages indexed)
 - Vercel production branch is tracking `claude/build-app-from-spec-6QwSN` (force-pushed to match `main`; both branches are identical)
 - Root `CLAUDE.md`: present and committed
 - Payment, KYC, and maps credentials are not activated yet by the owner. Treat related audit gaps as expected external setup, not code failures.
 - Android Studio is installed at `C:\Program Files\Android\Android Studio`; its bundled JDK works, but `adb`, `emulator`, and `eas` are not available on PATH yet.
+- Mobile: `expo-image` replaces `react-native` `Image` across the app (WebP + caching). Commit `fcc61bf`.
 
 Generated artifacts such as `apps/mobile/dist/`, `apps/mobile/dist-*`, `.next/`, `**/next-env.d.ts`, and `apps/mobile/expo-env.d.ts` are gitignored.
 
@@ -105,6 +109,19 @@ Updated files:
 1. `customer-accept-reschedule`: old transport buffer calendar rows were not deleted before creating new ones for the suggested slot. Fixed.
 2. `customer-decline-reschedule`: transport buffer rows were not deleted on decline. Fixed.
 3. Missing expiry: no function existed to expire `rescheduled_pending` bookings after 1 hour. Created `supabase/functions/reschedule-expire/index.ts` and registered it as an hourly cron in migration `20240101000015`.
+
+## Phase 2 Work Applied (May 2026)
+
+**Wide Awake blog** — new route under `apps/landing/src/app/blog/`. Files added:
+- `articles.ts` — static article registry; `body: null` marks coming-soon entries
+- `page.tsx` — blog index with Live / Coming Soon split
+- `[slug]/page.tsx` — individual article page with progress bar, mid-article CTA, comment system, cross-article related links
+- `STYLE.md` — blog copy and formatting style guide (read before editing articles)
+- `blog.css`, `layout.tsx`, `actions.ts` — layout, styles, server actions for comments
+
+**Pioneer programme completion** — `PioneerSection.tsx` stripped of all `spotsRemaining` logic, pioneer/waitlist result branching, and related CSS. Form now presents a single static state for all new vendors (`e7fcc49`).
+
+**Mobile `expo-image` migration** — `react-native` `Image` replaced with `expo-image` across the mobile app for WebP format and automatic caching (`fcc61bf`).
 
 ## First Commands For Future Sessions
 

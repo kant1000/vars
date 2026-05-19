@@ -115,7 +115,15 @@ vars/
   - Auto-accept grace banner: amber countdown + "Cancel penalty-free" button for auto-accepted bookings within the 5-minute window
 - **Auto-Accept** — geographic zone system for instant booking confirmation (see below)
 - **Earnings** — per-booking breakdown; Paystack automatic payout (80% revenue share)
-- **Pioneer programme** — pre-launch lead capture and conversion flow
+- **Pioneer programme** — lead capture and conversion flow (cohort complete as of May 2026; landing form now presents general stylist registration for all new vendors)
+
+### Landing Page & Blog
+
+The landing page (`apps/landing/`) is the public-facing marketing site at bookwithvars.com. It includes:
+
+- **Home** (`/`) — service overview, hero section, FAQ, and stylist registration form (`PioneerSection.tsx`). The form captures leads into `vendor_leads` via the `vendor-register-lead` edge function.
+- **Privacy & Terms** (`/privacy`, `/terms`) — static policy pages.
+- **Wide Awake blog** (`/blog`) — a content marketing blog covering money, mindset, culture, and the Nigerian beauty market. Content is defined as a static article array in `apps/landing/src/app/blog/articles.ts`. Each article has a `body: string | null` field — `null` means "coming soon". The blog index splits articles into Live and Coming Soon sections. Article pages (`/blog/[slug]`) include a comment system, a reading progress bar, and a mid-article CTA injected after the intro paragraphs. Live articles as of May 2026: *The Culture of Shame*, *Lagos Has the Talent*, *The Number in Your Head*.
 
 ### Admin
 

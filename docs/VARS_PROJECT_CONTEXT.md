@@ -208,6 +208,8 @@ Vendors first. Always. A user who opens VARS and sees no vendors nearby deletes 
 
 All Phase 2 trigger conditions met as of May 2026: 100+ verified vendors, 4+ Lagos neighbourhoods, all 3 service categories, 3+ vendors per category per area.
 
+**Wide Awake blog** (`bookwithvars.com/blog`) — content marketing arm launched in Phase 2. Covers money, mindset, culture, and the Nigerian beauty market. Articles are authored by Seyi Ibitoye. Content is defined statically in `apps/landing/src/app/blog/articles.ts` — no CMS. Live articles as of May 2026: *The Culture of Shame*, *Lagos Has the Talent*, *The Number in Your Head*. Five further articles are queued as "coming soon".
+
 ### Two-stage vendor registration
 
 - **Stage 1 — Website lead:** 5-field form on bookwithvars.com. `pioneer` flag set here. Data goes to `vendor_leads` table.
@@ -218,8 +220,7 @@ All Phase 2 trigger conditions met as of May 2026: 100+ verified vendors, 4+ Lag
 - First 50 vendors to register and verify = VARS Pioneers
 - Zero commission on first 3 completed bookings (100% to vendor) — enforced in `paystack-settle` via `pioneer_bookings_completed < 3`
 - Permanent VARS Pioneer badge on profile — never expires
-- Live counter on bookwithvars.com counts down from 50
-- After 50: counter shows 0 (de-emphasised), registration stays open, CTA changes to waitlist
+- **Pioneer cohort is complete** (50 spots filled, May 2026). The landing page registration form (`PioneerSection.tsx`) no longer shows pioneer-specific copy, countdown, or waitlist branching — it presents a single general stylist registration state. Pioneer benefits remain enforced in the backend.
 - Counter reads from `vendor_leads WHERE pioneer = true` — not the full `vendors` table
 
 ### Partnerships in discussion
