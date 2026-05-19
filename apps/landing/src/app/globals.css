@@ -310,22 +310,6 @@ section { width: 100%; }
   align-items: flex-start;
 }
 
-.pioneer-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(184, 134, 11, 0.15);
-  border: 1px solid rgba(184, 134, 11, 0.4);
-  border-radius: 100px;
-  padding: 6px 14px;
-  font-size: 12px;
-  font-weight: 700;
-  color: #D4A017;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  margin-bottom: 20px;
-}
-
 .pioneer-title {
   font-size: clamp(28px, 3.5vw, 42px);
   font-weight: 800;
@@ -333,13 +317,6 @@ section { width: 100%; }
   line-height: 1.12;
   letter-spacing: 0;
   margin-bottom: 16px;
-}
-
-.pioneer-sub {
-  font-size: 16px;
-  line-height: 1.65;
-  color: rgba(255,255,255,0.58);
-  margin-bottom: 36px;
 }
 
 .spots-counter {
@@ -369,21 +346,6 @@ section { width: 100%; }
 
 .spots-bar-wrap {
   flex: 1;
-}
-
-.spots-bar-track {
-  height: 6px;
-  background: rgba(255,255,255,0.1);
-  border-radius: 3px;
-  overflow: hidden;
-  margin-top: 8px;
-}
-
-.spots-bar-fill {
-  height: 100%;
-  background: #D4A017;
-  border-radius: 3px;
-  transition: width 0.6s ease;
 }
 
 .pioneer-perks {
@@ -423,13 +385,6 @@ section { width: 100%; }
   border: 1px solid rgba(255,255,255,0.1);
   border-radius: 24px;
   padding: 40px;
-}
-
-.pioneer-form-title {
-  font-size: 20px;
-  font-weight: 800;
-  color: var(--white);
-  margin-bottom: 24px;
 }
 
 .pioneer-form-note {

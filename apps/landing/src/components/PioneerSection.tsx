@@ -1,7 +1,6 @@
 'use client';
 import { useState, FormEvent } from 'react';
 
-const PIONEER_MAX = 50;
 const EDGE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
   ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/vendor-register-lead`
   : '';
@@ -13,7 +12,6 @@ interface Props {
 
 export default function PioneerSection({ initialVendorCount }: Props) {
   const vendorCount = initialVendorCount;
-  const spotsRemaining = Math.max(0, PIONEER_MAX - vendorCount);
   const [form, setForm] = useState({
     full_name: '',
     email: '',
@@ -22,7 +20,7 @@ export default function PioneerSection({ initialVendorCount }: Props) {
     location: '',
   });
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<'pioneer' | 'waitlist' | null>(null);
+  const [submitted, setSubmitted] = useState(false);
   const [alreadyRegistered, setAlreadyRegistered] = useState(false);
   const [error, setError] = useState('');
 
@@ -60,7 +58,7 @@ export default function PioneerSection({ initialVendorCount }: Props) {
         return;
       }
 
-      setResult(data.status);
+      setSubmitted(true);
       setAlreadyRegistered(data.already_registered ?? false);
     } catch {
       setError('Network error — please check your connection and try again.');
@@ -75,12 +73,7 @@ export default function PioneerSection({ initialVendorCount }: Props) {
         <div className="pioneer-inner">
           {/* Left: info */}
           <div>
-            <h2 className="pioneer-title">
-              {spotsRemaining > 0
-                ? <>Be one of the first<br />50 VARS stylists.</>
-                : <>Join VARS as a stylist.</>}
-            </h2>
-            {/* Vendor count */}
+            <h2 className="pioneer-title">Join VARS as a stylist.</h2>
             {vendorCount > 0 && (
               <div className="spots-counter" style={{ opacity: 0.55 }}>
                 <div>
@@ -91,92 +84,53 @@ export default function PioneerSection({ initialVendorCount }: Props) {
                 </div>
               </div>
             )}
-            {/* Perks list */}
-            {spotsRemaining > 0 ? (
-              <ul className="pioneer-perks">
-                <li className="pioneer-perk">
-                  <span className="perk-icon">0%</span>
-                  Zero commission on your first 3 completed bookings
-                </li>
-                <li className="pioneer-perk">
-                  <span className="perk-icon">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                    </svg>
-                  </span>
-                  Permanent Pioneer badge visible to every customer
-                </li>
-                <li className="pioneer-perk">
-                  <span className="perk-icon">1</span>
-                  Priority ranking in search results at launch
-                </li>
-              </ul>
-            ) : (
-              <ul className="pioneer-perks">
-                <li className="pioneer-perk">
-                  <span className="perk-icon">&#8358;</span>
-                  In-app payments released after every completed job
-                </li>
-                <li className="pioneer-perk">
-                  <span className="perk-icon">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M12 2L4 6v6c0 5 3.6 9.7 8 11 4.4-1.3 8-6 8-11V6L12 2z" strokeWidth="2" strokeLinejoin="round"/>
-                      <path d="M9 12l2 2 4-4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </span>
-                  Verified by VARS badge builds customer confidence
-                </li>
-                <li className="pioneer-perk">
-                  <span className="perk-icon">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
-                      <circle cx="12" cy="12" r="9" strokeWidth="2"/>
-                      <path d="M12 7v5l3 3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </span>
-                  Your zone, your hours. Full control over your availability
-                </li>
-              </ul>
-            )}
+            <ul className="pioneer-perks">
+              <li className="pioneer-perk">
+                <span className="perk-icon">&#8358;</span>
+                In-app payments released after every completed job
+              </li>
+              <li className="pioneer-perk">
+                <span className="perk-icon">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2L4 6v6c0 5 3.6 9.7 8 11 4.4-1.3 8-6 8-11V6L12 2z" strokeWidth="2" strokeLinejoin="round"/>
+                    <path d="M9 12l2 2 4-4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </span>
+                Verified by VARS badge builds customer confidence
+              </li>
+              <li className="pioneer-perk">
+                <span className="perk-icon">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="12" r="9" strokeWidth="2"/>
+                    <path d="M12 7v5l3 3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </span>
+                Your zone, your hours. Full control over your availability
+              </li>
+            </ul>
           </div>
 
           {/* Right: form */}
           <div className="pioneer-form-wrap">
-            {result ? (
+            {submitted ? (
               <div className="form-success">
                 <span className="form-success-icon">
-                  {result === 'pioneer' ? (
-                    <svg width="56" height="56" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <circle cx="12" cy="12" r="10" stroke="#D4A017" strokeWidth="1.5"/>
-                      <path d="M7 12l3.5 3.5 6.5-7" stroke="#D4A017" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  ) : (
-                    <svg width="56" height="56" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <rect x="5" y="3" width="14" height="18" rx="2" stroke="rgba(255,255,255,0.6)" strokeWidth="1.75"/>
-                      <path d="M9 8h6M9 12h6M9 16h4" stroke="rgba(255,255,255,0.6)" strokeWidth="1.75" strokeLinecap="round"/>
-                    </svg>
-                  )}
+                  <svg width="56" height="56" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="5" y="3" width="14" height="18" rx="2" stroke="rgba(255,255,255,0.6)" strokeWidth="1.75"/>
+                    <path d="M9 8h6M9 12h6M9 16h4" stroke="rgba(255,255,255,0.6)" strokeWidth="1.75" strokeLinecap="round"/>
+                  </svg>
                 </span>
                 <div className="form-success-title">
-                  {result === 'pioneer'
-                    ? alreadyRegistered
-                      ? "You're already registered as a Pioneer!"
-                      : "You're a Pioneer!"
-                    : alreadyRegistered
-                    ? "You're already registered."
-                    : "You're registered!"}
+                  {alreadyRegistered ? "You're already registered." : "You're registered!"}
                 </div>
                 <p className="form-success-sub">
-                  {result === 'pioneer'
-                    ? `Congratulations! You've secured a Pioneer spot. We'll reach out on WhatsApp with your onboarding steps so you can complete your stylist profile.`
-                    : `We'll reach out on WhatsApp with your onboarding steps so you can complete your stylist profile.`}
+                  We'll reach out on WhatsApp with your onboarding steps so you can complete your stylist profile.
                 </p>
               </div>
             ) : (
               <>
-                <div className={spotsRemaining > 0 ? 'pioneer-form-title' : 'pioneer-form-note'}>
-                  {spotsRemaining > 0
-                    ? 'Claim your Pioneer spot'
-                    : 'We\'ll communicate next steps soon'}
+                <div className="pioneer-form-note">
+                  We&apos;ll communicate next steps soon
                 </div>
                 <form onSubmit={handleSubmit} noValidate>
                   <div className="form-group">
@@ -285,17 +239,12 @@ export default function PioneerSection({ initialVendorCount }: Props) {
                       !form.location
                     }
                   >
-                    {submitting
-                      ? 'Submitting...'
-                      : spotsRemaining > 0
-                      ? `Claim your Pioneer spot (${spotsRemaining} left)`
-                      : 'Register as a stylist'}
+                    {submitting ? 'Submitting...' : 'Register as a stylist'}
                   </button>
                 </form>
               </>
             )}
           </div>
-
         </div>
       </div>
     </section>
