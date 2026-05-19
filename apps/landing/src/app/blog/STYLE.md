@@ -71,7 +71,9 @@ Wide Awake reads like a smart, unhurried friend who has thought carefully about 
 - The sharpest, most compressed version of the thesis. Not a summary.
 - Never starts with "In this article..."
 
-**The Long Game callout** — bottom of every article, before the CTA.
+**The Vars CTA block** — injected by the template just before the first `<h2>` in the body (after the intro paragraphs). No action needed per article; the template handles placement automatically.
+
+**The Long Game callout** — bottom of every article, after comments.
 - Generic copy is already baked into the template.
 - Customise per article by editing the article object in `articles.ts` if a tighter connection to the piece is needed.
 

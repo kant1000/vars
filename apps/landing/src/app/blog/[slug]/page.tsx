@@ -130,28 +130,26 @@ export default function ArticlePage({ params }: { params: { slug: string } }) {
           />
         </div>
 
-        <div className="cta-block">
-          <p>
-            <strong>Wide Awake is a blog. Vars is what we built.</strong>
-          </p>
-          <p>
-            Vars connects stylists, barbers, hair dressers, MUAs and more,
-            with new customers who need these services at home.
-          </p>
-          <p className="cta-question">
-            Do you have any of these skills?
-          </p>
-          <Link href="/" className="cta-btn">
-            Join Vars as a Vendor →
-          </Link>
-        </div>
-
-        {article.body ? (
-          <div
-            className="article-body"
-            dangerouslySetInnerHTML={{ __html: article.body }}
-          />
-        ) : (
+        {article.body ? (() => {
+          const cut = article.body!.indexOf('<h2>');
+          const intro = cut > -1 ? article.body!.slice(0, cut) : article.body!;
+          const rest  = cut > -1 ? article.body!.slice(cut) : '';
+          return (
+            <>
+              <div className="article-body" dangerouslySetInnerHTML={{ __html: intro }} />
+              <div className="cta-block">
+                <p><strong>Wide Awake is a blog. Vars is what we built.</strong></p>
+                <p>
+                  Vars connects stylists, barbers, hair dressers, MUAs and more,
+                  with new customers who need these services at home.
+                </p>
+                <p className="cta-question">Do you have any of these skills?</p>
+                <Link href="/" className="cta-btn">Join Vars as a Vendor →</Link>
+              </div>
+              {rest && <div className="article-body" dangerouslySetInnerHTML={{ __html: rest }} />}
+            </>
+          );
+        })() : (
           <div className="article-body">
             <p style={{ color: '#888888', fontStyle: 'italic' }}>
               This article is coming soon.
