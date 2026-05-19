@@ -80,12 +80,6 @@ export default function PioneerSection({ initialVendorCount }: Props) {
                 ? <>Be one of the first<br />50 VARS stylists.</>
                 : <>Join VARS as a<br />Lagos stylist.</>}
             </h2>
-            <p className="pioneer-sub">
-              {spotsRemaining > 0
-                ? 'Pioneers get a permanent badge that builds trust with every customer and keep 100% of their first 3 bookings. After that, the standard platform fee applies.'
-                : 'The Pioneer cohort is complete. Register now to join Lagos\'s growing network of verified home beauty professionals.'}
-            </p>
-
             {/* Vendor count */}
             {vendorCount > 0 && (
               <div className="spots-counter" style={{ opacity: 0.55 }}>
