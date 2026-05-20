@@ -35,7 +35,7 @@ The README is the canonical record of what's implemented — screens, edge funct
 | Youverify credentials | Blocked — pricing negotiation with Ayotomide pending. Integration fully built; production API key and webhook secret must replace sandbox values in Supabase secrets. |
 | Google Maps API key | Set in `apps/mobile/.env` and Supabase secrets. No code changes needed — activate billing in Google Cloud Console. |
 | Android APK | Use EAS Cloud Build (`eas build --platform android --profile preview`) — avoids Windows PATH/JDK friction, produces a shareable `.apk` without local Android Studio. |
-| deliver-outreach | Fully built but stubbed. Set `DELIVERY_LIVE=true` in Supabase secrets to activate real Twilio (WhatsApp/SMS) and Resend (email) delivery. |
+| deliver-outreach | Deployed and active. Delivery is stubbed — set `DELIVERY_LIVE=true` in Supabase secrets to activate real Twilio (WhatsApp/SMS) and Resend (email) delivery. |
 
 **In-progress work:** See `docs/codex/CLEANUP_ROADMAP.md` — Phases 3–6 (Supabase health audit, app flow verification, product polish, delivery) are still pending.
 

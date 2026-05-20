@@ -20,6 +20,7 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Colors } from '@/constants/colors';
 
 const { width, height } = Dimensions.get('window');
 
@@ -236,6 +237,6 @@ const styles = StyleSheet.create({
     width: 20,
   },
   dotInactive: {
-    backgroundColor: '#D0D0D0',
+    backgroundColor: Colors.dotInactive,
   },
 });

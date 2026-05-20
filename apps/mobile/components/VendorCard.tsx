@@ -101,7 +101,7 @@ export function VendorCard({ vendor, returnTo }: Props) {
 
 function BadgeRow({ vendor }: { vendor: VendorCardData }) {
   const badges: { label: string; color: string }[] = [];
-  if (vendor.pioneer) badges.push({ label: '★ Pioneer', color: '#B8860B' });
+  if (vendor.pioneer) badges.push({ label: '★ Pioneer', color: Colors.badgePioneer });
   if (vendor.badge_vars_choice) badges.push({ label: 'VARS Choice', color: Colors.badgeVarsChoice });
   if (vendor.badge_top_rated) badges.push({ label: 'Top Rated', color: Colors.badgeTopRated });
   if (vendor.badge_verified) badges.push({ label: 'Verified', color: Colors.badgeVerified });

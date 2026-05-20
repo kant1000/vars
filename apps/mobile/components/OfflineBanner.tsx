@@ -5,6 +5,7 @@
 // ============================================================
 import React, { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text } from 'react-native';
+import { Colors } from '@/constants/colors';
 
 export function OfflineBanner({ visible }: { visible: boolean }) {
   const slideY = useRef(new Animated.Value(-52)).current;
@@ -34,13 +35,13 @@ const s = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 999,
-    backgroundColor: '#92400E',
+    backgroundColor: Colors.offlineBg,
     paddingVertical: 10,
     paddingHorizontal: 16,
     alignItems: 'center',
   },
   text: {
-    color: '#FEF3C7',
+    color: Colors.offlineText,
     fontSize: 13,
     fontWeight: '600',
     textAlign: 'center',

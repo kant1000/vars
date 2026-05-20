@@ -332,7 +332,7 @@ function Step2({
                       <Text style={[s.slotText, !sl.available && s.slotTextUnavailable, sl.available && sl.autoAccept && s.slotTextAutoAccept]}>
                         {fmtTime(sl.time)}
                       </Text>
-                      {sl.available && sl.autoAccept && <LightningIcon size={9} color="#D4A017" />}
+                      {sl.available && sl.autoAccept && <LightningIcon size={9} color={Colors.pioneerGold} />}
                     </TouchableOpacity>
                   );
                   ci++;
@@ -875,19 +875,19 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 4,
   },
   slotUnavailable: { borderColor: Colors.border, backgroundColor: Colors.surface },
-  slotAutoAccept: { borderColor: '#D4A017', backgroundColor: '#FFF8E6' },
+  slotAutoAccept: { borderColor: Colors.pioneerGold, backgroundColor: Colors.pioneerGoldSurface },
   slotSelected: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   slotCovered: { backgroundColor: Colors.primary + '22', borderColor: Colors.primary + '55' },
   slotText: { fontSize: 13, fontWeight: '700', color: Colors.primary },
   slotTextUnavailable: { color: Colors.textMuted },
-  slotTextAutoAccept: { color: '#A07010' },
+  slotTextAutoAccept: { color: Colors.pioneerGoldDark },
   slotTextSelected: { color: '#FFF' },
   autoAcceptLegend: {
     marginHorizontal: 16, marginBottom: 8, marginTop: 4,
-    backgroundColor: '#FFF8E6', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6,
-    borderWidth: 1, borderColor: '#D4A01730',
+    backgroundColor: Colors.pioneerGoldSurface, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6,
+    borderWidth: 1, borderColor: Colors.pioneerGold + '30',
   },
-  autoAcceptLegendText: { fontSize: 12, color: '#A07010', fontWeight: '600' },
+  autoAcceptLegendText: { fontSize: 12, color: Colors.pioneerGoldDark, fontWeight: '600' },
 
   // Review / summary
   sectionHeading: { fontSize: 16, fontWeight: '700', color: Colors.text, marginBottom: -8 },
@@ -962,9 +962,9 @@ const s = StyleSheet.create({
 
   // Info box
   infoBox: { backgroundColor: Colors.primaryLight, borderRadius: 12, padding: 14 },
-  infoBoxAutoAccept: { backgroundColor: '#FFF8E6' },
+  infoBoxAutoAccept: { backgroundColor: Colors.pioneerGoldSurface },
   infoText: { fontSize: 13, color: Colors.primary, lineHeight: 19, fontWeight: '500' },
-  infoTextAutoAccept: { color: '#A07010' },
+  infoTextAutoAccept: { color: Colors.pioneerGoldDark },
 
   // Slot confirm bar (Step 2)
   confirmBar: {

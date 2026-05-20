@@ -264,7 +264,7 @@ export default function VendorProfileScreen() {
 
           {/* Badges */}
           <View style={styles.badgeRow}>
-            {vendor.pioneer && <Badge label="★ Pioneer" color="#B8860B" />}
+            {vendor.pioneer && <Badge label="★ Pioneer" color={Colors.badgePioneer} />}
             {vendor.badge_vars_choice && <Badge label="VARS Choice" color={Colors.badgeVarsChoice} />}
             {vendor.badge_top_rated && <Badge label="Top Rated" color={Colors.badgeTopRated} />}
             <Badge label="Verified" color={Colors.badgeVerified} />

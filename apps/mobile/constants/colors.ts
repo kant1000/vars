@@ -40,6 +40,21 @@ export const Colors = {
   // Overlay
   overlay: 'rgba(0, 0, 0, 0.5)',
   overlayLight: 'rgba(0, 0, 0, 0.2)',
+
+  // Pioneer & auto-accept gold theme
+  pioneerGold: '#D4A017',
+  pioneerGoldDark: '#A07010',
+  pioneerGoldDeep: '#7A6000',
+  pioneerGoldSurface: '#FFF8E6',
+  badgePioneer: '#B8860B',
+
+  // Offline banner & amber warning surfaces
+  offlineBg: '#92400E',
+  offlineText: '#FEF3C7',
+  amberBorder: '#D97706',
+
+  // Inactive onboarding dot
+  dotInactive: '#D0D0D0',
 } as const;
 
 export type ColorKey = keyof typeof Colors;

@@ -531,7 +531,7 @@ function ZoneConfirmModal({
     <Modal visible={visible} transparent animationType="fade">
       <View style={zm.overlay}>
         <View style={zm.sheet}>
-          <LightningIcon size={24} color="#D4A017" />
+          <LightningIcon size={24} color={Colors.pioneerGold} />
           <Text style={zm.title}>Confirm your zone?</Text>
           <Text style={zm.body}>
             {zone
@@ -987,11 +987,11 @@ const c = StyleSheet.create({
 
   // Service-rendered reminder banner
   renderReminderBanner: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: Colors.offlineText,
     borderRadius: 10, padding: 10, marginTop: 4,
-    borderWidth: 1, borderColor: '#D97706',
+    borderWidth: 1, borderColor: Colors.amberBorder,
   },
-  renderReminderText: { fontSize: 13, color: '#92400E', fontWeight: '600', lineHeight: 18 },
+  renderReminderText: { fontSize: 13, color: Colors.offlineBg, fontWeight: '600', lineHeight: 18 },
 
   // Vendor cancel button on active cards
   vendorCancelBtn: {
@@ -1001,8 +1001,8 @@ const c = StyleSheet.create({
   vendorCancelText: { fontSize: 13, fontWeight: '600', color: Colors.error },
 
   // Grace period card
-  graceCard: { borderColor: '#D4A017', borderWidth: 1.5 },
-  graceBadge: { fontSize: 12, fontWeight: '700', color: '#A07010', flex: 1 },
+  graceCard: { borderColor: Colors.pioneerGold, borderWidth: 1.5 },
+  graceBadge: { fontSize: 12, fontWeight: '700', color: Colors.pioneerGoldDark, flex: 1 },
   graceCountdown: { fontSize: 12, fontWeight: '700', color: Colors.error, fontVariant: ['tabular-nums'] },
   graceCancelBtn: {
     marginTop: 8, height: 42, borderRadius: 10,
@@ -1043,7 +1043,7 @@ const zm = StyleSheet.create({
   title: { fontSize: 20, fontWeight: '800', color: Colors.text, textAlign: 'center' },
   body:  { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 8 },
   confirmBtn: {
-    width: '100%', height: 54, backgroundColor: '#D4A017',
+    width: '100%', height: 54, backgroundColor: Colors.pioneerGold,
     borderRadius: 14, alignItems: 'center', justifyContent: 'center',
   },
   btnDisabled: { opacity: 0.5 },

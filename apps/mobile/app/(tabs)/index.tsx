@@ -218,6 +218,13 @@ export default function HomeScreen() {
               colors={['transparent']}
             />
           }
+          ListHeaderComponent={
+            refreshing ? (
+              <View style={{ alignItems: 'center', paddingVertical: 12 }}>
+                <ScissorsLoader size="small" color="dark" />
+              </View>
+            ) : null
+          }
           onEndReached={onEndReached}
           onEndReachedThreshold={0.4}
           ListEmptyComponent={

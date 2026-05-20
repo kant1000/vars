@@ -159,8 +159,8 @@ export default function VendorZoneSetup() {
             <Circle
               center={{ latitude: pinLat, longitude: pinLng }}
               radius={radius * 1000} // metres
-              fillColor="rgba(212, 160, 23, 0.15)"
-              strokeColor="#D4A017"
+              fillColor={Colors.pioneerGold + '26'}
+              strokeColor={Colors.pioneerGold}
               strokeWidth={2}
             />
             {/* Draggable pin */}
@@ -173,7 +173,7 @@ export default function VendorZoneSetup() {
               }}
               title="Zone centre"
               description="Drag to reposition"
-              pinColor="#D4A017"
+              pinColor={Colors.pioneerGold}
             />
           </MapView>
           <View style={s.mapHint}>
@@ -210,7 +210,7 @@ export default function VendorZoneSetup() {
             <Switch
               value={autoEnabled}
               onValueChange={setAutoEnabled}
-              trackColor={{ true: '#D4A017', false: Colors.border }}
+              trackColor={{ true: Colors.pioneerGold, false: Colors.border }}
               thumbColor={autoEnabled ? '#FFF' : Colors.textMuted}
             />
           </View>
@@ -282,7 +282,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 10,
     borderRadius: 20, borderWidth: 1.5, borderColor: Colors.border,
   },
-  radiusChipActive: { backgroundColor: '#D4A017', borderColor: '#D4A017' },
+  radiusChipActive: { backgroundColor: Colors.pioneerGold, borderColor: Colors.pioneerGold },
   radiusChipText:   { fontSize: 14, fontWeight: '700', color: Colors.textSecondary },
   radiusChipTextActive: { color: '#FFF' },
 
@@ -295,14 +295,14 @@ const s = StyleSheet.create({
   toggleSub:   { fontSize: 13, color: Colors.textSecondary, lineHeight: 18 },
 
   infoBox: {
-    backgroundColor: '#FFF8E6', borderRadius: 12, padding: 14,
-    borderWidth: 1, borderColor: '#D4A01730',
+    backgroundColor: Colors.pioneerGoldSurface, borderRadius: 12, padding: 14,
+    borderWidth: 1, borderColor: Colors.pioneerGold + '30',
   },
-  infoTitle: { fontSize: 13, fontWeight: '700', color: '#A07010', marginBottom: 6 },
-  infoText:  { fontSize: 13, color: '#7A6000', lineHeight: 20 },
+  infoTitle: { fontSize: 13, fontWeight: '700', color: Colors.pioneerGoldDark, marginBottom: 6 },
+  infoText:  { fontSize: 13, color: Colors.pioneerGoldDeep, lineHeight: 20 },
 
   saveBtn: {
-    height: 56, backgroundColor: '#D4A017',
+    height: 56, backgroundColor: Colors.pioneerGold,
     borderRadius: 14, alignItems: 'center', justifyContent: 'center',
   },
   btnDisabled: { opacity: 0.5 },

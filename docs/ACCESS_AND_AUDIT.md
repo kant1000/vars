@@ -68,6 +68,22 @@ supabase db reset
 supabase functions serve
 ```
 
+Live infrastructure verification (Supabase SQL Editor or MCP):
+
+```sql
+-- Confirm all cron jobs and URL integrity
+SELECT jobname, schedule, command, active FROM cron.job ORDER BY jobname;
+
+-- FAIL if any net.http_post job contains a wrong project ID
+SELECT jobname, command
+FROM cron.job
+WHERE command NOT LIKE '%ojxlfbmetoyggetdfwro%'
+  AND command LIKE '%net.http_post%';
+
+-- Confirm migrations applied to live DB
+SELECT version FROM supabase_migrations.schema_migrations ORDER BY version;
+```
+
 ## Payment and External Service Access
 
 For payment, settlement, and dispute verification:

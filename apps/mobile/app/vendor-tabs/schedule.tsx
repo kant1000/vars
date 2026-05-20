@@ -69,7 +69,7 @@ const ACTIVE_STATUSES: BookingStatus[] = [
 const STATE_STYLE = {
   default:          { border: Colors.border,        bg: Colors.background, text: Colors.primary },
   unavailable:      { border: Colors.error + '80',  bg: Colors.error + '12', text: Colors.error },
-  auto_accept:      { border: '#D4A017',             bg: '#FFF8E6',           text: '#A07010' },
+  auto_accept:      { border: Colors.pioneerGold,    bg: Colors.pioneerGoldSurface, text: Colors.pioneerGoldDark },
   transport_buffer: { border: Colors.border,         bg: Colors.surface,      text: Colors.textMuted },
   booked:           { border: Colors.primary,        bg: Colors.primary + '18', text: Colors.primary },
 };
@@ -808,7 +808,7 @@ export default function ScheduleScreen() {
           <View style={s.legend}>
             <LegendDot color={Colors.border}   label="Available" />
             <LegendDot color={Colors.error}    label="Blocked" />
-            <LegendDot color="#D4A017"         label="Auto-accept" />
+            <LegendDot color={Colors.pioneerGold} label="Auto-accept" />
             <LegendDot color={Colors.textMuted} label="Buffer" />
             <LegendDot color={Colors.primary}  label="Booked" />
           </View>
@@ -870,7 +870,7 @@ export default function ScheduleScreen() {
                       <Text style={[s.slotTime, { color: isPast ? Colors.textMuted : style.text }]}>
                         {slot.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit', hour12: true })}
                       </Text>
-                      {state === 'auto_accept'      && <LightningIcon size={10} color="#D4A017" />}
+                      {state === 'auto_accept'      && <LightningIcon size={10} color={Colors.pioneerGold} />}
                       {state === 'unavailable'      && <CloseIcon size={10} color={Colors.error} />}
                       {state === 'transport_buffer' && <CarIcon size={10} color={Colors.textMuted} />}
                     </>
@@ -972,9 +972,9 @@ const s = StyleSheet.create({
   headerTitle: { fontSize: 24, fontWeight: '800', color: Colors.text },
   zoneBtn: {
     paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: 20, borderWidth: 1.5, borderColor: '#D4A017', backgroundColor: '#FFF8E6',
+    borderRadius: 20, borderWidth: 1.5, borderColor: Colors.pioneerGold, backgroundColor: Colors.pioneerGoldSurface,
   },
-  zoneBtnText: { fontSize: 13, fontWeight: '700', color: '#A07010' },
+  zoneBtnText: { fontSize: 13, fontWeight: '700', color: Colors.pioneerGoldDark },
 
   toggleRow: {
     flexDirection: 'row', marginHorizontal: 16, marginVertical: 10,
@@ -1106,11 +1106,11 @@ const bs = StyleSheet.create({
 
   graceBanner: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#FFF8E6', borderRadius: 12, padding: 14,
-    borderWidth: 1, borderColor: '#D4A017', marginBottom: 12,
+    backgroundColor: Colors.pioneerGoldSurface, borderRadius: 12, padding: 14,
+    borderWidth: 1, borderColor: Colors.pioneerGold, marginBottom: 12,
   },
-  graceTitle: { fontSize: 12, fontWeight: '700', color: '#A07010', marginBottom: 2 },
-  graceTimer: { fontSize: 13, color: '#A07010' },
+  graceTitle: { fontSize: 12, fontWeight: '700', color: Colors.pioneerGoldDark, marginBottom: 2 },
+  graceTimer: { fontSize: 13, color: Colors.pioneerGoldDark },
   graceBtn: {
     borderWidth: 1.5, borderColor: Colors.error, borderRadius: 10,
     paddingHorizontal: 12, paddingVertical: 8,

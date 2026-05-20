@@ -157,14 +157,16 @@ export function whatsappIntro(
  */
 export function whatsappReengagement(
   fullName: string,
+  serviceType: string,
   isPioneer: boolean,
 ): string {
   const firstName = getFirstName(fullName);
+  const label     = serviceLabel(serviceType);
 
   if (isPioneer) {
-    return `${firstName}, your Pioneer spot on VARS is still reserved. First 3 bookings are 0% commission — that means the full ₦20k on a ₦20k booking. Still thinking? https://vars.app/activate`;
+    return `${firstName}, your Pioneer spot on VARS as a ${label} professional is still reserved. First 3 bookings are 0% commission — that means the full ₦20k on a ₦20k booking. Still thinking? https://vars.app/activate`;
   }
-  return `${firstName}, on a ₦20k booking on VARS you keep ₦16k. No middleman, just your skills and your schedule. Still open to it? https://vars.app/activate`;
+  return `${firstName}, ${label} professionals on VARS keep ₦16k on a ₦20k booking. No middleman, just your skills and your schedule. Still open to it? https://vars.app/activate`;
 }
 
 /**
@@ -172,12 +174,14 @@ export function whatsappReengagement(
  */
 export function whatsappGoLive(
   fullName: string,
+  serviceType: string,
   isPioneer: boolean,
 ): string {
   const firstName   = getFirstName(fullName);
+  const label       = serviceLabel(serviceType);
   const pioneerNote = isPioneer
     ? ' Your first 3 bookings are 0% commission — you keep everything.'
     : '';
 
-  return `Congrats ${firstName}! You're verified on VARS. Your profile is live.${pioneerNote} Start accepting bookings: https://vars.app/go-live`;
+  return `Congrats ${firstName}! You're verified on VARS as a ${label} professional. Your profile is live.${pioneerNote} Start accepting bookings: https://vars.app/go-live`;
 }

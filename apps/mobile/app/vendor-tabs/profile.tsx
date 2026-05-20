@@ -317,7 +317,7 @@ const s = StyleSheet.create({
     fontSize: 12, fontWeight: '700', color: Colors.textMuted,
     textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12,
   },
-  sectionTitleGold: { color: '#A07010' },
+  sectionTitleGold: { color: Colors.pioneerGoldDark },
   photoCount: { fontSize: 12, color: Colors.textMuted, fontWeight: '600' },
 
   settingRow: {
@@ -326,23 +326,23 @@ const s = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
   settingRowGold: {
-    backgroundColor: '#FFF8E6', borderRadius: 12, paddingHorizontal: 14,
-    borderWidth: 1, borderColor: '#D4A01730', borderBottomWidth: 1,
-    borderBottomColor: '#D4A01730',
+    backgroundColor: Colors.pioneerGoldSurface, borderRadius: 12, paddingHorizontal: 14,
+    borderWidth: 1, borderColor: Colors.pioneerGold + '30', borderBottomWidth: 1,
+    borderBottomColor: Colors.pioneerGold + '30',
   },
   settingLeft: { flex: 1 },
   settingLabel: { fontSize: 15, fontWeight: '600', color: Colors.text },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 3 },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
   statusText: { fontSize: 13 },
-  editLabel: { fontSize: 13, fontWeight: '700', color: '#A07010' },
+  editLabel: { fontSize: 13, fontWeight: '700', color: Colors.pioneerGoldDark },
 
   confirmBanner: {
     marginTop: 10, padding: 12,
-    backgroundColor: '#FFF8E6', borderRadius: 10,
-    borderWidth: 1, borderColor: '#D4A01740',
+    backgroundColor: Colors.pioneerGoldSurface, borderRadius: 10,
+    borderWidth: 1, borderColor: Colors.pioneerGold + '40',
   },
-  confirmBannerText: { fontSize: 13, color: '#A07010', fontWeight: '600' },
+  confirmBannerText: { fontSize: 13, color: Colors.pioneerGoldDark, fontWeight: '600' },
 
   // Portfolio grid
   photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
