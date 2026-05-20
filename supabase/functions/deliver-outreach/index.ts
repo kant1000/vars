@@ -30,7 +30,7 @@ const TWILIO_WHATSAPP_FROM  = Deno.env.get('TWILIO_WHATSAPP_FROM')   ?? ''; // e
 const TWILIO_SMS_FROM       = Deno.env.get('TWILIO_SMS_FROM')        ?? '';
 
 const RESEND_API_KEY        = Deno.env.get('RESEND_API_KEY')         ?? '';
-const RESEND_FROM           = 'VARS <team@vars.app>';
+const RESEND_FROM           = 'VARS <hello@bookwithvars.com>';
 
 // Simple secret so only authorised callers can trigger delivery
 const DELIVER_SECRET        = Deno.env.get('DELIVER_OUTREACH_SECRET') ?? '';
