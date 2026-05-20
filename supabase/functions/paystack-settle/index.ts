@@ -24,11 +24,14 @@ import {
 import { BOOKING_STATUS } from '../_shared/constants.ts';
 import {
   sendNotification,
+  sendTransactionalEmail,
   msg_paymentReleased,
   msg_vendor_paymentReleased,
   msg_vendor_serviceRenderReminder,
   msg_disputeResolved_vendorPaid,
   msg_autoReleaseWarning,
+  email_serviceComplete_customer,
+  email_serviceComplete_vendor,
   formatNaira,
 } from '../_shared/notifications.ts';
 
@@ -226,7 +229,7 @@ async function settleBooking(
   const { data: booking } = await supabase
     .from('bookings')
     .select(`
-      id, user_id, vendor_id, service_price_kobo,
+      id, user_id, vendor_id, service_name, service_price_kobo,
       paystack_reference, status
     `)
     .eq('id', bookingId)
@@ -253,7 +256,7 @@ async function settleBooking(
   // Fetch vendor recipient code + pioneer fields
   const { data: vendor } = await supabase
     .from('vendors')
-    .select('full_name, paystack_recipient_code, push_token, pioneer, pioneer_bookings_completed')
+    .select('full_name, email, paystack_recipient_code, push_token, pioneer, pioneer_bookings_completed')
     .eq('id', booking.vendor_id)
     .single();
 
@@ -352,7 +355,7 @@ async function settleBooking(
   // Notify user: payment released
   const { data: profile } = await supabase
     .from('profiles')
-    .select('push_token')
+    .select('full_name, push_token, email')
     .eq('id', booking.user_id)
     .single();
 
@@ -367,4 +370,31 @@ async function settleBooking(
     pushToken: profile?.push_token ?? null,
     data: { bookingId, trigger },
   });
+
+  // Email: service complete — customer + vendor
+  try {
+    const customerFirstName = (profile?.full_name ?? '').split(' ')[0] || 'there';
+
+    if (profile?.email) {
+      const { subject, body } = email_serviceComplete_customer({
+        customerFirstName,
+        vendorName: vendor.full_name,
+        service: booking.service_name,
+        amount: `₦${formatNaira(booking.service_price_kobo)}`,
+      });
+      await sendTransactionalEmail(profile.email, subject, body);
+    }
+
+    if (vendor.email) {
+      const { subject, body } = email_serviceComplete_vendor({
+        vendorName: vendor.full_name,
+        customerFirstName,
+        service: booking.service_name,
+        amount: `₦${formatNaira(vendorAmountKobo)}`,
+      });
+      await sendTransactionalEmail(vendor.email, subject, body);
+    }
+  } catch (err) {
+    console.error(`paystack-settle: service-complete email failed for booking ${bookingId} (non-fatal):`, err);
+  }
 }

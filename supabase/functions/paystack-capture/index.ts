@@ -12,9 +12,13 @@ import { createAdminClient, createAuthClient } from '../_shared/supabase.ts';
 import { createTransportBuffers } from '../_shared/calendar.ts';
 import {
   sendNotification,
+  sendTransactionalEmail,
   msg_vendorAccepts,
+  email_bookingConfirmed_customer,
+  email_bookingConfirmed_vendor,
   formatDate,
   formatTime,
+  formatNaira,
 } from '../_shared/notifications.ts';
 import { BOOKING_STATUS } from '../_shared/constants.ts';
 
@@ -89,13 +93,13 @@ Deno.serve(async (req: Request) => {
     // Fetch user profile for notification
     const { data: profile } = await supabase
       .from('profiles')
-      .select('full_name, push_token')
+      .select('full_name, push_token, email')
       .eq('id', booking.user_id)
       .single();
 
     const { data: vendor } = await supabase
       .from('vendors')
-      .select('full_name')
+      .select('full_name, email, pioneer, pioneer_bookings_completed')
       .eq('id', user.id)
       .single();
 
@@ -116,6 +120,41 @@ Deno.serve(async (req: Request) => {
         pushToken: profile.push_token,
         data: { bookingId: booking.id },
       });
+    }
+
+    // Email: booking confirmed — customer + vendor (manual accept path)
+    try {
+      const customerFirstName = (profile?.full_name ?? '').split(' ')[0] || 'there';
+      const isPioneer = vendor?.pioneer === true && (vendor?.pioneer_bookings_completed ?? 3) < 3;
+      const vendorAmountKobo = isPioneer
+        ? booking.service_price_kobo
+        : Math.round(booking.service_price_kobo * 0.8);
+
+      if (profile?.email) {
+        const { subject, body } = email_bookingConfirmed_customer({
+          customerFirstName,
+          vendorName: vendor?.full_name ?? 'Your vendor',
+          service: booking.service_name,
+          date: formatDate(booking.scheduled_at),
+          time: formatTime(booking.scheduled_at),
+          amount: `₦${formatNaira(booking.service_price_kobo)}`,
+        });
+        await sendTransactionalEmail(profile.email, subject, body);
+      }
+
+      if (vendor?.email) {
+        const { subject, body } = email_bookingConfirmed_vendor({
+          vendorName: vendor.full_name,
+          customerFirstName,
+          service: booking.service_name,
+          date: formatDate(booking.scheduled_at),
+          time: formatTime(booking.scheduled_at),
+          amount: `₦${formatNaira(vendorAmountKobo)}`,
+        });
+        await sendTransactionalEmail(vendor.email, subject, body);
+      }
+    } catch (err) {
+      console.error('paystack-capture: booking-confirmed email failed (non-fatal):', err);
     }
 
     console.log(`Booking ${booking_id} accepted by vendor ${user.id}`);

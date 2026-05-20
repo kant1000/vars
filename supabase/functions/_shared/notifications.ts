@@ -405,3 +405,185 @@ export function formatTime(iso: string): string {
     hour12: true,
   });
 }
+
+// ============================================================
+// TRANSACTIONAL DELIVERY — Resend (email) + Twilio (SMS)
+// Credentials read once on module load, same pattern as deliver-outreach.
+// Every send is fully guarded: missing credentials or provider errors
+// log a warning and return — they never throw, never break booking flow.
+// ============================================================
+
+const _RESEND_KEY   = Deno.env.get('RESEND_API_KEY')     ?? '';
+const _RESEND_FROM  = 'VARS <no-reply@bookwithvars.com>';
+const _TWILIO_SID   = Deno.env.get('TWILIO_ACCOUNT_SID') ?? '';
+const _TWILIO_TOKEN = Deno.env.get('TWILIO_AUTH_TOKEN')  ?? '';
+const _TWILIO_FROM  = Deno.env.get('TWILIO_SMS_FROM')    ?? '';
+
+export async function sendTransactionalEmail(
+  to: string,
+  subject: string,
+  text: string,
+): Promise<void> {
+  if (!_RESEND_KEY) {
+    console.warn('[notify] RESEND_API_KEY not set — skipping email to', to);
+    return;
+  }
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${_RESEND_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ from: _RESEND_FROM, to: [to], subject, text }),
+    });
+    if (!res.ok) {
+      console.error('[notify] Resend error for', to, ':', await res.text());
+      return;
+    }
+    const data = await res.json();
+    console.log('[notify] Email sent:', data.id, '→', to);
+  } catch (err) {
+    console.error('[notify] sendTransactionalEmail failed:', err);
+  }
+}
+
+export async function sendTransactionalSms(
+  to: string,
+  body: string,
+): Promise<void> {
+  if (!_TWILIO_SID || !_TWILIO_TOKEN || !_TWILIO_FROM) {
+    console.warn('[notify] Twilio credentials incomplete — skipping SMS to', to);
+    return;
+  }
+  try {
+    const url = `https://api.twilio.com/2010-04-01/Accounts/${_TWILIO_SID}/Messages.json`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization:  `Basic ${btoa(`${_TWILIO_SID}:${_TWILIO_TOKEN}`)}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({ From: _TWILIO_FROM, To: to, Body: body }),
+    });
+    if (!res.ok) {
+      console.error('[notify] Twilio SMS error for', to, ':', await res.text());
+      return;
+    }
+    const data = await res.json();
+    console.log('[notify] SMS sent:', data.sid, '→', to);
+  } catch (err) {
+    console.error('[notify] sendTransactionalSms failed:', err);
+  }
+}
+
+// ── Booking confirmed ─────────────────────────────────────────
+
+export function email_bookingConfirmed_customer(params: {
+  customerFirstName: string;
+  vendorName: string;
+  service: string;
+  date: string;
+  time: string;
+  amount: string;
+}): { subject: string; body: string } {
+  return {
+    subject: 'Your booking is confirmed',
+    body:
+`Hi ${params.customerFirstName},
+
+${params.vendorName} has confirmed your booking.
+
+${params.service}
+${params.date} at ${params.time}
+${params.amount}
+
+They'll be with you on time. You'll get their number 15 minutes before the appointment.
+
+VARS`,
+  };
+}
+
+export function email_bookingConfirmed_vendor(params: {
+  vendorName: string;
+  customerFirstName: string;
+  service: string;
+  date: string;
+  time: string;
+  amount: string;
+}): { subject: string; body: string } {
+  return {
+    subject: `Booking confirmed — ${params.date} at ${params.time}`,
+    body:
+`Hi ${params.vendorName},
+
+You're booked in.
+
+Client: ${params.customerFirstName}
+${params.service}
+${params.date} at ${params.time}
+You'll earn: ${params.amount}
+
+Their address and contact details are on your jobs screen.
+
+VARS`,
+  };
+}
+
+// ── Service complete ──────────────────────────────────────────
+
+export function email_serviceComplete_customer(params: {
+  customerFirstName: string;
+  vendorName: string;
+  service: string;
+  amount: string;
+}): { subject: string; body: string } {
+  return {
+    subject: 'All done — thanks for using VARS',
+    body:
+`Hi ${params.customerFirstName},
+
+Your session with ${params.vendorName} is complete and your payment has been processed.
+
+${params.service} — ${params.amount}
+
+If you haven't already, take 30 seconds to leave a review. It helps ${params.vendorName} grow on the platform.
+
+VARS`,
+  };
+}
+
+export function email_serviceComplete_vendor(params: {
+  vendorName: string;
+  customerFirstName: string;
+  service: string;
+  amount: string;
+}): { subject: string; body: string } {
+  return {
+    subject: `Payment on the way — ${params.amount}`,
+    body:
+`Hi ${params.vendorName},
+
+Your payment for ${params.customerFirstName}'s ${params.service} session is on its way.
+
+${params.amount} is being transferred to your account now.
+
+VARS`,
+  };
+}
+
+// ── Phone reveal ──────────────────────────────────────────────
+
+export function sms_phoneReveal_customer(params: {
+  vendorName: string;
+  vendorPhone: string;
+}): string {
+  return `Your VARS pro is on the way. ${params.vendorName}'s number: ${params.vendorPhone}`;
+}
+
+export function sms_phoneReveal_vendor(params: {
+  customerFirstName: string;
+  customerPhone: string;
+}): string {
+  return `Head out now. ${params.customerFirstName}'s number: ${params.customerPhone}`;
+}

@@ -10,8 +10,11 @@ import { createAdminClient } from '../_shared/supabase.ts';
 import { BOOKING_STATUS } from '../_shared/constants.ts';
 import {
   sendNotification,
+  sendTransactionalSms,
   msg_reminder15min,
   msg_vendor_reminder15min,
+  sms_phoneReveal_customer,
+  sms_phoneReveal_vendor,
 } from '../_shared/notifications.ts';
 
 Deno.serve(async (req: Request) => {
@@ -34,7 +37,7 @@ Deno.serve(async (req: Request) => {
     .select(`
       id, vendor_id, user_id, scheduled_at,
       profiles:user_id (full_name, push_token, phone_number),
-      vendors:vendor_id (full_name, push_token)
+      vendors:vendor_id (full_name, push_token, phone_number)
     `)
     .in('status', [BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ON_WAY, BOOKING_STATUS.ARRIVED])
     .eq('phone_revealed', false)
@@ -65,7 +68,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const profile = booking.profiles as { full_name: string; push_token: string | null; phone_number: string | null } | null;
-    const vendor  = booking.vendors  as { full_name: string; push_token: string | null } | null;
+    const vendor  = booking.vendors  as { full_name: string; push_token: string | null; phone_number: string | null } | null;
 
     const vendorName      = vendor?.full_name ?? 'Your vendor';
     const clientFirstName = (profile?.full_name ?? 'Client').split(' ')[0];
@@ -98,6 +101,21 @@ Deno.serve(async (req: Request) => {
         pushToken:     vendor.push_token,
         data:          { bookingId: booking.id },
       });
+    }
+
+    // SMS: send actual phone numbers out-of-band, independent of push
+    // Fires regardless of push outcome — critical fallback if app is closed.
+    if (profile?.phone_number && vendor?.phone_number) {
+      await sendTransactionalSms(
+        profile.phone_number,
+        sms_phoneReveal_customer({ vendorName, vendorPhone: vendor.phone_number }),
+      );
+      await sendTransactionalSms(
+        vendor.phone_number,
+        sms_phoneReveal_vendor({ customerFirstName, customerPhone: profile.phone_number }),
+      );
+    } else {
+      console.warn(`phone-reveal: missing phone number(s) for booking ${booking.id} — SMS skipped`);
     }
 
     revealedCount++;

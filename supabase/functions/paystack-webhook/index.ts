@@ -19,11 +19,14 @@ import { verifyWebhookSignature, PaystackClient } from '../_shared/paystack.ts';
 import { createTransportBuffers } from '../_shared/calendar.ts';
 import {
   sendNotification,
+  sendTransactionalEmail,
   msg_paymentAuthorized,
   msg_autoAccepted,
   msg_vendor_newBooking,
   msg_vendor_autoAccepted,
   msg_vendor_paymentReleased,
+  email_bookingConfirmed_customer,
+  email_bookingConfirmed_vendor,
   formatDate,
   formatTime,
   formatNaira,
@@ -239,8 +242,8 @@ async function handleChargeSuccess(
 
   // ── Fetch vendor and user details for notifications ────────
   const [{ data: vendor }, { data: profile }] = await Promise.all([
-    supabase.from('vendors').select('full_name, push_token').eq('id', vendor_id).single(),
-    supabase.from('profiles').select('full_name, push_token').eq('id', user_id).single(),
+    supabase.from('vendors').select('full_name, push_token, email, pioneer, pioneer_bookings_completed').eq('id', vendor_id).single(),
+    supabase.from('profiles').select('full_name, push_token, email').eq('id', user_id).single(),
   ]);
 
   const clientFirstName = (profile?.full_name ?? 'Client').split(' ')[0];
@@ -279,6 +282,40 @@ async function handleChargeSuccess(
         pushToken: vendor.push_token,
         data: { bookingId: booking.id, autoAccepted: true, graceExpiresAt: graceExpiry.toISOString() },
       });
+    }
+
+    // Email: booking confirmed — customer + vendor (auto-accept path)
+    try {
+      const isPioneer = vendor?.pioneer === true && (vendor?.pioneer_bookings_completed ?? 3) < 3;
+      const vendorAmountKobo = isPioneer
+        ? service_price_kobo as number
+        : Math.round((service_price_kobo as number) * 0.8);
+
+      if (profile?.email) {
+        const { subject, body } = email_bookingConfirmed_customer({
+          customerFirstName: clientFirstName,
+          vendorName,
+          service: service_name as string,
+          date: formatDate(scheduledStr),
+          time: formatTime(scheduledStr),
+          amount: `₦${formatNaira(service_price_kobo as number)}`,
+        });
+        await sendTransactionalEmail(profile.email, subject, body);
+      }
+
+      if (vendor?.email) {
+        const { subject, body } = email_bookingConfirmed_vendor({
+          vendorName: vendor.full_name,
+          customerFirstName: clientFirstName,
+          service: service_name as string,
+          date: formatDate(scheduledStr),
+          time: formatTime(scheduledStr),
+          amount: `₦${formatNaira(vendorAmountKobo)}`,
+        });
+        await sendTransactionalEmail(vendor.email, subject, body);
+      }
+    } catch (err) {
+      console.error('paystack-webhook: booking-confirmed email failed (non-fatal):', err);
     }
   } else {
     // Normal flow: vendor has 1 hour to accept
