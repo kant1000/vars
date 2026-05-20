@@ -4,10 +4,13 @@
 // MUST verify HMAC-SHA512 signature before processing.
 //
 // Handled events:
-//   charge.success       → create booking, notify vendor
-//   transfer.success     → update payout_history to success
-//   transfer.failed      → update payout_history to failed, alert admin
-//   charge.dispute.create → flag booking, alert admin
+//   charge.success        → create booking, notify vendor
+//   transfer.success      → update payout_history to success
+//   transfer.failed       → update payout_history to failed, alert admin
+//   transfer.reversed     → update payout_history to failed, alert admin
+//   charge.dispute.create → freeze auto_release, alert admin (bank chargeback)
+//   refund.processed      → log success for audit trail
+//   refund.failed         → log failure for manual ops review
 // ============================================================
 
 import { createAdminClient } from '../_shared/supabase.ts';
@@ -81,6 +84,15 @@ Deno.serve(async (req: Request) => {
       case 'transfer.failed':
       case 'transfer.reversed':
         await handleTransferFailed(supabase, event.data);
+        break;
+
+      case 'charge.dispute.create':
+        await handleChargeDispute(supabase, event.data);
+        break;
+
+      case 'refund.processed':
+      case 'refund.failed':
+        await handleRefundUpdate(event.event, event.data);
         break;
 
       default:
@@ -456,4 +468,68 @@ async function handleTransferFailed(
 
   // Log for admin visibility — in production this should alert the ops team
   console.error(`TRANSFER FAILED: ref=${reference} reason=${reason}`);
+}
+
+// ── Bank chargeback from Paystack ────────────────────────────
+// Distinct from in-app disputes. Fires when a customer's bank reverses
+// a charge. Freeze auto_release so funds aren't paid out mid-dispute.
+async function handleChargeDispute(
+  supabase: ReturnType<typeof createAdminClient>,
+  data: Record<string, unknown>
+) {
+  // Paystack dispute payload carries reference at data.reference or
+  // data.transaction.reference depending on event version — try both.
+  const transaction = data.transaction as Record<string, unknown> | undefined;
+  const reference = (data.reference as string | undefined) ?? (transaction?.reference as string | undefined);
+
+  if (!reference) {
+    console.error('charge.dispute.create: no transaction reference in payload', JSON.stringify(data));
+    return;
+  }
+
+  const { data: booking } = await supabase
+    .from('bookings')
+    .select('id, status')
+    .eq('paystack_reference', reference)
+    .maybeSingle();
+
+  if (!booking) {
+    console.error(`charge.dispute.create: no booking found for reference ${reference}`);
+    return;
+  }
+
+  // Push auto_release_at 90 days out — prevents the settle cron from firing
+  // while the chargeback is open. Admin must manually resolve.
+  const frozenUntil = new Date();
+  frozenUntil.setDate(frozenUntil.getDate() + 90);
+
+  await supabase
+    .from('bookings')
+    .update({ auto_release_at: frozenUntil.toISOString() })
+    .eq('id', booking.id);
+
+  console.error(
+    `CHARGEBACK RAISED — booking=${booking.id} ref=${reference} status=${booking.status} auto_release frozen until ${frozenUntil.toISOString()} — REQUIRES MANUAL ADMIN REVIEW`
+  );
+}
+
+// ── Refund status from Paystack ──────────────────────────────
+// Refunds are not instant. Paystack fires these after processing.
+// refund.failed means the customer will NOT receive their money.
+async function handleRefundUpdate(
+  event: string,
+  data: Record<string, unknown>
+) {
+  const transaction = data.transaction as Record<string, unknown> | undefined;
+  const reference = transaction?.reference as string | undefined;
+  const amountKobo = data.amount as number | undefined;
+
+  if (event === 'refund.failed') {
+    console.error(
+      `REFUND FAILED — ref=${reference ?? 'unknown'} amount=${amountKobo ?? 'unknown'} kobo — CUSTOMER NOT REFUNDED — MANUAL ACTION REQUIRED`
+    );
+    return;
+  }
+
+  console.log(`Refund processed — ref=${reference} amount=${amountKobo} kobo`);
 }
