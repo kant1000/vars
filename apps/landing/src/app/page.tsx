@@ -97,6 +97,7 @@ export default async function HomePage() {
       <nav>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo-white.svg" alt="VARS" style={{ height: 28, width: 'auto' }} />
+        <a href="/roadmap" className="nav-link">Roadmap</a>
         <a href="#stylists" className="nav-cta">Join as a stylist</a>
       </nav>
 
@@ -117,13 +118,8 @@ export default async function HomePage() {
                 <a href="#stylists" className="btn-primary">
                   I'm a stylist
                 </a>
-                <a
-                  href="https://www.instagram.com/bookwithvars"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn-coming-soon"
-                >
-                  Follow for launch updates
+                <a href="/roadmap" className="btn-coming-soon">
+                  View Roadmap &rarr;
                 </a>
               </div>
             </div>
@@ -345,6 +341,8 @@ export default async function HomePage() {
           <a href="/terms">Terms</a>
           &nbsp;&nbsp;|&nbsp;&nbsp;
           <a href="/blog">Blog</a>
+          &nbsp;&nbsp;|&nbsp;&nbsp;
+          <a href="/roadmap">Roadmap</a>
         </p>
         <p style={{ marginTop: 16 }}>
           &copy; {new Date().getFullYear()} VARS. All rights reserved.

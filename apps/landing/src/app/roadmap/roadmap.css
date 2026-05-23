@@ -1,0 +1,287 @@
+/* ============================================================
+   VARS Roadmap Page — Styles
+   Dark throughout. Builds on globals.css tokens.
+   ============================================================ */
+
+/* ── Page wrapper ────────────────────────────────────────── */
+.roadmap-page {
+  background: #111111;
+  min-height: 100vh;
+  color: #ffffff;
+}
+
+/* ── Section 1: Narrative Header ─────────────────────────── */
+.rm-hero {
+  padding: 120px 0 64px;
+}
+
+.rm-hero h1 {
+  font-size: clamp(36px, 5vw, 64px);
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.06;
+  letter-spacing: 0;
+  margin-bottom: 14px;
+}
+
+.rm-hero-sub {
+  font-size: 17px;
+  font-weight: 500;
+  color: #888888;
+  letter-spacing: 0;
+  margin: 0;
+}
+
+/* ── Section 2: Phase Banner ─────────────────────────────── */
+.rm-phase-banner {
+  background: #1a1a1a;
+  border-left: 3px solid #0a7aff;
+  padding: 20px 0;
+  margin-bottom: 56px;
+}
+
+.rm-phase-banner-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.rm-phase-banner-now {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #0a7aff;
+}
+
+.rm-phase-banner-dot {
+  color: #444444;
+  font-size: 12px;
+}
+
+.rm-phase-banner-date {
+  font-size: 12px;
+  color: #888888;
+}
+
+.rm-phase-banner-text {
+  font-size: 15px;
+  line-height: 1.5;
+  color: #ffffff;
+  margin: 0;
+}
+
+.rm-phase-banner-count {
+  font-weight: 700;
+  color: #ffffff;
+}
+
+/* ── Main content ────────────────────────────────────────── */
+.rm-main {
+  padding-bottom: 96px;
+}
+
+/* ── Stat Bar (desktop only) ─────────────────────────────── */
+.rm-stat-bar {
+  display: flex;
+  gap: 72px;
+  margin-bottom: 72px;
+}
+
+.rm-stat-number {
+  font-size: 52px;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1;
+  letter-spacing: 0;
+  margin-bottom: 6px;
+}
+
+.rm-stat-label {
+  font-size: 13px;
+  color: #888888;
+  font-weight: 400;
+}
+
+/* ── Timeline ────────────────────────────────────────────── */
+.rm-timeline {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Phase group ─────────────────────────────────────────── */
+.rm-phase {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 48px;
+}
+
+.rm-phase:last-child {
+  margin-bottom: 0;
+}
+
+/* ── Phase label ─────────────────────────────────────────── */
+@keyframes rm-label-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.rm-phase-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #888888;
+  margin-bottom: 4px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #2a2a2a;
+  animation: rm-label-in 0.3s ease-out both;
+}
+
+/* ── Cards ───────────────────────────────────────────────── */
+@keyframes rm-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rm-card {
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 16px;
+  padding: 24px 28px;
+  animation: rm-card-in 0.3s ease-out both;
+}
+
+/* State-specific left borders */
+.rm-card--completed { border-left: 2px solid #ffffff; }
+.rm-card--active    { border-left: 2px solid #0a7aff; }
+.rm-card--upcoming  { border-left: 2px dashed #2a2a2a; }
+
+/* ── Card period (top) ───────────────────────────────────── */
+.rm-card-period {
+  font-size: 12px;
+  margin: 0 0 8px;
+}
+
+.rm-card-period--completed { color: rgba(255, 255, 255, 0.35); }
+.rm-card-period--active    { color: rgba(10, 122, 255, 0.65); }
+.rm-card-period--upcoming  { color: #444444; }
+
+/* ── Card header row (scissor + title + badge) ───────────── */
+.rm-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+/* ── Title ───────────────────────────────────────────────── */
+.rm-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0;
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.rm-card-title--completed { color: #ffffff; }
+.rm-card-title--active    { color: #0a7aff; }
+.rm-card-title--upcoming  { color: #888888; }
+
+/* ── Now badge ───────────────────────────────────────────── */
+.rm-now-badge {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(10, 122, 255, 0.12);
+  border: 1px solid rgba(10, 122, 255, 0.35);
+  color: #0a7aff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 100px;
+  flex-shrink: 0;
+}
+
+/* ── Description ─────────────────────────────────────────── */
+.rm-card-desc {
+  font-size: 14px;
+  line-height: 1.7;
+  margin: 0;
+}
+
+.rm-card-desc--completed { color: rgba(255, 255, 255, 0.58); }
+.rm-card-desc--active    { color: rgba(255, 255, 255, 0.58); }
+.rm-card-desc--upcoming  { color: #555555; }
+
+/* ── Bullet points ───────────────────────────────────────── */
+.rm-card-bullets {
+  padding-left: 18px;
+  margin: 8px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.rm-card-bullets li {
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.rm-card-bullets--completed li { color: rgba(255, 255, 255, 0.52); }
+.rm-card-bullets--active li    { color: rgba(255, 255, 255, 0.52); }
+.rm-card-bullets--upcoming li  { color: #555555; }
+
+/* ── Footer signal ───────────────────────────────────────── */
+.rm-footer-signal {
+  font-size: 12px;
+  color: #444444;
+  margin-top: 56px;
+  letter-spacing: 0.01em;
+}
+
+/* ── Mobile ──────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .rm-stat-bar {
+    display: none;
+  }
+
+  .rm-hero {
+    padding: 96px 0 48px;
+  }
+
+  .rm-hero h1 {
+    font-size: clamp(32px, 8vw, 44px);
+  }
+
+  .rm-hero-sub {
+    font-size: 15px;
+  }
+
+  .rm-phase-banner {
+    margin-bottom: 40px;
+  }
+
+  .rm-card {
+    padding: 20px;
+  }
+
+  .rm-card-title {
+    font-size: 15px;
+  }
+
+  .rm-main {
+    padding-bottom: 64px;
+  }
+}
