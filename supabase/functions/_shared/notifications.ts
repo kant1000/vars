@@ -417,7 +417,7 @@ const _RESEND_KEY        = Deno.env.get('RESEND_API_KEY')   ?? '';
 const _RESEND_FROM       = 'VARS <no-reply@bookwithvars.com>';
 const _TERMII_KEY        = Deno.env.get('TERMII_API_KEY')   ?? '';
 const _TERMII_SENDER_ID  = Deno.env.get('TERMII_SENDER_ID') ?? '';
-const _TERMII_BASE_URL   = Deno.env.get('TERMII_BASE_URL')  ?? 'https://api.ng.termii.com';
+const _TERMII_BASE_URL   = Deno.env.get('TERMII_BASE_URL')  ?? 'https://v3.api.termii.com';
 
 export async function sendTransactionalEmail(
   to: string,
