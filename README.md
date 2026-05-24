@@ -240,7 +240,7 @@ All functions live in `supabase/functions/` and run on Deno.
 | `vendor-kyc-init` | POST | Initiates Youverify KYC session |
 | `vendor-kyc-webhook` | POST | Receives Youverify result — clean pass: `kyc_status = verified` + `is_active = true` (instant activation); failure: `kyc_status = rejected`, appears in admin queue |
 | `vendor-register-lead` | POST/GET | Captures a pioneer programme lead; GET returns current pioneer spot count. On successful POST: inserts into `vendor_leads`, creates an auto-approved `welcome_email` outreach record ready for delivery |
-| `deliver-outreach` | POST | Picks up approved `vendor_lead_outreach` records and delivers via the appropriate channel (WhatsApp/SMS via Twilio, email via Resend). Controlled by `DELIVERY_LIVE` secret — logs only when unset. Accepts optional `{ record_id }` or `{ lead_id }` to scope delivery |
+| `deliver-outreach` | POST | Picks up approved `vendor_lead_outreach` records and delivers via the appropriate channel (WhatsApp/SMS via Termii, email via Resend). Controlled by `DELIVERY_LIVE` secret — logs only when unset. Accepts optional `{ record_id }` or `{ lead_id }` to scope delivery |
 | `vendor-set-zone` | POST | Saves vendor's auto-accept geographic zone |
 | `vendor-confirm-zone` | GET/POST | GET: returns zone status; POST: marks zone confirmed for today |
 | `vendor-update-location` | POST | Called every 60s by vendor app while `on_way`; writes `vendor_current_lat/lng` to vendors table for customer live tracking map; also detects zone drift |
@@ -325,7 +325,7 @@ Admin Outreach Queue (apps/admin/src/app/leads/outreach/)
        │
        ▼
 deliver-outreach (edge fn) — called by cron or "Send Now"
-  • Routes by channel: WhatsApp/SMS → Twilio, email → Resend
+  • Routes by channel: WhatsApp/SMS → Termii, email → Resend
   • Stamps last_outreach on lead for phone channels only (email is parallel)
   • Marks record sent / failed with provider message ID
 ```
@@ -352,7 +352,7 @@ Copy varies by:
 
 The system is fully built but providers are stubbed. To activate real delivery:
 
-1. Add Supabase secrets: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`, `TWILIO_SMS_FROM`, `RESEND_API_KEY`, `DELIVER_OUTREACH_SECRET`
+1. Add Supabase secrets: `TERMII_API_KEY`, `TERMII_SENDER_ID`, `TERMII_BASE_URL`, `RESEND_API_KEY`, `DELIVER_OUTREACH_SECRET`
 2. Set `DELIVERY_LIVE=true` as a Supabase secret
 3. Deploy `deliver-outreach` edge function
 4. Register cron jobs (`vendor-lead-tick` hourly, `deliver-outreach-cron` every 10 min)

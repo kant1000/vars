@@ -299,7 +299,7 @@ FAIL if `vendor_lead_tick()` can assign a non-PROSPECT initial state on insert, 
 
 **Source:** `docs/VARS_PROJECT_CONTEXT.md` §2, §4–6
 
-- **deliver-outreach edge function** — deployed and active. Delivery is stubbed pending `DELIVERY_LIVE=true` in Supabase secrets. PASS on deployment; WARN that real Twilio/Resend delivery is inactive until the secret is set.
+- **deliver-outreach edge function** — deployed and active. Delivery is stubbed pending `DELIVERY_LIVE=true` in Supabase secrets. PASS on deployment; WARN that real Termii/Resend delivery is inactive until the secret is set.
 - **Youverify webhook schema** — unconfirmed with vendor; WARN until confirmed with their team
 - **Monnify** — no code action; note only if Paystack live mode is blocked at launch
 - **Phase 2 readiness** — all trigger conditions met as of May 2026 (100+ vendors, 4+ neighbourhoods, 3 categories, 3+ vendors per category per area). No WARN needed unless admin panel lacks a live dashboard against these conditions.

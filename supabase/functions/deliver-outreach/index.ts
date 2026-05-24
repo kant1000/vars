@@ -7,7 +7,7 @@
 // providers are configured. Until then, calls are logged only.
 //
 // Channels supported: whatsapp, sms, email
-// Providers: Twilio (whatsapp + sms), Resend (email)
+// Providers: Termii (whatsapp + sms), Resend (email)
 //
 // Call via POST — no body required.
 // Optional body: { lead_id: string } to deliver only for one lead.
@@ -22,15 +22,14 @@ import { createAdminClient } from '../_shared/supabase.ts';
 
 // ── Provider config ───────────────────────────────────────────────────────────
 
-const DELIVERY_LIVE         = Deno.env.get('DELIVERY_LIVE') === 'true';
+const DELIVERY_LIVE    = Deno.env.get('DELIVERY_LIVE') === 'true';
 
-const TWILIO_ACCOUNT_SID    = Deno.env.get('TWILIO_ACCOUNT_SID')    ?? '';
-const TWILIO_AUTH_TOKEN     = Deno.env.get('TWILIO_AUTH_TOKEN')      ?? '';
-const TWILIO_WHATSAPP_FROM  = Deno.env.get('TWILIO_WHATSAPP_FROM')   ?? ''; // e.g. whatsapp:+234...
-const TWILIO_SMS_FROM       = Deno.env.get('TWILIO_SMS_FROM')        ?? '';
+const TERMII_API_KEY   = Deno.env.get('TERMII_API_KEY')   ?? '';
+const TERMII_SENDER_ID = Deno.env.get('TERMII_SENDER_ID') ?? '';
+const TERMII_BASE_URL  = Deno.env.get('TERMII_BASE_URL')  ?? 'https://api.ng.termii.com';
 
-const RESEND_API_KEY        = Deno.env.get('RESEND_API_KEY')         ?? '';
-const RESEND_FROM           = 'VARS <hello@bookwithvars.com>';
+const RESEND_API_KEY   = Deno.env.get('RESEND_API_KEY')   ?? '';
+const RESEND_FROM      = 'VARS <hello@bookwithvars.com>';
 
 // Simple secret so only authorised callers can trigger delivery
 const DELIVER_SECRET        = Deno.env.get('DELIVER_OUTREACH_SECRET') ?? '';
@@ -43,23 +42,22 @@ async function sendWhatsApp(to: string, body: string): Promise<string> {
     return `stub-wa-${Date.now()}`;
   }
 
-  const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
-  const res = await fetch(url, {
+  const res = await fetch(`${TERMII_BASE_URL}/api/sms/send`, {
     method: 'POST',
-    headers: {
-      Authorization:   `Basic ${btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`)}`,
-      'Content-Type':  'application/x-www-form-urlencoded',
-    },
-    body: new URLSearchParams({
-      From: TWILIO_WHATSAPP_FROM,
-      To:   `whatsapp:${to}`,
-      Body: body,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      api_key: TERMII_API_KEY,
+      to,
+      from:    TERMII_SENDER_ID,
+      sms:     body,
+      type:    'plain',
+      channel: 'whatsapp',
     }),
   });
 
-  if (!res.ok) throw new Error(`Twilio WhatsApp error: ${await res.text()}`);
+  if (!res.ok) throw new Error(`Termii WhatsApp error: ${await res.text()}`);
   const data = await res.json();
-  return data.sid as string;
+  return data.message_id as string;
 }
 
 async function sendSms(to: string, body: string): Promise<string> {
@@ -68,19 +66,22 @@ async function sendSms(to: string, body: string): Promise<string> {
     return `stub-sms-${Date.now()}`;
   }
 
-  const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
-  const res = await fetch(url, {
+  const res = await fetch(`${TERMII_BASE_URL}/api/sms/send`, {
     method: 'POST',
-    headers: {
-      Authorization:  `Basic ${btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`)}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: new URLSearchParams({ From: TWILIO_SMS_FROM, To: to, Body: body }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      api_key: TERMII_API_KEY,
+      to,
+      from:    TERMII_SENDER_ID,
+      sms:     body,
+      type:    'plain',
+      channel: 'generic',
+    }),
   });
 
-  if (!res.ok) throw new Error(`Twilio SMS error: ${await res.text()}`);
+  if (!res.ok) throw new Error(`Termii SMS error: ${await res.text()}`);
   const data = await res.json();
-  return data.sid as string;
+  return data.message_id as string;
 }
 
 async function sendEmail(to: string, subject: string, text: string): Promise<string> {

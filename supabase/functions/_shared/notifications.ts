@@ -407,17 +407,17 @@ export function formatTime(iso: string): string {
 }
 
 // ============================================================
-// TRANSACTIONAL DELIVERY — Resend (email) + Twilio (SMS)
+// TRANSACTIONAL DELIVERY — Resend (email) + Termii (SMS)
 // Credentials read once on module load, same pattern as deliver-outreach.
 // Every send is fully guarded: missing credentials or provider errors
 // log a warning and return — they never throw, never break booking flow.
 // ============================================================
 
-const _RESEND_KEY   = Deno.env.get('RESEND_API_KEY')     ?? '';
-const _RESEND_FROM  = 'VARS <no-reply@bookwithvars.com>';
-const _TWILIO_SID   = Deno.env.get('TWILIO_ACCOUNT_SID') ?? '';
-const _TWILIO_TOKEN = Deno.env.get('TWILIO_AUTH_TOKEN')  ?? '';
-const _TWILIO_FROM  = Deno.env.get('TWILIO_SMS_FROM')    ?? '';
+const _RESEND_KEY        = Deno.env.get('RESEND_API_KEY')   ?? '';
+const _RESEND_FROM       = 'VARS <no-reply@bookwithvars.com>';
+const _TERMII_KEY        = Deno.env.get('TERMII_API_KEY')   ?? '';
+const _TERMII_SENDER_ID  = Deno.env.get('TERMII_SENDER_ID') ?? '';
+const _TERMII_BASE_URL   = Deno.env.get('TERMII_BASE_URL')  ?? 'https://api.ng.termii.com';
 
 export async function sendTransactionalEmail(
   to: string,
@@ -452,26 +452,29 @@ export async function sendTransactionalSms(
   to: string,
   body: string,
 ): Promise<void> {
-  if (!_TWILIO_SID || !_TWILIO_TOKEN || !_TWILIO_FROM) {
-    console.warn('[notify] Twilio credentials incomplete — skipping SMS to', to);
+  if (!_TERMII_KEY || !_TERMII_SENDER_ID) {
+    console.warn('[notify] Termii credentials incomplete — skipping SMS to', to);
     return;
   }
   try {
-    const url = `https://api.twilio.com/2010-04-01/Accounts/${_TWILIO_SID}/Messages.json`;
-    const res = await fetch(url, {
+    const res = await fetch(`${_TERMII_BASE_URL}/api/sms/send`, {
       method: 'POST',
-      headers: {
-        Authorization:  `Basic ${btoa(`${_TWILIO_SID}:${_TWILIO_TOKEN}`)}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({ From: _TWILIO_FROM, To: to, Body: body }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        api_key: _TERMII_KEY,
+        to,
+        from:    _TERMII_SENDER_ID,
+        sms:     body,
+        type:    'plain',
+        channel: 'dnd',
+      }),
     });
     if (!res.ok) {
-      console.error('[notify] Twilio SMS error for', to, ':', await res.text());
+      console.error('[notify] Termii SMS error for', to, ':', await res.text());
       return;
     }
     const data = await res.json();
-    console.log('[notify] SMS sent:', data.sid, '→', to);
+    console.log('[notify] SMS sent:', data.message_id, '→', to);
   } catch (err) {
     console.error('[notify] sendTransactionalSms failed:', err);
   }

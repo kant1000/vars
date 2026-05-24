@@ -112,7 +112,7 @@ Deno.serve(async (req: Request) => {
       );
       await sendTransactionalSms(
         vendor.phone_number,
-        sms_phoneReveal_vendor({ customerFirstName, customerPhone: profile.phone_number }),
+        sms_phoneReveal_vendor({ customerFirstName: clientFirstName, customerPhone: profile.phone_number }),
       );
     } else {
       console.warn(`phone-reveal: missing phone number(s) for booking ${booking.id} — SMS skipped`);
