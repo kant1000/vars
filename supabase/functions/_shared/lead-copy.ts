@@ -15,10 +15,10 @@ const SERVICE_LABEL: Record<ServiceType, string> = {
 
 // One-line hook per category, used in email subject + body opener
 const SERVICE_HOOK: Record<ServiceType, string> = {
-  hair_styling: 'Lagos women are booking hair stylists at home every week.',
-  barbing:      'Lagos men want barbers who come to them — not the other way around.',
-  makeovers:    'Makeup artists on VARS earn from bookings while their clients come to them.',
-  other:        'VARS connects home service beauty professionals with Lagos customers who pay upfront.',
+  hair_styling: 'VARS launches to customers in Lagos this August — the first platform where clients book hair stylists directly to their home.',
+  barbing:      'VARS launches to customers in Lagos this August — bringing barbers directly to clients who book and pay online.',
+  makeovers:    'VARS launches in Lagos this August — where makeup artists come to clients who book and pay upfront.',
+  other:        'VARS launches in Lagos this August — connecting home service beauty professionals with clients who book and pay online.',
 };
 
 export function getFirstName(fullName: string): string {
@@ -64,7 +64,7 @@ export function welcomeEmail(
 
   const subject = isPioneer
     ? `Your Pioneer spot on VARS is confirmed, ${firstName}`
-    : `${firstName}, VARS is looking for ${label} professionals`;
+    : `${firstName}, get set up on VARS before we open in August`;
 
   return {
     subject,
@@ -76,7 +76,7 @@ You signed up to offer ${label} on VARS. Here's what that means:
 
 ${earningsLine}${urgencyLine}
 
-You keep your existing clients. VARS adds new ones on top — customers who book and pay upfront online, so you show up and do the work.
+You keep your existing clients. When VARS opens in August, customers will start booking — they pay upfront online, you show up and do the work. Set up now to be live from day one.
 
 Verification (KYC) takes 2–3 minutes. It works the same way banks verify identity. Once you're verified, your profile goes live and you start showing up in customer searches.
 
@@ -106,10 +106,10 @@ export function reengagementEmail(
     : `You keep 80% per booking — ₦16,000 on a ₦20,000 service.`;
 
   return {
-    subject: `Still thinking, ${firstName}? Here's what other ${label} vendors asked`,
+    subject: `Still thinking, ${firstName}? We open in August — don't miss it`,
     text: `Hi ${firstName},
 
-You signed up to offer ${label} on VARS but haven't completed your profile. That's okay. Here are the questions most vendors had before they did.
+You signed up to offer ${label} on VARS but haven't completed your profile yet. We open to customers in August — vendors who complete setup now will be live from day one. Here are the questions most vendors had before they joined.
 
 "Is the KYC safe?"
 VARS uses Youverify — the same identity verification trusted by banks and fintechs across Nigeria. We don't store your ID. Youverify confirms you're a real professional and returns a verified badge to your profile. It takes 2–3 minutes.
@@ -149,7 +149,7 @@ export function whatsappIntro(
     ? 'Your Pioneer spot is confirmed — first 3 bookings are 0% commission.'
     : 'You keep 80% of every booking.';
 
-  return `Hi ${firstName}! You signed up to offer ${label} on VARS. ${earningNote} Complete your profile to go live: https://vars.app/activate`;
+  return `Hi ${firstName}! VARS opens to customers in August — set up your ${label} profile now to be ready from day one. ${earningNote} Complete your profile: https://vars.app/activate`;
 }
 
 /**
@@ -164,9 +164,9 @@ export function whatsappReengagement(
   const label     = serviceLabel(serviceType);
 
   if (isPioneer) {
-    return `${firstName}, your Pioneer spot on VARS as a ${label} professional is still reserved. First 3 bookings are 0% commission — that means the full ₦20k on a ₦20k booking. Still thinking? https://vars.app/activate`;
+    return `${firstName}, VARS opens to customers in August and your Pioneer spot is still reserved. First 3 bookings: 0% commission. Set up before we go live: https://vars.app/activate`;
   }
-  return `${firstName}, ${label} professionals on VARS keep ₦16k on a ₦20k booking. No middleman, just your skills and your schedule. Still open to it? https://vars.app/activate`;
+  return `${firstName}, VARS opens to ${label} customers in August. Vendors who set up now will be first in customer searches. Takes 5 minutes: https://vars.app/activate`;
 }
 
 /**
@@ -216,12 +216,12 @@ export function welcomeEmailHtmlParts(
 
   const heading = isPioneer
     ? `Your Pioneer spot on VARS is confirmed, ${firstName}`
-    : `${firstName}, VARS is looking for ${label} professionals`;
+    : `${firstName}, get set up before VARS opens in August`;
 
   return {
     heading,
     body1: `${hook} You signed up to offer ${label} on VARS. ${earningsLine}${urgencyClause}`,
-    body2: `You keep your existing clients. VARS adds new ones on top — customers who book and pay upfront online, so you show up and do the work. Verification takes 2–3 minutes once you complete your profile.`,
+    body2: `You keep your existing clients. When we open in August, customers will start booking — they pay upfront online, you show up and do the work. Set up now to be live from day one.`,
   };
 }
 
@@ -238,8 +238,8 @@ export function reengagementEmailHtmlParts(
     : `You keep 80% per booking — ₦16,000 on a ₦20,000 service.`;
 
   return {
-    heading: `Still thinking, ${firstName}? Here's what other ${label} vendors asked`,
-    body1:   `You signed up to offer ${label} on VARS but haven't completed your profile. KYC uses Youverify — the same verification trusted by banks across Nigeria — and takes 2–3 minutes. Customers only book verified vendors, and payment is held by VARS until you confirm the job is done. ${pioneerLine}`,
+    heading: `Still thinking, ${firstName}? We open in August — here's what you need to know`,
+    body1:   `You signed up to offer ${label} on VARS but haven't completed your profile yet. We open to customers in August — vendors who complete setup now will be live from day one. KYC uses Youverify — the same verification trusted by banks across Nigeria — and takes 2–3 minutes. Customers only book verified vendors, and payment is held by VARS until you confirm the job is done. ${pioneerLine}`,
     body2:   '',
   };
 }
