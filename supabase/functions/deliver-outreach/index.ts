@@ -19,6 +19,14 @@
 
 import { jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient } from '../_shared/supabase.ts';
+import {
+  getFirstName,
+  welcomeEmailHtmlParts,
+  reengagementEmailHtmlParts,
+  goLiveEmailHtmlParts,
+  type HtmlEmailParts,
+} from '../_shared/lead-copy.ts';
+import { EMAIL_TEMPLATE } from '../_shared/email-template.ts';
 
 // ── Provider config ───────────────────────────────────────────────────────────
 
@@ -33,6 +41,33 @@ const RESEND_FROM      = 'VARS <hello@bookwithvars.com>';
 
 // Simple secret so only authorised callers can trigger delivery
 const DELIVER_SECRET        = Deno.env.get('DELIVER_OUTREACH_SECRET') ?? '';
+
+// ── Template helper ───────────────────────────────────────────────────────────
+
+/**
+ * Fills {{placeholders}} in the HTML email template.
+ * - If `body_paragraph_2` is empty, removes the <!--P2_START-->…<!--P2_END--> block entirely.
+ * - If `cta_label` or `cta_url` is empty, removes the <!--CTA_START-->…<!--CTA_END--> block entirely.
+ * - The `unsubscribe_url` value should be passed as the literal string "{{unsubscribe_url}}"
+ *   so Resend can inject the real URL after delivery.
+ */
+function fillTemplate(html: string, vars: Record<string, string>): string {
+  let out = html;
+
+  if (!vars.body_paragraph_2) {
+    out = out.replace(/<!--P2_START-->[\s\S]*?<!--P2_END-->/g, '');
+  }
+
+  if (!vars.cta_label || !vars.cta_url) {
+    out = out.replace(/<!--CTA_START-->[\s\S]*?<!--CTA_END-->/g, '');
+  }
+
+  for (const [key, value] of Object.entries(vars)) {
+    out = out.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
+  }
+
+  return out;
+}
 
 // ── Provider stubs / implementations ─────────────────────────────────────────
 
@@ -84,9 +119,9 @@ async function sendSms(to: string, body: string): Promise<string> {
   return data.message_id as string;
 }
 
-async function sendEmail(to: string, subject: string, text: string): Promise<string> {
+async function sendEmail(to: string, subject: string, text: string, html?: string): Promise<string> {
   if (!DELIVERY_LIVE) {
-    console.log('[deliver-outreach] Email stub →', to, '| Subject:', subject);
+    console.log('[deliver-outreach] Email stub →', to, '| Subject:', subject, html ? '(html)' : '(text-only)');
     return `stub-email-${Date.now()}`;
   }
 
@@ -101,6 +136,7 @@ async function sendEmail(to: string, subject: string, text: string): Promise<str
       to:      [to],
       subject,
       text,
+      ...(html ? { html } : {}),
     }),
   });
 
@@ -138,7 +174,7 @@ Deno.serve(async (req: Request) => {
   // Build query — optionally scope to one lead or one record
   let query = db
     .from('vendor_lead_outreach')
-    .select('id, lead_id, channel, message_body, message_template, vendor_leads!inner(email, phone)')
+    .select('id, lead_id, channel, message_body, message_template, message_type, vendor_leads!inner(email, phone, full_name, service_type, pioneer)')
     .eq('status', 'approved')
     .order('approved_at', { ascending: true })
     .limit(50);
@@ -158,7 +194,13 @@ Deno.serve(async (req: Request) => {
   let failed    = 0;
 
   for (const record of records) {
-    const lead = record.vendor_leads as { email: string; phone: string } | null;
+    const lead = record.vendor_leads as {
+      email:        string;
+      phone:        string;
+      full_name:    string;
+      service_type: string;
+      pioneer:      boolean;
+    } | null;
     if (!lead) {
       console.warn('[deliver-outreach] No lead for record', record.id);
       continue;
@@ -174,9 +216,44 @@ Deno.serve(async (req: Request) => {
         providerId = await sendSms(lead.phone, record.message_body);
 
       } else if (record.channel === 'email') {
-        // For email channel: message_template holds the subject, message_body holds the text.
-        // This convention is set by vendor-register-lead and any future email-channel insertions.
-        providerId = await sendEmail(lead.email, record.message_template, record.message_body);
+        // Build HTML from template. subject = heading derived from message_type.
+        // Falls back to record.message_template subject + text-only if message_type is unknown.
+        const firstName = getFirstName(lead.full_name ?? '');
+        let subject     = record.message_template;
+        let html: string | undefined;
+
+        let parts: HtmlEmailParts | null = null;
+        let ctaLabel = '';
+        let ctaUrl   = '';
+
+        if (record.message_type === 'welcome_email') {
+          parts    = welcomeEmailHtmlParts(lead.full_name, lead.service_type, lead.pioneer, 0);
+          ctaLabel = 'Join VARS';
+          ctaUrl   = 'https://bookwithvars.com';
+        } else if (record.message_type === 'go_live') {
+          parts    = goLiveEmailHtmlParts();
+          ctaLabel = 'Open VARS';
+          ctaUrl   = 'https://bookwithvars.com';
+        } else if (record.message_type === 'reengagement_email' || record.message_type === 'reengagement') {
+          parts    = reengagementEmailHtmlParts(lead.full_name, lead.service_type, lead.pioneer);
+          ctaLabel = 'Complete your profile';
+          ctaUrl   = 'https://bookwithvars.com';
+        }
+
+        if (parts) {
+          subject = parts.heading;
+          html    = fillTemplate(EMAIL_TEMPLATE, {
+            first_name:       firstName,
+            heading:          parts.heading,
+            body_paragraph_1: parts.body1,
+            body_paragraph_2: parts.body2,
+            cta_label:        ctaLabel,
+            cta_url:          ctaUrl,
+            unsubscribe_url:  '{{unsubscribe_url}}',
+          });
+        }
+
+        providerId = await sendEmail(lead.email, subject, record.message_body, html);
 
       } else {
         console.warn('[deliver-outreach] Unknown channel:', record.channel, 'for record', record.id);

@@ -185,3 +185,69 @@ export function whatsappGoLive(
 
   return `Congrats ${firstName}! You're verified on VARS as a ${label} professional. Your profile is live.${pioneerNote} Start accepting bookings: https://vars.app/go-live`;
 }
+
+// ── HTML email template parts ─────────────────────────────────────────────────
+// Structured body copy for the HTML template used by deliver-outreach.
+// Keeps copy in one place; deliver-outreach imports these — never raw strings.
+
+export interface HtmlEmailParts {
+  heading: string;
+  body1:   string;
+  body2:   string;
+}
+
+export function welcomeEmailHtmlParts(
+  fullName: string,
+  serviceType: string,
+  isPioneer: boolean,
+  spotsRemaining: number,
+): HtmlEmailParts {
+  const firstName = getFirstName(fullName);
+  const label     = serviceLabel(serviceType);
+  const hook      = serviceHook(serviceType);
+
+  const earningsLine = isPioneer
+    ? `You've secured a Pioneer spot. Your first 3 bookings on VARS are 0% commission — you keep 100% of what you earn to start. After that, you keep 80% of every booking.`
+    : `You keep 80% of every booking. On a ₦20,000 service, that's ₦16,000 straight to you.`;
+
+  const urgencyClause = isPioneer && spotsRemaining <= 10 && spotsRemaining > 0
+    ? ` Only ${spotsRemaining} Pioneer spot${spotsRemaining === 1 ? '' : 's'} left — yours is confirmed.`
+    : '';
+
+  const heading = isPioneer
+    ? `Your Pioneer spot on VARS is confirmed, ${firstName}`
+    : `${firstName}, VARS is looking for ${label} professionals`;
+
+  return {
+    heading,
+    body1: `${hook} You signed up to offer ${label} on VARS. ${earningsLine}${urgencyClause}`,
+    body2: `You keep your existing clients. VARS adds new ones on top — customers who book and pay upfront online, so you show up and do the work. Verification takes 2–3 minutes once you complete your profile.`,
+  };
+}
+
+export function reengagementEmailHtmlParts(
+  fullName: string,
+  serviceType: string,
+  isPioneer: boolean,
+): HtmlEmailParts {
+  const firstName = getFirstName(fullName);
+  const label     = serviceLabel(serviceType);
+
+  const pioneerLine = isPioneer
+    ? `Your Pioneer spot is still reserved. First 3 bookings: 0% commission, you keep 100%.`
+    : `You keep 80% per booking — ₦16,000 on a ₦20,000 service.`;
+
+  return {
+    heading: `Still thinking, ${firstName}? Here's what other ${label} vendors asked`,
+    body1:   `You signed up to offer ${label} on VARS but haven't completed your profile. KYC uses Youverify — the same verification trusted by banks across Nigeria — and takes 2–3 minutes. Customers only book verified vendors, and payment is held by VARS until you confirm the job is done. ${pioneerLine}`,
+    body2:   '',
+  };
+}
+
+export function goLiveEmailHtmlParts(): HtmlEmailParts {
+  return {
+    heading: "You're live on VARS.",
+    body1:   'Your profile is now visible to customers in your area. Bookings will come straight to you.',
+    body2:   'Open the app to check your schedule and get ready for your first booking.',
+  };
+}
