@@ -168,6 +168,8 @@ Twenty migration files build up the schema incrementally:
 | `20260525120000_vendor_lead_tick_august_copy_email_channel` | Adds email channel records to all three tick stages (introduction → `welcome_email`, reengagement → `reengagement_email`, go_live → `go_live` email); refreshes WhatsApp copy |
 | `20260525130000_vendor_leads_email_unsubscribed` | Adds `email_unsubscribed BOOLEAN NOT NULL DEFAULT false` to `vendor_leads`; checked before every outreach and marketing email send |
 | `20260525140000_notifications_reminder_idempotency_index` | Partial unique index on `notifications(booking_id, type)` for reminder types — enforces at-most-once delivery at DB level under concurrent cron runs |
+| `20260525150000_fix_get_nearby_vendors_active_filter` | Adds `is_active = TRUE AND is_suspended = FALSE` to `get_nearby_vendors` WHERE clause — previously suspended/inactive vendors could appear in customer discovery |
+| `20260525160000_payout_history_booking_id_unique` | `UNIQUE (booking_id)` constraint on `payout_history` — prevents double-payout race between user confirm, auto-release, and admin settlement |
 
 ### Key Tables
 
@@ -181,7 +183,7 @@ Twenty migration files build up the schema incrementally:
 | `vendor_calendar` | Blocked slot records — state: `unavailable` / `auto_accept` / `transport_buffer`. No row = slot is open. |
 | `reviews` | Star ratings + comments |
 | `disputes` | Customer-raised issues; includes `category` enum for instant triage |
-| `payout_history` | Vendor payout records |
+| `payout_history` | Vendor payout records — `UNIQUE (booking_id)` enforced at DB level to prevent duplicate transfers |
 | `vendor_leads` | Pre-launch interest signups — `lead_state` (PROSPECT/COLD/VERIFIED/CONVERTED), `pioneer`, `last_outreach`, `email_unsubscribed` |
 | `vendor_lead_outreach` | Outreach message queue — one record per message attempt; `channel` (whatsapp/sms/email), `status` (draft/approved/sent/failed/blocked), `message_type`, `message_body` |
 
@@ -769,6 +771,7 @@ SUPABASE_SERVICE_ROLE_KEY=
 SUPABASE_URL=
 PAYSTACK_SECRET_KEY=
 YOUVERIFY_API_KEY=
+YOUVERIFY_BASE_URL=        # defaults to https://api.youverify.co if unset
 YOUVERIFY_WEBHOOK_SECRET=  # HMAC secret for Youverify webhook signature verification
 CRON_SECRET=               # shared secret validated by all cron-triggered edge functions
 RESEND_API_KEY=            # email delivery (outreach + marketing)
