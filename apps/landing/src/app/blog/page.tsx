@@ -62,6 +62,7 @@ export default function BlogIndexPage() {
                       fill
                       style={{ objectFit: 'cover' }}
                       sizes="(max-width: 640px) 100vw, (max-width: 900px) 45vw, 280px"
+                      quality={70}
                     />
                   </div>
                 </Link>

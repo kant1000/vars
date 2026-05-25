@@ -77,7 +77,7 @@ export default function Step3Portfolio() {
       <View style={styles.grid}>
         {photos.map((p) => (
           <View key={p.path} style={styles.photoWrapper}>
-            <Image source={{ uri: p.url }} style={styles.photo} />
+            <Image source={{ uri: p.url }} style={styles.photo} contentFit="cover" />
             <TouchableOpacity style={styles.removeButton} onPress={() => removePhoto(p.path)}>
               <CloseIcon size={11} color="#FFF" />
             </TouchableOpacity>

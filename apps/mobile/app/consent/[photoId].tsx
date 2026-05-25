@@ -168,7 +168,7 @@ export default function ConsentScreen() {
         Only you can approve this.
       </Text>
 
-      <Image source={{ uri: publicUrl }} style={styles.photo} contentFit="cover" />
+      <Image source={{ uri: publicUrl }} style={styles.photo} contentFit="cover" cachePolicy="memory-disk" />
 
       <View style={styles.actions}>
         <TouchableOpacity

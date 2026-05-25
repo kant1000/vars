@@ -127,6 +127,7 @@ export default function ArticlePage({ params }: { params: { slug: string } }) {
             style={{ objectFit: 'cover' }}
             sizes="(max-width: 728px) 100vw, 680px"
             priority
+            quality={70}
           />
         </div>
 

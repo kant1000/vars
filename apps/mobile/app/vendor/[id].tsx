@@ -212,7 +212,7 @@ export default function VendorProfileScreen() {
         {/* ── Hero ── */}
         <View style={styles.hero}>
           {vendor.profile_photo_url ? (
-            <Image source={{ uri: vendor.profile_photo_url }} style={styles.heroImage} />
+            <Image source={{ uri: vendor.profile_photo_url }} style={styles.heroImage} contentFit="cover" cachePolicy="memory-disk" />
           ) : (
             <View style={[styles.heroImage, styles.heroFallback]}>
               <Text style={styles.heroInitial}>{vendor.full_name?.[0]?.toUpperCase()}</Text>
@@ -322,7 +322,7 @@ export default function VendorProfileScreen() {
                   .getPublicUrl(photo.storage_path);
                 return (
                   <View key={photo.id} style={{ width: PHOTO_SIZE, height: PHOTO_SIZE }}>
-                    <Image source={{ uri: publicUrl }} style={{ width: '100%', height: '100%' }} />
+                    <Image source={{ uri: publicUrl }} style={{ width: '100%', height: '100%' }} contentFit="cover" cachePolicy="memory-disk" />
                     {photo.consent_state === 'unverified' && (
                       <View style={styles.unverifiedBadge}>
                         <Text style={styles.unverifiedText}>Unverified</Text>

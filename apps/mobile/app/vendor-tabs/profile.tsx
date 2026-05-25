@@ -231,7 +231,7 @@ export default function VendorProfileScreen() {
                   const label = CONSENT_LABEL[photo.consent_state];
                   return (
                     <View key={photo.id} style={s.photoWrapper}>
-                      <Image source={{ uri: publicUrl }} style={s.photo} />
+                      <Image source={{ uri: publicUrl }} style={s.photo} contentFit="cover" cachePolicy="memory-disk" />
                       <View style={s.photoBadge}>
                         <Text style={[s.photoBadgeText, { color: label.color }]}>
                           {label.text}

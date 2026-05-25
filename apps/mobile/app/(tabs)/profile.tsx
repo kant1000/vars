@@ -169,7 +169,7 @@ export default function ProfileScreen() {
         <View style={[s.header, { paddingTop: insets.top + 16 }]}>
           <TouchableOpacity onPress={changePhoto} style={s.avatarWrap} disabled={uploadingPhoto}>
             {(profile as any)?.profile_photo_url ? (
-              <Image source={{ uri: (profile as any).profile_photo_url }} style={s.avatar} />
+              <Image source={{ uri: (profile as any).profile_photo_url }} style={s.avatar} contentFit="cover" cachePolicy="memory-disk" />
             ) : (
               <View style={[s.avatar, s.avatarFallback]}>
                 <Text style={s.avatarInitial}>{profile?.full_name?.[0]?.toUpperCase() ?? '?'}</Text>

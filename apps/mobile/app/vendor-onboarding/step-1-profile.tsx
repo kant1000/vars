@@ -102,7 +102,7 @@ export default function Step1Profile() {
         {/* Profile photo */}
         <TouchableOpacity style={styles.photoButton} onPress={handlePickPhoto}>
           {photoUrl ? (
-            <Image source={{ uri: photoUrl }} style={styles.photo} />
+            <Image source={{ uri: photoUrl }} style={styles.photo} contentFit="cover" />
           ) : (
             <View style={styles.photoPlaceholder}>
               <Text style={styles.photoPlaceholderText}>Add photo</Text>

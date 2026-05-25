@@ -51,8 +51,8 @@ export function ScissorIcon({ state }: Props) {
   return (
     <svg
       width="32"
-      height="33"
-      viewBox="-120 -90 800 820"
+      height="37"
+      viewBox="-120 -90 800 920"
       fill="none"
       aria-hidden="true"
       style={{ flexShrink: 0 }}

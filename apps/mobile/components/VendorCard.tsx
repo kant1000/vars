@@ -4,8 +4,9 @@
 // ============================================================
 import React from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, Image,
+  View, Text, StyleSheet, TouchableOpacity,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Colors } from '@/constants/colors';
 import { StarFilledIcon } from '@/components/icons';
@@ -48,7 +49,7 @@ export function VendorCard({ vendor, returnTo }: Props) {
       {/* Avatar */}
       <View style={styles.avatarWrap}>
         {vendor.profile_photo_url ? (
-          <Image source={{ uri: vendor.profile_photo_url }} style={styles.avatar} />
+          <Image source={{ uri: vendor.profile_photo_url }} style={styles.avatar} contentFit="cover" cachePolicy="memory-disk" />
         ) : (
           <View style={[styles.avatar, styles.avatarFallback]}>
             <Text style={styles.avatarInitial}>
