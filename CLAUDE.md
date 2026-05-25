@@ -75,6 +75,7 @@ Keep this file under 200 lines total. Add project-specific rules below these 12.
 - Before any multi-file change, read `docs/codex/CLEANUP_ROADMAP.md`.
 - If unsure whether something is built, check `README.md` — it is the canonical record.
 - Before writing, editing, or transforming any Wide Awake blog post, read `apps/landing/src/app/blog/STYLE.md`.
+- **Current roadmap position** is the source of truth for phase, active milestones, and launch dates. Read `apps/landing/src/app/roadmap/data/milestones.ts` before making any product-timeline or phase assumptions.
 
 ### Absolute Off-Limits
 - Never modify `packages/shared/src/database.types.ts` — auto-generated, touch kills it.

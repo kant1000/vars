@@ -9,7 +9,8 @@ Things not visible from the codebase alone. Reference before making product, cop
 | Admin | vars-admin.vercel.app |
 | Launch market | Lagos, Nigeria |
 | Secondary market | United Kingdom |
-| Phase | Phase 2 — customer marketing |
+| Phase | Phase 2 — Open the Market (active milestone: 400 Vendors in Pipeline, June 2026 target) |
+| Roadmap | `apps/landing/src/app/roadmap/data/milestones.ts` — source of truth for all phase and milestone state |
 
 ---
 
@@ -204,11 +205,22 @@ Vendors first. Always. A user who opens VARS and sees no vendors nearby deletes 
 - **Primary seeding strategy:** Personal barber contact in Lagos connecting his professional network. Founder-led, zero cost, highest conversion rate.
 - **Channels:** Instagram (organic + paid), TikTok (organic + paid), WhatsApp groups, physical shop visits — Lekki, VI, Surulere, Yaba, Ikeja.
 
-### Phase 2 — Customer marketing (current phase)
+### Phase 2 — Open the Market (current phase)
 
-All Phase 2 trigger conditions met as of May 2026: 100+ verified vendors, 4+ Lagos neighbourhoods, all 3 service categories, 3+ vendors per category per area.
+**Milestone timeline** (source of truth: `apps/landing/src/app/roadmap/data/milestones.ts`):
 
-**Wide Awake blog** (`bookwithvars.com/blog`) — content marketing arm launched in Phase 2. Covers money, mindset, culture, and the Nigerian beauty market. Articles are authored by Seyi Ibitoye. Content is defined statically in `apps/landing/src/app/blog/articles.ts` — no CMS. Live articles as of May 2026: *The Culture of Shame*, *Lagos Has the Talent*, *The Number in Your Head*. Five further articles are queued as "coming soon".
+| Milestone | Period | Status |
+|---|---|---|
+| 400 Vendors in the Pipeline | June 2026 | **Active now** — 75 registered, target 400 verified and ready to go live |
+| App Store Launch | July 2026 | Upcoming — supply-only month; vendor onboarding only, no customer marketing yet |
+| Both Sides Open | August 2026 | Upcoming — customer marketing activates; first month both sides are live simultaneously |
+| Platform Health Review | Q3 2026 | Upcoming — audit booking quality, vendor performance, platform health before year-end push |
+| Year-End | November–December 2026 | Upcoming |
+| 1,000 Completed Bookings | End 2026 | The Year 1 milestone — completed sessions, not installs |
+
+Phase 2 entry conditions were met as of May 2026: 100+ verified vendors, 4+ Lagos neighbourhoods, all 3 service categories, 3+ vendors per category per area.
+
+**Wide Awake blog** (`bookwithvars.com/blog`) — content marketing arm, launched ahead of the August customer marketing activation. Covers money, mindset, culture, and the Nigerian beauty market. Articles are authored by Seyi Ibitoye. Content is defined statically in `apps/landing/src/app/blog/articles.ts` — no CMS. Live articles as of May 2026: *The Culture of Shame*, *Lagos Has the Talent*, *The Number in Your Head*. Five further articles are queued as "coming soon".
 
 ### Two-stage vendor registration
 

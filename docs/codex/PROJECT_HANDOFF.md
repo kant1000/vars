@@ -54,7 +54,7 @@ https://github.com/kant1000/vars.git
 
 ## Current State
 
-Last updated: 2026-05-19.
+Last updated: 2026-05-25.
 
 - Current branch: `main`
 - Default branch: `main` (set as default on GitHub 2026-04-24)
@@ -68,7 +68,7 @@ Last updated: 2026-05-19.
 - Landing Phase 1 SEO: **complete and live** at bookwithvars.com
 - **Wide Awake blog**: live at bookwithvars.com/blog — 3 published articles, 5 coming soon. Content in `apps/landing/src/app/blog/articles.ts`.
 - **Pioneer cohort**: complete (50 spots filled). Landing page registration form now presents a single static general stylist registration state — no pioneer/waitlist branching.
-- **Phase 2**: underway — all go-to-market trigger conditions met as of May 2026.
+- **Phase 2 — Open the Market**: underway. Active milestone: **400 Vendors in the Pipeline** (75 registered, target 400 by June 2026). App Store Launch: July 2026 (supply-only). Customer marketing activates: August 2026 ("Both Sides Open"). Roadmap source of truth: `apps/landing/src/app/roadmap/data/milestones.ts`.
 - Google Search Console: verified via DNS TXT record; sitemap submitted (https://www.bookwithvars.com/sitemap.xml, 3 pages indexed)
 - Vercel production branch is tracking `claude/build-app-from-spec-6QwSN` (force-pushed to match `main`; both branches are identical)
 - Root `CLAUDE.md`: present and committed

@@ -302,7 +302,7 @@ FAIL if `vendor_lead_tick()` can assign a non-PROSPECT initial state on insert, 
 - **deliver-outreach edge function** — deployed and active. Delivery is stubbed pending `DELIVERY_LIVE=true` in Supabase secrets. PASS on deployment; WARN that real Termii/Resend delivery is inactive until the secret is set.
 - **Youverify webhook schema** — unconfirmed with vendor; WARN until confirmed with their team
 - **Monnify** — no code action; note only if Paystack live mode is blocked at launch
-- **Phase 2 readiness** — all trigger conditions met as of May 2026 (100+ vendors, 4+ neighbourhoods, 3 categories, 3+ vendors per category per area). No WARN needed unless admin panel lacks a live dashboard against these conditions.
+- **Phase 2 roadmap position** — source of truth is `apps/landing/src/app/roadmap/data/milestones.ts`. Active milestone (May 2026): *400 Vendors in the Pipeline* (target: June 2026, 75 registered). App Store Launch: July 2026 (supply-only). Customer marketing ("Both Sides Open"): August 2026. WARN if any work is described as "Phase 2 customer marketing" before August — the July launch month is vendor-onboarding only.
 - **Blog comments moderation** — auto-approved at insert; no admin queue built. WARN until a moderation UI exists or spam risk is explicitly accepted.
 
 ---

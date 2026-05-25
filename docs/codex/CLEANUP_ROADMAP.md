@@ -70,8 +70,16 @@ This roadmap tracks the practical path to make the whole app work as intended.
 
 ## Immediate Next Steps
 
-- Android APK delivery: use EAS Cloud Build (`eas build --platform android --profile preview`) rather than a local Android Studio build — avoids the Windows PATH/JDK friction and produces a shareable `.apk` or `.aab` without needing `adb` or an emulator on the dev machine.
+**Current roadmap position** (source of truth: `apps/landing/src/app/roadmap/data/milestones.ts`):
+
+| Milestone | Period | Status |
+|---|---|---|
+| 400 Vendors in the Pipeline | June 2026 | **Active now** |
+| App Store Launch | July 2026 | Upcoming — supply-only, no customer marketing yet |
+| Both Sides Open (customer marketing) | August 2026 | Upcoming |
+
+- Build vendor pipeline to 400 — 75 have registered interest. Outreach system is live; delivery activates when `DELIVERY_LIVE=true` is set in Supabase secrets.
+- Android APK delivery: use EAS Cloud Build (`eas build --platform android --profile preview`) — avoids Windows PATH/JDK friction, produces a shareable `.apk` without local Android Studio.
 - Activate Paystack live credentials. Blocked on Nigerian business registration completion.
 - Activate Youverify credentials. Blocked on pricing negotiation with Ayotomide.
 - Activate Google Maps API key. Set in mobile `.env.local` and Supabase Edge Function secrets; no code changes needed.
-- Phase 2 customer marketing: **underway** — all trigger conditions met as of May 2026 (100+ verified vendors, 4+ Lagos neighbourhoods, all 3 service categories).
