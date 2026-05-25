@@ -186,9 +186,14 @@ Deno.serve(async (req: Request) => {
       chunk.map(async (lead) => {
         const nameParts = (lead.full_name ?? '').trim().split(/\s+/);
         upsertResendContact({
-          email:     lead.email,
-          firstName: nameParts[0] ?? '',
-          lastName:  nameParts.slice(1).join(' '),
+          email:      lead.email,
+          firstName:  nameParts[0] ?? '',
+          lastName:   nameParts.slice(1).join(' '),
+          properties: {
+            service_type: lead.service_type ?? '',
+            pioneer:      String(lead.pioneer ?? false),
+            lead_state:   lead.lead_state   ?? '',
+          },
         });
 
         const firstName = getFirstName(lead.full_name ?? '');

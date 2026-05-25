@@ -59,7 +59,7 @@ Deno.serve(async (req: Request) => {
     .from('vendor_leads')
     .update({ email_unsubscribed: true })
     .eq('id', leadId)
-    .select('email, full_name')
+    .select('email, full_name, service_type, pioneer, lead_state')
     .single();
 
   if (error || !lead) {
@@ -74,7 +74,17 @@ Deno.serve(async (req: Request) => {
   const parts     = (lead.full_name ?? '').trim().split(/\s+/);
   const firstName = parts[0] ?? '';
   const lastName  = parts.slice(1).join(' ');
-  upsertResendContact({ email: lead.email, firstName, lastName, unsubscribed: true });
+  upsertResendContact({
+    email:        lead.email,
+    firstName,
+    lastName,
+    unsubscribed: true,
+    properties:   {
+      service_type: lead.service_type ?? '',
+      pioneer:      String(lead.pioneer ?? false),
+      lead_state:   lead.lead_state   ?? '',
+    },
+  });
 
   console.log('[unsubscribe-lead] unsubscribed:', lead.email);
   return new Response(

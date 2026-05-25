@@ -12,6 +12,7 @@ export async function upsertResendContact(params: {
   firstName:     string;
   lastName:      string;
   unsubscribed?: boolean;
+  properties?:   Record<string, string>;
 }): Promise<void> {
   if (!RESEND_API_KEY || !RESEND_AUDIENCE_ID) return;
 
@@ -29,6 +30,7 @@ export async function upsertResendContact(params: {
           first_name:   params.firstName,
           last_name:    params.lastName,
           unsubscribed: params.unsubscribed ?? false,
+          ...(params.properties ? { properties: params.properties } : {}),
         }),
       },
     );
