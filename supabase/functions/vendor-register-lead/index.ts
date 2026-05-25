@@ -16,7 +16,8 @@
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient } from '../_shared/supabase.ts';
-import { welcomeEmail } from '../_shared/lead-copy.ts';
+import { welcomeEmail, getFirstName } from '../_shared/lead-copy.ts';
+import { upsertResendContact } from '../_shared/resend-contacts.ts';
 
 const PIONEER_MAX = 50;
 
@@ -124,6 +125,14 @@ Deno.serve(async (req: Request) => {
       // Log but don't block — registration already succeeded
       console.error('vendor-register-lead: outreach insert failed:', outreachError.message);
     }
+
+    // Sync to Resend audience — fire-and-forget, never blocks registration
+    const parts = full_name.trim().split(/\s+/);
+    upsertResendContact({
+      email:     email.toLowerCase().trim(),
+      firstName: getFirstName(full_name.trim()),
+      lastName:  parts.slice(1).join(' '),
+    });
 
     return jsonResponse({
       status:          isPioneer ? 'pioneer' : 'waitlist',
