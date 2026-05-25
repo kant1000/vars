@@ -37,9 +37,8 @@ Deno.serve(async (req: Request) => {
 
   const isValid = await verifyYouverifySignature(req, rawBody);
   if (!isValid) {
-    console.warn('vendor-kyc-webhook: invalid signature');
-    // Return 200 to prevent retries if we ever misconfigure the secret
-    return jsonResponse({ received: true });
+    console.warn('vendor-kyc-webhook: invalid signature — rejecting request');
+    return new Response('Unauthorized', { status: 401 });
   }
 
   let payload: any;

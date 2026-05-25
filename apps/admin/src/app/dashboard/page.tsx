@@ -4,6 +4,8 @@
 // ============================================================
 export const dynamic = 'force-dynamic';
 
+import { redirect } from 'next/navigation';
+import { requireAdmin } from '@/lib/auth';
 import { adminClient } from '@/lib/supabase';
 import { BOOKING_STATUS } from '@vars/shared';
 
@@ -60,6 +62,9 @@ async function getStats() {
 }
 
 export default async function DashboardPage() {
+  const admin = await requireAdmin();
+  if (!admin) redirect('/login');
+
   const [stats, alerts] = await Promise.all([getStats(), getAlerts()]);
 
   const STATS = [

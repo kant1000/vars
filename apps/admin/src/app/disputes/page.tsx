@@ -3,6 +3,8 @@
 // ============================================================
 export const dynamic = 'force-dynamic';
 
+import { redirect } from 'next/navigation';
+import { requireAdmin } from '@/lib/auth';
 import { adminClient } from '@/lib/supabase';
 import DisputeActions from './DisputeActions';
 import { fmtPrice } from '@/lib/format';
@@ -66,6 +68,9 @@ function SlaTimer({ raisedAt }: { raisedAt: string }) {
 }
 
 export default async function DisputesPage({ searchParams }: Props) {
+  const admin = await requireAdmin();
+  if (!admin) redirect('/login');
+
   const status = searchParams.status ?? 'open';
   const page   = Number(searchParams.page ?? 1);
   const { disputes, total } = await getDisputes(status, page);

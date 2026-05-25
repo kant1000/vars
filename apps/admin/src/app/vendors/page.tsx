@@ -5,6 +5,8 @@
 // ============================================================
 export const dynamic = 'force-dynamic';
 
+import { redirect } from 'next/navigation';
+import { requireAdmin } from '@/lib/auth';
 import { adminClient } from '@/lib/supabase';
 import VendorActions from './VendorActions';
 
@@ -30,6 +32,9 @@ async function getVendors(status: string, page: number, q: string) {
 }
 
 export default async function VendorsPage({ searchParams }: Props) {
+  const admin = await requireAdmin();
+  if (!admin) redirect('/login');
+
   // Default to 'rejected' — Youverify auto-approves clean passes, so admin only needs
   // to see flagged/rejected KYC cases. Switch to 'all' or 'verified' via filters.
   const status = searchParams.status ?? 'rejected';

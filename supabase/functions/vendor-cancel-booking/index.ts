@@ -99,7 +99,7 @@ Deno.serve(async (req: Request) => {
       .eq('cancelled_by', 'vendor')
       .gte('updated_at', thirtyDaysAgo);
 
-    const cancelCount = (recentCancellations ?? 0) + 1; // +1 for the one we just cancelled
+    const cancelCount = recentCancellations ?? 0; // already includes the booking we just cancelled
 
     // Flag vendor if they hit 3 cancellations in 30 days
     if (cancelCount >= 3) {

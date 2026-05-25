@@ -69,17 +69,23 @@ Deno.serve(async (req: Request) => {
       return errorResponse('Booking response window has expired');
     }
 
-    // Update booking to accepted — escrow is now committed
-    const { error: updateError } = await supabase
+    // Update booking to accepted — compare-and-swap on status = pending
+    // so a double-accept race fails safely (second update hits 0 rows).
+    const { data: updatedRows, error: updateError } = await supabase
       .from('bookings')
       .update({
         status: BOOKING_STATUS.ACCEPTED,
         payment_captured: true,
         accepted_at: new Date().toISOString(),
       })
-      .eq('id', booking_id);
+      .eq('id', booking_id)
+      .eq('status', BOOKING_STATUS.PENDING)
+      .select('id');
 
     if (updateError) throw updateError;
+    if (!updatedRows || updatedRows.length === 0) {
+      return errorResponse('Booking is no longer pending — it may have already been accepted or expired');
+    }
 
     // Create transport buffer blocks after the booking end time
     await createTransportBuffers(

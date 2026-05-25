@@ -7,8 +7,9 @@
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAuthClient, createAdminClient } from '../_shared/supabase.ts';
 
-const YOUVERIFY_API_URL = 'https://api.youverify.co/v2/identity/kyc/link';
-const YOUVERIFY_API_KEY = Deno.env.get('YOUVERIFY_API_KEY') ?? '';
+const YOUVERIFY_BASE_URL = Deno.env.get('YOUVERIFY_BASE_URL') ?? 'https://api.youverify.co';
+const YOUVERIFY_API_URL  = `${YOUVERIFY_BASE_URL}/v2/identity/kyc/link`;
+const YOUVERIFY_API_KEY  = Deno.env.get('YOUVERIFY_API_KEY') ?? '';
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return handleCors(req);

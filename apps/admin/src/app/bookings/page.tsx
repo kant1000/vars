@@ -4,6 +4,8 @@
 // ============================================================
 export const dynamic = 'force-dynamic';
 
+import { redirect } from 'next/navigation';
+import { requireAdmin } from '@/lib/auth';
 import { adminClient } from '@/lib/supabase';
 import { fmtPrice } from '@/lib/format';
 import { BOOKING_STATUS } from '@vars/shared';
@@ -48,6 +50,9 @@ async function getBookings(status: string, page: number, q: string) {
 }
 
 export default async function BookingsPage({ searchParams }: Props) {
+  const admin = await requireAdmin();
+  if (!admin) redirect('/login');
+
   const status = searchParams.status ?? 'all';
   const page   = Number(searchParams.page ?? 1);
   const q      = searchParams.q ?? '';

@@ -731,6 +731,7 @@ export default function BookingFlow() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Payment initialisation failed');
 
+      paystackRefRef.current = data.reference ?? null;
       setPaystackUrl(`https://checkout.paystack.com/${data.access_code}`);
     } catch (err: any) {
       setError(err.message);
@@ -739,6 +740,9 @@ export default function BookingFlow() {
     }
   };
 
+  // Paystack reference stored at initialization time so we can poll after redirect
+  const paystackRefRef = useRef<string | null>(null);
+
   const handleWebViewNav = (url: string) => {
     if (url.startsWith('https://checkout.paystack.com/')) return true;
     if (url.includes('cancel') || url.includes('declined') || url.includes('close')) {
@@ -746,10 +750,29 @@ export default function BookingFlow() {
       setError('Payment was cancelled.');
       return false;
     }
-    // Any redirect away from Paystack checkout = payment complete
+    // Redirect away from Paystack checkout — payment likely completed.
+    // Poll for the booking row (created by webhook) before navigating, so the
+    // bookings screen doesn't show a blank list while the webhook is still processing.
     setPaystackUrl(null);
-    router.replace('/(tabs)/bookings');
+    pollForBooking(paystackRefRef.current);
     return false;
+  };
+
+  const pollForBooking = async (reference: string | null) => {
+    if (!reference) { router.replace('/(tabs)/bookings'); return; }
+    const MAX_ATTEMPTS = 10;
+    const INTERVAL_MS  = 1500;
+    for (let i = 0; i < MAX_ATTEMPTS; i++) {
+      const { data } = await supabase
+        .from('bookings')
+        .select('id')
+        .eq('paystack_reference', reference)
+        .maybeSingle();
+      if (data?.id) { router.replace('/(tabs)/bookings'); return; }
+      await new Promise((res) => setTimeout(res, INTERVAL_MS));
+    }
+    // Webhook hasn't created the booking yet — navigate anyway; it will arrive via Realtime
+    router.replace('/(tabs)/bookings');
   };
 
   return (
