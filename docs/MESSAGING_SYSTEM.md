@@ -153,12 +153,15 @@ Edge function (`supabase/functions/vendor-register-lead/index.ts`), called by
 the landing page form.
 
 On POST:
-1. Calls `register_vendor_lead()` DB function (advisory lock prevents pioneer
+1. Normalises the submitted phone number to E.164 format (`+234XXXXXXXXXX`) via
+   `normalisePhone()`. Accepts local 11-digit (`080...`), 10-digit (leading 0
+   omitted), or already-E.164 inputs. Termii requires E.164 for delivery.
+2. Calls `register_vendor_lead()` DB function (advisory lock prevents pioneer
    slot race conditions). Atomically inserts the lead and determines pioneer
    status.
-2. If the lead already existed: returns `already_registered: true` — no new
+3. If the lead already existed: returns `already_registered: true` — no new
    records created.
-3. For new leads: immediately inserts one `welcome_email` outreach record with
+4. For new leads: immediately inserts one `welcome_email` outreach record with
    `status = approved` (auto-approved so it delivers as soon as `deliver-outreach`
    runs, without needing admin review).
 
@@ -329,8 +332,11 @@ Sends reminders at three time windows:
 3. **30 minutes after booking created** (if still PENDING) — vendor only
    ("30 minutes left to confirm [client]'s booking")
 
-Idempotency: checks `notifications` table for existing rows with matching
-`booking_id` + `type` before sending. Safe to run frequently.
+Idempotency: a partial unique index on `notifications(booking_id, type)` for
+the three reminder types enforces at-most-once delivery at the DB level. A
+concurrent cron run that tries to insert a duplicate will receive a unique
+violation and skip — the SELECT-before-insert check is a belt-and-braces guard
+on top of this.
 
 Auth: `x-vars-cron-secret` header must match `CRON_SECRET` Supabase secret.
 
@@ -543,6 +549,7 @@ When flipping to live:
 | `SUPABASE_URL` | deliver-outreach, send-marketing-email | Used to build unsubscribe URLs |
 | `SUPABASE_SERVICE_ROLE_KEY` | All admin edge functions | Auto-injected by Supabase |
 | `DELIVER_OUTREACH_SECRET` | deliver-outreach | Required — function throws on startup if absent |
+| `LAUNCH_MONTH` | lead-copy.ts (via deliver-outreach, vendor-register-lead, send-marketing-email) | Month name used in all outreach copy; defaults to `'August'` if unset |
 | `CRON_SECRET` | send-reminders, phone-reveal | Prevents public invocation |
 | `PAYSTACK_SECRET_KEY` | paystack-* functions | Payment |
 | `YOUVERIFY_API_KEY` | vendor-kyc-init, vendor-kyc-webhook | Identity verification |
@@ -576,7 +583,11 @@ All user-facing copy is centralised in two files:
 
 **`supabase/functions/_shared/lead-copy.ts`**
 - All pre-app vendor lead messages (WhatsApp, outreach email)
+- `LAUNCH_MONTH` constant read from `Deno.env.get('LAUNCH_MONTH')` (default
+  `'August'`). Set the Supabase secret to change the launch date in all copy
+  without a code redeploy.
 - Notification helper functions: `formatDate()`, `formatTime()`, `formatNaira()`
+  — `formatDate` and `formatTime` render in `Africa/Lagos` timezone (WAT, UTC+1).
 - Transactional email copy for booking events
 
 **`supabase/functions/_shared/notifications.ts`**
