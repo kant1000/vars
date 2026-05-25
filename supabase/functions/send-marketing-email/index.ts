@@ -32,7 +32,6 @@ import { jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient }           from '../_shared/supabase.ts';
 import { getFirstName }                from '../_shared/lead-copy.ts';
 import { EMAIL_TEMPLATE }              from '../_shared/email-template.ts';
-import { upsertResendContact }         from '../_shared/resend-contacts.ts';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -184,18 +183,6 @@ Deno.serve(async (req: Request) => {
     const chunk  = leads.slice(i, i + BATCH_SIZE);
     const emails = await Promise.all(
       chunk.map(async (lead) => {
-        const nameParts = (lead.full_name ?? '').trim().split(/\s+/);
-        upsertResendContact({
-          email:      lead.email,
-          firstName:  nameParts[0] ?? '',
-          lastName:   nameParts.slice(1).join(' '),
-          properties: {
-            service_type: lead.service_type ?? '',
-            pioneer:      String(lead.pioneer ?? false),
-            lead_state:   lead.lead_state   ?? '',
-          },
-        });
-
         const firstName = getFirstName(lead.full_name ?? '');
         const token     = await makeUnsubToken(lead.id);
         const unsubUrl  = `${SUPABASE_URL}/functions/v1/unsubscribe-lead?id=${lead.id}&t=${token}`;
@@ -226,7 +213,10 @@ Deno.serve(async (req: Request) => {
           subject: content.subject,
           html,
           text:    textFallback,
-          headers: { 'List-Unsubscribe': `<${unsubUrl}>` },
+          headers: {
+            'List-Unsubscribe':      `<mailto:unsubscribe@bookwithvars.com?subject=unsubscribe>, <${unsubUrl}>`,
+            'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+          },
         };
       }),
     );
