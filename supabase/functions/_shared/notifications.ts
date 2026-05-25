@@ -388,21 +388,23 @@ export function formatNaira(kobo: number): string {
   return (kobo / 100).toLocaleString('en-NG', { maximumFractionDigits: 0 });
 }
 
-/** Format a date for display in notifications */
+/** Format a date for display in notifications (Lagos time) */
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-NG', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
+    timeZone: 'Africa/Lagos',
   });
 }
 
-/** Format a time for display in notifications */
+/** Format a time for display in notifications (Lagos time) */
 export function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString('en-NG', {
     hour: '2-digit',
     minute: '2-digit',
     hour12: true,
+    timeZone: 'Africa/Lagos',
   });
 }
 
