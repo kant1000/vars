@@ -17,6 +17,7 @@ import { createAdminClient } from '../_shared/supabase.ts';
 import { BOOKING_STATUS } from '../_shared/constants.ts';
 import { verifyWebhookSignature, PaystackClient } from '../_shared/paystack.ts';
 import { createTransportBuffers } from '../_shared/calendar.ts';
+import { isSlotFree } from '../_shared/slot.ts';
 import {
   sendNotification,
   sendTransactionalEmail,
@@ -412,20 +413,9 @@ async function checkAutoAccept(
   const slotStart = new Date(scheduledAt);
   const slotEnd = new Date(slotStart.getTime() + durationBlocks * 30 * 60 * 1000);
 
-  // Check if ALL 30-min blocks of the booking duration are auto_accept
-  const { data: calendarBlocks } = await supabase
-    .from('vendor_calendar')
-    .select('block_state')
-    .eq('vendor_id', vendorId)
-    .lt('start_time', slotEnd.toISOString())
-    .gt('end_time', slotStart.toISOString());
-
-  // Any unavailable or transport_buffer block prevents auto-accept
-  const blockers = (calendarBlocks ?? []).filter(
-    (b) => b.block_state === 'unavailable' || b.block_state === 'transport_buffer'
-  );
-  if (blockers.length > 0) {
-    return { shouldAutoAccept: false, reason: 'slot blocked (unavailable or transport_buffer)' };
+  // Slot must be free — no unavailable/transport_buffer blocks and no booking conflicts
+  if (!await isSlotFree(supabase, vendorId, slotStart, slotEnd, durationBlocks * 30 * 60 * 1000)) {
+    return { shouldAutoAccept: false, reason: 'slot blocked' };
   }
 
   // At least one auto_accept block must cover the start of the slot

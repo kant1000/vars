@@ -3,6 +3,7 @@
 // ============================================================
 
 import { createAdminClient } from './supabase.ts';
+import { isSlotFree } from './slot.ts';
 
 /**
  * Insert two 30-min transport_buffer blocks immediately after a confirmed booking ends.
@@ -11,7 +12,7 @@ import { createAdminClient } from './supabase.ts';
  * Rules:
  *  - After-only (no before-buffer)
  *  - Clamped to working hours (must end by 22:00)
- *  - Skipped if a calendar block already exists in that slot
+ *  - Skipped if the slot is occupied (vendor_calendar block or back-to-back booking)
  *  - Linked to booking via transport_buffer_source_booking_id (deleted on cancellation)
  */
 export async function createTransportBuffers(
@@ -39,14 +40,7 @@ export async function createTransportBuffers(
 
   const inserts: Record<string, unknown>[] = [];
   for (const { start, end } of candidates) {
-    const { data: existing } = await supabase
-      .from('vendor_calendar')
-      .select('id')
-      .eq('vendor_id', vendorId)
-      .eq('start_time', start.toISOString())
-      .maybeSingle();
-
-    if (!existing) {
+    if (await isSlotFree(supabase, vendorId, start, end)) {
       inserts.push({
         vendor_id: vendorId,
         start_time: start.toISOString(),
@@ -56,6 +50,7 @@ export async function createTransportBuffers(
       });
     }
   }
+
 
   if (inserts.length === 0) {
     console.log(`Transport buffers for booking ${bookingId}: slots already occupied, skipped.`);

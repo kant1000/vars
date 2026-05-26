@@ -10,6 +10,7 @@ import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient, createAuthClient } from '../_shared/supabase.ts';
 import { PaystackClient, generateReference } from '../_shared/paystack.ts';
 import { BOOKING_STATUS } from '../_shared/constants.ts';
+import { isSlotFree } from '../_shared/slot.ts';
 
 Deno.serve(async (req: Request) => {
   const cors = handleCors(req);
@@ -75,32 +76,9 @@ Deno.serve(async (req: Request) => {
     const durationMs = vendorService.duration_blocks * 30 * 60 * 1000;
     const slotEnd = new Date(scheduledDate.getTime() + durationMs);
 
-    // Check existing accepted bookings that overlap
-    const { data: conflicts } = await supabase
-      .from('bookings')
-      .select('id')
-      .eq('vendor_id', vendorService.vendor.id)
-      .in('status', [BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ON_WAY, BOOKING_STATUS.ARRIVED, BOOKING_STATUS.SERVICE_RENDERED])
-      .lt('scheduled_at', slotEnd.toISOString())
-      .gt('scheduled_at', new Date(scheduledDate.getTime() - durationMs).toISOString());
-
-    if (conflicts && conflicts.length > 0) {
+    // Check slot availability — vendor_calendar blocks and booking conflicts
+    if (!await isSlotFree(supabase, vendorService.vendor.id, scheduledDate, slotEnd, durationMs)) {
       return errorResponse('This time slot is no longer available');
-    }
-
-    // Check vendor calendar — unavailable and transport_buffer blocks block bookings
-    const { data: calendarBlocks } = await supabase
-      .from('vendor_calendar')
-      .select('id, block_state')
-      .eq('vendor_id', vendorService.vendor.id)
-      .lt('start_time', slotEnd.toISOString())
-      .gt('end_time', scheduledDate.toISOString());
-
-    const blocked = (calendarBlocks ?? []).some(
-      (b) => b.block_state === 'unavailable' || b.block_state === 'transport_buffer'
-    );
-    if (blocked) {
-      return errorResponse('Vendor is unavailable at this time');
     }
 
     // 4. Generate unique reference and initialize Paystack transaction
