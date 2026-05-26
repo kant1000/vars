@@ -196,6 +196,10 @@ function Step2({
     const generated: { time: Date; available: boolean; autoAccept: boolean }[] = [];
     let cursor = new Date(dayStart);
     const now = new Date();
+    // Block the current slot and the one immediately after it — not enough lead time.
+    // nextSlotStart = start of the next 30-min boundary after now.
+    const BLOCK_MS = BLOCK_MINS * 60 * 1000;
+    const nextSlotStart = new Date(Math.floor(now.getTime() / BLOCK_MS) * BLOCK_MS + BLOCK_MS);
 
     while (cursor < dayEnd) {
       const slotStart = new Date(cursor);
@@ -204,7 +208,7 @@ function Step2({
       let available = true;
       let autoAccept = false;
 
-      if (slotStart <= now) { available = false; }
+      if (slotStart <= nextSlotStart) { available = false; }
 
       if (available) {
         for (const b of calBlocks ?? []) {

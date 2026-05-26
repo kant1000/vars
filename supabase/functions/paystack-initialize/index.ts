@@ -76,6 +76,14 @@ Deno.serve(async (req: Request) => {
     const durationMs = vendorService.duration_blocks * 30 * 60 * 1000;
     const slotEnd = new Date(scheduledDate.getTime() + durationMs);
 
+    // Reject slots that are in progress or the next upcoming slot — not enough lead time.
+    // Mirrors the client-side rule: earliest bookable = slot after next 30-min boundary.
+    const BLOCK_MS = 30 * 60 * 1000;
+    const nextSlotStart = new Date(Math.floor(Date.now() / BLOCK_MS) * BLOCK_MS + BLOCK_MS);
+    if (scheduledDate <= nextSlotStart) {
+      return errorResponse('This time slot is too soon to book');
+    }
+
     // Check slot availability — vendor_calendar blocks and booking conflicts
     if (!await isSlotFree(supabase, vendorService.vendor.id, scheduledDate, slotEnd, durationMs)) {
       return errorResponse('This time slot is no longer available');
