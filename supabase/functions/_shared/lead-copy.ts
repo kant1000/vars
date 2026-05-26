@@ -168,7 +168,7 @@ export function whatsappReengagement(
   const label     = serviceLabel(serviceType);
 
   if (isPioneer) {
-    return `${firstName}, VARS opens to customers in ${LAUNCH_MONTH} and your Pioneer spot is still reserved. First 3 bookings: 0% commission. Set up before we go live: https://vars.app/activate`;
+    return `${firstName}, VARS opens to ${label} customers in ${LAUNCH_MONTH} and your Pioneer spot is still reserved. First 3 bookings: 0% commission. Set up before we go live: https://vars.app/activate`;
   }
   return `${firstName}, VARS opens to ${label} customers in ${LAUNCH_MONTH}. Vendors who set up now will be first in customer searches. Takes 5 minutes: https://vars.app/activate`;
 }

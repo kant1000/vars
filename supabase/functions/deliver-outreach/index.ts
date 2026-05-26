@@ -180,8 +180,9 @@ Deno.serve(async (req: Request) => {
     return new Response('Method not allowed', { status: 405 });
   }
 
-  const auth = req.headers.get('Authorization') ?? '';
-  if (auth !== `Bearer ${DELIVER_SECRET}`) {
+  const isCronCall   = req.headers.get('x-vars-cron-secret') === Deno.env.get('CRON_SECRET');
+  const isManualCall = (req.headers.get('Authorization') ?? '') === `Bearer ${DELIVER_SECRET}`;
+  if (!isCronCall && !isManualCall) {
     return errorResponse('Unauthorized', 401);
   }
 
