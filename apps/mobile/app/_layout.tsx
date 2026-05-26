@@ -44,6 +44,9 @@ function RootNavigator() {
     didInitRoute.current = true;
     SplashScreen.hideAsync();
 
+    if (process.env.EXPO_PUBLIC_VENDOR_TEST_MODE === 'true') {
+      return;
+    }
     if (isAuthenticated && needsPhone) {
       router.replace('/auth/phone');
       return;
