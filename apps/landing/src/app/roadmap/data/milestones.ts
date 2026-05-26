@@ -75,7 +75,7 @@ export const phases: Phase[] = [
         title: '400 Vendors in the Pipeline',
         period: 'Target: June 2026',
         description:
-          '75 professionals have already registered their interest. The target is 400 by end of June — verified and ready to go live when the app launches.',
+          '{vendorCount} professionals have already registered their interest. The target is 400 by end of June — verified and ready to go live when the app launches.',
         state: 'active',
         isNow: true,
       },

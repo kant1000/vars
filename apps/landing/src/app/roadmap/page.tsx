@@ -46,11 +46,13 @@ export default async function RoadmapPage() {
 
   // Compute global stagger index for each milestone across all phases
   let globalIdx = 0;
+  const countLabel = vendorCount > 0 ? vendorCount.toLocaleString() : '—';
   const phasesWithIndex = phases.map((phase) => ({
     ...phase,
     milestones: phase.milestones.map((m) => ({
       ...m,
       staggerIndex: globalIdx++,
+      description: m.description.replace('{vendorCount}', countLabel),
     })),
   }));
 
