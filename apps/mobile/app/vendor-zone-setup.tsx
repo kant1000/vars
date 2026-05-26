@@ -223,7 +223,7 @@ export default function VendorZoneSetup() {
                 • Confirm your zone each morning before you start{'\n'}
                 • Slots marked ⚡ in your calendar are auto-accepted{'\n'}
                 • You get a 5-minute grace period to cancel penalty-free{'\n'}
-                • Auto-accept pauses if you move more than {radius + 3} km from your zone centre
+                • Auto-accept pauses if you move more than {radius + 1} km from your zone centre
               </Text>
             </View>
           )}

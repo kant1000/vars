@@ -3,7 +3,7 @@
 // Called every 60s by the vendor app while booking status is on_way.
 // Updates vendor_current_lat/lng on the vendors table so the
 // customer's live tracking map can poll the latest position.
-// Also runs drift detection: if the vendor moves >zone_radius+3km
+// Also runs drift detection: if the vendor moves >zone_radius+1km
 // from their auto-accept zone centre, auto_accept_paused_due_to_drift
 // is set to true. It clears automatically once they return within
 // zone_radius km. Hysteresis band prevents flapping.
@@ -56,7 +56,7 @@ Deno.serve(async (req: Request) => {
 
     if (zoneLat != null && zoneLng != null && zoneRadius != null) {
       const distKm = haversineKm(lat, lng, zoneLat, zoneLng);
-      if (distKm > zoneRadius + 3) {
+      if (distKm > zoneRadius + 1) {
         drifted = true;
       } else if (distKm <= zoneRadius) {
         drifted = false;
