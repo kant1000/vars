@@ -4,7 +4,7 @@
 //
 // POST body:
 //   { lat, lng, radius_km, auto_accept_enabled }
-//   radius_km must be one of: 1, 2, 3, 5, 10
+//   radius_km must be one of: 1, 1.5
 //
 // Returns:
 //   { success: true, zone: { lat, lng, radius_km }, auto_accept_enabled }
@@ -13,7 +13,7 @@
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient, createAuthClient } from '../_shared/supabase.ts';
 
-const VALID_RADII = [1, 2, 3, 5, 10];
+const VALID_RADII = [1, 1.5];
 
 Deno.serve(async (req: Request) => {
   const cors = handleCors(req);

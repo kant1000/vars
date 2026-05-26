@@ -26,7 +26,7 @@ const CATEGORIES: { label: string; slug: string | null }[] = [
   { label: 'Makeovers', slug: 'makeovers' },
 ];
 
-const RADIUS_KM = 25;
+const RADIUS_KM = 5;
 const PAGE_SIZE = 20;
 
 // ── Hook: device location ──────────────────────────────────

@@ -24,7 +24,7 @@ import { Colors } from '@/constants/colors';
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
 
-const RADII = [1, 2, 3, 5, 10] as const;
+const RADII = [1, 1.5] as const;
 type RadiusKm = typeof RADII[number];
 
 // Lagos default centre — used if location permission denied
@@ -39,7 +39,7 @@ export default function VendorZoneSetup() {
 
   const [pinLat, setPinLat]     = useState(LAGOS_DEFAULT.latitude);
   const [pinLng, setPinLng]     = useState(LAGOS_DEFAULT.longitude);
-  const [radius, setRadius]     = useState<RadiusKm>(3);
+  const [radius, setRadius]     = useState<RadiusKm>(1);
   const [autoEnabled, setAutoEnabled] = useState(false);
 
   // Load existing zone from DB
