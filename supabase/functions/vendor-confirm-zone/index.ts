@@ -68,10 +68,24 @@ Deno.serve(async (req: Request) => {
 
   // ── POST: confirm zone for today ──────────────────────────
   if (req.method === 'POST') {
+    // Accept an optional date (YYYY-MM-DD) from the client so the mobile app
+    // can pass the vendor's *effective* local date when saving after 22:00
+    // (after-hours the effective day is already tomorrow). Falls back to UTC
+    // today if omitted or out of range.
+    let confirmDate = today;
+    try {
+      const body = await req.json();
+      if (body?.date && /^\d{4}-\d{2}-\d{2}$/.test(body.date)) {
+        // Accept dates within ±1 day of UTC today (covers any UTC offset)
+        const diff = Math.abs(new Date(body.date).getTime() - new Date(today).getTime());
+        if (diff <= 86_400_000) confirmDate = body.date;
+      }
+    } catch { /* no body is fine — use UTC today */ }
+
     const { error } = await supabase
       .from('vendors')
       .update({
-        auto_accept_zone_confirmed_date: today,
+        auto_accept_zone_confirmed_date: confirmDate,
         // Clear drift pause on explicit confirmation — vendor is actively working
         auto_accept_paused_due_to_drift: false,
       })
@@ -82,7 +96,7 @@ Deno.serve(async (req: Request) => {
       return errorResponse('Failed to confirm zone', 500);
     }
 
-    return jsonResponse({ confirmed: true, date: today });
+    return jsonResponse({ confirmed: true, date: confirmDate });
   }
 
   return errorResponse('Method not allowed', 405);

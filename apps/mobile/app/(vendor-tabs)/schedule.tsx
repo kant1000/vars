@@ -11,7 +11,7 @@ import {
   RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -20,7 +20,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 import { fmtPrice, fmtDuration, fmtTime, fmtDate } from '@/lib/format';
-import { CloseIcon, PinIcon, LockIcon } from '@/components/icons';
+import { CloseIcon, PinIcon, LockIcon, LightningIcon } from '@/components/icons';
 import { BookingStatus, BOOKING_STATUS } from '@vars/shared';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
@@ -111,6 +111,20 @@ function nextState(current: BlockState | 'default'): BlockState | 'delete' {
   // (header) controls zone-level auto-accept for the whole day.
   if (current === 'default' || current === 'available' || current === 'auto_accept') return 'unavailable';
   return 'delete';  // unavailable → back to default/available
+}
+
+// ── Effective-day helpers ─────────────────────────────────────
+// After the last slot ends at 22:00 the working day is over; treat
+// tomorrow as the effective day so the calendar auto-advances.
+function getEffectiveToday(): Date {
+  const now = new Date();
+  const d = new Date(now); d.setHours(0, 0, 0, 0);
+  if (now.getHours() >= 22) d.setDate(d.getDate() + 1);
+  return d;
+}
+
+function toLocalDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
 // ── BookingBottomSheet ────────────────────────────────────────
@@ -567,20 +581,22 @@ export default function ScheduleScreen() {
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
 
-  const DAYS = useMemo(() => Array.from({ length: 14 }, (_, i) => {
-    const d = new Date(); d.setDate(d.getDate() + i); d.setHours(0, 0, 0, 0); return d;
-  }), []);
+  const DAYS = useMemo(() => {
+    const base = getEffectiveToday();
+    return Array.from({ length: 14 }, (_, i) => {
+      const d = new Date(base); d.setDate(d.getDate() + i); return d;
+    });
+  }, []);
 
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
   const [vendorId, setVendorId] = useState<string | null>(null);
-  const [selectedDay, setSelectedDay] = useState(() => {
-    const d = new Date(); d.setHours(0, 0, 0, 0); return d;
-  });
+  const [selectedDay, setSelectedDay] = useState(() => getEffectiveToday());
   const [blocks, setBlocks] = useState<CalendarBlock[]>([]);
   const [bookings, setBookings] = useState<VendorBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState<string | null>(null);
   const [selectedBooking, setSelectedBooking] = useState<VendorBooking | null>(null);
+  const [zoneInfo, setZoneInfo] = useState<{ enabled: boolean; confirmedDate: string | null; paused: boolean } | null>(null);
 
   // Load persisted view mode
   useEffect(() => {
@@ -600,6 +616,26 @@ export default function ScheduleScreen() {
       if (user) setVendorId(user.id);
     });
   }, []);
+
+  // Zone info — re-fetched when the screen is focused (e.g. after returning
+  // from zone setup) so the ⚡ indicator is always up to date.
+  const loadZoneInfo = useCallback(async () => {
+    if (!vendorId) return;
+    const { data } = await supabase
+      .from('vendors')
+      .select('auto_accept_enabled, auto_accept_zone_confirmed_date, auto_accept_paused_due_to_drift')
+      .eq('id', vendorId)
+      .single();
+    if (data) {
+      setZoneInfo({
+        enabled: data.auto_accept_enabled ?? false,
+        confirmedDate: data.auto_accept_zone_confirmed_date ?? null,
+        paused: data.auto_accept_paused_due_to_drift ?? false,
+      });
+    }
+  }, [vendorId]);
+
+  useFocusEffect(useCallback(() => { loadZoneInfo(); }, [loadZoneInfo]));
 
   const parseBooking = (b: any): VendorBooking => ({
     id: b.id,
@@ -766,6 +802,14 @@ export default function ScheduleScreen() {
 
   const slots = generateSlots(selectedDay);
 
+  // Show ⚡ on available slots only when the vendor has confirmed their zone
+  // for the selected day and auto-accept is active (not paused by drift).
+  const selectedDayStr = toLocalDateStr(selectedDay);
+  const autoAcceptActiveForDay = !!(
+    zoneInfo?.enabled && !zoneInfo.paused &&
+    zoneInfo.confirmedDate === selectedDayStr
+  );
+
   return (
     <View style={[s.container, { paddingTop: insets.top }]}>
       {/* Header */}
@@ -879,8 +923,11 @@ export default function ScheduleScreen() {
                         {slot.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit', hour12: true })}
                       </Text>
                       <View style={s.slotGlyph}>
-                        {(state === 'unavailable' || state === 'transport_buffer') &&
-                          <CloseIcon size={16} color={Colors.accentRed} />}
+                        {(state === 'unavailable' || state === 'transport_buffer') ? (
+                          <CloseIcon size={16} color={Colors.accentRed} />
+                        ) : autoAcceptActiveForDay && !isPast ? (
+                          <LightningIcon size={14} color={Colors.ink} />
+                        ) : null}
                       </View>
                     </>
                   )}

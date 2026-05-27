@@ -30,12 +30,32 @@ type RadiusKm = typeof RADII[number];
 // Lagos default centre — used if location permission denied
 const LAGOS_DEFAULT = { latitude: 6.5244, longitude: 3.3792 };
 
+// ── Effective-day helpers ─────────────────────────────────────
+// After the last slot ends at 22:00 the working day is over; treat
+// tomorrow as the effective day so setup always targets the next session.
+function getEffectiveToday(): Date {
+  const now = new Date();
+  const d = new Date(now); d.setHours(0, 0, 0, 0);
+  if (now.getHours() >= 22) d.setDate(d.getDate() + 1);
+  return d;
+}
+
+function toLocalDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
 export default function VendorZoneSetup() {
   const insets = useSafeAreaInsets();
   const mapRef = useRef<MapView>(null);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  const effectiveDay     = getEffectiveToday();
+  const effectiveDateKey = toLocalDateStr(effectiveDay);
+  const effectiveDateStr = effectiveDay.toLocaleDateString('en-NG', {
+    weekday: 'long', day: 'numeric', month: 'long',
+  });
 
   const [pinLat, setPinLat]     = useState(LAGOS_DEFAULT.latitude);
   const [pinLng, setPinLng]     = useState(LAGOS_DEFAULT.longitude);
@@ -103,6 +123,19 @@ export default function VendorZoneSetup() {
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Save failed');
+
+      // If auto-accept is on, confirm the zone for the effective day so the
+      // calendar immediately shows ⚡ on available slots for that date.
+      if (autoEnabled) {
+        await fetch(`${SUPABASE_URL}/functions/v1/vendor-confirm-zone`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ date: effectiveDateKey }),
+        });
+      }
 
       router.back();
     } catch (err: any) {
@@ -176,6 +209,12 @@ export default function VendorZoneSetup() {
         </View>
 
         <View style={s.controls}>
+          {/* Active date */}
+          <View style={s.dateRow}>
+            <Text style={s.dateLabelText}>⚡ Auto-accept for</Text>
+            <Text style={s.dateValueText}>{effectiveDateStr}</Text>
+          </View>
+
           {/* Radius selector */}
           <Text style={s.sectionLabel}>Zone radius</Text>
           <View style={s.radiusRow}>
@@ -209,17 +248,11 @@ export default function VendorZoneSetup() {
             />
           </View>
 
-          {/* Info box */}
+          {/* Info note */}
           {autoEnabled && (
-            <View style={s.infoBox}>
-              <Text style={s.infoTitle}>How auto-accept works</Text>
-              <Text style={s.infoText}>
-                • Confirm your zone each morning before you start{'\n'}
-                • Slots marked ⚡ in your calendar are auto-accepted{'\n'}
-                • You get a 5-minute grace period to cancel penalty-free{'\n'}
-                • Auto-accept pauses if you move more than {radius + 1} km from your zone centre
-              </Text>
-            </View>
+            <Text style={s.infoText}>
+              Bookings in your zone will be instantly confirmed. You have 5 minutes to cancel penalty-free.
+            </Text>
           )}
 
           {/* Save button */}
@@ -266,6 +299,13 @@ const s = StyleSheet.create({
   },
 
   controls: { padding: 20, gap: 20 },
+
+  dateRow: { backgroundColor: Colors.ink, borderRadius: 12, padding: 14 },
+  dateLabelText: {
+    fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.65)',
+    textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4,
+  },
+  dateValueText: { fontSize: 18, fontWeight: '800', color: '#FFF' },
 
   sectionLabel: {
     fontSize: 13, fontWeight: '700', color: Colors.textMuted,
