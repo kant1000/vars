@@ -13,6 +13,11 @@ supabase/
 # cause tar extraction to fail on the EAS Linux build server.
 docs/
 
+# Android native project — generated locally by expo run:android.
+# Excluding this keeps EAS in managed workflow (expo prebuild runs on the
+# build server) and drops the archive from ~434 MB to ~30 MB.
+android/
+
 # Scripts and local tooling
 scripts/
 
