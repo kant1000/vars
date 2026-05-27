@@ -104,6 +104,7 @@ function RootNavigator() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="onboarding" />
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="(vendor-tabs)" />
       <Stack.Screen name="auth/login" options={{ presentation: 'modal' }} />
       <Stack.Screen name="auth/phone" options={{ presentation: 'modal', gestureEnabled: false }} />
       <Stack.Screen name="vendor/[id]" />
