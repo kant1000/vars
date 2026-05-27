@@ -1,0 +1,23 @@
+# EAS archive excludes — keeps the archive to only what the mobile build needs.
+# Run `eas build` from the repo root so the full workspace is available
+# (required for @vars/shared resolution). Only ship mobile + shared.
+
+# Non-mobile apps
+apps/admin/
+apps/landing/
+
+# Supabase edge functions (not needed for APK)
+supabase/
+
+# Documentation — untracked docs/audit/ has Windows permission bits that
+# cause tar extraction to fail on the EAS Linux build server.
+docs/
+
+# Scripts and local tooling
+scripts/
+
+# Misc root files the build doesn't need
+response.txt
+AGENTS.md
+README.md
+CLAUDE.md
