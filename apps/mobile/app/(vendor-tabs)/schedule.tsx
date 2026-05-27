@@ -20,7 +20,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 import { fmtPrice, fmtDuration, fmtTime, fmtDate } from '@/lib/format';
-import { CloseIcon, PinIcon, LockIcon, LightningIcon, CarIcon } from '@/components/icons';
+import { CloseIcon, PinIcon, LockIcon } from '@/components/icons';
 import { BookingStatus, BOOKING_STATUS } from '@vars/shared';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
@@ -106,9 +106,11 @@ function getFirstName(fullName: string): string {
 }
 
 function nextState(current: BlockState | 'default'): BlockState | 'delete' {
-  if (current === 'default' || current === 'available') return 'unavailable';
-  if (current === 'unavailable') return 'auto_accept';
-  return 'delete';
+  // auto_accept counts as "available" — tapping blocks the slot.
+  // There is no manual auto-accept step; the ⚡ Auto-accept button
+  // (header) controls zone-level auto-accept for the whole day.
+  if (current === 'default' || current === 'available' || current === 'auto_accept') return 'unavailable';
+  return 'delete';  // unavailable → back to default/available
 }
 
 // ── BookingBottomSheet ────────────────────────────────────────
@@ -753,8 +755,10 @@ export default function ScheduleScreen() {
   };
 
   // ── Slot count summary ────────────────────────────────────────
-  const autoCount = blocks.filter((b) => b.block_state === 'auto_accept').length;
-  const unavailCount = blocks.filter((b) => b.block_state === 'unavailable').length;
+  // auto_accept is treated as available — only count explicit blocks + buffers as "blocked"
+  const unavailCount = blocks.filter(
+    (b) => b.block_state === 'unavailable' || b.block_state === 'transport_buffer',
+  ).length;
 
   if (loading) {
     return <View style={s.centered}><ScissorsLoader size="small" color="dark" /></View>;
@@ -768,7 +772,7 @@ export default function ScheduleScreen() {
       <View style={s.header}>
         <Text style={s.headerTitle}>My Schedule</Text>
         <TouchableOpacity style={s.zoneBtn} onPress={() => router.push('/vendor-zone-setup' as any)}>
-          <Text style={s.zoneBtnText}>⚡ Zone</Text>
+          <Text style={s.zoneBtnText}>⚡ Auto-accept</Text>
         </TouchableOpacity>
       </View>
 
@@ -809,17 +813,15 @@ export default function ScheduleScreen() {
             })}
           </ScrollView>
 
-          {/* Legend — fixed */}
+          {/* Legend — fixed, one line */}
           <View style={s.legend}>
             <LegendDot borderColor={Colors.inkFaint} label="Available" />
-            <LegendDot borderColor={Colors.inkFaint} label="Blocked"     glyph="✕" glyphColor={Colors.accentRed} />
-            <LegendDot borderColor={Colors.inkFaint} label="Auto-accept" glyph="⚡" glyphColor={Colors.accentAmber} />
-            <LegendDot borderColor={Colors.inkFaint} label="Buffer" />
-            <LegendDot borderColor={Colors.ink}      label="Booked"      borderWidth={2.5} />
+            <LegendDot borderColor={Colors.inkFaint} label="Blocked" glyph="✕" glyphColor={Colors.accentRed} />
+            <LegendDot borderColor={Colors.ink}      label="Booked"  borderWidth={2.5} />
           </View>
 
           {/* Hint — fixed */}
-          <Text style={s.hint}>Tap to cycle: available → blocked → auto-accept</Text>
+          <Text style={s.hint}>Tap to cycle: available → blocked</Text>
 
           {/* Slot grid — scrollable */}
           <ScrollView contentContainerStyle={{ paddingBottom: 60, paddingTop: 4 }}>
@@ -877,9 +879,8 @@ export default function ScheduleScreen() {
                         {slot.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit', hour12: true })}
                       </Text>
                       <View style={s.slotGlyph}>
-                        {state === 'auto_accept'      && <LightningIcon size={16} color={Colors.accentAmber} />}
-                        {state === 'unavailable'      && <CloseIcon     size={16} color={Colors.accentRed} />}
-                        {state === 'transport_buffer' && <CarIcon        size={16} color={Colors.inkMuted} />}
+                        {(state === 'unavailable' || state === 'transport_buffer') &&
+                          <CloseIcon size={16} color={Colors.accentRed} />}
                       </View>
                     </>
                   )}
@@ -889,13 +890,11 @@ export default function ScheduleScreen() {
           </View>
 
           {/* Count summary */}
-          {(autoCount > 0 || unavailCount > 0 || bookings.length > 0) && (
+          {(unavailCount > 0 || bookings.length > 0) && (
             <View style={s.summary}>
               <Text style={s.summaryText}>
                 {bookings.length > 0 ? `📅 ${bookings.length} booking${bookings.length > 1 ? 's' : ''}` : ''}
-                {bookings.length > 0 && (autoCount > 0 || unavailCount > 0) ? '  ·  ' : ''}
-                {autoCount > 0 ? `⚡ ${autoCount} auto-accept` : ''}
-                {autoCount > 0 && unavailCount > 0 ? '  ·  ' : ''}
+                {bookings.length > 0 && unavailCount > 0 ? '  ·  ' : ''}
                 {unavailCount > 0 ? `✕ ${unavailCount} blocked` : ''}
               </Text>
             </View>
@@ -997,19 +996,19 @@ const s = StyleSheet.create({
   toggleBtnText: { fontSize: 14, fontWeight: '600', color: Colors.inkMuted },
   toggleBtnTextActive: { color: Colors.white },
 
-  dayStrip: { paddingHorizontal: 16, paddingVertical: 8, gap: 8 },
+  dayStrip: { paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
   dayChip: {
-    alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4,
-    borderRadius: 10, borderWidth: 1.5, borderColor: Colors.inkFaint, minWidth: 46,
+    alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8,
+    borderRadius: 12, borderWidth: 1.5, borderColor: Colors.inkFaint, minWidth: 52,
   },
   dayChipActive: { backgroundColor: Colors.ink, borderColor: Colors.ink },
   dayWeekday: { fontSize: 11, color: Colors.textMuted, fontWeight: '600' },
-  dayNum: { fontSize: 15, fontWeight: '800', color: Colors.text },
+  dayNum: { fontSize: 18, fontWeight: '800', color: Colors.text },
   dayTextActive: { color: '#FFF' },
 
   legend: {
     flexDirection: 'row', gap: 12,
-    paddingHorizontal: 16, paddingTop: 4, paddingBottom: 2, flexWrap: 'wrap',
+    paddingHorizontal: 16, paddingTop: 4, paddingBottom: 2,
   },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   legendDot: { width: 22, height: 22, borderRadius: 4, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
