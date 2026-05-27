@@ -14,7 +14,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { signOut } from '@/lib/auth';
-import { uploadSinglePortfolioPhoto, deletePortfolioPhoto } from '@/lib/storage';
+import * as ImagePicker from 'expo-image-picker';
+import { uploadSinglePortfolioPhoto, deletePortfolioPhoto, uploadProfilePhotoFromUri } from '@/lib/storage';
 import { Colors } from '@/constants/colors';
 import { CloseIcon } from '@/components/icons';
 
@@ -48,6 +49,9 @@ export default function VendorProfileScreen() {
   const [zoneInfo, setZoneInfo] = useState<VendorZoneInfo | null>(null);
   const [zoneLoading, setZoneLoading] = useState(true);
 
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null);
+  const [updatingPhoto, setUpdatingPhoto] = useState(false);
+
   const [photos, setPhotos] = useState<PortfolioPhoto[]>([]);
   const [photosLoading, setPhotosLoading] = useState(true);
   const [addingPhoto, setAddingPhoto] = useState(false);
@@ -68,7 +72,8 @@ export default function VendorProfileScreen() {
         .select(`
           auto_accept_enabled, auto_accept_paused_due_to_drift,
           auto_accept_zone_confirmed_date, auto_accept_zone_radius_km,
-          auto_accept_zone_lat, auto_accept_zone_lng
+          auto_accept_zone_lat, auto_accept_zone_lng,
+          profile_photo_url
         `)
         .eq('id', user.id)
         .single(),
@@ -82,9 +87,49 @@ export default function VendorProfileScreen() {
     ]);
 
     setZoneInfo(zoneRes.data ?? null);
+    setProfilePhotoUrl(zoneRes.data?.profile_photo_url ?? null);
     setPhotos((photosRes.data ?? []) as PortfolioPhoto[]);
     setZoneLoading(false);
     setPhotosLoading(false);
+  };
+
+  const handleEditPhoto = () => {
+    Alert.alert('Profile photo', 'Choose a photo', [
+      {
+        text: 'Take a photo',
+        onPress: async () => {
+          const perm = await ImagePicker.requestCameraPermissionsAsync();
+          if (!perm.granted) { Alert.alert('Camera access needed', 'Allow camera access in settings to take a photo.'); return; }
+          const result = await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.85 });
+          if (!result.canceled && result.assets[0]) await saveProfilePhoto(result.assets[0].uri);
+        },
+      },
+      {
+        text: 'Choose from library',
+        onPress: async () => {
+          const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+          if (!perm.granted) { Alert.alert('Photo access needed', 'Allow photo access in settings to choose a photo.'); return; }
+          const result = await ImagePicker.launchImageLibraryAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.85 });
+          if (!result.canceled && result.assets[0]) await saveProfilePhoto(result.assets[0].uri);
+        },
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const saveProfilePhoto = async (uri: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    setUpdatingPhoto(true);
+    try {
+      const url = await uploadProfilePhotoFromUri(user.id, uri);
+      await supabase.from('vendors').update({ profile_photo_url: url }).eq('id', user.id);
+      setProfilePhotoUrl(url);
+    } catch (err: any) {
+      Alert.alert('Upload failed', err.message ?? 'Could not update profile photo.');
+    } finally {
+      setUpdatingPhoto(false);
+    }
   };
 
   const zoneConfigured = zoneInfo?.auto_accept_zone_lat != null;
@@ -167,11 +212,20 @@ export default function VendorProfileScreen() {
       <ScrollView contentContainerStyle={{ paddingBottom: 60 }}>
         {/* Name */}
         <View style={s.nameSection}>
-          <View style={s.avatar}>
-            <Text style={s.avatarText}>
-              {(profile?.full_name ?? 'V').charAt(0).toUpperCase()}
-            </Text>
-          </View>
+          <TouchableOpacity onPress={handleEditPhoto} activeOpacity={0.8} style={s.avatarWrapper}>
+            {profilePhotoUrl ? (
+              <Image source={{ uri: profilePhotoUrl }} style={s.avatarImage} contentFit="cover" />
+            ) : (
+              <View style={s.avatar}>
+                <Text style={s.avatarText}>
+                  {(profile?.full_name ?? 'V').charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            )}
+            <View style={s.avatarEditBadge}>
+              <Text style={s.avatarEditBadgeText}>{updatingPhoto ? '…' : '✎'}</Text>
+            </View>
+          </TouchableOpacity>
           <Text style={s.name}>{profile?.full_name ?? 'Vendor'}</Text>
         </View>
 
@@ -298,11 +352,21 @@ const s = StyleSheet.create({
   headerTitle: { fontSize: 24, fontWeight: '800', color: Colors.text },
 
   nameSection: { alignItems: 'center', paddingVertical: 28, gap: 10 },
+  avatarWrapper: { width: 72, height: 72, borderRadius: 36, position: 'relative' },
   avatar: {
     width: 72, height: 72, borderRadius: 36,
     backgroundColor: Colors.primary + '20',
     alignItems: 'center', justifyContent: 'center',
   },
+  avatarImage: { width: 72, height: 72, borderRadius: 36 },
+  avatarEditBadge: {
+    position: 'absolute', bottom: 0, right: 0,
+    width: 22, height: 22, borderRadius: 11,
+    backgroundColor: Colors.primary,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: Colors.background,
+  },
+  avatarEditBadgeText: { fontSize: 10, color: '#fff', lineHeight: 12 },
   avatarText: { fontSize: 28, fontWeight: '800', color: Colors.primary },
   name: { fontSize: 20, fontWeight: '700', color: Colors.text },
 
