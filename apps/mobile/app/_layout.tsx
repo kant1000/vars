@@ -6,7 +6,6 @@
 // ============================================================
 
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, ScrollView } from 'react-native';
 import { Stack } from 'expo-router';
 import { router, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -45,9 +44,6 @@ function RootNavigator() {
     didInitRoute.current = true;
     SplashScreen.hideAsync();
 
-    if (process.env.EXPO_PUBLIC_VENDOR_TEST_MODE === 'true') {
-      return;
-    }
     if (isAuthenticated && needsPhone) {
       router.replace('/auth/phone');
       return;
@@ -133,22 +129,3 @@ export default function RootLayout() {
   );
 }
 
-// Diagnostic: shows the actual JS error on screen instead of silently crashing.
-// Remove once the startup crash is identified and fixed.
-export function ErrorBoundary({ error }: { error: Error }) {
-  return (
-    <View style={{ flex: 1, backgroundColor: '#1a1a1a', padding: 24, paddingTop: 60 }}>
-      <Text style={{ color: '#ff6b6b', fontSize: 16, fontWeight: 'bold', marginBottom: 12 }}>
-        Startup Error
-      </Text>
-      <ScrollView>
-        <Text style={{ color: '#ffffff', fontSize: 13, marginBottom: 16 }}>
-          {error.message}
-        </Text>
-        <Text style={{ color: '#aaaaaa', fontSize: 11, fontFamily: 'monospace' }}>
-          {error.stack}
-        </Text>
-      </ScrollView>
-    </View>
-  );
-}
