@@ -49,12 +49,15 @@ The README is the canonical record of what's implemented — screens, edge funct
 
 | Element | Decision |
 |---|---|
-| Palette | Monochrome dominant — black `#111111`, white `#FFFFFF`, grey `#F5F5F5`. Blue `#0A7AFF` for CTAs and accent moments only. Never as background. |
-| App background | Dark-dominant — `#111111` as primary background throughout. White sections for specific high-contrast moments only. |
+| Palette | Monochrome shell. Core tokens: `ink` `#111111`, `white` `#FFFFFF`, `inkMuted` `#6B7280`, `inkFaint` `#D0D0D0`. Accent glyphs only (never fills, borders, or anything larger than ~16px): `accentBlue` `#0A7AFF` (booked dot), `accentAmber` `#F59E0B` (auto-accept ⚡), `accentGreen` `#22C55E` (online dot), `accentRed` `#EF4444` (blocked ✕). Tokens live in `apps/mobile/constants/colors.ts`. |
+| App background | White (`#FFFFFF`) throughout. Splash screen is the only dark-background screen (`#111111` with white VARS logo) — reference point for the whole system. |
+| Containers | Always monochrome: transparent bg or white bg, 1px–1.5px `#111111` border. No coloured card fills, pill backgrounds, or button fills except black. |
+| CTAs | Black fill (`#111111`), white text. Secondary/ghost actions: transparent bg, 1px black border, black text. Destructive actions: same — black border, black text; the confirmation dialog carries the gravity, not red colour. |
+| State signalling | Border weight signals "this element has a state" (1px = neutral/available, 1.5px = active state). A tiny icon or dot in the corner specifies *which* state. Typography weight signals selection (active nav = bold 700, inactive = regular 400). |
 | Typography | Inter — Regular, Medium, Bold. Same across app, web, and all content. |
 | Illustration style | Human ink sketch — loose, gestural linework in the style of 19th century engraving (Gustave Doré reference). Black ink on white or white ink on black. No fills, no gradients, no colour. Used on onboarding screens, empty states, brand moments. |
 | Logo mark | Crosshair/location pin — two blades that cross at a pivot point. Drives the scissors loading animation. |
-| Loading animation | Blades open and close slowly and precisely. 1.4 second cycle, ease-in-out, no bounce. Large (80px) on launch/payment screens, small (28px) for inline states. White on dark, dark on white. |
+| Loading animation | Blades open and close slowly and precisely. 0.7s per direction, ease-in-out, no bounce. Three sizes: small (23×24px), medium (39×39px), large (61×63px). White (`light`) on filled black buttons; dark (`dark`) on white/surface backgrounds. |
 
 ### Brand voice
 

@@ -59,7 +59,7 @@ export interface VendorBooking {
 
 // ── Constants ─────────────────────────────────────────────────
 const SCREEN_W = Dimensions.get('window').width;
-const SLOT_W   = (SCREEN_W - 32 - 20) / 4;
+const SLOT_W   = (SCREEN_W - 32 - 12) / 2;  // 2-col grid, 12px gap
 const STORAGE_KEY = 'vars_vendor_schedule_view';
 const ACTIVE_STATUSES: BookingStatus[] = [
   BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ON_WAY,
@@ -67,11 +67,11 @@ const ACTIVE_STATUSES: BookingStatus[] = [
 ];
 
 const STATE_STYLE = {
-  default:          { border: Colors.border,        bg: Colors.background, text: Colors.primary },
-  unavailable:      { border: Colors.error + '80',  bg: Colors.error + '12', text: Colors.error },
-  auto_accept:      { border: Colors.pioneerGold,    bg: Colors.pioneerGoldSurface, text: Colors.pioneerGoldDark },
-  transport_buffer: { border: Colors.border,         bg: Colors.surface,      text: Colors.textMuted },
-  booked:           { border: Colors.primary,        bg: Colors.primary + '18', text: Colors.primary },
+  default:          { border: Colors.inkFaint, bg: 'transparent' },
+  unavailable:      { border: Colors.ink,      bg: 'transparent' },
+  auto_accept:      { border: Colors.ink,      bg: 'transparent' },
+  transport_buffer: { border: Colors.ink,      bg: 'rgba(0,0,0,0.04)' },
+  booked:           { border: Colors.ink,      bg: 'transparent' },
 };
 
 const STATUS_LABEL: Record<BookingStatus, { text: string; color: string }> = {
@@ -546,10 +546,14 @@ function DetailRow({ label, value, bold }: { label: string; value: string; bold?
 }
 
 // ── Sub-components ────────────────────────────────────────────
-function LegendDot({ color, label }: { color: string; label: string }) {
+function LegendDot({ borderColor, label, glyph, glyphColor }: {
+  borderColor: string; label: string; glyph?: string; glyphColor?: string;
+}) {
   return (
     <View style={s.legendItem}>
-      <View style={[s.legendDot, { borderColor: color, backgroundColor: color + '20' }]} />
+      <View style={[s.legendDot, { borderColor, backgroundColor: 'transparent' }]}>
+        {glyph ? <Text style={{ fontSize: 8, color: glyphColor ?? borderColor, lineHeight: 11 }}>{glyph}</Text> : null}
+      </View>
       <Text style={s.legendLabel}>{label}</Text>
     </View>
   );
@@ -806,11 +810,11 @@ export default function ScheduleScreen() {
 
           {/* Legend */}
           <View style={s.legend}>
-            <LegendDot color={Colors.border}   label="Available" />
-            <LegendDot color={Colors.error}    label="Blocked" />
-            <LegendDot color={Colors.pioneerGold} label="Auto-accept" />
-            <LegendDot color={Colors.textMuted} label="Buffer" />
-            <LegendDot color={Colors.primary}  label="Booked" />
+            <LegendDot borderColor={Colors.inkFaint} label="Available" />
+            <LegendDot borderColor={Colors.ink} label="Blocked"     glyph="✕" glyphColor={Colors.accentRed} />
+            <LegendDot borderColor={Colors.ink} label="Auto-accept" glyph="⚡" glyphColor={Colors.accentAmber} />
+            <LegendDot borderColor={Colors.ink} label="Buffer" />
+            <LegendDot borderColor={Colors.ink} label="Booked"      glyph="●" glyphColor={Colors.accentBlue} />
           </View>
 
           <Text style={s.hint}>Tap to cycle: available → blocked → auto-accept</Text>
@@ -842,7 +846,7 @@ export default function ScheduleScreen() {
                         <Text style={s.slotBookedService} numberOfLines={1}>
                           {booking.service_name}
                         </Text>
-                        <View style={[s.slotStatusDot, { backgroundColor: sl.color }]} />
+                        <View style={s.slotBookingDot} />
                       </>
                     ) : (
                       <View style={s.slotContinuation} />
@@ -867,12 +871,14 @@ export default function ScheduleScreen() {
                     <ScissorsLoader size="small" color="dark" />
                   ) : (
                     <>
-                      <Text style={[s.slotTime, { color: isPast ? Colors.textMuted : style.text }]}>
+                      <Text style={[s.slotTime, { color: isPast ? Colors.inkMuted : Colors.ink }]}>
                         {slot.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit', hour12: true })}
                       </Text>
-                      {state === 'auto_accept'      && <LightningIcon size={10} color={Colors.pioneerGold} />}
-                      {state === 'unavailable'      && <CloseIcon size={10} color={Colors.error} />}
-                      {state === 'transport_buffer' && <CarIcon size={10} color={Colors.textMuted} />}
+                      <View style={s.slotGlyph}>
+                        {state === 'auto_accept'      && <LightningIcon size={10} color={Colors.accentAmber} />}
+                        {state === 'unavailable'      && <CloseIcon     size={10} color={Colors.accentRed} />}
+                        {state === 'transport_buffer' && <CarIcon        size={10} color={Colors.inkMuted} />}
+                      </View>
                     </>
                   )}
                 </TouchableOpacity>
@@ -932,7 +938,7 @@ export default function ScheduleScreen() {
               >
                 <View style={s.listCardTop}>
                   <Text style={s.listClientName}>{bk.client_name}</Text>
-                  <View style={[s.listStatusPill, { backgroundColor: sl.color + '18' }]}>
+                  <View style={[s.listStatusPill, { borderWidth: 1, borderColor: Colors.inkFaint }]}>
                     <Text style={[s.listStatusText, { color: sl.color }]}>{sl.text}</Text>
                   </View>
                 </View>
@@ -972,28 +978,28 @@ const s = StyleSheet.create({
   headerTitle: { fontSize: 24, fontWeight: '800', color: Colors.text },
   zoneBtn: {
     paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: 20, borderWidth: 1.5, borderColor: Colors.pioneerGold, backgroundColor: Colors.pioneerGoldSurface,
+    borderRadius: 20, borderWidth: 1.5, borderColor: Colors.ink, backgroundColor: 'transparent',
   },
-  zoneBtnText: { fontSize: 13, fontWeight: '700', color: Colors.pioneerGoldDark },
+  zoneBtnText: { fontSize: 13, fontWeight: '700', color: Colors.ink },
 
   toggleRow: {
     flexDirection: 'row', marginHorizontal: 16, marginVertical: 10,
-    backgroundColor: Colors.surface, borderRadius: 10,
-    borderWidth: 1, borderColor: Colors.border, padding: 3,
+    backgroundColor: 'transparent', borderRadius: 10,
+    borderWidth: 1, borderColor: Colors.ink, padding: 3,
   },
   toggleBtn: {
     flex: 1, paddingVertical: 7, borderRadius: 8, alignItems: 'center',
   },
-  toggleBtnActive: { backgroundColor: Colors.background, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 },
-  toggleBtnText: { fontSize: 14, fontWeight: '600', color: Colors.textMuted },
-  toggleBtnTextActive: { color: Colors.text },
+  toggleBtnActive: { backgroundColor: Colors.ink },
+  toggleBtnText: { fontSize: 14, fontWeight: '600', color: Colors.inkMuted },
+  toggleBtnTextActive: { color: Colors.white },
 
   dayStrip: { paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
   dayChip: {
     alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8,
-    borderRadius: 12, borderWidth: 1.5, borderColor: Colors.border, minWidth: 52,
+    borderRadius: 12, borderWidth: 1.5, borderColor: Colors.inkFaint, minWidth: 52,
   },
-  dayChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  dayChipActive: { backgroundColor: Colors.ink, borderColor: Colors.ink },
   dayWeekday: { fontSize: 11, color: Colors.textMuted, fontWeight: '600' },
   dayNum: { fontSize: 18, fontWeight: '800', color: Colors.text },
   dayTextActive: { color: '#FFF' },
@@ -1003,32 +1009,37 @@ const s = StyleSheet.create({
     paddingHorizontal: 16, paddingTop: 4, paddingBottom: 2, flexWrap: 'wrap',
   },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  legendDot: { width: 12, height: 12, borderRadius: 3, borderWidth: 1.5 },
+  legendDot: { width: 16, height: 16, borderRadius: 3, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   legendLabel: { fontSize: 12, color: Colors.textSecondary },
 
   hint: { fontSize: 12, color: Colors.textMuted, marginHorizontal: 16, marginBottom: 10, marginTop: 2 },
 
-  grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, gap: 8 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, gap: 12 },
   slot: {
-    width: SLOT_W, paddingVertical: 8, borderRadius: 10,
-    borderWidth: 1.5, alignItems: 'center', minHeight: 46, justifyContent: 'center',
+    width: SLOT_W, height: 60, borderRadius: 10,
+    borderWidth: 1.5, alignItems: 'center', justifyContent: 'center',
   },
   slotPast: { opacity: 0.35 },
   slotTime: { fontSize: 11, fontWeight: '600' },
 
   // Booked slot
   slotBooked: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primary + '18',
+    borderColor: Colors.ink,
+    backgroundColor: 'transparent',
     justifyContent: 'center', alignItems: 'center',
     paddingHorizontal: 3,
   },
-  slotBookedName: { fontSize: 10, fontWeight: '700', color: Colors.primary, textAlign: 'center' },
-  slotBookedService: { fontSize: 9, color: Colors.primary + 'CC', textAlign: 'center', marginTop: 1 },
-  slotStatusDot: { width: 5, height: 5, borderRadius: 3, marginTop: 2 },
+  slotBookedName: { fontSize: 10, fontWeight: '700', color: Colors.ink, textAlign: 'center' },
+  slotBookedService: { fontSize: 9, color: Colors.inkMuted, textAlign: 'center', marginTop: 1 },
+  slotBookingDot: {
+    position: 'absolute', bottom: 6, right: 6,
+    width: 6, height: 6, borderRadius: 3,
+    backgroundColor: Colors.accentBlue,
+  },
+  slotGlyph: { position: 'absolute', bottom: 8, right: 8 },
   slotContinuation: {
     width: '60%', height: 3, borderRadius: 2,
-    backgroundColor: Colors.primary + '60',
+    backgroundColor: 'rgba(0,0,0,0.15)',
   },
 
   summary: { paddingHorizontal: 16, paddingTop: 12 },
@@ -1039,8 +1050,8 @@ const s = StyleSheet.create({
   listEmptyTitle: { fontSize: 17, fontWeight: '700', color: Colors.text, marginBottom: 6 },
   listEmptyBody: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center' },
   listCard: {
-    backgroundColor: Colors.surface, borderRadius: 16,
-    padding: 16, borderWidth: 1, borderColor: Colors.border, gap: 4,
+    backgroundColor: 'transparent', borderRadius: 16,
+    padding: 16, borderWidth: 1, borderColor: Colors.ink, gap: 4,
   },
   listCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
   listClientName: { fontSize: 15, fontWeight: '700', color: Colors.text },
@@ -1064,7 +1075,7 @@ const bs = StyleSheet.create({
     maxHeight: '90%', paddingHorizontal: 20,
   },
   handle: {
-    width: 36, height: 4, borderRadius: 2, backgroundColor: Colors.border,
+    width: 36, height: 4, borderRadius: 2, backgroundColor: Colors.inkFaint,
     alignSelf: 'center', marginVertical: 12,
   },
   headerRow: {
@@ -1079,15 +1090,15 @@ const bs = StyleSheet.create({
   map: { width: '100%', height: 180, borderRadius: 14, marginBottom: 10, overflow: 'hidden' },
   addressRow: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 6,
-    backgroundColor: Colors.surface, borderRadius: 10,
-    padding: 10, borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: 'transparent', borderRadius: 10,
+    padding: 10, borderWidth: 1, borderColor: Colors.inkFaint,
     marginBottom: 12,
   },
   addressText: { flex: 1, fontSize: 13, color: Colors.text, lineHeight: 18 },
 
   card: {
-    backgroundColor: Colors.surface, borderRadius: 14,
-    padding: 14, borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: 'transparent', borderRadius: 14,
+    padding: 14, borderWidth: 1, borderColor: Colors.ink,
     marginBottom: 12, gap: 2,
   },
   sectionTitle: {
@@ -1097,7 +1108,7 @@ const bs = StyleSheet.create({
   detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
   detailLabel: { fontSize: 14, color: Colors.textSecondary },
   detailValue: { fontSize: 14, fontWeight: '600', color: Colors.text },
-  detailValueBold: { fontSize: 16, fontWeight: '800', color: Colors.primary },
+  detailValueBold: { fontSize: 16, fontWeight: '800', color: Colors.ink },
   divider: { height: 1, backgroundColor: Colors.border, marginVertical: 4 },
 
   lockedRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
@@ -1106,16 +1117,16 @@ const bs = StyleSheet.create({
 
   graceBanner: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: Colors.pioneerGoldSurface, borderRadius: 12, padding: 14,
-    borderWidth: 1, borderColor: Colors.pioneerGold, marginBottom: 12,
+    backgroundColor: 'transparent', borderRadius: 12, padding: 14,
+    borderWidth: 1, borderColor: Colors.ink, marginBottom: 12,
   },
-  graceTitle: { fontSize: 12, fontWeight: '700', color: Colors.pioneerGoldDark, marginBottom: 2 },
-  graceTimer: { fontSize: 13, color: Colors.pioneerGoldDark },
+  graceTitle: { fontSize: 12, fontWeight: '700', color: Colors.ink, marginBottom: 2 },
+  graceTimer: { fontSize: 13, color: Colors.inkMuted },
   graceBtn: {
-    borderWidth: 1.5, borderColor: Colors.error, borderRadius: 10,
+    borderWidth: 1.5, borderColor: Colors.ink, borderRadius: 10,
     paddingHorizontal: 12, paddingVertical: 8,
   },
-  graceBtnText: { fontSize: 13, fontWeight: '700', color: Colors.error },
+  graceBtnText: { fontSize: 13, fontWeight: '700', color: Colors.ink },
 
   errorBox: { backgroundColor: Colors.error + '15', borderRadius: 10, padding: 12, marginBottom: 12 },
   errorText: { fontSize: 13, color: Colors.error, fontWeight: '500' },
@@ -1126,21 +1137,21 @@ const bs = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   actionBtnDisabled: { opacity: 0.5 },
-  actionBtnAccept: { backgroundColor: Colors.primary },
+  actionBtnAccept: { backgroundColor: Colors.ink },
   actionBtnAcceptText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
-  actionBtnDecline: { borderWidth: 1.5, borderColor: Colors.error },
-  actionBtnDeclineText: { color: Colors.error, fontSize: 16, fontWeight: '700' },
+  actionBtnDecline: { borderWidth: 1.5, borderColor: Colors.ink },
+  actionBtnDeclineText: { color: Colors.ink, fontSize: 16, fontWeight: '700' },
 
   primaryBtn: {
-    height: 54, backgroundColor: Colors.primary,
+    height: 54, backgroundColor: Colors.ink,
     borderRadius: 14, alignItems: 'center', justifyContent: 'center',
     marginTop: 4,
   },
   primaryBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
 
   waitingBox: {
-    backgroundColor: Colors.surface, borderRadius: 12,
-    padding: 14, borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: 'transparent', borderRadius: 12,
+    padding: 14, borderWidth: 1, borderColor: Colors.inkFaint,
     alignItems: 'center', marginTop: 4,
   },
   waitingText: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
@@ -1148,25 +1159,25 @@ const bs = StyleSheet.create({
   // Reschedule suggestion UI
   rescheduleBtn: {
     height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: Colors.primary, marginTop: 8,
+    borderWidth: 1.5, borderColor: Colors.ink, marginTop: 8,
   },
-  rescheduleBtnText: { fontSize: 15, fontWeight: '600', color: Colors.primary },
+  rescheduleBtnText: { fontSize: 15, fontWeight: '600', color: Colors.ink },
   rescheduleWrap: {
-    backgroundColor: Colors.surface, borderRadius: 14,
-    padding: 14, borderWidth: 1, borderColor: Colors.border, marginBottom: 12,
+    backgroundColor: 'transparent', borderRadius: 14,
+    padding: 14, borderWidth: 1, borderColor: Colors.inkFaint, marginBottom: 12,
   },
-  rescheduleHeading: { fontSize: 14, fontWeight: '700', color: Colors.text, marginBottom: 12 },
+  rescheduleHeading: { fontSize: 14, fontWeight: '700', color: Colors.ink, marginBottom: 12 },
   rescheduleDayLabel: {
-    fontSize: 12, fontWeight: '700', color: Colors.textMuted,
+    fontSize: 12, fontWeight: '700', color: Colors.inkMuted,
     textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6,
   },
   rescheduleChip: {
     paddingHorizontal: 12, paddingVertical: 8,
-    borderRadius: 10, borderWidth: 1.5, borderColor: Colors.primary, alignItems: 'center',
+    borderRadius: 10, borderWidth: 1.5, borderColor: Colors.ink, alignItems: 'center',
   },
-  rescheduleChipUnavailable: { borderColor: Colors.border, backgroundColor: Colors.surface },
-  rescheduleChipSelected: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  rescheduleChipText: { fontSize: 13, fontWeight: '700', color: Colors.primary },
-  rescheduleChipTextUnavailable: { color: Colors.textMuted },
+  rescheduleChipUnavailable: { borderColor: Colors.inkFaint, backgroundColor: 'transparent' },
+  rescheduleChipSelected: { backgroundColor: Colors.ink, borderColor: Colors.ink },
+  rescheduleChipText: { fontSize: 13, fontWeight: '700', color: Colors.ink },
+  rescheduleChipTextUnavailable: { color: Colors.inkMuted },
   rescheduleChipTextSelected: { color: '#FFF' },
 });

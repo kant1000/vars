@@ -54,7 +54,26 @@ function RootNavigator() {
     }
     const route = segments.join('/');
     if (!route || route === 'index') {
-      router.replace('/(tabs)');
+      // Check if the logged-in user is a vendor; if so, send to vendor tabs
+      if (isAuthenticated) {
+        (async () => {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data: vendor } = await supabase
+              .from('vendors')
+              .select('id')
+              .eq('id', user.id)
+              .maybeSingle();
+            if (vendor) {
+              router.replace('/(vendor-tabs)');
+              return;
+            }
+          }
+          router.replace('/(tabs)');
+        })();
+      } else {
+        router.replace('/(tabs)');
+      }
     }
   }, [appReady, isAuthenticated, needsPhone, onboardingDone]);
 

@@ -2,6 +2,7 @@
 // VARS — Supabase Storage helpers
 // ============================================================
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 import { supabase } from './supabase';
 
 /**
@@ -138,12 +139,21 @@ export async function uploadProfilePhotoFromUri(userId: string, uri: string): Pr
   const ext = (uri.split('.').pop()?.split('?')[0] ?? 'jpg').toLowerCase();
   const filePath = `vendors/${userId}/profile.${ext}`;
 
-  const response = await fetch(uri);
-  const blob = await response.blob();
+  // On Android, fetch('file://...') fails — use expo-file-system to read as base64 instead
+  const base64 = await FileSystem.readAsStringAsync(uri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+
+  // Decode base64 to Uint8Array for Supabase Storage upload
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
 
   const { error } = await supabase.storage
     .from('portfolio')
-    .upload(filePath, blob, { upsert: true, contentType: `image/${ext}` });
+    .upload(filePath, bytes, { upsert: true, contentType: `image/${ext}` });
 
   if (error) throw error;
 

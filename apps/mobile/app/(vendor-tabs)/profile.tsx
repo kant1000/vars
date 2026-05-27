@@ -243,7 +243,7 @@ export default function VendorProfileScreen() {
                 <Text style={s.settingLabel}>⚡ Auto-accept zone</Text>
                 <View style={s.statusRow}>
                   <View style={[s.statusDot, { backgroundColor: zoneStatus.color }]} />
-                  <Text style={[s.statusText, { color: zoneStatus.color }]}>
+                  <Text style={[s.statusText, { color: Colors.inkMuted }]}>
                     {zoneStatus.text}
                   </Text>
                 </View>
@@ -335,7 +335,7 @@ export default function VendorProfileScreen() {
         <View style={s.section}>
           <Text style={s.sectionTitle}>Account</Text>
           <TouchableOpacity style={s.settingRow} onPress={signOut}>
-            <Text style={[s.settingLabel, { color: Colors.error }]}>Sign out</Text>
+            <Text style={s.settingLabel}>Sign out</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -355,19 +355,19 @@ const s = StyleSheet.create({
   avatarWrapper: { width: 72, height: 72, borderRadius: 36, position: 'relative' },
   avatar: {
     width: 72, height: 72, borderRadius: 36,
-    backgroundColor: Colors.primary + '20',
+    backgroundColor: Colors.ink,
     alignItems: 'center', justifyContent: 'center',
   },
   avatarImage: { width: 72, height: 72, borderRadius: 36 },
   avatarEditBadge: {
     position: 'absolute', bottom: 0, right: 0,
     width: 22, height: 22, borderRadius: 11,
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.ink,
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 2, borderColor: Colors.background,
   },
   avatarEditBadgeText: { fontSize: 10, color: '#fff', lineHeight: 12 },
-  avatarText: { fontSize: 28, fontWeight: '800', color: Colors.primary },
+  avatarText: { fontSize: 28, fontWeight: '800', color: Colors.white },
   name: { fontSize: 20, fontWeight: '700', color: Colors.text },
 
   section: {
@@ -388,23 +388,23 @@ const s = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
   settingRowGold: {
-    backgroundColor: Colors.pioneerGoldSurface, borderRadius: 12, paddingHorizontal: 14,
-    borderWidth: 1, borderColor: Colors.pioneerGold + '30', borderBottomWidth: 1,
-    borderBottomColor: Colors.pioneerGold + '30',
+    backgroundColor: 'transparent', borderRadius: 12, paddingHorizontal: 14,
+    borderWidth: 1, borderColor: Colors.ink, borderBottomWidth: 1,
+    borderBottomColor: Colors.ink,
   },
   settingLeft: { flex: 1 },
   settingLabel: { fontSize: 15, fontWeight: '600', color: Colors.text },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 3 },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
   statusText: { fontSize: 13 },
-  editLabel: { fontSize: 13, fontWeight: '700', color: Colors.pioneerGoldDark },
+  editLabel: { fontSize: 13, fontWeight: '700', color: Colors.ink },
 
   confirmBanner: {
     marginTop: 10, padding: 12,
-    backgroundColor: Colors.pioneerGoldSurface, borderRadius: 10,
-    borderWidth: 1, borderColor: Colors.pioneerGold + '40',
+    backgroundColor: 'transparent', borderRadius: 10,
+    borderWidth: 1, borderColor: Colors.ink + '40',
   },
-  confirmBannerText: { fontSize: 13, color: Colors.pioneerGoldDark, fontWeight: '600' },
+  confirmBannerText: { fontSize: 13, color: Colors.ink, fontWeight: '600' },
 
   // Portfolio grid
   photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
@@ -425,11 +425,11 @@ const s = StyleSheet.create({
   },
   addPhotoBtn: {
     width: PHOTO_SIZE, height: PHOTO_SIZE, borderRadius: 10,
-    borderWidth: 1.5, borderColor: Colors.border, borderStyle: 'dashed',
+    borderWidth: 1.5, borderColor: Colors.ink, borderStyle: 'dashed',
     alignItems: 'center', justifyContent: 'center', gap: 4,
   },
-  addPhotoIcon: { fontSize: 24, color: Colors.primary, fontWeight: '300' },
-  addPhotoLabel: { fontSize: 11, color: Colors.textSecondary, fontWeight: '500' },
+  addPhotoIcon: { fontSize: 24, color: Colors.ink, fontWeight: '300' },
+  addPhotoLabel: { fontSize: 11, color: Colors.inkMuted, fontWeight: '500' },
   photoHint: {
     fontSize: 12, color: Colors.textMuted, marginTop: 4, marginBottom: 8, lineHeight: 17,
   },

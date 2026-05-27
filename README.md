@@ -431,8 +431,8 @@ All loading states across the app use a custom `ScissorsLoader` component (`apps
 - Renders the VARS scissors logo mark as an animated SVG using `react-native-svg`
 - Two blades rotate ±32° around the scissor joint pivot in a snip-and-return loop (close → open → repeat), driven by the React Native `Animated` API (`Animated.sequence` + `Animated.loop`). Rotation is applied via a nested `translate(pivot) → AnimatedG rotation → translate(-pivot)` pattern, which reliably produces the correct pivot on Android new architecture (React Native 0.76 / Fabric).
 - The SVG viewBox is expanded to `-120 -90 800 820` (original content space: 555×718) so the blade tips and handles do not clip during the full ±32° swing.
-- Props: `size: 'small' | 'medium' | 'large'` (35×36 / 58×59 / 92×95 px) and `color: 'light' | 'dark'` (#FFFFFF / #1A1A1A)
-- Color rule: `light` on dark/primary-colour button backgrounds; `dark` on white or surface backgrounds
+- Props: `size: 'small' | 'medium' | 'large'` (23×24 / 39×39 / 61×63 px) and `color: 'light' | 'dark'` (#FFFFFF / #1A1A1A)
+- Color rule: `light` on filled black button backgrounds; `dark` on white or surface backgrounds
 
 ### VendorPriceInput
 
@@ -451,10 +451,11 @@ All loading states across the app use a custom `ScissorsLoader` component (`apps
 The root layout (`app/_layout.tsx`) preloads both authentication state and the `vars_onboarding_done` flag from AsyncStorage in parallel before calling `SplashScreen.hideAsync()`. Once both are ready, a single deterministic redirect fires:
 
 - **Not authenticated or onboarding incomplete** → `/onboarding`
-- **Authenticated, onboarding complete** → `/(tabs)`
 - **Authenticated but phone OTP missing** → `/auth/phone`
+- **Authenticated, onboarding done, vendor record exists** → `/(vendor-tabs)`
+- **Authenticated, onboarding done, customer** → `/(tabs)`
 
-`app/index.tsx` returns `null`; it never redirects itself. The guard ref `didInitRoute` ensures the redirect fires exactly once. There is no intermediate overlay or ScissorsLoader between the splash screen and the destination screen.
+Vendor detection is a lightweight `vendors` table query (`select id, eq user.id, maybeSingle`) that fires as an async IIFE inside the effect. `app/index.tsx` returns `null`; it never redirects itself. The guard ref `didInitRoute` ensures the redirect fires exactly once. There is no intermediate overlay or ScissorsLoader between the splash screen and the destination screen.
 
 ### Pull-to-Refresh
 
@@ -566,12 +567,15 @@ When a booking is confirmed (auto-accepted or manually accepted by the vendor), 
 
 ### Vendor Calendar States
 
-| DB state | UI label | Colour | Meaning |
-|---|---|---|---|
-| *(no record)* | Available | White border | Open — customers can book |
-| `unavailable` | Blocked | Red | Closed — customers cannot book |
-| `auto_accept` | Auto-accept | Gold ⚡ | Open + instant confirm |
-| `transport_buffer` | Buffer | Grey 🚗 | System-reserved travel time (read-only, not tappable) |
+The slot grid uses a monochrome shell — border weight signals "has a state", a tiny glyph at the bottom-right specifies which state. No coloured fills anywhere.
+
+| DB state | UI label | Visual |
+|---|---|---|
+| *(no record)* | Available | 1px faint grey border, transparent fill, no glyph |
+| `unavailable` | Blocked | 1.5px black border, transparent fill, ✕ glyph in red |
+| `auto_accept` | Auto-accept | 1.5px black border, transparent fill, ⚡ glyph in amber |
+| `transport_buffer` | Buffer | 1px black border, 4% black tint fill, 🚗 glyph — read-only |
+| *(booking overlay)* | Booked | 1.5px black border, client name + service label, 6px blue dot bottom-right |
 
 Tapping a slot cycles through the three user-controlled states: Available → Blocked → Auto-accept → Available. Transport buffer slots cannot be toggled.
 
@@ -756,12 +760,17 @@ yarn db:types
 
 ## Environment Variables
 
-### Mobile (`apps/mobile/.env`)
+### Mobile
+
+`apps/mobile/.env` is read by Expo Go and the development server when running from within the `apps/mobile/` workspace. When running `expo run:android` from the **repo root** (the standard local build path), Expo reads `.env.local` from the current working directory instead. All `EXPO_PUBLIC_*` variables must be present in the **root `.env.local`** for local Android builds to pick them up at bundle time.
 
 ```
 EXPO_PUBLIC_SUPABASE_URL=
 EXPO_PUBLIC_SUPABASE_ANON_KEY=
 EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=
+EXPO_PUBLIC_VENDOR_TEST_MODE=     # set to 'true' in dev to show the vendor/customer split-screen entry
+EXPO_PUBLIC_DEV_VENDOR_EMAIL=     # test vendor email when VENDOR_TEST_MODE=true
+EXPO_PUBLIC_DEV_VENDOR_PASSWORD=  # test vendor password when VENDOR_TEST_MODE=true
 ```
 
 ### Edge Functions (Supabase Secrets)

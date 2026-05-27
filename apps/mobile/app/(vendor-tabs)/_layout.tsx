@@ -12,16 +12,17 @@ export default function VendorTabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.textMuted,
+        tabBarActiveTintColor: Colors.ink,
+        tabBarInactiveTintColor: Colors.inkMuted,
         tabBarStyle: {
           backgroundColor: Colors.background,
-          borderTopColor: Colors.border,
+          borderTopColor: Colors.inkFaint,
           height: Platform.OS === 'ios' ? 84 : 64,
           paddingBottom: Platform.OS === 'ios' ? 28 : 10,
           paddingTop: 8,
         },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        tabBarActiveLabelStyle:   { fontSize: 11, fontWeight: '700' },
+        tabBarInactiveLabelStyle: { fontSize: 11, fontWeight: '400' },
       }}
     >
       <Tabs.Screen name="index"    options={{ title: 'Jobs',     tabBarLabel: 'Jobs',     tabBarIcon: ({ color, size }) => <BriefcaseIcon size={size} color={color} /> }} />

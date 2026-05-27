@@ -806,16 +806,20 @@ export default function VendorJobsScreen() {
         <Text style={c.headerTitle}>My Jobs</Text>
         <View style={{ alignItems: 'flex-end' }}>
           <TouchableOpacity
-            style={[c.onlineToggle, isOnline ? c.onlineOn : c.onlineOff, togglingOnline && c.btnDisabled]}
+            style={[c.onlineToggle, togglingOnline && c.btnDisabled]}
             onPress={toggleOnline}
             disabled={togglingOnline}
           >
-            {togglingOnline
-              ? <ScissorsLoader size="small" color={isOnline ? 'light' : 'dark'} />
-              : <Text style={[c.onlineToggleText, isOnline && c.onlineToggleTextOn]}>
-                  {isOnline ? '● Online' : '○ Go online'}
-                </Text>
-            }
+            {togglingOnline ? (
+              <ScissorsLoader size="small" color="dark" />
+            ) : isOnline ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.accentGreen }} />
+                <Text style={c.onlineToggleText}>Online</Text>
+              </View>
+            ) : (
+              <Text style={c.onlineToggleText}>Go online</Text>
+            )}
           </TouchableOpacity>
           {toggleError && <Text style={c.inlineError}>{toggleError}</Text>}
         </View>
@@ -930,12 +934,12 @@ const c = StyleSheet.create({
   headerTitle: { fontSize: 24, fontWeight: '800', color: Colors.text },
   onlineToggle: {
     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
-    borderWidth: 1.5,
+    borderWidth: 1.5, borderColor: Colors.ink, backgroundColor: 'transparent',
   },
-  onlineOn:  { backgroundColor: Colors.success, borderColor: Colors.success },
-  onlineOff: { backgroundColor: Colors.background, borderColor: Colors.border },
-  onlineToggleText: { fontSize: 13, fontWeight: '700', color: Colors.textSecondary },
-  onlineToggleTextOn: { color: '#FFF' },
+  onlineOn:  {},
+  onlineOff: {},
+  onlineToggleText: { fontSize: 13, fontWeight: '700', color: Colors.ink },
+  onlineToggleTextOn: {},
 
   section: { paddingTop: 20, paddingHorizontal: 16 },
   sectionTitle: { fontSize: 13, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 },

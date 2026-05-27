@@ -24,9 +24,9 @@ const CLOSE_DEG = 32;
 // original scale ≈ 24px / 555 units ≈ 0.0432 px/unit
 // new container  = 0.0432 × new VB dimensions
 const SIZES = {
-  small:  { w: 35, h: 36 },
-  medium: { w: 58, h: 59 },
-  large:  { w: 92, h: 95 },
+  small:  { w: 23, h: 24 },
+  medium: { w: 39, h: 39 },
+  large:  { w: 61, h: 63 },
 };
 
 const FILLS = {

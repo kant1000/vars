@@ -55,6 +55,19 @@ export const Colors = {
 
   // Inactive onboarding dot
   dotInactive: '#D0D0D0',
+
+  // ── Monochrome design system ──────────────────────────────────
+  // Core shell — use these for all containers, borders, text
+  ink:      '#111111',   // primary text, borders, filled CTAs, active icons
+  inkMuted: '#6B7280',   // secondary text, inactive nav labels
+  inkFaint: '#D0D0D0',   // available/unselected slot borders, disabled dividers
+  white:    '#FFFFFF',   // text on filled black elements
+
+  // Accent glyphs — tiny icons/dots ONLY, never fills or borders
+  accentBlue:  '#0A7AFF',  // booked dot
+  accentAmber: '#F59E0B',  // auto-accept ⚡ icon
+  accentGreen: '#22C55E',  // online dot, active zone dot
+  accentRed:   '#EF4444',  // blocked ✕ icon
 } as const;
 
 export type ColorKey = keyof typeof Colors;

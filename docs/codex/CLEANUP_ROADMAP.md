@@ -68,6 +68,14 @@ This roadmap tracks the practical path to make the whole app work as intended.
 - Mobile: `react-native` `Image` replaced with `expo-image` across the app for WebP support and automatic caching. Done — `fcc61bf`.
 - Landing page shifted from pioneer acquisition framing to Phase 2 general stylist/customer marketing copy. Done — `e85eff3`, `da27c41`.
 
+## Phase 2b++ Work Done (May 2026 — continued)
+
+- **Android profile photo upload fix** (`apps/mobile/lib/storage.ts`): `fetch('file://...')` fails silently on Android. `uploadProfilePhotoFromUri` now uses `expo-file-system.readAsStringAsync` (base64) → `Uint8Array` → Supabase Storage upload. Done.
+- **ScissorsLoader size reduction**: All three sizes reduced by one-third — small 35→23px, medium 58→39px, large 92→61px. Container sizes at call sites unchanged. Done.
+- **Vendor cold-launch routing fix** (`app/_layout.tsx`): Returning authenticated vendors were routed to `/(tabs)` (customer). Root layout now queries `vendors` table after auth resolves; vendors route to `/(vendor-tabs)`, customers to `/(tabs)`. Done.
+- **Root `.env.local` mobile vars**: `expo run:android` from repo root reads `.env.local` from CWD, not `apps/mobile/.env`. All `EXPO_PUBLIC_*` vars added to root `.env.local`. Done.
+- **Monochrome design system** (`constants/colors.ts`, all vendor tab screens): Implemented the monochrome shell + colour-as-glyph design system. New token layer (`ink`, `inkMuted`, `inkFaint`, `accentBlue/Amber/Green/Red`, `white`) added alongside legacy tokens. Vendor screens migrated: slot grid (4→2 columns, 60px height, all fills removed), state glyphs positioned absolute, booked slots (blue fill→transparent+6px blue dot), online pill (green fill→transparent+dot), tab bar (blue active→black), avatar (blue fill→black), zone card (gold fill→transparent+ink border), earnings cards (grey fill→transparent+ink border), all primary CTAs (blue fill→black). `docs/MONOCHROME_DESIGN_SYSTEM.md` deleted — now live in code. Done.
+
 ## Immediate Next Steps
 
 **Current roadmap position** (source of truth: `apps/landing/src/app/roadmap/data/milestones.ts`):
