@@ -2,14 +2,14 @@
 // VARS — Vendor Profile / Settings
 // Sections: Auto-Accept zone, Portfolio management, Account
 // ============================================================
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert, Dimensions, ScrollView,
   StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -54,9 +54,9 @@ export default function VendorProfileScreen() {
 
   const today = new Date().toISOString().slice(0, 10);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     loadAll();
-  }, []);
+  }, []));
 
   const loadAll = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -177,8 +177,6 @@ export default function VendorProfileScreen() {
 
         {/* Auto-Accept Zone */}
         <View style={s.section}>
-          <Text style={[s.sectionTitle, s.sectionTitleGold]}>⚡ Auto-Accept</Text>
-
           {zoneLoading ? (
             <View style={{ margin: 16, alignItems: 'center' }}><ScissorsLoader size="small" color="dark" /></View>
           ) : (
@@ -188,7 +186,7 @@ export default function VendorProfileScreen() {
               activeOpacity={0.7}
             >
               <View style={s.settingLeft}>
-                <Text style={s.settingLabel}>Operating zone</Text>
+                <Text style={s.settingLabel}>⚡ Auto-accept zone</Text>
                 <View style={s.statusRow}>
                   <View style={[s.statusDot, { backgroundColor: zoneStatus.color }]} />
                   <Text style={[s.statusText, { color: zoneStatus.color }]}>

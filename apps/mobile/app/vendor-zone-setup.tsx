@@ -104,13 +104,7 @@ export default function VendorZoneSetup() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Save failed');
 
-      Alert.alert(
-        'Zone saved',
-        autoEnabled
-          ? 'Your auto-accept zone is set. Confirm it each morning before you start working.'
-          : 'Zone saved. Enable auto-accept when you\'re ready to use it.',
-        [{ text: 'Done', onPress: () => router.back() }]
-      );
+      router.back();
     } catch (err: any) {
       Alert.alert('Error', err.message ?? 'Could not save zone settings.');
     } finally {
