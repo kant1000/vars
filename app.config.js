@@ -96,6 +96,9 @@ module.exports = {
     extra: {
       router: {
         origin: false,
+        // Monorepo: EAS runs from repo root, but routes live in apps/mobile/app/.
+        // expo-router uses this to set EXPO_ROUTER_APP_ROOT correctly at bundle time.
+        root: 'apps/mobile/app',
       },
       eas: {
         projectId: 'e7b18395-9c2e-40d9-b667-63d030784790',
