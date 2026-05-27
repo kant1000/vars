@@ -63,6 +63,14 @@ module.exports = {
       'expo-router',
       'expo-secure-store',
       [
+        'expo-build-properties',
+        {
+          android: {
+            newArchEnabled: false,
+          },
+        },
+      ],
+      [
         'expo-location',
         {
           locationAlwaysAndWhenInUsePermission: 'VARS needs your location to show you vendors nearby.',
