@@ -66,12 +66,13 @@ const ACTIVE_STATUSES: BookingStatus[] = [
   BOOKING_STATUS.ARRIVED, BOOKING_STATUS.SERVICE_RENDERED, BOOKING_STATUS.RESCHEDULED_PENDING,
 ];
 
+// Booked slots use slotBooked (thick ink border). All other states keep a
+// faint border — the icon/glyph carries the meaning, not the border weight.
 const STATE_STYLE = {
   default:          { border: Colors.inkFaint, bg: 'transparent' },
-  unavailable:      { border: Colors.ink,      bg: 'transparent' },
-  auto_accept:      { border: Colors.ink,      bg: 'transparent' },
-  transport_buffer: { border: Colors.ink,      bg: 'rgba(0,0,0,0.04)' },
-  booked:           { border: Colors.ink,      bg: 'transparent' },
+  unavailable:      { border: Colors.inkFaint, bg: 'transparent' },
+  auto_accept:      { border: Colors.inkFaint, bg: 'transparent' },
+  transport_buffer: { border: Colors.inkFaint, bg: 'rgba(0,0,0,0.04)' },
 };
 
 const STATUS_LABEL: Record<BookingStatus, { text: string; color: string }> = {
@@ -546,13 +547,13 @@ function DetailRow({ label, value, bold }: { label: string; value: string; bold?
 }
 
 // ── Sub-components ────────────────────────────────────────────
-function LegendDot({ borderColor, label, glyph, glyphColor }: {
-  borderColor: string; label: string; glyph?: string; glyphColor?: string;
+function LegendDot({ borderColor, label, glyph, glyphColor, borderWidth = 1.5 }: {
+  borderColor: string; label: string; glyph?: string; glyphColor?: string; borderWidth?: number;
 }) {
   return (
     <View style={s.legendItem}>
-      <View style={[s.legendDot, { borderColor, backgroundColor: 'transparent' }]}>
-        {glyph ? <Text style={{ fontSize: 8, color: glyphColor ?? borderColor, lineHeight: 11 }}>{glyph}</Text> : null}
+      <View style={[s.legendDot, { borderColor, borderWidth, backgroundColor: 'transparent' }]}>
+        {glyph ? <Text style={{ fontSize: 13, color: glyphColor ?? borderColor, lineHeight: 16 }}>{glyph}</Text> : null}
       </View>
       <Text style={s.legendLabel}>{label}</Text>
     </View>
@@ -788,8 +789,8 @@ export default function ScheduleScreen() {
       </View>
 
       {viewMode === 'calendar' ? (
-        <ScrollView contentContainerStyle={{ paddingBottom: 60 }}>
-          {/* Day strip */}
+        <>
+          {/* Day strip — fixed, does not scroll with the grid */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.dayStrip}>
             {DAYS.map((d) => {
               const active = d.toDateString() === selectedDay.toDateString();
@@ -808,18 +809,20 @@ export default function ScheduleScreen() {
             })}
           </ScrollView>
 
-          {/* Legend */}
+          {/* Legend — fixed */}
           <View style={s.legend}>
             <LegendDot borderColor={Colors.inkFaint} label="Available" />
-            <LegendDot borderColor={Colors.ink} label="Blocked"     glyph="✕" glyphColor={Colors.accentRed} />
-            <LegendDot borderColor={Colors.ink} label="Auto-accept" glyph="⚡" glyphColor={Colors.accentAmber} />
-            <LegendDot borderColor={Colors.ink} label="Buffer" />
-            <LegendDot borderColor={Colors.ink} label="Booked"      glyph="●" glyphColor={Colors.accentBlue} />
+            <LegendDot borderColor={Colors.inkFaint} label="Blocked"     glyph="✕" glyphColor={Colors.accentRed} />
+            <LegendDot borderColor={Colors.inkFaint} label="Auto-accept" glyph="⚡" glyphColor={Colors.accentAmber} />
+            <LegendDot borderColor={Colors.inkFaint} label="Buffer" />
+            <LegendDot borderColor={Colors.ink}      label="Booked"      borderWidth={2.5} />
           </View>
 
+          {/* Hint — fixed */}
           <Text style={s.hint}>Tap to cycle: available → blocked → auto-accept</Text>
 
-          {/* Slot grid */}
+          {/* Slot grid — scrollable */}
+          <ScrollView contentContainerStyle={{ paddingBottom: 60, paddingTop: 4 }}>
           <View style={s.grid}>
             {slots.map((slot) => {
               const iso = slot.toISOString();
@@ -846,7 +849,6 @@ export default function ScheduleScreen() {
                         <Text style={s.slotBookedService} numberOfLines={1}>
                           {booking.service_name}
                         </Text>
-                        <View style={s.slotBookingDot} />
                       </>
                     ) : (
                       <View style={s.slotContinuation} />
@@ -875,9 +877,9 @@ export default function ScheduleScreen() {
                         {slot.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit', hour12: true })}
                       </Text>
                       <View style={s.slotGlyph}>
-                        {state === 'auto_accept'      && <LightningIcon size={10} color={Colors.accentAmber} />}
-                        {state === 'unavailable'      && <CloseIcon     size={10} color={Colors.accentRed} />}
-                        {state === 'transport_buffer' && <CarIcon        size={10} color={Colors.inkMuted} />}
+                        {state === 'auto_accept'      && <LightningIcon size={16} color={Colors.accentAmber} />}
+                        {state === 'unavailable'      && <CloseIcon     size={16} color={Colors.accentRed} />}
+                        {state === 'transport_buffer' && <CarIcon        size={16} color={Colors.inkMuted} />}
                       </View>
                     </>
                   )}
@@ -898,7 +900,8 @@ export default function ScheduleScreen() {
               </Text>
             </View>
           )}
-        </ScrollView>
+          </ScrollView>
+        </>
       ) : listLoading ? (
         <View style={s.centered}><ScissorsLoader size="small" color="dark" /></View>
       ) : (
@@ -994,14 +997,14 @@ const s = StyleSheet.create({
   toggleBtnText: { fontSize: 14, fontWeight: '600', color: Colors.inkMuted },
   toggleBtnTextActive: { color: Colors.white },
 
-  dayStrip: { paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
+  dayStrip: { paddingHorizontal: 16, paddingVertical: 8, gap: 8 },
   dayChip: {
-    alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8,
-    borderRadius: 12, borderWidth: 1.5, borderColor: Colors.inkFaint, minWidth: 52,
+    alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4,
+    borderRadius: 10, borderWidth: 1.5, borderColor: Colors.inkFaint, minWidth: 46,
   },
   dayChipActive: { backgroundColor: Colors.ink, borderColor: Colors.ink },
   dayWeekday: { fontSize: 11, color: Colors.textMuted, fontWeight: '600' },
-  dayNum: { fontSize: 18, fontWeight: '800', color: Colors.text },
+  dayNum: { fontSize: 15, fontWeight: '800', color: Colors.text },
   dayTextActive: { color: '#FFF' },
 
   legend: {
@@ -1009,7 +1012,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 16, paddingTop: 4, paddingBottom: 2, flexWrap: 'wrap',
   },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  legendDot: { width: 16, height: 16, borderRadius: 3, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  legendDot: { width: 22, height: 22, borderRadius: 4, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   legendLabel: { fontSize: 12, color: Colors.textSecondary },
 
   hint: { fontSize: 12, color: Colors.textMuted, marginHorizontal: 16, marginBottom: 10, marginTop: 2 },
@@ -1022,21 +1025,17 @@ const s = StyleSheet.create({
   slotPast: { opacity: 0.35 },
   slotTime: { fontSize: 11, fontWeight: '600' },
 
-  // Booked slot
+  // Booked slot — thick ink border is the sole booked indicator
   slotBooked: {
     borderColor: Colors.ink,
+    borderWidth: 2.5,
     backgroundColor: 'transparent',
     justifyContent: 'center', alignItems: 'center',
     paddingHorizontal: 3,
   },
   slotBookedName: { fontSize: 10, fontWeight: '700', color: Colors.ink, textAlign: 'center' },
   slotBookedService: { fontSize: 9, color: Colors.inkMuted, textAlign: 'center', marginTop: 1 },
-  slotBookingDot: {
-    position: 'absolute', bottom: 6, right: 6,
-    width: 6, height: 6, borderRadius: 3,
-    backgroundColor: Colors.accentBlue,
-  },
-  slotGlyph: { position: 'absolute', bottom: 8, right: 8 },
+  slotGlyph: { position: 'absolute', bottom: 7, right: 7 },
   slotContinuation: {
     width: '60%', height: 3, borderRadius: 2,
     backgroundColor: 'rgba(0,0,0,0.15)',
@@ -1124,7 +1123,8 @@ const bs = StyleSheet.create({
   graceTimer: { fontSize: 13, color: Colors.inkMuted },
   graceBtn: {
     borderWidth: 1.5, borderColor: Colors.ink, borderRadius: 10,
-    paddingHorizontal: 12, paddingVertical: 8,
+    paddingHorizontal: 12, minHeight: 40,
+    alignItems: 'center', justifyContent: 'center',
   },
   graceBtnText: { fontSize: 13, fontWeight: '700', color: Colors.ink },
 

@@ -1005,12 +1005,12 @@ const c = StyleSheet.create({
   vendorCancelText: { fontSize: 13, fontWeight: '600', color: Colors.error },
 
   // Grace period card
-  graceCard: { borderColor: Colors.pioneerGold, borderWidth: 1.5 },
-  graceBadge: { fontSize: 12, fontWeight: '700', color: Colors.pioneerGoldDark, flex: 1 },
-  graceCountdown: { fontSize: 12, fontWeight: '700', color: Colors.error, fontVariant: ['tabular-nums'] },
+  graceCard: { borderColor: Colors.ink, borderWidth: 1.5 },
+  graceBadge: { fontSize: 12, fontWeight: '700', color: Colors.ink, flex: 1 },
+  graceCountdown: { fontSize: 12, fontWeight: '700', color: Colors.accentRed, fontVariant: ['tabular-nums'] },
   graceCancelBtn: {
     marginTop: 8, height: 42, borderRadius: 10,
-    borderWidth: 1.5, borderColor: Colors.error,
+    borderWidth: 1.5, borderColor: Colors.ink,
     alignItems: 'center', justifyContent: 'center',
   },
   graceCancelText: { fontSize: 14, fontWeight: '700', color: Colors.error },
@@ -1023,8 +1023,8 @@ const c = StyleSheet.create({
   rowService: { fontSize: 14, fontWeight: '600', color: Colors.text },
   rowMeta: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
   rowEarning: { fontSize: 14, fontWeight: '700', color: Colors.success },
-  addPhotoBtn: { marginTop: 6 },
-  addPhotoBtnText: { fontSize: 12, color: Colors.primary, fontWeight: '600' },
+  addPhotoBtn: { marginTop: 6, minHeight: 32, alignItems: 'center', justifyContent: 'center' },
+  addPhotoBtnText: { fontSize: 12, color: Colors.ink, fontWeight: '600' },
   photoSent: { fontSize: 12, color: Colors.textMuted, marginTop: 4 },
   photoFull: { fontSize: 12, color: Colors.textMuted, marginTop: 4, fontStyle: 'italic' },
 

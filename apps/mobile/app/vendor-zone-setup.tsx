@@ -153,9 +153,9 @@ export default function VendorZoneSetup() {
             <Circle
               center={{ latitude: pinLat, longitude: pinLng }}
               radius={radius * 1000} // metres
-              fillColor={Colors.pioneerGold + '26'}
-              strokeColor={Colors.pioneerGold}
-              strokeWidth={2}
+              fillColor={Colors.ink + '14'}
+              strokeColor={Colors.ink}
+              strokeWidth={1.5}
             />
             {/* Draggable pin */}
             <Marker
@@ -167,7 +167,7 @@ export default function VendorZoneSetup() {
               }}
               title="Zone centre"
               description="Drag to reposition"
-              pinColor={Colors.pioneerGold}
+              pinColor={Colors.ink}
             />
           </MapView>
           <View style={s.mapHint}>
@@ -204,8 +204,8 @@ export default function VendorZoneSetup() {
             <Switch
               value={autoEnabled}
               onValueChange={setAutoEnabled}
-              trackColor={{ true: Colors.pioneerGold, false: Colors.border }}
-              thumbColor={autoEnabled ? '#FFF' : Colors.textMuted}
+              trackColor={{ true: Colors.ink, false: Colors.inkFaint }}
+              thumbColor={'#FFF'}
             />
           </View>
 
@@ -249,7 +249,7 @@ const s = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
   backBtn:     { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  backText:    { fontSize: 28, color: Colors.primary, lineHeight: 32 },
+  backText:    { fontSize: 28, color: Colors.ink, lineHeight: 32 },
   headerTitle: { fontSize: 17, fontWeight: '700', color: Colors.text },
 
   mapWrap: { position: 'relative' },
@@ -274,29 +274,29 @@ const s = StyleSheet.create({
   radiusRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   radiusChip: {
     paddingHorizontal: 16, paddingVertical: 10,
-    borderRadius: 20, borderWidth: 1.5, borderColor: Colors.border,
+    borderRadius: 20, borderWidth: 1.5, borderColor: Colors.inkFaint,
   },
-  radiusChipActive: { backgroundColor: Colors.pioneerGold, borderColor: Colors.pioneerGold },
+  radiusChipActive: { backgroundColor: Colors.ink, borderColor: Colors.ink },
   radiusChipText:   { fontSize: 14, fontWeight: '700', color: Colors.textSecondary },
   radiusChipTextActive: { color: '#FFF' },
 
   toggleRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: Colors.surface, borderRadius: 14, padding: 16,
-    borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: 'transparent', borderRadius: 14, padding: 16,
+    borderWidth: 1, borderColor: Colors.ink,
   },
   toggleLabel: { fontSize: 15, fontWeight: '700', color: Colors.text, marginBottom: 3 },
   toggleSub:   { fontSize: 13, color: Colors.textSecondary, lineHeight: 18 },
 
   infoBox: {
-    backgroundColor: Colors.pioneerGoldSurface, borderRadius: 12, padding: 14,
-    borderWidth: 1, borderColor: Colors.pioneerGold + '30',
+    backgroundColor: 'transparent', borderRadius: 12, padding: 14,
+    borderWidth: 1, borderColor: Colors.inkFaint,
   },
-  infoTitle: { fontSize: 13, fontWeight: '700', color: Colors.pioneerGoldDark, marginBottom: 6 },
-  infoText:  { fontSize: 13, color: Colors.pioneerGoldDeep, lineHeight: 20 },
+  infoTitle: { fontSize: 13, fontWeight: '700', color: Colors.ink, marginBottom: 6 },
+  infoText:  { fontSize: 13, color: Colors.inkMuted, lineHeight: 20 },
 
   saveBtn: {
-    height: 56, backgroundColor: Colors.pioneerGold,
+    height: 56, backgroundColor: Colors.ink,
     borderRadius: 14, alignItems: 'center', justifyContent: 'center',
   },
   btnDisabled: { opacity: 0.5 },

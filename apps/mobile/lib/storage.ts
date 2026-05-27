@@ -6,6 +6,24 @@ import * as FileSystem from 'expo-file-system';
 import { supabase } from './supabase';
 
 /**
+ * Read a local file URI as an ArrayBuffer.
+ * `fetch('file://...')` fails silently on Android — use expo-file-system instead.
+ */
+async function readUriAsArrayBuffer(uri: string): Promise<{ buffer: ArrayBuffer; ext: string }> {
+  const ext = (uri.split('.').pop()?.split('?')[0] ?? 'jpg').toLowerCase();
+  const base64 = await FileSystem.readAsStringAsync(uri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+  const binaryString = atob(base64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return { buffer: bytes.buffer as ArrayBuffer, ext };
+}
+
+/**
  * Pick an image from device library and upload to Supabase Storage.
  * Returns the public URL.
  */
@@ -24,16 +42,12 @@ export async function pickAndUploadImage(params: {
   if (result.canceled || !result.assets[0]) return null;
 
   const asset = result.assets[0];
-  const ext = asset.uri.split('.').pop() ?? 'jpg';
+  const { buffer, ext } = await readUriAsArrayBuffer(asset.uri);
   const filePath = `${params.path}.${ext}`;
-
-  // Fetch the file as blob
-  const response = await fetch(asset.uri);
-  const blob = await response.blob();
 
   const { error } = await supabase.storage
     .from(params.bucket)
-    .upload(filePath, blob, { upsert: true, contentType: `image/${ext}` });
+    .upload(filePath, buffer, { upsert: true, contentType: `image/${ext}` });
 
   if (error) throw error;
 
@@ -68,15 +82,12 @@ export async function pickAndUploadPortfolioPhotos(
 
   for (let i = 0; i < result.assets.length; i++) {
     const asset = result.assets[i];
-    const ext = asset.uri.split('.').pop() ?? 'jpg';
+    const { buffer, ext } = await readUriAsArrayBuffer(asset.uri);
     const filePath = `vendors/${vendorId}/portfolio/${Date.now()}_${existingCount + i}.${ext}`;
-
-    const response = await fetch(asset.uri);
-    const blob = await response.blob();
 
     const { error } = await supabase.storage
       .from('portfolio')
-      .upload(filePath, blob, { contentType: `image/${ext}` });
+      .upload(filePath, buffer, { contentType: `image/${ext}` });
 
     if (error) {
       console.error(`Upload failed for photo ${i}:`, error);
@@ -106,15 +117,12 @@ export async function uploadSinglePortfolioPhoto(
   if (result.canceled || !result.assets[0]) return null;
 
   const asset = result.assets[0];
-  const ext = asset.uri.split('.').pop() ?? 'jpg';
+  const { buffer, ext } = await readUriAsArrayBuffer(asset.uri);
   const filePath = `vendors/${vendorId}/portfolio/${Date.now()}.${ext}`;
-
-  const response = await fetch(asset.uri);
-  const blob = await response.blob();
 
   const { error } = await supabase.storage
     .from('portfolio')
-    .upload(filePath, blob, { contentType: `image/${ext}` });
+    .upload(filePath, buffer, { contentType: `image/${ext}` });
 
   if (error) throw error;
 
@@ -136,24 +144,12 @@ export async function deletePortfolioPhoto(storagePath: string): Promise<void> {
  * Returns the public URL.
  */
 export async function uploadProfilePhotoFromUri(userId: string, uri: string): Promise<string> {
-  const ext = (uri.split('.').pop()?.split('?')[0] ?? 'jpg').toLowerCase();
+  const { buffer, ext } = await readUriAsArrayBuffer(uri);
   const filePath = `vendors/${userId}/profile.${ext}`;
-
-  // On Android, fetch('file://...') fails — use expo-file-system to read as base64 instead
-  const base64 = await FileSystem.readAsStringAsync(uri, {
-    encoding: FileSystem.EncodingType.Base64,
-  });
-
-  // Decode base64 to Uint8Array for Supabase Storage upload
-  const binaryString = atob(base64);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
 
   const { error } = await supabase.storage
     .from('portfolio')
-    .upload(filePath, bytes, { upsert: true, contentType: `image/${ext}` });
+    .upload(filePath, buffer, { upsert: true, contentType: `image/${ext}` });
 
   if (error) throw error;
 
