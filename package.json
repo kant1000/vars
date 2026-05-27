@@ -2,6 +2,7 @@
   "name": "vars",
   "version": "1.0.0",
   "private": true,
+  "main": "expo-router/entry",
   "packageManager": "yarn@1.22.22",
   "workspaces": [
     "apps/*",
