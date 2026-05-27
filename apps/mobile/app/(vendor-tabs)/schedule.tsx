@@ -1043,14 +1043,14 @@ const s = StyleSheet.create({
   toggleBtnText: { fontSize: 14, fontWeight: '600', color: Colors.inkMuted },
   toggleBtnTextActive: { color: Colors.white },
 
-  dayStrip: { paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
+  dayStrip: { paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
   dayChip: {
-    alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8,
-    borderRadius: 12, borderWidth: 1.5, borderColor: Colors.inkFaint, minWidth: 52,
+    alignItems: 'center', paddingHorizontal: 12, paddingVertical: 5,
+    borderRadius: 20, borderWidth: 1.5, borderColor: Colors.inkFaint, minWidth: 48,
   },
   dayChipActive: { backgroundColor: Colors.ink, borderColor: Colors.ink },
-  dayWeekday: { fontSize: 11, color: Colors.textMuted, fontWeight: '600' },
-  dayNum: { fontSize: 18, fontWeight: '800', color: Colors.text },
+  dayWeekday: { fontSize: 10, color: Colors.textMuted, fontWeight: '600' },
+  dayNum: { fontSize: 17, fontWeight: '800', color: Colors.text },
   dayTextActive: { color: '#FFF' },
 
   legend: {
