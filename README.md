@@ -738,6 +738,37 @@ yarn mobile             # starts Expo dev server
 
 Then press `i` for iOS simulator or `a` for Android emulator, or scan the QR code with Expo Go.
 
+### Build Android APK locally
+
+A local build compiles the full native Android project and installs it directly to a connected device. It runs the production-equivalent Hermes JS bundle — use this instead of Expo Go when testing native modules or the final build output.
+
+**Windows prerequisites**
+
+| Variable | Value |
+|---|---|
+| `JAVA_HOME` | `C:\Program Files\Android\Android Studio\jbr` |
+| `ANDROID_HOME` | `%LOCALAPPDATA%\Android\Sdk` |
+
+Android Studio ships a bundled JDK at the `jbr` path — use that, not a separately installed JDK. Set both in your system environment variables, or inline in the terminal session:
+
+```powershell
+$env:JAVA_HOME    = "C:\Program Files\Android\Android Studio\jbr"
+$env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
+npx expo run:android --no-build-cache
+```
+
+- Run from the **repo root** (not `apps/mobile/`). Expo reads root `.env.local` from CWD at bundle time.
+- `android/` is auto-generated on first run and is gitignored — do not commit it.
+- First build after a fresh clone takes 15–35 min (full Gradle compile). Subsequent builds use the Gradle cache.
+- `--no-build-cache` forces a full recompile; omit it once the cache is warm.
+- If Metro port 8081 is already in use, add `--port 8082`.
+
+**Cloud build (no local toolchain needed)**
+
+```bash
+eas build --platform android --profile preview   # produces a shareable .apk via EAS
+```
+
 ### Run the admin dashboard
 
 ```bash
