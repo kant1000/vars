@@ -79,6 +79,20 @@ export default function BookingsScreen() {
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`bookings:consumer:${user.id}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'bookings',
+        filter: `user_id=eq.${user.id}`,
+      }, () => { load(); })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user, load]);
+
   if (loading) {
     return <View style={st.centered}><ScissorsLoader size="large" color="dark" /></View>;
   }

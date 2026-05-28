@@ -5,9 +5,9 @@
 // List: upcoming bookings in chronological order
 // Part 1: types, helpers, calendar view with booked overlay
 // ============================================================
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Dimensions, FlatList, Modal, Platform, Pressable,
+  Dimensions, FlatList, Platform,
   RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
@@ -21,6 +21,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 import { fmtPrice, fmtDuration, fmtTime, fmtDate } from '@/lib/format';
 import { CloseIcon, PinIcon, LockIcon, LightningIcon } from '@/components/icons';
+import * as Haptics from 'expo-haptics';
+import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { BookingStatus, BOOKING_STATUS } from '@vars/shared';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
@@ -136,6 +138,16 @@ function BookingBottomSheet({
   onClose: () => void;
   onAction: () => void;
 }) {
+  const bottomSheetRef = useRef<BottomSheetModal>(null);
+
+  useEffect(() => {
+    bottomSheetRef.current?.present();
+  }, []);
+
+  const handleClose = () => {
+    bottomSheetRef.current?.dismiss();
+  };
+
   const [acting, setActing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [graceSecondsLeft, setGraceSecondsLeft] = useState<number>(0);
@@ -165,7 +177,7 @@ function BookingBottomSheet({
     try {
       await callEdgeFn('vendor-cancel-grace', { booking_id: booking.id });
       onAction();
-      onClose();
+      handleClose();
     } catch (err: any) {
       setActionError(err.message);
     } finally {
@@ -256,7 +268,7 @@ function BookingBottomSheet({
         suggested_at: suggestedSlot.toISOString(),
       });
       onAction();
-      onClose();
+      handleClose();
     } catch (err: any) {
       setActionError(err.message);
     } finally {
@@ -292,6 +304,7 @@ function BookingBottomSheet({
   };
 
   const handleAction = async (action: 'accept' | 'decline' | 'on_way' | 'arrived' | 'service_rendered') => {
+    if (action === 'accept') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setActing(true);
     setActionError(null);
     try {
@@ -301,7 +314,7 @@ function BookingBottomSheet({
       if (action === 'arrived')          await callEdgeFn('vendor-update-job-status', { booking_id: booking.id, new_status: 'arrived' });
       if (action === 'service_rendered') await callEdgeFn('vendor-update-job-status', { booking_id: booking.id, new_status: 'service_rendered' });
       onAction();
-      onClose();
+      handleClose();
     } catch (err: any) {
       setActionError(err.message);
     } finally {
@@ -310,12 +323,13 @@ function BookingBottomSheet({
   };
 
   return (
-    <Modal visible animationType="slide" transparent onRequestClose={onClose}>
-      <Pressable style={bs.overlay} onPress={onClose}>
-        <Pressable style={bs.sheet} onPress={() => {}}>
-          <View style={bs.handle} />
-
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+    <BottomSheetModal
+      ref={bottomSheetRef}
+      snapPoints={['65%', '92%']}
+      enableDynamicSizing={false}
+      onDismiss={onClose}
+    >
+      <BottomSheetScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
             {/* Header row */}
             <View style={bs.headerRow}>
               <View style={{ flex: 1 }}>
@@ -324,7 +338,7 @@ function BookingBottomSheet({
                   <Text style={[bs.statusText, { color: sl.color }]}>{sl.text}</Text>
                 </View>
               </View>
-              <TouchableOpacity onPress={onClose} style={bs.closeBtn}>
+              <TouchableOpacity onPress={handleClose} style={bs.closeBtn}>
                 <CloseIcon size={18} color={Colors.textMuted} />
               </TouchableOpacity>
             </View>
@@ -546,10 +560,8 @@ function BookingBottomSheet({
                 <Text style={bs.waitingText}>Awaiting client confirmation to release payment</Text>
               </View>
             )}
-          </ScrollView>
-        </Pressable>
-      </Pressable>
-    </Modal>
+      </BottomSheetScrollView>
+    </BottomSheetModal>
   );
 }
 
@@ -726,6 +738,20 @@ export default function ScheduleScreen() {
     }
   }, [vendorId, viewMode, loadListBookings]);
 
+  useEffect(() => {
+    if (!vendorId) return;
+    const channel = supabase
+      .channel(`bookings:vendor:${vendorId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'bookings',
+        filter: `vendor_id=eq.${vendorId}`,
+      }, () => { loadData(); loadListBookings(); })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [vendorId, loadData, loadListBookings]);
+
   // ── Live location push while on_way ───────────────────────────
   useEffect(() => {
     const isOnWay = [...bookings, ...listBookings].some((b) => b.status === BOOKING_STATUS.ON_WAY);
@@ -765,6 +791,7 @@ export default function ScheduleScreen() {
 
   const handleToggle = async (slot: Date) => {
     if (!vendorId || toggling) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const slotIso = slot.toISOString();
     const existing = getBlockForSlot(slot);
     if (existing?.block_state === 'transport_buffer') return;

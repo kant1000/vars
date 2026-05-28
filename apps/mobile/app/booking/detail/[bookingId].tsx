@@ -6,7 +6,7 @@
 // ============================================================
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  KeyboardAvoidingView, Modal, Platform,
+  Modal,
   Pressable, RefreshControl, ScrollView,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
@@ -14,6 +14,7 @@ import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
+import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
@@ -319,7 +320,7 @@ export default function BookingDetailScreen() {
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
-  const [showDisputeModal, setShowDisputeModal] = useState(false);
+  const disputeSheetRef = useRef<BottomSheetModal>(null);
   const [disputeCategory, setDisputeCategory] = useState<DisputeCategory | null>(null);
   const [disputeReason, setDisputeReason] = useState('');
 
@@ -360,7 +361,7 @@ export default function BookingDetailScreen() {
   const handleDispute = async () => {
     if (!booking || !disputeCategory) return;
     if (disputeCategory === 'other' && !disputeReason.trim()) return;
-    setShowDisputeModal(false);
+    disputeSheetRef.current?.dismiss();
     setActionLoading(true); setActionError(null);
     try {
       await callEdgeFn('dispute-raise', {
@@ -432,6 +433,19 @@ export default function BookingDetailScreen() {
 
   // useFocusEffect handles both initial mount and return-from-navigation refreshes
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(`booking:${bookingId}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'bookings',
+        filter: `id=eq.${bookingId}`,
+      }, () => { load(); })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [bookingId, load]);
 
   const handleBack = () => {
     if (router.canGoBack()) router.back();
@@ -579,7 +593,7 @@ export default function BookingDetailScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={[s.secondaryBtn, actionLoading && s.btnDisabled]}
-              onPress={() => setShowDisputeModal(true)}
+              onPress={() => disputeSheetRef.current?.present()}
               disabled={actionLoading}
             >
               <Text style={s.secondaryBtnText}>Report an issue</Text>
@@ -700,52 +714,53 @@ export default function BookingDetailScreen() {
         </Modal>
       )}
 
-      {/* ── Dispute modal ───────────────────────────── */}
-      <Modal visible={showDisputeModal} transparent animationType="slide" onRequestClose={() => setShowDisputeModal(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-          <Pressable style={s.modalOverlay} onPress={() => setShowDisputeModal(false)}>
-            <Pressable style={[s.modalSheet, { paddingBottom: 32 }]} onPress={() => {}}>
-              <Text style={s.modalTitle}>Raise a dispute</Text>
-              <Text style={s.modalBody}>Tell us what went wrong. Our team will review within 24 hours.</Text>
-              <View style={{ gap: 8, marginBottom: 2 }}>
-                {DISPUTE_CATEGORIES.map((c) => (
-                  <TouchableOpacity
-                    key={c.value}
-                    activeOpacity={0.7}
-                    onPress={() => setDisputeCategory(c.value)}
-                    style={[s.categoryRow, disputeCategory === c.value && s.categoryRowSelected]}
-                  >
-                    <View style={[s.radio, disputeCategory === c.value && s.radioSelected]} />
-                    <Text style={[s.categoryLabel, disputeCategory === c.value && s.categoryLabelSelected]}>
-                      {c.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              {disputeCategory && (
-                <TextInput
-                  style={[s.disputeInput, { marginTop: 14 }]}
-                  placeholder={disputeCategory === 'other' ? 'Describe the issue… (required)' : 'Add more details (optional)'}
-                  placeholderTextColor={Colors.textMuted}
-                  value={disputeReason}
-                  onChangeText={(t) => setDisputeReason(sanitize(t, 500))}
-                  multiline
-                  numberOfLines={3}
-                  textAlignVertical="top"
-                />
-              )}
+      {/* ── Dispute sheet ───────────────────────────── */}
+      <BottomSheetModal
+        ref={disputeSheetRef}
+        enableDynamicSizing
+        keyboardBehavior="interactive"
+        android_keyboardInputMode="adjustResize"
+      >
+        <BottomSheetView style={[s.modalSheet, { paddingBottom: 32 }]}>
+          <Text style={s.modalTitle}>Raise a dispute</Text>
+          <Text style={s.modalBody}>Tell us what went wrong. Our team will review within 24 hours.</Text>
+          <View style={{ gap: 8, marginBottom: 2 }}>
+            {DISPUTE_CATEGORIES.map((c) => (
               <TouchableOpacity
-                style={[s.primaryBtn, { marginTop: 16 },
-                  (!disputeCategory || (disputeCategory === 'other' && !disputeReason.trim())) && s.btnDisabled]}
-                onPress={handleDispute}
-                disabled={!disputeCategory || (disputeCategory === 'other' && !disputeReason.trim())}
+                key={c.value}
+                activeOpacity={0.7}
+                onPress={() => setDisputeCategory(c.value)}
+                style={[s.categoryRow, disputeCategory === c.value && s.categoryRowSelected]}
               >
-                <Text style={s.primaryBtnText}>Submit dispute</Text>
+                <View style={[s.radio, disputeCategory === c.value && s.radioSelected]} />
+                <Text style={[s.categoryLabel, disputeCategory === c.value && s.categoryLabelSelected]}>
+                  {c.label}
+                </Text>
               </TouchableOpacity>
-            </Pressable>
-          </Pressable>
-        </KeyboardAvoidingView>
-      </Modal>
+            ))}
+          </View>
+          {disputeCategory && (
+            <TextInput
+              style={[s.disputeInput, { marginTop: 14 }]}
+              placeholder={disputeCategory === 'other' ? 'Describe the issue… (required)' : 'Add more details (optional)'}
+              placeholderTextColor={Colors.textMuted}
+              value={disputeReason}
+              onChangeText={(t) => setDisputeReason(sanitize(t, 500))}
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+            />
+          )}
+          <TouchableOpacity
+            style={[s.primaryBtn, { marginTop: 16 },
+              (!disputeCategory || (disputeCategory === 'other' && !disputeReason.trim())) && s.btnDisabled]}
+            onPress={handleDispute}
+            disabled={!disputeCategory || (disputeCategory === 'other' && !disputeReason.trim())}
+          >
+            <Text style={s.primaryBtnText}>Submit dispute</Text>
+          </TouchableOpacity>
+        </BottomSheetView>
+      </BottomSheetModal>
 
     </View>
   );

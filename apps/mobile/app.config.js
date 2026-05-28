@@ -66,6 +66,13 @@ module.exports = {
           color: '#0A7AFF',
         },
       ],
+      [
+        '@sentry/react-native/expo',
+        {
+          organization: 'vars',
+          project: 'vars-mobile',
+        },
+      ],
     ],
     updates: {
       url: 'https://u.expo.dev/e7b18395-9c2e-40d9-b667-63d030784790',

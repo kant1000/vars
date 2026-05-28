@@ -10,6 +10,7 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Colors } from '@/constants/colors';
 import { StarFilledIcon } from '@/components/icons';
+import { usePostHog, EVENTS } from '@/lib/analytics';
 
 export interface VendorCardData {
   id: string;
@@ -35,6 +36,7 @@ interface Props {
 }
 
 export function VendorCard({ vendor, returnTo }: Props) {
+  const posthog = usePostHog();
   const displayPrice = `₦${Math.round(vendor.price_from / 100).toLocaleString('en-NG')}`;
   const displayDist = vendor.distance_km < 1
     ? `${Math.round(vendor.distance_km * 1000)}m`
@@ -44,7 +46,13 @@ export function VendorCard({ vendor, returnTo }: Props) {
     <TouchableOpacity
       style={styles.card}
       activeOpacity={0.88}
-      onPress={() => router.push({ pathname: '/vendor/[id]', params: { id: vendor.id, returnTo } })}
+      onPress={() => {
+        posthog?.capture(EVENTS.VENDOR_VIEWED, {
+          vendor_id: vendor.id,
+          categories: vendor.category_names,
+        });
+        router.push({ pathname: '/vendor/[id]', params: { id: vendor.id, returnTo } });
+      }}
     >
       {/* Avatar */}
       <View style={styles.avatarWrap}>

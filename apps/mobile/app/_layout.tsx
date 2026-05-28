@@ -5,6 +5,9 @@
 // then routes once to the right screen with no intermediate flash.
 // ============================================================
 
+import * as Sentry from '@sentry/react-native';
+import { PostHogProvider } from 'posthog-react-native';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { useEffect, useRef, useState } from 'react';
 import { Stack } from 'expo-router';
 import { router, useSegments } from 'expo-router';
@@ -17,6 +20,13 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+
+Sentry.init({
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+  tracesSampleRate: 0.1,
+  environment: __DEV__ ? 'development' : 'production',
+  enabled: !__DEV__,
+});
 
 SplashScreen.preventAutoHideAsync();
 
@@ -136,16 +146,25 @@ function RootNavigator() {
   );
 }
 
-export default function RootLayout() {
+function RootLayout() {
   return (
+    <PostHogProvider
+      apiKey={process.env.EXPO_PUBLIC_POSTHOG_KEY ?? ''}
+      options={{ host: 'https://eu.i.posthog.com' }}
+    >
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <AuthProvider>
-          <StatusBar style="auto" />
-          <RootNavigator />
-        </AuthProvider>
-      </SafeAreaProvider>
+      <BottomSheetModalProvider>
+        <SafeAreaProvider>
+          <AuthProvider>
+            <StatusBar style="auto" />
+            <RootNavigator />
+          </AuthProvider>
+        </SafeAreaProvider>
+      </BottomSheetModalProvider>
     </GestureHandlerRootView>
+    </PostHogProvider>
   );
 }
+
+export default Sentry.wrap(RootLayout);
 

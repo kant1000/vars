@@ -7,7 +7,7 @@
 // ============================================================
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Dimensions, FlatList, Modal, Pressable,
+  Dimensions, FlatList, Modal,
   ScrollView, StyleSheet, Text, TouchableOpacity,
   View, TextInput, Platform,
 } from 'react-native';
@@ -22,7 +22,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 import { fmtPrice, fmtDuration, fmtTime, fmtDate } from '@/lib/format';
 import { LightningIcon, CheckIcon, CloseIcon, PinIcon } from '@/components/icons';
+import { Calendar, toDateId, fromDateId } from '@marceloterreiro/flash-calendar';
+import { BottomSheetModal, BottomSheetFlatList } from '@gorhom/bottom-sheet';
 import { BOOKING_STATUS } from '@vars/shared';
+import * as Haptics from 'expo-haptics';
+import { usePostHog, EVENTS } from '@/lib/analytics';
 
 const SCREEN_W = Dimensions.get('window').width;
 const BLOCK_MINS = 30;
@@ -271,19 +275,29 @@ function Step2({
       <ScrollView contentContainerStyle={{ paddingBottom: selectedSlot ? CONFIRM_BAR_HEIGHT + 16 : 40 }}>
         <Text style={[s.stepTitle, { margin: 16 }]}>When works for you?</Text>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8, paddingBottom: 8 }}>
-          {days.map((d) => {
-            const active = sameDay(d, selectedDay);
-            return (
-              <TouchableOpacity key={d.toISOString()} style={[s.dayChip, active && s.dayChipActive]} onPress={() => setSelectedDay(d)}>
-                <Text style={[s.dayChipWeekday, active && s.dayChipTextActive]}>
-                  {d.toLocaleDateString('en-NG', { weekday: 'short' })}
-                </Text>
-                <Text style={[s.dayChipNum, active && s.dayChipTextActive]}>{d.getDate()}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+        <Calendar
+          calendarMinDateId={toDateId(days[0])}
+          calendarMaxDateId={toDateId(days[days.length - 1])}
+          calendarActiveDateRanges={[{
+            startId: toDateId(selectedDay),
+            endId: toDateId(selectedDay),
+          }]}
+          onCalendarDayPress={(dateId) => setSelectedDay(fromDateId(dateId))}
+          theme={{
+            itemDay: {
+              active: () => ({
+                container: { backgroundColor: Colors.primary },
+                content: { color: '#FFF' },
+              }),
+              today: () => ({
+                content: { color: Colors.primary, fontWeight: '700' },
+              }),
+            },
+            rowMonth: {
+              content: { color: Colors.text, fontWeight: '700', fontSize: 15 },
+            },
+          }}
+        />
 
         {slots.some((sl) => sl.available && sl.autoAccept) && (
           <View style={s.autoAcceptLegend}>
@@ -329,7 +343,7 @@ function Step2({
                     <TouchableOpacity
                       key={sl.time.toISOString()}
                       style={[s.slot, { width: CHIP_W }, !sl.available && s.slotUnavailable, sl.available && sl.autoAccept && s.slotAutoAccept]}
-                      onPress={() => { if (sl.available) { setSelectedSlot(sl.time); setSelectedAutoAccept(sl.autoAccept); } }}
+                      onPress={() => { if (sl.available) { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSelectedSlot(sl.time); setSelectedAutoAccept(sl.autoAccept); } }}
                       disabled={!sl.available}
                       activeOpacity={0.8}
                     >
@@ -384,7 +398,7 @@ function Step3Review({
   locating: boolean;
   locError: string | null;
 }) {
-  const [showFloorPicker, setShowFloorPicker] = useState(false);
+  const floorSheetRef = useRef<BottomSheetModal>(null);
 
   return (
     <>
@@ -421,7 +435,7 @@ function Step3Review({
           <Text style={s.fieldLabel}>Floor</Text>
           <TouchableOpacity
             style={[s.textInput, s.pickerRow]}
-            onPress={() => setShowFloorPicker(true)}
+            onPress={() => floorSheetRef.current?.present()}
             activeOpacity={0.8}
           >
             <Text style={access.floor ? s.pickerValue : s.pickerPlaceholder}>
@@ -485,31 +499,26 @@ function Step3Review({
         </TouchableOpacity>
       </View>
 
-      {/* Floor picker modal */}
-      <Modal visible={showFloorPicker} transparent animationType="slide">
-        <Pressable style={s.modalOverlay} onPress={() => setShowFloorPicker(false)}>
-          <Pressable style={s.pickerSheet} onPress={() => {}}>
-            <View style={s.pickerHandle} />
-            <Text style={s.pickerTitle}>Select floor</Text>
-            <FlatList
-              data={FLOOR_OPTIONS}
-              keyExtractor={(item) => item}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={s.pickerOption}
-                  onPress={() => { setAccess({ ...access, floor: item }); setShowFloorPicker(false); }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[s.pickerOptionText, access.floor === item && s.pickerOptionSelected]}>
-                    {item}
-                  </Text>
-                  {access.floor === item && <CheckIcon size={16} color={Colors.primary} />}
-                </TouchableOpacity>
-              )}
-            />
-          </Pressable>
-        </Pressable>
-      </Modal>
+      {/* Floor picker sheet */}
+      <BottomSheetModal ref={floorSheetRef} snapPoints={['50%']} enableDynamicSizing={false}>
+        <Text style={[s.pickerTitle, { paddingHorizontal: 16, paddingTop: 8 }]}>Select floor</Text>
+        <BottomSheetFlatList
+          data={FLOOR_OPTIONS}
+          keyExtractor={(item) => item}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={s.pickerOption}
+              onPress={() => { setAccess({ ...access, floor: item }); floorSheetRef.current?.dismiss(); }}
+              activeOpacity={0.7}
+            >
+              <Text style={[s.pickerOptionText, access.floor === item && s.pickerOptionSelected]}>
+                {item}
+              </Text>
+              {access.floor === item && <CheckIcon size={16} color={Colors.primary} />}
+            </TouchableOpacity>
+          )}
+        />
+      </BottomSheetModal>
     </>
   );
 }
@@ -633,6 +642,7 @@ export default function BookingFlow() {
   const { vendorId } = useLocalSearchParams<{ vendorId: string }>();
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
+  const posthog = usePostHog();
 
   const [step, setStep] = useState(1);
   const [service, setService] = useState<ServiceOption | null>(null);
@@ -652,11 +662,20 @@ export default function BookingFlow() {
   const [error, setError] = useState<string | null>(null);
 
   const handleSelectService = (svc: ServiceOption) => {
+    posthog?.capture(EVENTS.BOOKING_STARTED, {
+      vendor_id: vendorId,
+      service_name: svc.name,
+      price_kobo: svc.price_kobo,
+    });
     setService(svc);
     setStep(2);
   };
 
   const handleSelectSlot = (s: Date, isAutoAccept: boolean) => {
+    posthog?.capture(EVENTS.SLOT_SELECTED, {
+      vendor_id: vendorId,
+      is_auto_accept: isAutoAccept,
+    });
     setSlot(s);
     setSlotIsAutoAccept(isAutoAccept);
     setStep3View('review');
@@ -677,6 +696,7 @@ export default function BookingFlow() {
   };
 
   const handleConfirmLocation = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setLocating(true);
     setLocError(null);
     try {
@@ -706,6 +726,11 @@ export default function BookingFlow() {
 
   const handlePay = async () => {
     if (!service || !slot || !coords) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    posthog?.capture(EVENTS.PAYMENT_INITIATED, {
+      vendor_id: vendorId,
+      price_kobo: service.price_kobo,
+    });
     setPaying(true);
     setError(null);
 
@@ -772,7 +797,14 @@ export default function BookingFlow() {
         .select('id')
         .eq('paystack_reference', reference)
         .maybeSingle();
-      if (data?.id) { router.replace('/(tabs)/bookings'); return; }
+      if (data?.id) {
+        posthog?.capture(EVENTS.PAYMENT_COMPLETED, {
+          vendor_id: vendorId,
+          booking_id: data.id,
+        });
+        router.replace('/(tabs)/bookings');
+        return;
+      }
       await new Promise((res) => setTimeout(res, INTERVAL_MS));
     }
     // Webhook hasn't created the booking yet — navigate anyway; it will arrive via Realtime
