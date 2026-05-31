@@ -191,7 +191,6 @@ function BookingBottomSheet({
     const vendorId = s?.user?.id;
     if (!vendorId) { setLoadingRescheduleSlots(false); return; }
 
-    const origDate = new Date(booking.scheduled_at);
     const days = [
       new Date(new Date(booking.scheduled_at).setHours(0, 0, 0, 0)),
       (() => { const d = new Date(booking.scheduled_at); d.setDate(d.getDate() + 1); d.setHours(0, 0, 0, 0); return d; })(),
@@ -293,14 +292,6 @@ function BookingBottomSheet({
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error ?? `${fn} failed`);
-  };
-
-  const updateStatus = async (newStatus: BookingStatus) => {
-    const { error } = await supabase
-      .from('bookings')
-      .update({ status: newStatus })
-      .eq('id', booking.id);
-    if (error) throw new Error(error.message);
   };
 
   const handleAction = async (action: 'accept' | 'decline' | 'on_way' | 'arrived' | 'service_rendered') => {
@@ -906,7 +897,6 @@ export default function ScheduleScreen() {
 
               if (booking) {
                 const isFirstSlot = new Date(booking.scheduled_at).getTime() === slot.getTime();
-                const sl = STATUS_LABEL[booking.status];
                 return (
                   <TouchableOpacity
                     key={iso}

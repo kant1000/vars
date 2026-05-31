@@ -16,7 +16,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 import { fmtPrice, fmtDuration, fmtTime, fmtDate, fmtDateTime } from '@/lib/format';
 import { fetchWithRetry } from '@/lib/fetchWithRetry';
@@ -311,7 +310,6 @@ function LiveTrackingMap({
 export default function BookingDetailScreen() {
   const { bookingId } = useLocalSearchParams<{ bookingId: string }>();
   const insets = useSafeAreaInsets();
-  const { session } = useAuth();
   const { isOnline: isConnected } = useNetworkState();
 
   const [booking, setBooking] = useState<BookingDetail | null>(null);

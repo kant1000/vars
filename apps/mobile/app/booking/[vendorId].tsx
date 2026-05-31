@@ -7,7 +7,7 @@
 // ============================================================
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Dimensions, FlatList, Modal,
+  Dimensions, Modal,
   ScrollView, StyleSheet, Text, TouchableOpacity,
   View, TextInput, Platform,
 } from 'react-native';
@@ -18,7 +18,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 import { fmtPrice, fmtDuration, fmtTime, fmtDate } from '@/lib/format';
 import { LightningIcon, CheckIcon, CloseIcon, PinIcon } from '@/components/icons';
@@ -66,9 +65,6 @@ function sanitize(text: string, maxLen: number) {
 }
 function addMinutes(d: Date, m: number) {
   return new Date(d.getTime() + m * 60000);
-}
-function sameDay(a: Date, b: Date) {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
 // ── Step indicator ────────────────────────────────────────────
@@ -641,7 +637,6 @@ function AccessRow({ label, value }: { label: string; value: string }) {
 export default function BookingFlow() {
   const { vendorId } = useLocalSearchParams<{ vendorId: string }>();
   const insets = useSafeAreaInsets();
-  const { session } = useAuth();
   const posthog = usePostHog();
 
   const [step, setStep] = useState(1);
@@ -717,7 +712,7 @@ export default function BookingFlow() {
       setCoords({ lat: latitude, lng: longitude });
       setLocAddress(address);
       setStep3View('location');
-    } catch (err: any) {
+    } catch {
       setLocError('Could not get your location. Please try again.');
     } finally {
       setLocating(false);
