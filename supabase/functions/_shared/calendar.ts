@@ -4,7 +4,6 @@
 
 import { createAdminClient } from './supabase.ts';
 import { isSlotFree } from './slot.ts';
-import { TRANSPORT_FEE_TIERS } from './constants.ts';
 
 /**
  * Insert two 30-min transport_buffer blocks immediately after a confirmed booking ends.

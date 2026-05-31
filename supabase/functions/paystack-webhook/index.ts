@@ -320,7 +320,7 @@ async function handleChargeSuccess(
           service: service_name as string,
           date: formatDate(scheduledStr),
           time: formatTime(scheduledStr),
-          amount: `₦${formatNaira(service_price_kobo as number)}`,
+          amount: `₦${formatNaira(totalKobo)}`,
         });
         await sendTransactionalEmail(profile.email, subject, body);
       }

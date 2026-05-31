@@ -383,7 +383,7 @@ async function settleBooking(
         customerFirstName,
         vendorName: vendor.full_name,
         service: booking.service_name,
-        amount: `₦${formatNaira(booking.service_price_kobo)}`,
+        amount: `₦${formatNaira(totalKobo)}`,
       });
       await sendTransactionalEmail(profile.email, subject, body);
     }

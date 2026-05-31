@@ -153,7 +153,7 @@ Deno.serve(async (req: Request) => {
           service: booking.service_name,
           date: formatDate(booking.scheduled_at),
           time: formatTime(booking.scheduled_at),
-          amount: `₦${formatNaira(booking.service_price_kobo)}`,
+          amount: `₦${formatNaira(totalKobo)}`,
         });
         await sendTransactionalEmail(profile.email, subject, body);
       }

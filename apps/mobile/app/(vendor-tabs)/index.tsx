@@ -428,11 +428,13 @@ function BookingRow({
   vendorPhotoCount,
   hasPhotoForBooking,
   onPhotoAdded,
+  isPioneer,
 }: {
   booking: VendorBooking;
   vendorPhotoCount?: number;
   hasPhotoForBooking?: boolean;
   onPhotoAdded?: () => void;
+  isPioneer?: boolean;
 }) {
   const [addingPhoto, setAddingPhoto] = useState(false);
   const isCompleted = booking.status === 'completed';
@@ -505,7 +507,7 @@ function BookingRow({
       </View>
       <View style={{ alignItems: 'flex-end' }}>
         <Text style={[c.rowEarning, !isCompleted && { color: Colors.textMuted }]}>
-          {isCompleted ? fmtPrice(vendorEarning(booking.service_price_kobo)) : booking.status.replace(/_/g, ' ')}
+          {isCompleted ? fmtPrice(vendorEarning(booking.service_price_kobo, booking.transport_fee_kobo, isPioneer ?? false)) : booking.status.replace(/_/g, ' ')}
         </Text>
       </View>
     </View>
@@ -905,7 +907,7 @@ export default function VendorJobsScreen() {
           <Section title="Upcoming">
             {upcoming
               .filter((b) => new Date(b.scheduled_at).toDateString() !== new Date().toDateString())
-              .map((b) => <BookingRow key={b.id} booking={b} />)}
+              .map((b) => <BookingRow key={b.id} booking={b} isPioneer={isPioneer} />)}
           </Section>
         )}
 
@@ -919,6 +921,7 @@ export default function VendorJobsScreen() {
                 vendorPhotoCount={vendorPhotoCount}
                 hasPhotoForBooking={bookingPhotoIds.has(b.id)}
                 onPhotoAdded={load}
+                isPioneer={isPioneer}
               />
             ))}
           </Section>
