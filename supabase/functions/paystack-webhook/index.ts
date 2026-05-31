@@ -242,7 +242,11 @@ async function handleChargeSuccess(
 
   console.log(`Booking created: ${booking.id} (auto_accept=${autoAcceptResult.shouldAutoAccept})`);
 
-  // ── Create transport buffer blocks if auto-accepted ────────
+  // ── Create post-booking transport buffer blocks if auto-accepted ──
+  // Pre-booking buffers are never inserted here: auto-accept requires the user
+  // to be within the vendor's zone radius (1–1.5 km), which is always inside
+  // BASE_RADIUS_KM (5 km) — so preBufferSlots is provably 0 on this path.
+  // Pre-buffers are only inserted by paystack-capture (manual accept).
   if (autoAcceptResult.shouldAutoAccept) {
     await createTransportBuffers(
       supabase,
@@ -251,16 +255,6 @@ async function handleChargeSuccess(
       scheduledStr,
       service_duration_blocks as number
     );
-    // Pre-buffers: block travel time before the booking when vendor is travelling far
-    if (preBufferSlots > 0) {
-      await createPreTransportBuffers(
-        supabase,
-        vendor_id as string,
-        booking.id,
-        scheduledStr,
-        preBufferSlots
-      );
-    }
   }
 
   // ── Fetch vendor and user details for notifications ────────
