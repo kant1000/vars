@@ -170,13 +170,15 @@ Twenty migration files build up the schema incrementally:
 | `20260525140000_notifications_reminder_idempotency_index` | Partial unique index on `notifications(booking_id, type)` for reminder types — enforces at-most-once delivery at DB level under concurrent cron runs |
 | `20260525150000_fix_get_nearby_vendors_active_filter` | Adds `is_active = TRUE AND is_suspended = FALSE` to `get_nearby_vendors` WHERE clause — previously suspended/inactive vendors could appear in customer discovery |
 | `20260525160000_payout_history_booking_id_unique` | `UNIQUE (booking_id)` constraint on `payout_history` — prevents double-payout race between user confirm, auto-release, and admin settlement |
+| `20260526000001_zone_radius_numeric` | Changes `auto_accept_zone_radius_km` from INT to NUMERIC(4,1); updates constraint to allow 1 and 1.5 km values |
+| `20260531000001_vendor_trust_layer` | Adds `profile_image_url`, `profile_image_raw_url`, `profile_image_locked` to `vendors`; tightens `vendors_update_own` RLS to block client writes on those columns; creates `vendor-identity-images` storage bucket; updates `get_nearby_vendors` to return `profile_image_url` |
 
 ### Key Tables
 
 | Table | Purpose |
 |---|---|
 | `profiles` | Customer accounts (extends `auth.users`) |
-| `vendors` | Vendor accounts with KYC, ratings, zone settings |
+| `vendors` | Vendor accounts with KYC, ratings, zone settings, and identity image columns (`profile_image_url`, `profile_image_raw_url`, `profile_image_locked`) |
 | `services` | Master service catalogue |
 | `vendor_services` | A vendor's offered services with price and duration |
 | `bookings` | All bookings; holds Paystack reference, escrow state, access details (`access_building/floor/flat/code`), and customer location (`user_location_lat/lng`) |
@@ -246,7 +248,7 @@ All functions live in `supabase/functions/` and run on Deno.
 | `submit-review` | POST | Customer submits a star rating (1–5, required) + optional comment for a completed booking; DB trigger updates vendor `avg_rating`; notifies vendor; 409 on duplicate |
 | `send-reminders` | POST (cron, every 5 min) | Sends 24-hour and 1-hour before-appointment reminders to both customer and vendor, plus a 30-minute pending-acceptance reminder to the vendor; idempotent via notifications table |
 | `vendor-kyc-init` | POST | Initiates Youverify KYC session |
-| `vendor-kyc-webhook` | POST | Receives Youverify result — clean pass: `kyc_status = verified` + `is_active = true` (instant activation); failure: `kyc_status = rejected`, appears in admin queue |
+| `vendor-kyc-webhook` | POST | Receives Youverify result — clean pass: `kyc_status = verified` + `is_active = true` (instant activation); also extracts the liveness face image from the payload, uploads raw and passport-cropped versions to `vendor-identity-images` storage, and sets `profile_image_url` / `profile_image_raw_url` / `profile_image_locked = true` on the vendor row. Image failure is non-blocking — KYC pass completes regardless. Failure: `kyc_status = rejected`, appears in admin queue |
 | `vendor-register-lead` | POST/GET | Captures a vendor lead; GET returns current pioneer spot count. On successful POST: normalises phone to E.164, inserts into `vendor_leads`, creates an auto-approved `welcome_email` outreach record ready for delivery |
 | `deliver-outreach` | POST | Picks up approved `vendor_lead_outreach` records and delivers via the appropriate channel (WhatsApp/SMS via Termii, email via Resend). Controlled by `DELIVERY_LIVE` secret — logs only when unset. Accepts optional `{ record_id }` or `{ lead_id }` to scope delivery |
 | `unsubscribe-lead` | GET | One-click email unsubscribe — verifies HMAC-SHA256 token, sets `email_unsubscribed = true` on `vendor_leads`. Linked from every outreach and marketing email footer |
@@ -589,6 +591,18 @@ Vendors complete identity verification via the **Youverify SDK** during onboardi
 - **Rejection / flagged** — `kyc_status = rejected`, `kyc_rejection_reason` set from the Youverify payload. The case surfaces in the admin Vendors panel (which defaults to the rejected queue). Admin can:
   - **Override & approve** — manually set `kyc_status = verified, is_active = true`
   - **Reset KYC** — send vendor back to pending for re-submission
+
+### Trust Layer — Identity Image Locking
+
+On a clean KYC pass the webhook also:
+1. Extracts the liveness face image URL from the Youverify payload
+2. Fetches the image and uploads the original to `vendor-identity-images/{vendor_id}/raw.jpg`
+3. Crops a passport-style square (centre, top 65% of frame → 400×400 JPEG) and uploads it to `vendor-identity-images/{vendor_id}/profile.jpg`
+4. Sets `profile_image_url` (cropped), `profile_image_raw_url` (raw audit copy), and `profile_image_locked = true` on the vendor row
+
+`profile_image_url` is the **single source of truth** for a vendor's photo across all surfaces — discovery feed, vendor public profile, vendor profile screen, and admin panel. Vendors cannot change it. RLS (`vendors_update_own` WITH CHECK) blocks any client-side write to the three identity image columns; only the service role (used by the webhook) can set them.
+
+The admin vendors panel shows both images: the cropped profile circle and the raw liveness capture (labelled "Audit") for verification review. If image extraction fails for any reason, the webhook logs a warning and completes the KYC pass normally — admin can set the image manually.
 
 **Vendor recovery flow** — when a vendor's KYC is rejected:
 1. Push notification sent with the rejection reason; deep-link opens `step-4-kyc`

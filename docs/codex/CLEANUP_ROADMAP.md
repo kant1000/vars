@@ -76,6 +76,10 @@ This roadmap tracks the practical path to make the whole app work as intended.
 - **Root `.env.local` mobile vars**: `expo run:android` from repo root reads `.env.local` from CWD, not `apps/mobile/.env`. All `EXPO_PUBLIC_*` vars added to root `.env.local`. Done.
 - **Monochrome design system** (`constants/colors.ts`, all vendor tab screens): Implemented the monochrome shell + colour-as-glyph design system. New token layer (`ink`, `inkMuted`, `inkFaint`, `accentBlue/Amber/Green/Red`, `white`) added alongside legacy tokens. Vendor screens migrated: slot grid (4→2 columns, 60px height, all fills removed), state glyphs positioned absolute, booked slots (blue fill→transparent+6px blue dot), online pill (green fill→transparent+dot), tab bar (blue active→black), avatar (blue fill→black), zone card (gold fill→transparent+ink border), earnings cards (grey fill→transparent+ink border), all primary CTAs (blue fill→black). `docs/MONOCHROME_DESIGN_SYSTEM.md` deleted — now live in code. Done.
 
+## Phase 2b+++ Work Done (May 2026 — continued)
+
+- **Vendor trust layer — identity image locking**: The liveness photo captured by Youverify during KYC is now the vendor's permanent, locked profile picture across all surfaces (discovery feed, vendor public profile, vendor profile screen, admin panel). `vendor-kyc-webhook` extracts the face image from the Youverify payload, uploads raw + passport-cropped versions to the new `vendor-identity-images` storage bucket, and sets `profile_image_url` / `profile_image_raw_url` / `profile_image_locked` on the vendor row. RLS (`vendors_update_own` WITH CHECK via correlated subquery) blocks vendor clients from writing to those columns — service role only. `get_nearby_vendors` updated to return `profile_image_url`. Vendor photo upload removed from onboarding step 1 and the vendor profile screen. Admin vendors panel shows both the cropped profile circle and the raw liveness image for audit. Migration: `20260531000001_vendor_trust_layer`. Done.
+
 ## Immediate Next Steps
 
 **Current roadmap position** (source of truth: `apps/landing/src/app/roadmap/data/milestones.ts`):

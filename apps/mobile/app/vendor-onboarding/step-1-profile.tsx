@@ -7,12 +7,10 @@ import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
   ScrollView, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { Image } from 'expo-image';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
-import { pickAndUploadImage } from '@/lib/storage';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 
@@ -21,25 +19,10 @@ export default function Step1Profile() {
   const [fullName, setFullName] = useState(authProfile?.full_name ?? '');
   const [phone, setPhone] = useState('');
   const [bio, setBio] = useState('');
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [locationLabel, setLocationLabel] = useState('');
   const [locationCoords, setLocationCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
-
-  const handlePickPhoto = async () => {
-    if (!user) return;
-    try {
-      const url = await pickAndUploadImage({
-        bucket: 'avatars',
-        path: `vendors/${user.id}/avatar`,
-        aspect: [1, 1],
-      });
-      if (url) setPhotoUrl(url);
-    } catch (err: any) {
-      Alert.alert('Upload failed', err.message);
-    }
-  };
 
   const handleDetectLocation = async () => {
     setIsLocating(true);
@@ -76,7 +59,6 @@ export default function Step1Profile() {
           full_name: fullName.trim(),
           phone_number: phone.trim(),
           bio: bio.trim() || null,
-          profile_photo_url: photoUrl,
           base_location: `POINT(${locationCoords.lng} ${locationCoords.lat})`,
         })
         .eq('id', user.id);
@@ -98,17 +80,6 @@ export default function Step1Profile() {
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>Tell us about yourself.</Text>
         <Text style={styles.sub}>This is what clients will see on your profile.</Text>
-
-        {/* Profile photo */}
-        <TouchableOpacity style={styles.photoButton} onPress={handlePickPhoto}>
-          {photoUrl ? (
-            <Image source={{ uri: photoUrl }} style={styles.photo} contentFit="cover" />
-          ) : (
-            <View style={styles.photoPlaceholder}>
-              <Text style={styles.photoPlaceholderText}>Add photo</Text>
-            </View>
-          )}
-        </TouchableOpacity>
 
         <View style={styles.form}>
           <TextInput
@@ -177,15 +148,6 @@ const styles = StyleSheet.create({
   scroll: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 40 },
   title: { fontSize: 26, fontWeight: '700', color: Colors.text, marginBottom: 6 },
   sub: { fontSize: 15, color: Colors.textSecondary, marginBottom: 28 },
-  photoButton: { alignSelf: 'center', marginBottom: 28 },
-  photo: { width: 100, height: 100, borderRadius: 50 },
-  photoPlaceholder: {
-    width: 100, height: 100, borderRadius: 50,
-    backgroundColor: Colors.surface, borderWidth: 1.5,
-    borderColor: Colors.border, borderStyle: 'dashed',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  photoPlaceholderText: { fontSize: 13, color: Colors.textSecondary, fontWeight: '500' },
   form: { gap: 12, marginBottom: 28 },
   input: {
     height: 54, borderWidth: 1.5, borderColor: Colors.border,

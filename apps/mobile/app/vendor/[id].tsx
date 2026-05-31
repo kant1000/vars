@@ -50,7 +50,7 @@ interface VendorProfile {
   id: string;
   full_name: string;
   bio: string | null;
-  profile_photo_url: string | null;
+  profile_image_url: string | null;
   avg_rating: number;
   total_reviews: number;
   is_online: boolean;
@@ -105,7 +105,7 @@ export default function VendorProfileScreen() {
     // Parallel fetches
     const [vendorRes, servicesRes, portfolioRes, reviewsRes, favRes] = await Promise.all([
       supabase.from('vendors')
-        .select('id, full_name, bio, profile_photo_url, avg_rating, total_reviews, is_online, base_location_text, badge_vars_choice, badge_top_rated, pioneer')
+        .select('id, full_name, bio, profile_image_url, avg_rating, total_reviews, is_online, base_location_text, badge_vars_choice, badge_top_rated, pioneer')
         .eq('id', id)
         .single(),
 
@@ -211,8 +211,8 @@ export default function VendorProfileScreen() {
 
         {/* ── Hero ── */}
         <View style={styles.hero}>
-          {vendor.profile_photo_url ? (
-            <Image source={{ uri: vendor.profile_photo_url }} style={styles.heroImage} contentFit="cover" cachePolicy="memory-disk" />
+          {vendor.profile_image_url ? (
+            <Image source={{ uri: vendor.profile_image_url }} style={styles.heroImage} contentFit="cover" cachePolicy="memory-disk" />
           ) : (
             <View style={[styles.heroImage, styles.heroFallback]}>
               <Text style={styles.heroInitial}>{vendor.full_name?.[0]?.toUpperCase()}</Text>

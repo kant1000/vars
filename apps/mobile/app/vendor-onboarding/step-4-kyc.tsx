@@ -237,6 +237,10 @@ export default function Step4Kyc() {
             </View>
           )}
 
+          <Text style={styles.photoNotice}>
+            The photo taken during your identity check will be your permanent profile picture on VARS. Make sure you're in good lighting and facing the camera directly.
+          </Text>
+
           {kycVerified ? (
             <View style={styles.verifiedBadge}>
               <Text style={styles.verifiedText}>✓ Identity verified</Text>
@@ -351,6 +355,7 @@ const styles = StyleSheet.create({
   errorCalloutTitle: { fontSize: 15, fontWeight: '700', color: Colors.error },
   errorCalloutBody: { fontSize: 14, color: Colors.error, opacity: 0.85 },
   errorCalloutHint: { fontSize: 13, color: Colors.textSecondary, lineHeight: 18 },
+  photoNotice: { fontSize: 13, color: Colors.textSecondary, lineHeight: 19 },
   kycButton: { height: 50, backgroundColor: Colors.primary, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   kycButtonText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
   verifiedBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0FDF4', borderRadius: 10, padding: 12 },

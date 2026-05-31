@@ -20,7 +20,7 @@ async function getVendors(status: string, page: number, q: string) {
   const db = adminClient();
   let query = db
     .from('vendors')
-    .select('id, full_name, phone_number, kyc_status, avg_rating, total_reviews, badge_vars_choice, badge_top_rated, created_at, is_online, cancellation_flagged')
+    .select('id, full_name, phone_number, kyc_status, avg_rating, total_reviews, badge_vars_choice, badge_top_rated, created_at, is_online, cancellation_flagged, profile_image_url, profile_image_raw_url')
     .order('created_at', { ascending: false })
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
 
@@ -65,6 +65,7 @@ export default async function VendorsPage({ searchParams }: Props) {
         <table>
           <thead>
             <tr>
+              <th>Identity</th>
               <th>Name</th>
               <th>Phone</th>
               <th>KYC status</th>
@@ -76,10 +77,31 @@ export default async function VendorsPage({ searchParams }: Props) {
           </thead>
           <tbody>
             {vendors.length === 0 && (
-              <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--text2)', padding: '32px' }}>No vendors found. Youverify auto-approves clean passes — only flagged or rejected cases appear here by default.</td></tr>
+              <tr><td colSpan={8} style={{ textAlign: 'center', color: 'var(--text2)', padding: '32px' }}>No vendors found. Youverify auto-approves clean passes — only flagged or rejected cases appear here by default.</td></tr>
             )}
             {vendors.map((v: any) => (
               <tr key={v.id}>
+                <td style={{ verticalAlign: 'top', paddingTop: 10 }}>
+                  {v.profile_image_url ? (
+                    <img
+                      src={v.profile_image_url}
+                      alt="Profile"
+                      style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', display: 'block' }}
+                    />
+                  ) : (
+                    <span style={{ fontSize: 12, color: 'var(--text2)' }}>Not set</span>
+                  )}
+                  {v.profile_image_raw_url ? (
+                    <div style={{ marginTop: 6 }}>
+                      <img
+                        src={v.profile_image_raw_url}
+                        alt="Liveness capture (audit)"
+                        style={{ width: 40, height: 56, objectFit: 'cover', display: 'block', borderRadius: 4 }}
+                      />
+                      <span style={{ fontSize: 10, color: 'var(--text2)', display: 'block', marginTop: 2 }}>Audit</span>
+                    </div>
+                  ) : null}
+                </td>
                 <td>
                   <div style={{ fontWeight: 700 }}>{v.full_name}</div>
                   {v.badge_vars_choice    && <span className="badge badge-active" style={{ marginTop: 2 }}>VARS Choice</span>}
