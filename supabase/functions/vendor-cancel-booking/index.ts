@@ -41,7 +41,7 @@ Deno.serve(async (req: Request) => {
       .from('bookings')
       .select(`
         id, status, user_id, vendor_id,
-        service_price_kobo, service_name, scheduled_at,
+        service_price_kobo, transport_fee_kobo, service_name, scheduled_at,
         paystack_reference
       `)
       .eq('id', booking_id)
@@ -72,7 +72,7 @@ Deno.serve(async (req: Request) => {
         cancellation_fee_percent: 0,
         cancellation_vars_amount_kobo: 0,
         cancellation_vendor_amount_kobo: 0,
-        cancellation_refund_amount_kobo: booking.service_price_kobo,
+        cancellation_refund_amount_kobo: booking.service_price_kobo + ((booking as any).transport_fee_kobo ?? 0),
       })
       .eq('id', booking_id);
 

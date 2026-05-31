@@ -23,7 +23,7 @@ import { fmtPrice, fmtDuration, fmtTime, fmtDate } from '@/lib/format';
 import { LightningIcon, CheckIcon, CloseIcon, PinIcon } from '@/components/icons';
 import { Calendar, toDateId, fromDateId } from '@marceloterreiro/flash-calendar';
 import { BottomSheetModal, BottomSheetFlatList } from '@gorhom/bottom-sheet';
-import { BOOKING_STATUS } from '@vars/shared';
+import { BOOKING_STATUS, TRANSPORT_FEE_TIERS, BASE_RADIUS_KM } from '@vars/shared';
 import * as Haptics from 'expo-haptics';
 import { usePostHog, EVENTS } from '@/lib/analytics';
 
@@ -58,6 +58,29 @@ const FLOOR_OPTIONS = [
 ];
 
 const EMPTY_ACCESS: AccessDetails = { building: '', floor: '', flat: '', gateCode: '' };
+
+// ── Haversine distance (km) — client-side preview only ───────
+// Server recalculates independently on paystack-initialize. This value is
+// for display only and is never trusted by the backend.
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function calcPreviewSurcharge(
+  userLat: number, userLng: number,
+  zoneLat: number, zoneLng: number
+): number {
+  const dist = haversineKm(userLat, userLng, zoneLat, zoneLng);
+  const kmOver = Math.max(0, dist - BASE_RADIUS_KM);
+  if (kmOver === 0) return 0;
+  const tier = TRANSPORT_FEE_TIERS.find((t) => kmOver > t.minKmOver && kmOver <= t.maxKmOver);
+  return tier?.feeKobo ?? 0;
+}
 
 // ── Helpers ──────────────────────────────────────────────────
 function sanitize(text: string, maxLen: number) {
@@ -523,6 +546,7 @@ function Step3Review({
 function Step3Location({
   service, slot, isAutoAccept,
   coords, locAddress, access,
+  vendorZone,
   onPay, paying,
 }: {
   service: ServiceOption;
@@ -531,12 +555,20 @@ function Step3Location({
   coords: { lat: number; lng: number };
   locAddress: string;
   access: AccessDetails;
+  vendorZone: { lat: number; lng: number } | null;
   onPay: () => void;
   paying: boolean;
 }) {
   const [mapReady, setMapReady] = useState(false);
 
   const hasAccess = access.building || access.floor || access.flat || access.gateCode;
+
+  // Client-side surcharge preview (display only — server recalculates on payment)
+  const transportFeeKobo =
+    vendorZone != null
+      ? calcPreviewSurcharge(coords.lat, coords.lng, vendorZone.lat, vendorZone.lng)
+      : 0;
+  const totalKobo = service.price_kobo + transportFeeKobo;
 
   return (
     <>
@@ -585,7 +617,12 @@ function Step3Location({
             <Row label="Date" value={fmtDate(slot)} />
             <Row label="Time" value={`${fmtTime(slot)} – ${fmtTime(addMinutes(slot, service.duration_blocks * BLOCK_MINS))}`} />
             <View style={s.divider} />
-            <Row label="Total" value={fmtPrice(service.price_kobo)} bold />
+            <Row label="Total" value={fmtPrice(totalKobo)} bold />
+            {transportFeeKobo > 0 && (
+              <Text style={s.transportNote}>
+                Your stylist is travelling further to reach you — this price reflects that.
+              </Text>
+            )}
           </View>
 
           <View style={[s.infoBox, isAutoAccept && s.infoBoxAutoAccept]}>
@@ -607,7 +644,7 @@ function Step3Location({
         >
           {paying
             ? <ScissorsLoader size="small" color="light" />
-            : <Text style={s.payBtnText}>Pay {fmtPrice(service.price_kobo)} securely</Text>
+            : <Text style={s.payBtnText}>Pay {fmtPrice(totalKobo)} securely</Text>
           }
         </TouchableOpacity>
       </View>
@@ -643,6 +680,7 @@ export default function BookingFlow() {
   const [service, setService] = useState<ServiceOption | null>(null);
   const [slot, setSlot] = useState<Date | null>(null);
   const [slotIsAutoAccept, setSlotIsAutoAccept] = useState(false);
+  const [vendorZone, setVendorZone] = useState<{ lat: number; lng: number } | null>(null);
 
   // Step 3 state
   const [step3View, setStep3View] = useState<'review' | 'location'>('review');
@@ -655,6 +693,21 @@ export default function BookingFlow() {
   const [paying, setPaying] = useState(false);
   const [paystackUrl, setPaystackUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Fetch vendor zone coordinates for client-side surcharge preview
+  useEffect(() => {
+    if (!vendorId) return;
+    supabase
+      .from('vendors')
+      .select('auto_accept_zone_lat, auto_accept_zone_lng')
+      .eq('id', vendorId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.auto_accept_zone_lat != null && data?.auto_accept_zone_lng != null) {
+          setVendorZone({ lat: data.auto_accept_zone_lat, lng: data.auto_accept_zone_lng });
+        }
+      });
+  }, [vendorId]);
 
   const handleSelectService = (svc: ServiceOption) => {
     posthog?.capture(EVENTS.BOOKING_STARTED, {
@@ -850,6 +903,7 @@ export default function BookingFlow() {
           coords={coords}
           locAddress={locAddress}
           access={access}
+          vendorZone={vendorZone}
           onPay={handlePay}
           paying={paying}
         />
@@ -1014,6 +1068,7 @@ const s = StyleSheet.create({
   accessDetailLabel: { fontSize: 13, color: Colors.textSecondary },
   accessDetailValue: { fontSize: 13, fontWeight: '600', color: Colors.text },
 
+  transportNote: { fontSize: 12, color: Colors.textSecondary, marginTop: 6, lineHeight: 17 },
   // Info box
   infoBox: { backgroundColor: Colors.primaryLight, borderRadius: 12, padding: 14 },
   infoBoxAutoAccept: { backgroundColor: Colors.pioneerGoldSurface },

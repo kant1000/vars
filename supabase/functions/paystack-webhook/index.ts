@@ -16,7 +16,7 @@
 import { createAdminClient } from '../_shared/supabase.ts';
 import { BOOKING_STATUS } from '../_shared/constants.ts';
 import { verifyWebhookSignature, PaystackClient } from '../_shared/paystack.ts';
-import { createTransportBuffers } from '../_shared/calendar.ts';
+import { createTransportBuffers, createPreTransportBuffers } from '../_shared/calendar.ts';
 import { isSlotFree } from '../_shared/slot.ts';
 import {
   sendNotification,
@@ -156,7 +156,15 @@ async function handleChargeSuccess(
     access_floor,
     access_flat,
     access_code,
+    // Transport surcharge — computed by paystack-initialize, stored here at booking creation
+    transport_fee_kobo: metaTransportFeeKobo,
+    distance_km: metaDistanceKm,
+    pre_transport_buffer_slots: metaPreBufferSlots,
   } = bookingMeta as Record<string, unknown>;
+
+  const transportFeeKobo   = (metaTransportFeeKobo as number)  ?? 0;
+  const distanceKm         = (metaDistanceKm as number)        ?? 0;
+  const preBufferSlots     = (metaPreBufferSlots as number)     ?? 0;
 
   // Build PostGIS point from lat/lng
   const userLocationPoint = `POINT(${user_location_lng} ${user_location_lat})`;
@@ -206,6 +214,10 @@ async function handleChargeSuccess(
       access_floor: (access_floor as string) ?? null,
       access_flat: (access_flat as string) ?? null,
       access_code: (access_code as string) ?? null,
+      // Transport surcharge — stored immutably at creation; never recomputed
+      transport_fee_kobo: transportFeeKobo,
+      distance_km: distanceKm,
+      pre_transport_buffer_slots: preBufferSlots,
       status: autoAcceptResult.shouldAutoAccept ? BOOKING_STATUS.ACCEPTED : BOOKING_STATUS.PENDING,
       paystack_reference: reference,
       paystack_authorization_code: (data.authorization as Record<string, unknown>)?.authorization_code ?? null,
@@ -239,6 +251,16 @@ async function handleChargeSuccess(
       scheduledStr,
       service_duration_blocks as number
     );
+    // Pre-buffers: block travel time before the booking when vendor is travelling far
+    if (preBufferSlots > 0) {
+      await createPreTransportBuffers(
+        supabase,
+        vendor_id as string,
+        booking.id,
+        scheduledStr,
+        preBufferSlots
+      );
+    }
   }
 
   // ── Fetch vendor and user details for notifications ────────
@@ -288,9 +310,8 @@ async function handleChargeSuccess(
     // Email: booking confirmed — customer + vendor (auto-accept path)
     try {
       const isPioneer = vendor?.pioneer === true && (vendor?.pioneer_bookings_completed ?? 3) < 3;
-      const vendorAmountKobo = isPioneer
-        ? service_price_kobo as number
-        : Math.round((service_price_kobo as number) * 0.8);
+      const totalKobo = (service_price_kobo as number) + transportFeeKobo;
+      const vendorAmountKobo = isPioneer ? totalKobo : Math.round(totalKobo * 0.8);
 
       if (profile?.email) {
         const { subject, body } = email_bookingConfirmed_customer({
@@ -334,11 +355,15 @@ async function handleChargeSuccess(
       });
     }
     if (vendor) {
+      const isPioneer = vendor.pioneer === true && (vendor.pioneer_bookings_completed ?? 3) < 3;
+      const totalKobo = (service_price_kobo as number) + transportFeeKobo;
+      const vendorAmountKobo = isPioneer ? totalKobo : Math.round(totalKobo * 0.8);
       const msg = msg_vendor_newBooking(
         clientFirstName,
         service_name as string,
         formatDate(scheduledStr),
-        formatTime(scheduledStr)
+        formatTime(scheduledStr),
+        formatNaira(vendorAmountKobo)
       );
       await sendNotification({
         recipientId: vendor_id as string,

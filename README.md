@@ -172,6 +172,7 @@ Twenty migration files build up the schema incrementally:
 | `20260525160000_payout_history_booking_id_unique` | `UNIQUE (booking_id)` constraint on `payout_history` — prevents double-payout race between user confirm, auto-release, and admin settlement |
 | `20260526000001_zone_radius_numeric` | Changes `auto_accept_zone_radius_km` from INT to NUMERIC(4,1); updates constraint to allow 1 and 1.5 km values |
 | `20260531000001_vendor_trust_layer` | Adds `profile_image_url`, `profile_image_raw_url`, `profile_image_locked` to `vendors`; tightens `vendors_update_own` RLS to block client writes on those columns; creates `vendor-identity-images` storage bucket; updates `get_nearby_vendors` to return `profile_image_url` |
+| `20260531000002_transport_surcharge` | Adds `transport_fee_kobo`, `distance_km`, `pre_transport_buffer_slots` to `bookings`; recreates `bookings_user_update` and `bookings_vendor_update` RLS policies with correlated-subquery guards to block client JWT writes on those three columns |
 
 ### Key Tables
 
@@ -233,9 +234,9 @@ All functions live in `supabase/functions/` and run on Deno.
 
 | Function | Method | Purpose |
 |---|---|---|
-| `paystack-initialize` | POST | Validates booking request, initialises Paystack transaction, returns `access_code` |
-| `paystack-webhook` | POST | Handles Paystack events: creates booking on `charge.success` (card already charged), auto-accepts if conditions met, creates transport buffers for auto-accepted bookings |
-| `paystack-capture` | POST | Vendor accepts a pending booking — updates booking status to `accepted`, creates transport buffer blocks (same as auto-accept path) |
+| `paystack-initialize` | POST | Validates booking request, calculates distance-based transport surcharge (Haversine vs vendor zone centre), charges total to Paystack, passes surcharge through metadata for webhook to store |
+| `paystack-webhook` | POST | Handles Paystack events: creates booking on `charge.success` (reads transport surcharge from metadata), auto-accepts if conditions met, creates post + pre transport buffers for auto-accepted bookings |
+| `paystack-capture` | POST | Vendor accepts a pending booking — updates status to `accepted`, creates post + pre transport buffer blocks |
 | `paystack-release` | POST | Vendor declines or booking expires — issues a full Paystack refund to the customer |
 | `paystack-settle` | POST | Customer confirms service done, or 2-hr auto-release fires after service_rendered — initiates Paystack transfer to vendor (80/20 split; Pioneer vendors: 100%); also sends customer a warning notification 30 min before auto-release |
 | `paystack-cancel` | POST | Customer cancels — tiered refund (0–15 min: 15% fee; 15 min–1 hr: 50% fee; within 1 hr of service: non-refundable); releases transport buffers |
@@ -557,15 +558,36 @@ After an auto-accepted booking is created, the vendor has a **5-minute grace win
 - Cancelling in this window triggers a full Paystack refund with no cancellation fee
 - The `auto_accept_grace_expires_at` timestamp controls the window
 
+### Transport Surcharge (Distance-Based)
+
+When a customer's location exceeds the **base operating radius of 5 km** from the vendor's zone centre, a distance-based surcharge is added to the Paystack charge. The surcharge is calculated server-side in `paystack-initialize` using the Haversine formula and stored on the booking row (`transport_fee_kobo`, `distance_km`). The client never sends the surcharge — the server derives and stores it, then the webhook reads it back from Paystack metadata.
+
+| Distance over 5 km | Surcharge | Pre-buffer slots |
+|---|---|---|
+| 0–3 km over | ₦3,000 | 1 slot (30 min before booking) |
+| 3–6 km over | ₦5,000 | 1 slot (30 min before booking) |
+| 6–10 km over | ₦7,500 | 2 slots (60 min before booking) |
+| 10 km+ over | ₦10,000 | 2 slots (60 min before booking) |
+
+The tier definitions live in `supabase/functions/_shared/constants.ts` (Deno) and `packages/shared/src/constants.ts` (mobile), mirrored manually. `BASE_RADIUS_KM = 5` is defined in both files.
+
+Settlement (vendor payout), cancellation fees, and refunds all operate on `service_price_kobo + transport_fee_kobo` — the full amount charged to the customer.
+
 ### Transport Buffers
 
-When a booking is confirmed (auto-accepted or manually accepted by the vendor), the system automatically inserts `transport_buffer` blocks into `vendor_calendar` for the **two 30-minute slots immediately after** the booking ends. These blocks prevent back-to-back bookings with no travel time. They are:
-- **After-only** — no buffer is inserted before the booking (vendor may have come from anywhere)
-- Two consecutive 30-minute blocks immediately after the booking's last slot
-- Clamped to working hours — only created if they end by 22:00
+When a booking is confirmed (auto-accepted or manually accepted by the vendor), the system automatically inserts `transport_buffer` blocks into `vendor_calendar`:
+
+**Post-booking buffers (existing):** Two 30-minute slots immediately after the booking ends — prevent back-to-back bookings with no travel time.
+
+**Pre-booking buffers (new):** When `transport_fee_kobo > 0`, additional buffer slots are inserted before the booking starts to account for travel time. Slot count is determined by the tier (`pre_transport_buffer_slots` column on `bookings`):
+- 1 slot = 30 minutes before booking start
+- 2 slots = 60 minutes before booking start (two consecutive 30-min blocks)
+
+Both pre and post buffers:
+- Clamped to working hours (post: must end by 22:00 UTC; pre: must start at or after 07:00 UTC)
 - Read-only (cannot be toggled by the vendor)
-- Skipped if a block already exists in that slot
-- Deleted automatically if the booking is cancelled (by user, vendor, or grace-cancel)
+- Skipped with a warning log if a block already exists in that slot
+- Deleted automatically if the booking is cancelled — the existing `transport_buffer_source_booking_id` FK delete catches both pre and post buffers; no cancel-function changes needed
 
 ### Vendor Calendar States
 

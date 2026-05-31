@@ -175,10 +175,16 @@ export function msg_cancelNonRefundable() {
 }
 
 // Vendor messages
-export function msg_vendor_newBooking(clientFirstName: string, service: string, date: string, time: string) {
+export function msg_vendor_newBooking(
+  clientFirstName: string,
+  service: string,
+  date: string,
+  time: string,
+  earningsFormatted: string
+) {
   return {
     title: 'New booking request',
-    body: `New booking from ${clientFirstName}. ${service} on ${date} at ${time}. You have 1 hour to accept.`,
+    body: `New booking from ${clientFirstName} · ₦${earningsFormatted} — tap to review.`,
   };
 }
 

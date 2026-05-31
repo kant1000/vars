@@ -63,13 +63,14 @@ Deno.serve(async (req: Request) => {
       // dispute resolution context message in their inbox)
       const { data: booking } = await supabase
         .from('bookings')
-        .select('vendor_id, service_price_kobo')
+        .select('vendor_id, service_price_kobo, transport_fee_kobo')
         .eq('id', booking_id)
         .single();
       if (booking) {
         const { data: vendor } = await supabase
           .from('vendors').select('push_token').eq('id', booking.vendor_id).single();
-        const vendorShare = Math.round(booking.service_price_kobo * 0.8);
+        const totalKobo = booking.service_price_kobo + (booking.transport_fee_kobo ?? 0);
+        const vendorShare = Math.round(totalKobo * 0.8);
         const msg = msg_disputeResolved_vendorPaid(formatNaira(vendorShare));
         await sendNotification({
           recipientId: booking.vendor_id, recipientType: 'vendor',
@@ -229,7 +230,7 @@ async function settleBooking(
   const { data: booking } = await supabase
     .from('bookings')
     .select(`
-      id, user_id, vendor_id, service_name, service_price_kobo,
+      id, user_id, vendor_id, service_name, service_price_kobo, transport_fee_kobo,
       paystack_reference, status
     `)
     .eq('id', bookingId)
@@ -269,8 +270,10 @@ async function settleBooking(
   const isPioneerBooking =
     vendor.pioneer === true && vendor.pioneer_bookings_completed < 3;
 
-  const settlement = calculateSettlement(booking.service_price_kobo);
-  const vendorAmountKobo = isPioneerBooking ? booking.service_price_kobo : settlement.vendorAmountKobo;
+  // Settlement operates on the full amount charged to customer (service + transport)
+  const totalKobo = booking.service_price_kobo + ((booking as any).transport_fee_kobo ?? 0);
+  const settlement = calculateSettlement(totalKobo);
+  const vendorAmountKobo = isPioneerBooking ? totalKobo : settlement.vendorAmountKobo;
   const varsNetKobo = isPioneerBooking ? 0 : settlement.varsNetKobo;
 
   const transferRef = generateReference('VARS_TRF');

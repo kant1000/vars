@@ -9,7 +9,7 @@
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient, createAuthClient } from '../_shared/supabase.ts';
-import { createTransportBuffers } from '../_shared/calendar.ts';
+import { createTransportBuffers, createPreTransportBuffers } from '../_shared/calendar.ts';
 import {
   sendNotification,
   sendTransactionalEmail,
@@ -46,7 +46,8 @@ Deno.serve(async (req: Request) => {
       .select(`
         id, status, vendor_id, user_id,
         service_name, service_price_kobo, service_duration_blocks, scheduled_at,
-        paystack_reference, created_at
+        paystack_reference, created_at,
+        transport_fee_kobo, pre_transport_buffer_slots
       `)
       .eq('id', booking_id)
       .eq('vendor_id', user.id)
@@ -87,7 +88,7 @@ Deno.serve(async (req: Request) => {
       return errorResponse('Booking is no longer pending — it may have already been accepted or expired');
     }
 
-    // Create transport buffer blocks after the booking end time
+    // Create post-booking transport buffer blocks
     await createTransportBuffers(
       supabase,
       user.id,
@@ -95,6 +96,16 @@ Deno.serve(async (req: Request) => {
       booking.scheduled_at,
       booking.service_duration_blocks
     );
+    // Create pre-booking transport buffer blocks (travel time before service)
+    if ((booking.pre_transport_buffer_slots ?? 0) > 0) {
+      await createPreTransportBuffers(
+        supabase,
+        user.id,
+        booking_id,
+        booking.scheduled_at,
+        booking.pre_transport_buffer_slots
+      );
+    }
 
     // Fetch user profile for notification
     const { data: profile } = await supabase
@@ -132,9 +143,8 @@ Deno.serve(async (req: Request) => {
     try {
       const customerFirstName = (profile?.full_name ?? '').split(' ')[0] || 'there';
       const isPioneer = vendor?.pioneer === true && (vendor?.pioneer_bookings_completed ?? 3) < 3;
-      const vendorAmountKobo = isPioneer
-        ? booking.service_price_kobo
-        : Math.round(booking.service_price_kobo * 0.8);
+      const totalKobo = booking.service_price_kobo + (booking.transport_fee_kobo ?? 0);
+      const vendorAmountKobo = isPioneer ? totalKobo : Math.round(totalKobo * 0.8);
 
       if (profile?.email) {
         const { subject, body } = email_bookingConfirmed_customer({

@@ -4,13 +4,57 @@
 // Validates the booking request, initializes Paystack transaction,
 // returns access_code for the Paystack inline popup.
 // Booking record is created by paystack-webhook after charge.success fires.
+//
+// Transport surcharge: calculated server-side using Haversine distance from
+// vendor zone centre. Added to total_kobo passed to Paystack. Never trusted
+// from client — recalculated here on every initialization.
 // ============================================================
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient, createAuthClient } from '../_shared/supabase.ts';
 import { PaystackClient, generateReference } from '../_shared/paystack.ts';
-import { BOOKING_STATUS } from '../_shared/constants.ts';
+import { BOOKING_STATUS, BASE_RADIUS_KM, TRANSPORT_FEE_TIERS } from '../_shared/constants.ts';
 import { isSlotFree } from '../_shared/slot.ts';
+
+// ── Haversine distance (km) ─────────────────────────────────
+// Inline per Deno constraint (cannot import from workspace packages).
+function haversineKm(
+  lat1: number, lng1: number,
+  lat2: number, lng2: number
+): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+    Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// ── Transport surcharge lookup ──────────────────────────────
+function calcTransportSurcharge(
+  userLat: number, userLng: number,
+  zoneLatOrNull: number | null, zoneLngOrNull: number | null
+): { transportFeeKobo: number; distanceKm: number; preBufferSlots: number } {
+  if (zoneLatOrNull == null || zoneLngOrNull == null) {
+    // Vendor has no zone configured — no surcharge
+    return { transportFeeKobo: 0, distanceKm: 0, preBufferSlots: 0 };
+  }
+  const distanceKm = haversineKm(userLat, userLng, zoneLatOrNull, zoneLngOrNull);
+  const kmOver = Math.max(0, distanceKm - BASE_RADIUS_KM);
+  if (kmOver === 0) {
+    return { transportFeeKobo: 0, distanceKm, preBufferSlots: 0 };
+  }
+  const tier = TRANSPORT_FEE_TIERS.find(
+    (t) => kmOver > t.minKmOver && kmOver <= t.maxKmOver
+  );
+  if (!tier) {
+    return { transportFeeKobo: 0, distanceKm, preBufferSlots: 0 };
+  }
+  return { transportFeeKobo: tier.feeKobo, distanceKm, preBufferSlots: tier.preBufferSlots };
+}
 
 Deno.serve(async (req: Request) => {
   const cors = handleCors(req);
@@ -89,13 +133,31 @@ Deno.serve(async (req: Request) => {
       return errorResponse('This time slot is no longer available');
     }
 
-    // 4. Generate unique reference and initialize Paystack transaction
+    // 4. Calculate transport surcharge (server-side only — never trusted from client)
+    const vendor = vendorService.vendor as any;
+    const { transportFeeKobo, distanceKm, preBufferSlots } = calcTransportSurcharge(
+      user_location_lat as number,
+      user_location_lng as number,
+      vendor.auto_accept_zone_lat ?? null,
+      vendor.auto_accept_zone_lng ?? null
+    );
+    const totalKobo = vendorService.price_kobo + transportFeeKobo;
+
+    if (transportFeeKobo > 0) {
+      console.log(
+        `Transport surcharge: vendor=${vendor.id} dist=${distanceKm.toFixed(2)}km ` +
+        `kmOver=${Math.max(0, distanceKm - BASE_RADIUS_KM).toFixed(2)} ` +
+        `fee=₦${transportFeeKobo / 100} preBuffers=${preBufferSlots}`
+      );
+    }
+
+    // 5. Generate unique reference and initialize Paystack transaction
     const reference = generateReference('VARS_BK');
     const paystack = new PaystackClient(Deno.env.get('PAYSTACK_SECRET_KEY')!);
 
     const transaction = await paystack.initializeTransaction({
       email: userEmail,
-      amount: vendorService.price_kobo,
+      amount: totalKobo, // includes transport surcharge
       reference,
       callback_url: 'vars://payment/callback',
       metadata: {
@@ -115,6 +177,10 @@ Deno.serve(async (req: Request) => {
           access_floor: access_floor ?? null,
           access_flat: access_flat ?? null,
           access_code: access_code ?? null,
+          // Transport surcharge — read back by webhook to store on booking row
+          transport_fee_kobo: transportFeeKobo,
+          distance_km: distanceKm,
+          pre_transport_buffer_slots: preBufferSlots,
         },
         cancel_action: 'close', // Paystack popup behaviour
       },
@@ -122,7 +188,6 @@ Deno.serve(async (req: Request) => {
 
     // Check if this slot is likely to be auto-accepted (hint for UX)
     // All three conditions must hold: vendor settings OK + specific slot is auto_accept
-    const vendor = vendorService.vendor as any;
     const today = new Date().toISOString().slice(0, 10);
     const zoneConfirmedToday = vendor.auto_accept_zone_confirmed_date === today;
     const vendorSettingsOk =
@@ -147,7 +212,7 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({
       access_code: transaction.access_code,
       reference: transaction.reference,
-      amount_kobo: vendorService.price_kobo,
+      amount_kobo: totalKobo,
       // UX hint: whether this booking will likely be auto-accepted
       auto_accept_likely: autoAcceptLikely,
       // Summary card data for Step 3 review screen
@@ -155,6 +220,9 @@ Deno.serve(async (req: Request) => {
         vendor_name: vendor.full_name,
         service_name: vendorService.service.name,
         price_kobo: vendorService.price_kobo,
+        transport_fee_kobo: transportFeeKobo,
+        total_kobo: totalKobo,
+        distance_km: distanceKm,
         duration_blocks: vendorService.duration_blocks,
         scheduled_at,
         user_location_address: user_location_address ?? null,

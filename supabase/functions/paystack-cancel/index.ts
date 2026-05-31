@@ -40,7 +40,7 @@ Deno.serve(async (req: Request) => {
       .from('bookings')
       .select(`
         id, status, user_id, vendor_id,
-        service_price_kobo, service_name, scheduled_at,
+        service_price_kobo, transport_fee_kobo, service_name, scheduled_at,
         paystack_reference, created_at
       `)
       .eq('id', booking_id)
@@ -55,9 +55,11 @@ Deno.serve(async (req: Request) => {
     }
 
     const cancelledAt = new Date();
+    // Cancellation fee applies to the full amount charged to customer (service + transport)
+    const totalKobo = booking.service_price_kobo + ((booking as any).transport_fee_kobo ?? 0);
     const { feePercent, varsAmountKobo, vendorAmountKobo, refundAmountKobo } =
       calculateCancellationFee({
-        servicePriceKobo: booking.service_price_kobo,
+        servicePriceKobo: totalKobo,
         bookingCreatedAt: new Date(booking.created_at),
         scheduledAt: new Date(booking.scheduled_at),
         cancelledAt,

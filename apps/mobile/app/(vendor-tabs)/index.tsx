@@ -42,6 +42,8 @@ interface VendorBooking {
   status: BookingStatus;
   service_name: string;
   service_price_kobo: number;
+  transport_fee_kobo: number;
+  distance_km: number;
   service_duration_blocks: number;
   scheduled_at: string;
   user_location_address: string | null;
@@ -63,8 +65,9 @@ interface ZoneStatus {
 }
 
 // ── Helpers ─────────────────────────────────────────────────
-function vendorEarning(priceKobo: number) {
-  return Math.round(priceKobo * 0.8); // 80% to vendor
+function vendorEarning(priceKobo: number, transportFeeKobo: number, isPioneer: boolean) {
+  const total = priceKobo + transportFeeKobo;
+  return isPioneer ? total : Math.round(total * 0.8);
 }
 
 // ── Countdown hook ───────────────────────────────────────────
@@ -87,10 +90,11 @@ function useCountdown(expiryIso: string | null) {
 
 // ── Grace period card (auto-accepted, 5-min cancel window) ──
 function GraceCard({
-  booking, onUpdated,
+  booking, onUpdated, isPioneer,
 }: {
   booking: VendorBooking;
   onUpdated: () => void;
+  isPioneer: boolean;
 }) {
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
@@ -154,8 +158,15 @@ function GraceCard({
       {booking.user_location_address && (
         <Text style={c.meta} numberOfLines={1}>📍 {booking.user_location_address}</Text>
       )}
-      <View style={c.priceRow}>
-        <Text style={c.earning}>You earn: <Text style={c.earningAmount}>{fmtPrice(vendorEarning(booking.service_price_kobo))}</Text></Text>
+      {booking.distance_km > 0 && (
+        <Text style={c.meta}>{Number(booking.distance_km).toFixed(1)}km away</Text>
+      )}
+      <View style={c.earningsBox}>
+        <Text style={c.earningsLabel}>YOUR EARNINGS FOR THIS JOB</Text>
+        <Text style={c.earningsAmount}>{fmtPrice(vendorEarning(booking.service_price_kobo, booking.transport_fee_kobo, isPioneer))}</Text>
+        {booking.transport_fee_kobo > 0 && (
+          <Text style={c.transportNote}>Includes a contribution for the distance to your client</Text>
+        )}
       </View>
       {!expired && (
         <TouchableOpacity
@@ -176,10 +187,11 @@ function GraceCard({
 
 // ── Pending booking card ─────────────────────────────────────
 function PendingCard({
-  booking, onUpdated,
+  booking, onUpdated, isPioneer,
 }: {
   booking: VendorBooking;
   onUpdated: () => void;
+  isPioneer: boolean;
 }) {
   const [acting, setActing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -223,8 +235,15 @@ function PendingCard({
       {booking.user_location_address && (
         <Text style={c.meta} numberOfLines={1}>📍 {booking.user_location_address}</Text>
       )}
-      <View style={c.priceRow}>
-        <Text style={c.earning}>You earn: <Text style={c.earningAmount}>{fmtPrice(vendorEarning(booking.service_price_kobo))}</Text></Text>
+      {booking.distance_km > 0 && (
+        <Text style={c.meta}>{Number(booking.distance_km).toFixed(1)}km away</Text>
+      )}
+      <View style={c.earningsBox}>
+        <Text style={c.earningsLabel}>YOUR EARNINGS FOR THIS JOB</Text>
+        <Text style={c.earningsAmount}>{fmtPrice(vendorEarning(booking.service_price_kobo, booking.transport_fee_kobo, isPioneer))}</Text>
+        {booking.transport_fee_kobo > 0 && (
+          <Text style={c.transportNote}>Includes a contribution for the distance to your client</Text>
+        )}
       </View>
       <View style={c.btnRow}>
         <TouchableOpacity
@@ -570,6 +589,7 @@ export default function VendorJobsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isOnline, setIsOnline] = useState(false);
+  const [isPioneer, setIsPioneer] = useState(false);
   const [togglingOnline, setTogglingOnline] = useState(false);
   const [toggleError, setToggleError] = useState<string | null>(null);
   const [zoneModal, setZoneModal] = useState<ZoneStatus | null>(null);
@@ -594,8 +614,8 @@ export default function VendorJobsScreen() {
     const { data } = await supabase
       .from('bookings')
       .select(`
-        id, status, service_name, service_price_kobo, service_duration_blocks,
-        scheduled_at, user_location_address, created_at, phone_revealed,
+        id, status, service_name, service_price_kobo, transport_fee_kobo, distance_km,
+        service_duration_blocks, scheduled_at, user_location_address, created_at, phone_revealed,
         auto_accepted, auto_accept_grace_expires_at, grace_cancelled,
         profiles(full_name, phone_number)
       `)
@@ -607,8 +627,8 @@ export default function VendorJobsScreen() {
     const { data: history } = await supabase
       .from('bookings')
       .select(`
-        id, status, service_name, service_price_kobo, service_duration_blocks,
-        scheduled_at, user_location_address, created_at, phone_revealed,
+        id, status, service_name, service_price_kobo, transport_fee_kobo, distance_km,
+        service_duration_blocks, scheduled_at, user_location_address, created_at, phone_revealed,
         auto_accepted, auto_accept_grace_expires_at, grace_cancelled,
         profiles(full_name, phone_number)
       `)
@@ -621,6 +641,8 @@ export default function VendorJobsScreen() {
       status: b.status,
       service_name: b.service_name,
       service_price_kobo: b.service_price_kobo,
+      transport_fee_kobo: b.transport_fee_kobo ?? 0,
+      distance_km: b.distance_km ?? 0,
       service_duration_blocks: b.service_duration_blocks,
       scheduled_at: b.scheduled_at,
       user_location_address: b.user_location_address,
@@ -667,11 +689,12 @@ export default function VendorJobsScreen() {
       if (!user) return;
       const { data } = await supabase
         .from('vendors')
-        .select('is_online, auto_accept_enabled, auto_accept_zone_confirmed_date, auto_accept_zone_lat, auto_accept_zone_lng, auto_accept_zone_radius_km, auto_accept_paused_due_to_drift')
+        .select('is_online, pioneer, pioneer_bookings_completed, auto_accept_enabled, auto_accept_zone_confirmed_date, auto_accept_zone_lat, auto_accept_zone_lng, auto_accept_zone_radius_km, auto_accept_paused_due_to_drift')
         .eq('id', user.id)
         .single();
       if (data) {
         setIsOnline(data.is_online);
+        setIsPioneer(data.pioneer === true && (data.pioneer_bookings_completed ?? 3) < 3);
         // Show zone confirmation modal if auto-accept is on but not confirmed today
         const today = new Date().toISOString().slice(0, 10);
         const zoneConfigured = data.auto_accept_zone_lat != null;
@@ -844,7 +867,8 @@ export default function VendorJobsScreen() {
               <GraceCard
                 key={b.id}
                 booking={b}
-                      onUpdated={load}
+                isPioneer={isPioneer}
+                onUpdated={load}
               />
             ))}
           </Section>
@@ -857,7 +881,8 @@ export default function VendorJobsScreen() {
               <PendingCard
                 key={b.id}
                 booking={b}
-                      onUpdated={load}
+                isPioneer={isPioneer}
+                onUpdated={load}
               />
             ))}
           </Section>
@@ -957,9 +982,15 @@ const c = StyleSheet.create({
   statusPill: { fontSize: 12, fontWeight: '700', textTransform: 'capitalize' },
   serviceName: { fontSize: 16, fontWeight: '600', color: Colors.text },
   meta: { fontSize: 13, color: Colors.textSecondary },
-  priceRow: { marginTop: 4 },
-  earning: { fontSize: 13, color: Colors.textSecondary },
-  earningAmount: { fontWeight: '800', color: Colors.text },
+  earningsBox: {
+    marginTop: 8, paddingTop: 10, borderTopWidth: 1, borderTopColor: Colors.border,
+  },
+  earningsLabel: {
+    fontSize: 10, fontWeight: '700', color: Colors.textMuted,
+    letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 2,
+  },
+  earningsAmount: { fontSize: 22, fontWeight: '800', color: Colors.text },
+  transportNote: { fontSize: 12, color: Colors.textSecondary, marginTop: 3, lineHeight: 16 },
   phoneReveal: { fontSize: 14, fontWeight: '600', color: Colors.success },
 
   btnRow: { flexDirection: 'row', gap: 10, marginTop: 8 },
