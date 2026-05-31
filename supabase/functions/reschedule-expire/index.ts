@@ -26,7 +26,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: expiredBookings } = await supabase
       .from('bookings')
-      .select('id, user_id, vendor_id, service_price_kobo, paystack_reference')
+      .select('id, user_id, vendor_id, service_price_kobo, transport_fee_kobo, paystack_reference')
       .eq('status', BOOKING_STATUS.RESCHEDULED_PENDING)
       .lte('reschedule_expires_at', nowIso);
 
@@ -43,7 +43,7 @@ Deno.serve(async (req: Request) => {
             cancellation_fee_percent: 0,
             cancellation_vars_amount_kobo: 0,
             cancellation_vendor_amount_kobo: 0,
-            cancellation_refund_amount_kobo: booking.service_price_kobo,
+            cancellation_refund_amount_kobo: booking.service_price_kobo + ((booking as any).transport_fee_kobo ?? 0),
             suggested_scheduled_at: null,
             reschedule_expires_at: null,
             updated_at: nowIso,

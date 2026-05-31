@@ -45,7 +45,7 @@ Deno.serve(async (req: Request) => {
       if (!booking_id) return errorResponse('Missing booking_id');
       const { data: booking } = await supabase
         .from('bookings')
-        .select('id, user_id, vendor_id, paystack_reference, service_price_kobo')
+        .select('id, user_id, vendor_id, paystack_reference, service_price_kobo, transport_fee_kobo')
         .eq('id', booking_id)
         .single();
       if (!booking) return errorResponse('Booking not found', 404);
@@ -72,7 +72,8 @@ Deno.serve(async (req: Request) => {
       // Notify user with dispute-specific message (not the generic vendor-decline copy)
       const { data: profile } = await supabase
         .from('profiles').select('push_token').eq('id', booking.user_id).single();
-      const msg = msg_disputeResolved_userRefunded(formatNaira(booking.service_price_kobo));
+      const totalKobo = booking.service_price_kobo + ((booking as any).transport_fee_kobo ?? 0);
+      const msg = msg_disputeResolved_userRefunded(formatNaira(totalKobo));
       await sendNotification({
         recipientId: booking.user_id, recipientType: 'user',
         type: 'dispute_resolved_user', title: msg.title, body: msg.body,

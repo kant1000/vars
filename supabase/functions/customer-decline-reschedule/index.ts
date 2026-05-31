@@ -33,7 +33,7 @@ Deno.serve(async (req: Request) => {
     // Fetch booking — must belong to this user and be awaiting reschedule response
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
-      .select('id, status, user_id, vendor_id, service_price_kobo, paystack_reference')
+      .select('id, status, user_id, vendor_id, service_price_kobo, transport_fee_kobo, paystack_reference')
       .eq('id', booking_id)
       .eq('user_id', user.id)
       .single();
@@ -53,7 +53,7 @@ Deno.serve(async (req: Request) => {
         cancellation_fee_percent: 0,
         cancellation_vars_amount_kobo: 0,
         cancellation_vendor_amount_kobo: 0,
-        cancellation_refund_amount_kobo: booking.service_price_kobo,
+        cancellation_refund_amount_kobo: booking.service_price_kobo + ((booking as any).transport_fee_kobo ?? 0),
         suggested_scheduled_at: null,
         reschedule_expires_at: null,
         updated_at: new Date().toISOString(),
