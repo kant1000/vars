@@ -30,9 +30,9 @@ async function getDisputes(status: string, page: number) {
     .from('disputes')
     .select(`
       id, status, resolution, reason, category, admin_notes, created_at,
-      bookings(id, service_name, service_price_kobo, status,
+      bookings(id, service_name, service_price_kobo, transport_fee_kobo, status,
         profiles(full_name),
-        vendors(full_name)
+        vendors(full_name, avg_rating, total_reviews, cancellation_flagged, kyc_status)
       )
     `)
     .order('created_at', { ascending: false })
@@ -144,7 +144,24 @@ export default async function DisputesPage({ searchParams }: Props) {
               <span className="kv-value">{booking?.vendors?.full_name ?? '—'}</span>
 
               <span className="kv-label">Booking value</span>
-              <span className="kv-value">{booking ? fmtPrice(booking.service_price_kobo) : '—'}</span>
+              <span className="kv-value">
+                {booking ? fmtPrice(booking.service_price_kobo + (booking.transport_fee_kobo ?? 0)) : '—'}
+                {booking?.transport_fee_kobo > 0 && (
+                  <span style={{ color: 'var(--text2)', fontSize: 12, marginLeft: 6 }}>
+                    (incl. ₦{fmtPrice(booking.transport_fee_kobo)} transport)
+                  </span>
+                )}
+              </span>
+
+              <span className="kv-label">Vendor standing</span>
+              <span className="kv-value">
+                {booking?.vendors?.avg_rating > 0
+                  ? `★ ${Number(booking.vendors.avg_rating).toFixed(1)} (${booking.vendors.total_reviews} reviews)`
+                  : 'No reviews yet'}
+                {booking?.vendors?.cancellation_flagged && (
+                  <span style={{ color: '#d97706', fontWeight: 700, marginLeft: 8 }}>⚠ Cancellations flagged</span>
+                )}
+              </span>
 
               <span className="kv-label">Reason</span>
               <span className="kv-value" style={{ color: 'var(--text2)' }}>{d.reason}</span>

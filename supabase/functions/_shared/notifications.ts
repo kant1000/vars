@@ -156,21 +156,21 @@ export function msg_paymentReleased(vendorName: string) {
 export function msg_cancelTier1(amount: string) {
   return {
     title: 'Booking cancelled',
-    body: `Booking cancelled. A 15% cancellation fee has been applied. ₦${amount} will be returned to you.`,
+    body: `Booking cancelled. A small fee covers the time your stylist set aside for you. ₦${amount} is on its way back to you.`,
   };
 }
 
 export function msg_cancelTier2(amount: string) {
   return {
     title: 'Booking cancelled',
-    body: `Booking cancelled. A 50% cancellation fee has been applied. ₦${amount} will be returned to you.`,
+    body: `Booking cancelled. A 50% fee applies at this stage — it covers the time your stylist had reserved. ₦${amount} will be returned to you.`,
   };
 }
 
 export function msg_cancelNonRefundable() {
   return {
     title: 'Booking cancelled',
-    body: `This booking is non-refundable. If something urgent came up, we understand — we hope to see you again soon.`,
+    body: `This booking is non-refundable. Your stylist had this time set aside for you. If something urgent came up, we understand — we hope to see you back soon.`,
   };
 }
 
@@ -246,15 +246,15 @@ export function msg_vendor_newReview(clientFirstName: string) {
 
 export function msg_vendor_verificationApproved() {
   return {
-    title: 'You\'re live on VARS',
-    body: `You're live on VARS. Your first booking is closer than you think.`,
+    title: 'You\'re Verified by VARS',
+    body: `You're now Verified by VARS and live on the platform. Customers can book you with confidence. Your first booking is closer than you think.`,
   };
 }
 
 export function msg_vendor_verificationFailed(reason: string) {
   return {
-    title: 'Verification needs another try',
-    body: `Your verification needs one more try. ${reason}. Tap to retry — it only takes 2 minutes.`,
+    title: 'Let\'s finish your verification',
+    body: `One thing held your verification back: ${reason}. Tap to retry — it takes 2 minutes and we'll get you live.`,
   };
 }
 
@@ -509,7 +509,7 @@ ${params.service}
 ${params.date} at ${params.time}
 ${params.amount}
 
-They'll be with you on time. You'll get their number 15 minutes before the appointment.
+Your payment is held securely by VARS until your session is complete. You'll get ${params.vendorName}'s number 15 minutes before they arrive.
 
 VARS`,
   };
@@ -535,7 +535,7 @@ ${params.service}
 ${params.date} at ${params.time}
 You'll earn: ${params.amount}
 
-Their address and contact details are on your jobs screen.
+Their address and contact details are on your jobs screen. Payment is held in escrow and releases to your account the moment the service is marked complete.
 
 VARS`,
   };
@@ -554,11 +554,11 @@ export function email_serviceComplete_customer(params: {
     body:
 `Hi ${params.customerFirstName},
 
-Your session with ${params.vendorName} is complete and your payment has been processed.
+Your session with ${params.vendorName} is complete. Payment has been released from escrow and is on its way to them.
 
 ${params.service} — ${params.amount}
 
-If you haven't already, take 30 seconds to leave a review. It helps ${params.vendorName} grow on the platform.
+If you haven't already, take 30 seconds to leave a review. It helps ${params.vendorName} build their reputation on VARS.
 
 VARS`,
   };
@@ -575,9 +575,9 @@ export function email_serviceComplete_vendor(params: {
     body:
 `Hi ${params.vendorName},
 
-Your payment for ${params.customerFirstName}'s ${params.service} session is on its way.
+${params.amount} from ${params.customerFirstName}'s ${params.service} session is being transferred to your account now.
 
-${params.amount} is being transferred to your account now.
+Every completed booking builds your profile on VARS. If ${params.customerFirstName} leaves a review, you'll be notified.
 
 VARS`,
   };

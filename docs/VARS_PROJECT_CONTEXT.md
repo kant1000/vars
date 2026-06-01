@@ -65,6 +65,19 @@ The README is the canonical record of what's implemented — screens, edge funct
 - **Social media** — Pidgin-forward. Warm, direct. Sounds like someone who genuinely understands the Nigerian beauty hustle.
 - Never corporate. Never desperate. Never generic.
 
+### Trust as the product (Phase 2 framing)
+
+In Phase 2, what VARS is selling is trust — not beauty services. Any customer can find a barber or stylist in Lagos. What they cannot find elsewhere is a verified professional, with their identity confirmed, arriving at a home address, with payment held until the job is done.
+
+Every copy decision should reflect this. The platform's job is to make the invisible visible: escrow exists, verification happened, the phone number reveal is intentional, the dispute window is real. When in doubt, name the system out loud. "Your payment is held securely" is more powerful than "payment confirmed." "You're now Verified by VARS" is more powerful than "you're live."
+
+Trust signals to surface at every opportunity:
+- **Escrow** — name it in confirmations, not just in FAQs.
+- **Verified by VARS** — the badge is the proof; use the phrase.
+- **The 2-hour dispute window** — frame it as protection, not a deadline.
+- **Phone reveal at 15 min** — frame it as connection, not exposure.
+- **Cancellation fees** — frame as fairness to the stylist, not penalty to the customer.
+
 ### Locked terminology
 
 | Term | Usage |
