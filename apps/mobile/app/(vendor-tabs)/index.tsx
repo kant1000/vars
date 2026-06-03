@@ -743,15 +743,43 @@ export default function VendorJobsScreen() {
 
   useEffect(() => { checkGoLive(); }, []);
 
-  // Re-check notification permission on focus (user may have changed it in Settings)
-  useFocusEffect(useCallback(() => {
-    Notifications.getPermissionsAsync().then(({ status }) => {
-      setBlockReason((prev) => {
-        if (prev !== 'no_notifications') return prev;
-        return status === 'granted' ? null : 'no_notifications';
-      });
-    });
-  }, []));
+  // Checks all 3 prerequisites; if vendor is online and any fail, auto-takes them offline.
+  // Called on focus return and on the periodic interval.
+  const periodicGoLiveCheck = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const [svcRes, notifPerms, vendorRes] = await Promise.all([
+      supabase.from('vendor_services')
+        .select('id', { count: 'exact', head: true })
+        .eq('vendor_id', user.id)
+        .eq('is_active', true),
+      Notifications.getPermissionsAsync(),
+      supabase.from('vendors').select('kyc_status').eq('id', user.id).single(),
+    ]);
+
+    let reason: 'kyc' | 'no_services' | 'no_notifications' | null = null;
+    if (vendorRes.data?.kyc_status !== 'verified') reason = 'kyc';
+    else if ((svcRes.count ?? 0) === 0) reason = 'no_services';
+    else if (notifPerms.status !== 'granted') reason = 'no_notifications';
+
+    setBlockReason(reason);
+
+    if (reason) {
+      setIsOnline(false);
+      supabase.from('vendors').update({ is_online: false }).eq('id', user.id).catch(() => {});
+    }
+  }, []);
+
+  // Re-run full prerequisite check on focus (catches permission changes in Settings)
+  useFocusEffect(useCallback(() => { periodicGoLiveCheck(); }, [periodicGoLiveCheck]));
+
+  // Poll every 2 minutes while online — auto-offline if any prerequisite fails
+  useEffect(() => {
+    if (!isOnline) return;
+    const id = setInterval(periodicGoLiveCheck, 2 * 60_000);
+    return () => clearInterval(id);
+  }, [isOnline, periodicGoLiveCheck]);
 
   // useFocusEffect handles both initial mount and return-from-navigation refreshes
   useFocusEffect(useCallback(() => { load(); }, [load]));
