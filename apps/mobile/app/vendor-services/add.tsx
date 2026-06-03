@@ -178,6 +178,7 @@ export default function AddServiceScreen() {
         numberOfLines={3}
         textAlignVertical="top"
       />
+      <Text style={styles.inputHint}>Keep it short.</Text>
 
       {/* Price */}
       <Text style={styles.fieldLabel}>Price</Text>
@@ -187,6 +188,9 @@ export default function AddServiceScreen() {
         pioneer={vendorPioneer?.pioneer}
         pioneerBookingsCompleted={vendorPioneer?.pioneer_bookings_completed}
       />
+      <Text style={styles.priceHint}>
+        Factor in local travel cost. VARS only adds a distance fee when the customer is far away.
+      </Text>
 
       {/* Duration */}
       <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Duration</Text>
@@ -250,6 +254,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
   },
   textArea: { height: 80, paddingTop: 10, lineHeight: 20 },
+  inputHint: { fontSize: 12, color: Colors.textMuted, marginTop: -10, marginBottom: 16 },
+  priceHint: { fontSize: 12, color: Colors.textMuted, marginTop: 6, marginBottom: 16 },
 
   durationRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
   durationChip: {

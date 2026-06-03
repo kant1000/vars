@@ -19,8 +19,8 @@ export const CATEGORY_L2_MAP: Record<string, string[]> = {
 /** Service constraints */
 export const MIN_SERVICE_PRICE_KOBO = 1_000_000;
 export const MAX_VENDOR_SERVICES    = 10;
-export const SERVICE_NAME_MAX_CHARS = 60;
-export const SERVICE_DESC_MAX_CHARS = 200;
+export const SERVICE_NAME_MAX_CHARS = 20;
+export const SERVICE_DESC_MAX_CHARS = 60;
 
 export const BOOKING_STATUS = {
   PENDING: 'pending',
