@@ -21,7 +21,12 @@ export type BookingStatus =
 export type DisputeStatus = 'open' | 'resolved';
 export type DisputeResolution = 'released_to_vendor' | 'refunded_to_user';
 export type PayoutStatus = 'pending' | 'success' | 'failed';
-export type CategorySlug = 'barbing' | 'hair_styling' | 'makeovers';
+export type CategoryL1 = 'hair' | 'barber' | 'face' | 'nails';
+export type CategoryL2 =
+  | 'braids' | 'weaves' | 'locs' | 'natural' | 'relaxed'
+  | 'cuts' | 'shaves' | 'beard' | 'colour'
+  | 'makeup' | 'skincare' | 'lashes' | 'brows'
+  | 'manicure' | 'pedicure' | 'nail_art';
 export type RecipientType = 'user' | 'vendor';
 
 // ---- Coordinates ----
@@ -65,14 +70,39 @@ export interface VendorCard {
   isFavourited?: boolean;
 }
 
+// ---- Vendor service (taxonomy V2) ----
+export interface VendorService {
+  id: string;
+  vendorId: string;
+  categoryL1: CategoryL1;
+  categoryL2: CategoryL2;
+  serviceName: string;
+  description: string | null;
+  priceKobo: number;
+  durationBlocks: number;
+  isActive: boolean;
+  sortOrder: number;
+}
+
+// ---- Booking service (join table snapshot) ----
+export interface BookingService {
+  id: string;
+  bookingId: string;
+  vendorServiceId: string;
+  serviceName: string;
+  priceKobo: number;
+}
+
 // ---- Booking summary ----
 export interface BookingSummary {
   id: string;
   vendorName: string;
   vendorPhotoUrl: string | null;
-  serviceName: string;
-  scheduledAt: string;   // ISO timestamp
-  priceKobo: number;
+  serviceName: string;      // compat: single service or service_summary for multi
+  serviceSummary: string;   // canonical multi-service display label
+  scheduledAt: string;      // ISO timestamp
+  priceKobo: number;        // compat mirror of total_amount
+  totalAmount: number;      // canonical total (sum of all services + transport)
   durationBlocks: number;
   status: BookingStatus;
   userLocationAddress: string | null;

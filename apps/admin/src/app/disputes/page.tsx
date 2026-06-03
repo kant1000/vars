@@ -30,7 +30,7 @@ async function getDisputes(status: string, page: number) {
     .from('disputes')
     .select(`
       id, status, resolution, reason, category, admin_notes, created_at,
-      bookings(id, service_name, service_price_kobo, transport_fee_kobo, status,
+      bookings(id, service_summary, total_amount, transport_fee_kobo, status,
         profiles(full_name),
         vendors(full_name, avg_rating, total_reviews, cancellation_flagged, kyc_status)
       )
@@ -135,7 +135,7 @@ export default async function DisputesPage({ searchParams }: Props) {
 
             <div className="kv">
               <span className="kv-label">Service</span>
-              <span className="kv-value" style={{ fontWeight: 700 }}>{booking?.service_name ?? '—'}</span>
+              <span className="kv-value" style={{ fontWeight: 700 }}>{booking?.service_summary ?? '—'}</span>
 
               <span className="kv-label">Customer</span>
               <span className="kv-value">{booking?.profiles?.full_name ?? '—'}</span>
@@ -145,7 +145,7 @@ export default async function DisputesPage({ searchParams }: Props) {
 
               <span className="kv-label">Booking value</span>
               <span className="kv-value">
-                {booking ? fmtPrice(booking.service_price_kobo + (booking.transport_fee_kobo ?? 0)) : '—'}
+                {booking ? fmtPrice(booking.total_amount + (booking.transport_fee_kobo ?? 0)) : '—'}
                 {booking?.transport_fee_kobo > 0 && (
                   <span style={{ color: 'var(--text2)', fontSize: 12, marginLeft: 6 }}>
                     (incl. ₦{fmtPrice(booking.transport_fee_kobo)} transport)

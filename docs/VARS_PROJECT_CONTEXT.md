@@ -104,19 +104,22 @@ Build only what is listed. Everything else is explicitly out of scope for V1.
 - In-app wallet top-up
 - Subscription or loyalty features
 - AR or virtual try-on
-- Multi-service bookings (one service per booking only)
+- ~~Multi-service bookings (one service per booking only)~~ **Shipped in V2 — see service taxonomy migration**
 - Saved addresses / address book
 - Full offline mode (lightweight resilience only)
 
-**V1 bookable services:**
+**V2 service taxonomy (shipped — replaces V1 master catalogue):**
 
-| Category | Services |
+Free-name services organised under a two-level taxonomy. Vendors define their own service names; the platform provides the category structure only.
+
+| L1 | L2 subcategories |
 |---|---|
-| Barbing | Haircut, Dyeing, Shaving, Locs |
-| Hair Styling | Washing, Cornrows, Box Braids, Knotless Braids, Wig Fixing, Relaxer |
-| Makeovers | Regular Makeup, Bridal Makeup, Manicure, Pedicure |
+| Hair | Braids, Weaves, Locs, Natural, Relaxed |
+| Barber | Cuts, Shaves, Beard, Colour |
+| Face | Makeup, Skincare, Lashes, Brows |
+| Nails | Manicure, Pedicure, Nail Art |
 
-All other services are visible on vendor profiles as "Also offered" — informational only, not bookable in V1.
+Service constraints: name ≤ 60 chars, description ≤ 200 chars (optional), minimum price ₦10,000, duration in 30-min blocks (1–48), max 10 active services per vendor. Schema: `vendor_services` (free-name) + `booking_services` join table. Migration: `20260603000001_service_taxonomy_v2`.
 
 ---
 
@@ -135,7 +138,7 @@ These decisions were made deliberately. Flag explicitly before suggesting any re
 | Status flow is rigid | Vendors cannot skip On My Way → Arrived → Service Rendered. | Each step triggers phone reveal, location sharing, and escrow release. Skippable steps would break the trust architecture. |
 | Automatic settlement only | Manual admin payment release is rejected. | Operationally impossible at scale and creates terrible vendor experience. |
 | No customer filter for auto-accept | Users cannot filter vendor feed by auto-accept status in V1. | |
-| One service per booking | Multiple services per booking excluded from V1. | Simpler escrow logic, simpler vendor scheduling. |
+| ~~One service per booking~~ | **Removed in V2.** Multi-service bookings now supported via `booking_services` join table. Total amount and duration are summed across selected services. | Was: simpler escrow logic, simpler vendor scheduling. Now: free-name taxonomy removes V1 master catalogue dependency. |
 | Cancellation measured from booking time | Tiers measured from time of BOOKING, not time before service. Within 1 hr of service start = non-refundable (30% VARS, 70% vendor). 0–15 min after booking = 15% fee (10% VARS, 5% vendor). 15 min–1 hr after booking = 50% fee (30% VARS, 20% vendor). | |
 | Dispute freezes auto-release | Disputed bookings are completely exempt from auto-release. | Escrow stays frozen until admin resolves manually. |
 | Youverify is final | Clean KYC pass = vendor goes live instantly. Only rejected/flagged cases reach admin queue. | |

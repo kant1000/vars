@@ -34,7 +34,7 @@ async function getBookings(status: string, page: number, q: string) {
   let query = db
     .from('bookings')
     .select(`
-      id, status, service_name, service_price_kobo,
+      id, status, service_summary, total_amount,
       scheduled_at, created_at, cancelled_by,
       profiles(full_name),
       vendors(full_name)
@@ -43,7 +43,7 @@ async function getBookings(status: string, page: number, q: string) {
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
 
   if (status && status !== 'all') query = query.eq('status', status);
-  if (q) query = query.or(`service_name.ilike.%${q}%`);
+  if (q) query = query.or(`service_summary.ilike.%${q}%`);
 
   const { data, count } = await query;
   return { bookings: data ?? [], total: count ?? 0 };
@@ -72,7 +72,7 @@ export default async function BookingsPage({ searchParams }: Props) {
             <option key={s} value={s}>{s === 'all' ? 'All statuses' : s.replace(/_/g, ' ')}</option>
           ))}
         </select>
-        <input name="q" type="text" placeholder="Search service…" defaultValue={q} />
+        <input name="q" type="text" placeholder="Search services…" defaultValue={q} />
         <button type="submit" className="btn btn-primary">Filter</button>
       </form>
 
@@ -95,12 +95,12 @@ export default async function BookingsPage({ searchParams }: Props) {
             {bookings.map((b: any) => (
               <tr key={b.id}>
                 <td>
-                  <div style={{ fontWeight: 600 }}>{b.service_name}</div>
+                  <div style={{ fontWeight: 600 }}>{b.service_summary}</div>
                   <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>{b.id.slice(0, 8)}…</div>
                 </td>
                 <td>{b.profiles?.full_name ?? '—'}</td>
                 <td>{b.vendors?.full_name ?? '—'}</td>
-                <td style={{ fontWeight: 700 }}>{fmtPrice(b.service_price_kobo)}</td>
+                <td style={{ fontWeight: 700 }}>{fmtPrice(b.total_amount)}</td>
                 <td style={{ color: 'var(--text2)' }}>
                   {new Date(b.scheduled_at).toLocaleString('en-NG', {
                     day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true,

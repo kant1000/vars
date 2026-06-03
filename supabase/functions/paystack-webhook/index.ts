@@ -124,12 +124,11 @@ async function handleChargeSuccess(
   const bookingMeta = metadata.vars_booking as Record<string, unknown> | undefined;
 
   if (!bookingMeta) {
-    // Not a VARS booking transaction — ignore
     console.log(`charge.success for non-booking reference: ${reference}`);
     return;
   }
 
-  // Idempotency: check if booking already created for this reference
+  // Idempotency: skip if booking already created
   const { data: existing } = await supabase
     .from('bookings')
     .select('id')
@@ -144,10 +143,10 @@ async function handleChargeSuccess(
   const {
     user_id,
     vendor_id,
-    vendor_service_id,
-    service_name,
-    service_price_kobo,
-    service_duration_blocks,
+    service_ids,
+    service_summary: metaServiceSummary,
+    total_service_kobo: metaTotalServiceKobo,
+    total_duration_blocks: metaTotalDurationBlocks,
     scheduled_at,
     user_location_lat,
     user_location_lng,
@@ -156,43 +155,61 @@ async function handleChargeSuccess(
     access_floor,
     access_flat,
     access_code,
-    // Transport surcharge — computed by paystack-initialize, stored here at booking creation
     transport_fee_kobo: metaTransportFeeKobo,
     distance_km: metaDistanceKm,
     pre_transport_buffer_slots: metaPreBufferSlots,
   } = bookingMeta as Record<string, unknown>;
 
-  const transportFeeKobo   = (metaTransportFeeKobo as number)  ?? 0;
-  const distanceKm         = (metaDistanceKm as number)        ?? 0;
-  const preBufferSlots     = (metaPreBufferSlots as number)     ?? 0;
+  const transportFeeKobo = (metaTransportFeeKobo as number) ?? 0;
+  const distanceKm       = (metaDistanceKm as number)       ?? 0;
+  const preBufferSlots   = (metaPreBufferSlots as number)    ?? 0;
 
-  // Build PostGIS point from lat/lng
+  // Re-fetch services server-side to verify prices haven't changed
+  const serviceIdList = service_ids as string[];
+  const { data: services, error: svError } = await supabase
+    .from('vendor_services')
+    .select('id, service_name, price_kobo, duration_blocks')
+    .in('id', serviceIdList);
+
+  if (svError || !services || services.length !== serviceIdList.length) {
+    console.error('handleChargeSuccess: could not re-fetch services', svError);
+    throw new Error('Service validation failed');
+  }
+
+  // Server-side total (authoritative)
+  const totalServiceKobo   = services.reduce((s, sv) => s + sv.price_kobo, 0);
+  const totalDurationBlocks = services.reduce((s, sv) => s + sv.duration_blocks, 0);
+
+  // Warn if price diverged between initialize and webhook (vendor edited between payment init and charge)
+  if (totalServiceKobo !== (metaTotalServiceKobo as number)) {
+    console.warn(
+      `Price mismatch for ref ${reference}: ` +
+      `expected ${metaTotalServiceKobo} kobo, got ${totalServiceKobo} kobo — using DB value`
+    );
+  }
+
+  const serviceSummary = metaServiceSummary as string;
   const userLocationPoint = `POINT(${user_location_lng} ${user_location_lat})`;
-
-  // ── Check auto-accept conditions ──────────────────────────
   const scheduledStr = scheduled_at as string;
   const userLat = user_location_lat as number;
   const userLng = user_location_lng as number;
 
+  // ── Check auto-accept conditions ──────────────────────────
   const autoAcceptResult = await checkAutoAccept(
     supabase,
     vendor_id as string,
     scheduledStr,
-    service_duration_blocks as number,
+    totalDurationBlocks,
     userLat,
     userLng
   );
 
   // ── Create the booking record ──────────────────────────────
   const now = new Date();
-  const graceExpiry = new Date(now.getTime() + 5 * 60 * 1000); // +5 min
+  const graceExpiry = new Date(now.getTime() + 5 * 60 * 1000);
 
-  // Initial auto_release_at = scheduled end + 2 hours.
-  // The DB trigger fn_set_auto_release_at (migration 001) overrides this to
-  // service_rendered_at + 2 hours when the vendor marks service complete, so
-  // the settle cron always fires 2 hours after service_rendered in practice.
   const scheduledEnd = new Date(
-    new Date(scheduledStr).getTime() + (service_duration_blocks as number) * 30 * 60 * 1000
+    new Date(scheduledStr).getTime() + totalDurationBlocks * 30 * 60 * 1000
   );
   const autoReleaseAt = new Date(scheduledEnd.getTime() + 2 * 60 * 60 * 1000);
 
@@ -201,20 +218,24 @@ async function handleChargeSuccess(
     .insert({
       user_id,
       vendor_id,
-      vendor_service_id,
-      service_name,
-      service_price_kobo,
-      service_duration_blocks,
+      // Canonical V2 columns
+      service_summary: serviceSummary,
+      total_amount: totalServiceKobo,
+      // Compat mirrors — read by paystack-capture, paystack-settle, paystack-cancel
+      service_name: serviceSummary,
+      service_price_kobo: totalServiceKobo,
+      service_duration_blocks: totalDurationBlocks,
+      // Schedule
       scheduled_at,
       user_location: userLocationPoint,
       user_location_address: user_location_address ?? null,
-      user_location_lat: user_location_lat as number,
-      user_location_lng: user_location_lng as number,
+      user_location_lat: userLat,
+      user_location_lng: userLng,
       access_building: (access_building as string) ?? null,
       access_floor: (access_floor as string) ?? null,
       access_flat: (access_flat as string) ?? null,
       access_code: (access_code as string) ?? null,
-      // Transport surcharge — stored immutably at creation; never recomputed
+      // Transport surcharge — immutable after creation
       transport_fee_kobo: transportFeeKobo,
       distance_km: distanceKm,
       pre_transport_buffer_slots: preBufferSlots,
@@ -222,14 +243,11 @@ async function handleChargeSuccess(
       paystack_reference: reference,
       paystack_authorization_code: (data.authorization as Record<string, unknown>)?.authorization_code ?? null,
       payment_captured: false,
-      // auto_release fires 1 hour after the scheduled booking end time
       auto_release_at: autoReleaseAt.toISOString(),
-      // Auto-accept fields
       auto_accepted: autoAcceptResult.shouldAutoAccept,
       auto_accept_grace_expires_at: autoAcceptResult.shouldAutoAccept
         ? graceExpiry.toISOString()
         : null,
-      // Timestamps
       accepted_at: autoAcceptResult.shouldAutoAccept ? now.toISOString() : null,
     })
     .select('id, vendor_id, user_id')
@@ -240,24 +258,37 @@ async function handleChargeSuccess(
     throw new Error('Booking creation failed');
   }
 
+  // ── Create booking_services rows (one per service) ─────────
+  const bookingServiceRows = services.map((sv) => ({
+    booking_id: booking.id,
+    vendor_service_id: sv.id,
+    service_name: sv.service_name,
+    price_kobo: sv.price_kobo,
+  }));
+
+  const { error: bsError } = await supabase
+    .from('booking_services')
+    .insert(bookingServiceRows);
+
+  if (bsError) {
+    console.error('Failed to create booking_services:', bsError);
+    // Non-fatal: booking exists; booking_services can be backfilled if needed
+  }
+
   console.log(`Booking created: ${booking.id} (auto_accept=${autoAcceptResult.shouldAutoAccept})`);
 
-  // ── Create post-booking transport buffer blocks if auto-accepted ──
-  // Pre-booking buffers are never inserted here: auto-accept requires the user
-  // to be within the vendor's zone radius (1–1.5 km), which is always inside
-  // BASE_RADIUS_KM (5 km) — so preBufferSlots is provably 0 on this path.
-  // Pre-buffers are only inserted by paystack-capture (manual accept).
+  // ── Transport buffer blocks if auto-accepted ────────────────
   if (autoAcceptResult.shouldAutoAccept) {
     await createTransportBuffers(
       supabase,
       vendor_id as string,
       booking.id,
       scheduledStr,
-      service_duration_blocks as number
+      totalDurationBlocks
     );
   }
 
-  // ── Fetch vendor and user details for notifications ────────
+  // ── Fetch vendor and user for notifications ─────────────────
   const [{ data: vendor }, { data: profile }] = await Promise.all([
     supabase.from('vendors').select('full_name, push_token, email, pioneer, pioneer_bookings_completed').eq('id', vendor_id).single(),
     supabase.from('profiles').select('full_name, push_token, email').eq('id', user_id).single(),
@@ -267,7 +298,6 @@ async function handleChargeSuccess(
   const vendorName = vendor?.full_name ?? 'Your vendor';
 
   if (autoAcceptResult.shouldAutoAccept) {
-    // Auto-accept: user sees instant confirmation
     if (profile) {
       const msg = msg_autoAccepted(vendorName, formatDate(scheduledStr), formatTime(scheduledStr));
       await sendNotification({
@@ -281,11 +311,10 @@ async function handleChargeSuccess(
         data: { bookingId: booking.id, autoAccepted: true },
       });
     }
-    // Vendor: auto-accepted with 5-min grace notice
     if (vendor) {
       const msg = msg_vendor_autoAccepted(
         clientFirstName,
-        service_name as string,
+        serviceSummary,
         formatDate(scheduledStr),
         formatTime(scheduledStr)
       );
@@ -301,17 +330,16 @@ async function handleChargeSuccess(
       });
     }
 
-    // Email: booking confirmed — customer + vendor (auto-accept path)
     try {
       const isPioneer = vendor?.pioneer === true && (vendor?.pioneer_bookings_completed ?? 3) < 3;
-      const totalKobo = (service_price_kobo as number) + transportFeeKobo;
+      const totalKobo = totalServiceKobo + transportFeeKobo;
       const vendorAmountKobo = isPioneer ? totalKobo : Math.round(totalKobo * 0.8);
 
       if (profile?.email) {
         const { subject, body } = email_bookingConfirmed_customer({
           customerFirstName: clientFirstName,
           vendorName,
-          service: service_name as string,
+          service: serviceSummary,
           date: formatDate(scheduledStr),
           time: formatTime(scheduledStr),
           amount: `₦${formatNaira(totalKobo)}`,
@@ -323,7 +351,7 @@ async function handleChargeSuccess(
         const { subject, body } = email_bookingConfirmed_vendor({
           vendorName: vendor.full_name,
           customerFirstName: clientFirstName,
-          service: service_name as string,
+          service: serviceSummary,
           date: formatDate(scheduledStr),
           time: formatTime(scheduledStr),
           amount: `₦${formatNaira(vendorAmountKobo)}`,
@@ -334,7 +362,6 @@ async function handleChargeSuccess(
       console.error('paystack-webhook: booking-confirmed email failed (non-fatal):', err);
     }
   } else {
-    // Normal flow: vendor has 1 hour to accept
     if (profile) {
       const msg = msg_paymentAuthorized(vendorName);
       await sendNotification({
@@ -350,11 +377,11 @@ async function handleChargeSuccess(
     }
     if (vendor) {
       const isPioneer = vendor.pioneer === true && (vendor.pioneer_bookings_completed ?? 3) < 3;
-      const totalKobo = (service_price_kobo as number) + transportFeeKobo;
+      const totalKobo = totalServiceKobo + transportFeeKobo;
       const vendorAmountKobo = isPioneer ? totalKobo : Math.round(totalKobo * 0.8);
       const msg = msg_vendor_newBooking(
         clientFirstName,
-        service_name as string,
+        serviceSummary,
         formatDate(scheduledStr),
         formatTime(scheduledStr),
         formatNaira(vendorAmountKobo)

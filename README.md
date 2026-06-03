@@ -28,7 +28,7 @@ VARS is a mobile marketplace that connects customers in Lagos with verified beau
 | Attribute | Detail |
 |---|---|
 | Market | Lagos, Nigeria |
-| Services | Barbing, Hair Styling, Makeovers |
+| Services | Hair, Barber, Face, Nails (free-name taxonomy V2) |
 | Payment | Paystack (escrow model) |
 | Backend | Supabase (Postgres + Auth + Realtime + Edge Functions) |
 | Mobile | Expo / React Native (iOS & Android) |
@@ -73,7 +73,8 @@ vars/
 │   │   ├── app/
 │   │   │   ├── (tabs)/          # Customer tabs: home, bookings, notifications, profile
 │   │   │   ├── vendor-tabs/     # Vendor tabs: jobs, schedule, earnings, profile
-│   │   │   ├── booking/         # 3-step booking flow
+│   │   │   ├── booking/         # 2-step booking flow (schedule → review/pay)
+│   │   ├── vendor-services/ # post-onboarding add-service screen
 │   │   │   ├── live/            # Live booking tracker
 │   │   │   ├── vendor/          # Vendor public profile
 │   │   │   ├── vendor-zone-setup.tsx
@@ -97,10 +98,12 @@ vars/
 
 ### For Customers
 
-- **Discovery** — browse vendors by category (Barbing / Hair Styling / Makeovers); filter by distance from their current location using PostGIS
-- **Booking flow** — 3-step: pick service → pick date & time slot → review access details + pay
-  - Step 3 (review): customer enters building name, floor, flat number, gate code; all inputs are silently filtered (no `@` signs, no sequences of 7+ digits)
-  - Step 3 (pay): MapView thumbnail confirms customer location before the pay button activates; Paystack checkout opens in-app WebView
+- **Discovery** — browse vendors by L1 category (Hair / Barber / Face / Nails); filter by distance from their current location using PostGIS; client-side L1 filter applied after RPC returns all nearby vendors
+- **Vendor profile** — service cards (L2 subcategory label, name, description, price, duration) with multi-select checkboxes; sticky "Book for ₦X,XXX" CTA appears once at least one service is selected
+- **Booking flow** — 2-step: schedule (date & time) → review access details + pay
+  - Service selection happens on the vendor profile screen before entering the booking flow
+  - Review step: customer enters building name, floor, flat number, gate code; all inputs are silently filtered (no `@` signs, no sequences of 7+ digits)
+  - Pay step: MapView thumbnail confirms customer location before the pay button activates; Paystack checkout opens in-app WebView
 - **Booking detail screen** — unified screen for all booking states; status timeline with timestamps; live vendor tracking map while `on_way`; action buttons change per status (cancel, confirm service, dispute)
 - **Paystack checkout** — card charged immediately; funds held in VARS Paystack balance (escrow) until vendor is paid
 - **Live tracking** — map polls vendor GPS every 30 seconds while en route; phone number and full access details revealed 15 minutes before appointment
@@ -110,7 +113,7 @@ vars/
 
 ### For Vendors
 
-- **Onboarding** — multi-step: profile → services → portfolio → KYC (Youverify) → instant activation on clean pass
+- **Onboarding** — multi-step: profile → services (free-name, L1/L2 taxonomy, price + duration) → portfolio → KYC (Youverify) → instant activation on clean pass
 - **Jobs dashboard** — incoming requests with 1-hour accept window; active jobs with flow buttons (On My Way → Arrived → Service Rendered); cancel button for accepted/in-progress bookings; history
 - **Schedule management** — Calendar/List toggle (persisted); calendar shows 14-day grid with booked slot overlays (client name, service, status dot); list view shows all upcoming bookings; tapping any booking opens a detail bottom sheet
   - Bottom sheet: customer location map thumbnail, access details (revealed 15 min before appointment), accept/decline/on-way/arrived/service-rendered action buttons
@@ -173,6 +176,7 @@ Twenty migration files build up the schema incrementally:
 | `20260526000001_zone_radius_numeric` | Changes `auto_accept_zone_radius_km` from INT to NUMERIC(4,1); updates constraint to allow 1 and 1.5 km values |
 | `20260531000001_vendor_trust_layer` | Adds `profile_image_url`, `profile_image_raw_url`, `profile_image_locked` to `vendors`; tightens `vendors_update_own` RLS to block client writes on those columns; creates `vendor-identity-images` storage bucket; updates `get_nearby_vendors` to return `profile_image_url` |
 | `20260531000002_transport_surcharge` | Adds `transport_fee_kobo`, `distance_km`, `pre_transport_buffer_slots` to `bookings`; recreates `bookings_user_update` and `bookings_vendor_update` RLS policies with correlated-subquery guards to block client JWT writes on those three columns |
+| `20260603000001_service_taxonomy_v2` | Drops `service_categories`, `services`, and old `vendor_services`; creates `category_l1_enum` (hair/barber/face/nails) and `category_l2_enum` (16 subcategories); recreates `vendor_services` as free-name (name, description, `price_kobo`, `duration_blocks`, `category_l1`, `category_l2`, `sort_order`, max 10 per vendor enforced by trigger); creates `booking_services` join table (snapshots service name + price per service; INSERT restricted to service role); adds `service_summary TEXT` and `total_amount INTEGER` to bookings; compat mirrors (`service_name`, `service_price_kobo`, `service_duration_blocks`) retained on bookings for untouched paystack functions; fixes `profiles.last_tab` CHECK constraint to new L1 values; rewrites `get_nearby_vendors` to aggregate L1 names, keeps `category_slug` param (ignored) for safe rollout |
 
 ### Key Tables
 
@@ -180,9 +184,10 @@ Twenty migration files build up the schema incrementally:
 |---|---|
 | `profiles` | Customer accounts (extends `auth.users`) |
 | `vendors` | Vendor accounts with KYC, ratings, zone settings, and identity image columns (`profile_image_url`, `profile_image_raw_url`, `profile_image_locked`) |
-| `services` | Master service catalogue |
-| `vendor_services` | A vendor's offered services with price and duration |
-| `bookings` | All bookings; holds Paystack reference, escrow state, access details (`access_building/floor/flat/code`), and customer location (`user_location_lat/lng`) |
+| ~~`services`~~ | Dropped in V2 (taxonomy migration). Services are now free-name entries defined by vendors. |
+| `vendor_services` | A vendor's offered services — free-name with L1/L2 taxonomy, `price_kobo`, `duration_blocks`, `sort_order`; max 10 per vendor; INSERT/DELETE managed by vendor via RLS |
+| `booking_services` | Join table: one row per service per booking — snapshots `service_name` and `price_kobo` at booking time; INSERT restricted to service role (webhook only) |
+| `bookings` | All bookings; holds Paystack reference, escrow state, access details (`access_building/floor/flat/code`), customer location (`user_location_lat/lng`), `service_summary` (comma-joined names), `total_amount` (sum of service prices in kobo) |
 | `vendor_calendar` | Blocked slot records — state: `unavailable` / `auto_accept` / `transport_buffer`. No row = slot is open. |
 | `reviews` | Star ratings + comments |
 | `disputes` | Customer-raised issues; includes `category` enum for instant triage |
@@ -405,6 +410,7 @@ The system is fully built. Providers are stubbed until `DELIVERY_LIVE=true`.
 | Vendor profile & settings | `/vendor-tabs/profile` |
 | Auto-Accept zone setup | `/vendor-zone-setup` |
 | Onboarding (5 steps) | `/vendor-onboarding/step-[1-5]-*` |
+| Add service (post-onboarding) | `/vendor-services/add` |
 
 ---
 
@@ -445,7 +451,7 @@ All loading states across the app use a custom `ScissorsLoader` component (`apps
 - Preview is hidden when the field is empty or zero; updates on every keystroke
 - Pioneer window: if `vendor.pioneer === true` and `vendor.pioneer_bookings_completed < 3`, preview shows 100% (`"You keep 100% — Pioneer booking · ₦X,XXX"`); otherwise shows 80% (`"You'll receive: ₦X,XXX"`)
 - Pioneer data is passed as props — no per-keystroke fetch
-- Used in: vendor onboarding step 2 (service price inputs)
+- Used in: vendor onboarding step 2, vendor-services/add (post-onboarding service management)
 
 ---
 

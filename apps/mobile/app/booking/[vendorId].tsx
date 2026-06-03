@@ -1,9 +1,9 @@
 // ============================================================
-// VARS — Booking Flow
-// Step 1: Select service
-// Step 2: Pick date + time slot
-// Step 3a: Review + access details
-// Step 3b: Location confirmation + pay
+// VARS — Booking Flow (V2)
+// Receives service_ids[] + total_amount from vendor profile.
+// Step 1: Pick date + time slot
+// Step 2a: Review + access details
+// Step 2b: Location confirmation + pay
 // ============================================================
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -34,16 +34,6 @@ const CONFIRM_BAR_HEIGHT = 86;
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
 // ── Types ────────────────────────────────────────────────────
-interface ServiceOption {
-  id: string;
-  service_id: string;
-  name: string;
-  description: string | null;
-  price_kobo: number;
-  duration_blocks: number;
-  category_name: string;
-}
-
 interface AccessDetails {
   building: string;
   floor: string;
@@ -60,8 +50,6 @@ const FLOOR_OPTIONS = [
 const EMPTY_ACCESS: AccessDetails = { building: '', floor: '', flat: '', gateCode: '' };
 
 // ── Haversine distance (km) — client-side preview only ───────
-// Server recalculates independently on paystack-initialize. This value is
-// for display only and is never trusted by the backend.
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -92,7 +80,7 @@ function addMinutes(d: Date, m: number) {
 
 // ── Step indicator ────────────────────────────────────────────
 function StepBar({ step }: { step: number }) {
-  const labels = ['Service', 'Schedule', 'Review'];
+  const labels = ['Schedule', 'Review'];
   return (
     <View style={sb.wrap}>
       {labels.map((l, i) => {
@@ -108,7 +96,7 @@ function StepBar({ step }: { step: number }) {
               </View>
               <Text style={[sb.label, active && sb.labelActive]}>{l}</Text>
             </View>
-            {i < 2 && <View style={[sb.line, done && sb.lineDone]} />}
+            {i < labels.length - 1 && <View style={[sb.line, done && sb.lineDone]} />}
           </React.Fragment>
         );
       })}
@@ -129,59 +117,12 @@ const sb = StyleSheet.create({
   lineDone: { backgroundColor: Colors.primary },
 });
 
-// ── Step 1: Select service ────────────────────────────────────
-function Step1({ vendorId, onSelect }: { vendorId: string; onSelect: (s: ServiceOption) => void }) {
-  const [services, setServices] = useState<ServiceOption[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from('vendor_services')
-        .select('id, price_kobo, duration_blocks, services(id, name, description, service_categories(name))')
-        .eq('vendor_id', vendorId)
-        .eq('is_bookable', true);
-      setServices((data ?? []).map((vs: any) => ({
-        id: vs.id,
-        service_id: vs.services?.id,
-        name: vs.services?.name ?? '',
-        description: vs.services?.description ?? null,
-        price_kobo: vs.price_kobo,
-        duration_blocks: vs.duration_blocks,
-        category_name: vs.services?.service_categories?.name ?? '',
-      })));
-      setLoading(false);
-    })();
-  }, [vendorId]);
-
-  if (loading) return <View style={s.centered}><ScissorsLoader size="small" color="dark" /></View>;
-
-  return (
-    <ScrollView contentContainerStyle={{ padding: 16, gap: 10 }}>
-      <Text style={s.stepTitle}>What do you need done?</Text>
-      {services.map((svc) => (
-        <TouchableOpacity key={svc.id} style={s.serviceCard} onPress={() => onSelect(svc)} activeOpacity={0.85}>
-          <View style={{ flex: 1 }}>
-            <Text style={s.serviceName}>{svc.name}</Text>
-            {svc.description ? <Text style={s.serviceDesc} numberOfLines={2}>{svc.description}</Text> : null}
-            <Text style={s.serviceMeta}>{fmtDuration(svc.duration_blocks)} · {svc.category_name}</Text>
-          </View>
-          <View style={s.priceCol}>
-            <Text style={s.price}>{fmtPrice(svc.price_kobo)}</Text>
-            <Text style={s.arrow}>›</Text>
-          </View>
-        </TouchableOpacity>
-      ))}
-    </ScrollView>
-  );
-}
-
-// ── Step 2: Date + time picker ────────────────────────────────
-function Step2({
-  vendorId, service, onConfirm,
+// ── Step 1: Date + time picker ────────────────────────────────
+function Step1({
+  vendorId, totalDurationBlocks, onConfirm,
 }: {
   vendorId: string;
-  service: ServiceOption;
+  totalDurationBlocks: number;
   onConfirm: (slot: Date, isAutoAccept: boolean) => void;
 }) {
   const today = new Date();
@@ -219,14 +160,12 @@ function Step2({
     const generated: { time: Date; available: boolean; autoAccept: boolean }[] = [];
     let cursor = new Date(dayStart);
     const now = new Date();
-    // Block the current slot and the one immediately after it — not enough lead time.
-    // nextSlotStart = start of the next 30-min boundary after now.
     const BLOCK_MS = BLOCK_MINS * 60 * 1000;
     const nextSlotStart = new Date(Math.floor(now.getTime() / BLOCK_MS) * BLOCK_MS + BLOCK_MS);
 
     while (cursor < dayEnd) {
       const slotStart = new Date(cursor);
-      const slotEnd = addMinutes(slotStart, service.duration_blocks * BLOCK_MINS);
+      const slotEnd = addMinutes(slotStart, totalDurationBlocks * BLOCK_MINS);
 
       let available = true;
       let autoAccept = false;
@@ -264,18 +203,17 @@ function Step2({
 
     setSlots(generated);
     setLoadingSlots(false);
-  }, [vendorId, service.duration_blocks]);
+  }, [vendorId, totalDurationBlocks]);
 
   useEffect(() => { loadSlots(selectedDay); }, [selectedDay, loadSlots]);
 
   const [selectedSlot, setSelectedSlot] = useState<Date | null>(null);
   const [selectedAutoAccept, setSelectedAutoAccept] = useState(false);
 
-  // Reset selection whenever the day changes
   useEffect(() => { setSelectedSlot(null); setSelectedAutoAccept(false); }, [selectedDay]);
 
   const selectedEnd = selectedSlot
-    ? addMinutes(selectedSlot, service.duration_blocks * BLOCK_MINS)
+    ? addMinutes(selectedSlot, totalDurationBlocks * BLOCK_MINS)
     : null;
 
   const getSlotRole = (t: Date): 'start' | 'covered' | null => {
@@ -285,7 +223,6 @@ function Step2({
     return null;
   };
 
-  // Group slots into rows of 4 for connected-chip rendering
   const slotRows: typeof slots[] = [];
   for (let i = 0; i < slots.length; i += 4) slotRows.push(slots.slice(i, i + 4));
 
@@ -335,7 +272,6 @@ function Step2({
                 const sl = row[ci];
                 const role = getSlotRole(sl.time);
                 if (role === 'start') {
-                  // Count how many covered slots follow in this same row
                   let span = 1;
                   while (ci + span < row.length && getSlotRole(row[ci + span].time) === 'covered') span++;
                   const mergedW = CHIP_W * span + 8 * (span - 1);
@@ -352,7 +288,6 @@ function Step2({
                   );
                   ci += span;
                 } else if (role === 'covered') {
-                  // Cross-row continuation chip — no text, just tinted fill
                   cells.push(
                     <View key={sl.time.toISOString()} style={[s.slot, s.slotCovered, { width: CHIP_W }]} />
                   );
@@ -375,7 +310,6 @@ function Step2({
                   ci++;
                 }
               }
-              // Pad short rows (e.g. last row) to maintain grid width
               while (cells.length < 4) {
                 cells.push(<View key={`pad-${ri}-${cells.length}`} style={{ width: CHIP_W }} />);
               }
@@ -393,7 +327,7 @@ function Step2({
             activeOpacity={0.88}
           >
             <Text style={s.confirmBtnText}>
-              Confirm {fmtTime(selectedSlot)} – {fmtTime(addMinutes(selectedSlot, service.duration_blocks * BLOCK_MINS))} →
+              Confirm {fmtTime(selectedSlot)} – {fmtTime(addMinutes(selectedSlot, totalDurationBlocks * BLOCK_MINS))} →
             </Text>
           </TouchableOpacity>
         </View>
@@ -402,13 +336,16 @@ function Step2({
   );
 }
 
-// ── Step 3a: Review + access details ─────────────────────────
-function Step3Review({
-  service, slot, isAutoAccept,
+// ── Step 2a: Review + access details ─────────────────────────
+function Step2Review({
+  serviceSummary, totalDurationBlocks, totalServiceKobo,
+  slot, isAutoAccept,
   access, setAccess,
   onConfirmLocation, locating, locError,
 }: {
-  service: ServiceOption;
+  serviceSummary: string;
+  totalDurationBlocks: number;
+  totalServiceKobo: number;
   slot: Date;
   isAutoAccept: boolean;
   access: AccessDetails;
@@ -425,18 +362,17 @@ function Step3Review({
         <Text style={s.stepTitle}>Review your booking</Text>
 
         <View style={s.summaryCard}>
-          <Row label="Service" value={service.name} />
-          <Row label="Duration" value={fmtDuration(service.duration_blocks)} />
+          <Row label="Service" value={serviceSummary} />
+          <Row label="Duration" value={fmtDuration(totalDurationBlocks)} />
           <Row label="Date" value={fmtDate(slot)} />
-          <Row label="Time" value={`${fmtTime(slot)} – ${fmtTime(addMinutes(slot, service.duration_blocks * BLOCK_MINS))}`} />
+          <Row label="Time" value={`${fmtTime(slot)} – ${fmtTime(addMinutes(slot, totalDurationBlocks * BLOCK_MINS))}`} />
           <View style={s.divider} />
-          <Row label="Total" value={fmtPrice(service.price_kobo)} bold />
+          <Row label="Total" value={fmtPrice(totalServiceKobo)} bold />
         </View>
 
         <Text style={s.sectionHeading}>Access details <Text style={s.optionalTag}>(optional)</Text></Text>
         <Text style={s.accessHint}>Help your vendor find you faster.</Text>
 
-        {/* Building name */}
         <View>
           <Text style={s.fieldLabel}>Building / estate name</Text>
           <TextInput
@@ -449,7 +385,6 @@ function Step3Review({
           />
         </View>
 
-        {/* Floor */}
         <View>
           <Text style={s.fieldLabel}>Floor</Text>
           <TouchableOpacity
@@ -464,7 +399,6 @@ function Step3Review({
           </TouchableOpacity>
         </View>
 
-        {/* Flat / unit */}
         <View>
           <Text style={s.fieldLabel}>Flat / unit number</Text>
           <TextInput
@@ -477,7 +411,6 @@ function Step3Review({
           />
         </View>
 
-        {/* Gate code */}
         <View>
           <Text style={s.fieldLabel}>Gate / access code</Text>
           <TextInput
@@ -487,7 +420,6 @@ function Step3Review({
             value={access.gateCode}
             onChangeText={(t) => setAccess({ ...access, gateCode: sanitize(t, 20) })}
             returnKeyType="done"
-            secureTextEntry={false}
           />
         </View>
 
@@ -518,7 +450,6 @@ function Step3Review({
         </TouchableOpacity>
       </View>
 
-      {/* Floor picker sheet */}
       <BottomSheetModal ref={floorSheetRef} snapPoints={['50%']} enableDynamicSizing={false}>
         <Text style={[s.pickerTitle, { paddingHorizontal: 16, paddingTop: 8 }]}>Select floor</Text>
         <BottomSheetFlatList
@@ -542,14 +473,17 @@ function Step3Review({
   );
 }
 
-// ── Step 3b: Location confirmation + pay ─────────────────────
-function Step3Location({
-  service, slot, isAutoAccept,
+// ── Step 2b: Location confirmation + pay ─────────────────────
+function Step2Location({
+  serviceSummary, totalDurationBlocks, totalServiceKobo,
+  slot, isAutoAccept,
   coords, locAddress, access,
   vendorZone,
   onPay, paying,
 }: {
-  service: ServiceOption;
+  serviceSummary: string;
+  totalDurationBlocks: number;
+  totalServiceKobo: number;
   slot: Date;
   isAutoAccept: boolean;
   coords: { lat: number; lng: number };
@@ -563,17 +497,15 @@ function Step3Location({
 
   const hasAccess = access.building || access.floor || access.flat || access.gateCode;
 
-  // Client-side surcharge preview (display only — server recalculates on payment)
   const transportFeeKobo =
     vendorZone != null
       ? calcPreviewSurcharge(coords.lat, coords.lng, vendorZone.lat, vendorZone.lng)
       : 0;
-  const totalKobo = service.price_kobo + transportFeeKobo;
+  const totalKobo = totalServiceKobo + transportFeeKobo;
 
   return (
     <>
       <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
-        {/* Map thumbnail */}
         <MapView
           style={s.mapThumb}
           provider={PROVIDER_DEFAULT}
@@ -594,13 +526,11 @@ function Step3Location({
         </MapView>
 
         <View style={{ padding: 20, gap: 16 }}>
-          {/* Detected address */}
           <View style={s.addressRow}>
             <PinIcon size={16} color={Colors.text} />
             <Text style={s.addressText} numberOfLines={2}>{locAddress || 'Your current location'}</Text>
           </View>
 
-          {/* Access details summary */}
           {hasAccess && (
             <View style={s.accessSummaryCard}>
               <Text style={s.accessSummaryTitle}>Access details</Text>
@@ -611,11 +541,10 @@ function Step3Location({
             </View>
           )}
 
-          {/* Summary */}
           <View style={s.summaryCard}>
-            <Row label="Service" value={service.name} />
+            <Row label="Service" value={serviceSummary} />
             <Row label="Date" value={fmtDate(slot)} />
-            <Row label="Time" value={`${fmtTime(slot)} – ${fmtTime(addMinutes(slot, service.duration_blocks * BLOCK_MINS))}`} />
+            <Row label="Time" value={`${fmtTime(slot)} – ${fmtTime(addMinutes(slot, totalDurationBlocks * BLOCK_MINS))}`} />
             <View style={s.divider} />
             <Row label="Total" value={fmtPrice(totalKobo)} bold />
             {transportFeeKobo > 0 && (
@@ -672,18 +601,55 @@ function AccessRow({ label, value }: { label: string; value: string }) {
 
 // ── Root component ────────────────────────────────────────────
 export default function BookingFlow() {
-  const { vendorId } = useLocalSearchParams<{ vendorId: string }>();
+  const { vendorId, service_ids: serviceIdsParam, total_amount: totalAmountParam } = useLocalSearchParams<{
+    vendorId: string;
+    service_ids?: string;
+    total_amount?: string;
+  }>();
   const insets = useSafeAreaInsets();
   const posthog = usePostHog();
 
+  // Parse incoming params from vendor profile
+  const serviceIds: string[] = serviceIdsParam ? JSON.parse(serviceIdsParam) : [];
+
+  // Fetched service details
+  const [loadingServices, setLoadingServices] = useState(true);
+  const [totalDurationBlocks, setTotalDurationBlocks] = useState(0);
+  const [serviceSummary, setServiceSummary] = useState('');
+  const [totalServiceKobo, setTotalServiceKobo] = useState(
+    totalAmountParam ? parseInt(totalAmountParam, 10) : 0
+  );
+
+  useEffect(() => {
+    if (!serviceIds.length) {
+      router.back();
+      return;
+    }
+    supabase
+      .from('vendor_services')
+      .select('id, service_name, price_kobo, duration_blocks')
+      .in('id', serviceIds)
+      .then(({ data }) => {
+        if (!data || data.length === 0) { router.back(); return; }
+        const names = data.map((sv) => sv.service_name as string);
+        const summary =
+          names.length === 1 ? names[0]
+          : names.length === 2 ? `${names[0]} + ${names[1]}`
+          : `${names[0]} + ${names.length - 1} more`;
+        setServiceSummary(summary);
+        setTotalDurationBlocks(data.reduce((acc, sv) => acc + (sv.duration_blocks as number), 0));
+        setTotalServiceKobo(data.reduce((acc, sv) => acc + (sv.price_kobo as number), 0));
+        setLoadingServices(false);
+      });
+  }, []);
+
+  // Step 1 = Schedule, Step 2 = Review
   const [step, setStep] = useState(1);
-  const [service, setService] = useState<ServiceOption | null>(null);
   const [slot, setSlot] = useState<Date | null>(null);
   const [slotIsAutoAccept, setSlotIsAutoAccept] = useState(false);
   const [vendorZone, setVendorZone] = useState<{ lat: number; lng: number } | null>(null);
 
-  // Step 3 state
-  const [step3View, setStep3View] = useState<'review' | 'location'>('review');
+  const [step2View, setStep2View] = useState<'review' | 'location'>('review');
   const [access, setAccess] = useState<AccessDetails>(EMPTY_ACCESS);
   const [locating, setLocating] = useState(false);
   const [locError, setLocError] = useState<string | null>(null);
@@ -694,7 +660,6 @@ export default function BookingFlow() {
   const [paystackUrl, setPaystackUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch vendor zone coordinates for client-side surcharge preview
   useEffect(() => {
     if (!vendorId) return;
     supabase
@@ -709,16 +674,6 @@ export default function BookingFlow() {
       });
   }, [vendorId]);
 
-  const handleSelectService = (svc: ServiceOption) => {
-    posthog?.capture(EVENTS.BOOKING_STARTED, {
-      vendor_id: vendorId,
-      service_name: svc.name,
-      price_kobo: svc.price_kobo,
-    });
-    setService(svc);
-    setStep(2);
-  };
-
   const handleSelectSlot = (s: Date, isAutoAccept: boolean) => {
     posthog?.capture(EVENTS.SLOT_SELECTED, {
       vendor_id: vendorId,
@@ -726,17 +681,17 @@ export default function BookingFlow() {
     });
     setSlot(s);
     setSlotIsAutoAccept(isAutoAccept);
-    setStep3View('review');
+    setStep2View('review');
     setAccess(EMPTY_ACCESS);
     setLocError(null);
     setCoords(null);
     setLocAddress('');
-    setStep(3);
+    setStep(2);
   };
 
   const handleBack = () => {
-    if (step === 3 && step3View === 'location') {
-      setStep3View('review');
+    if (step === 2 && step2View === 'location') {
+      setStep2View('review');
       return;
     }
     if (step > 1) { setStep(step - 1); return; }
@@ -764,7 +719,7 @@ export default function BookingFlow() {
 
       setCoords({ lat: latitude, lng: longitude });
       setLocAddress(address);
-      setStep3View('location');
+      setStep2View('location');
     } catch {
       setLocError('Could not get your location. Please try again.');
     } finally {
@@ -773,27 +728,27 @@ export default function BookingFlow() {
   };
 
   const handlePay = async () => {
-    if (!service || !slot || !coords) return;
+    if (!slot || !coords) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     posthog?.capture(EVENTS.PAYMENT_INITIATED, {
       vendor_id: vendorId,
-      price_kobo: service.price_kobo,
+      total_kobo: totalServiceKobo,
     });
     setPaying(true);
     setError(null);
 
     try {
-      const { data: { session: s } } = await supabase.auth.getSession();
-      if (!s) { setError('Session expired. Please sign in again.'); setPaying(false); return; }
+      const { data: { session: sess } } = await supabase.auth.getSession();
+      if (!sess) { setError('Session expired. Please sign in again.'); setPaying(false); return; }
 
       const res = await fetch(`${SUPABASE_URL}/functions/v1/paystack-initialize`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${s.access_token}`,
+          Authorization: `Bearer ${sess.access_token}`,
         },
         body: JSON.stringify({
-          vendor_service_id: service.id,
+          service_ids: serviceIds,
           scheduled_at: slot.toISOString(),
           user_location_lat: coords.lat,
           user_location_lng: coords.lng,
@@ -817,7 +772,6 @@ export default function BookingFlow() {
     }
   };
 
-  // Paystack reference stored at initialization time so we can poll after redirect
   const paystackRefRef = useRef<string | null>(null);
 
   const handleWebViewNav = (url: string) => {
@@ -827,9 +781,6 @@ export default function BookingFlow() {
       setError('Payment was cancelled.');
       return false;
     }
-    // Redirect away from Paystack checkout — payment likely completed.
-    // Poll for the booking row (created by webhook) before navigating, so the
-    // bookings screen doesn't show a blank list while the webhook is still processing.
     setPaystackUrl(null);
     pollForBooking(paystackRefRef.current);
     return false;
@@ -855,9 +806,16 @@ export default function BookingFlow() {
       }
       await new Promise((res) => setTimeout(res, INTERVAL_MS));
     }
-    // Webhook hasn't created the booking yet — navigate anyway; it will arrive via Realtime
     router.replace('/(tabs)/bookings');
   };
+
+  if (loadingServices) {
+    return (
+      <View style={[s.container, { paddingTop: insets.top }]}>
+        <View style={s.centered}><ScissorsLoader size="large" color="dark" /></View>
+      </View>
+    );
+  }
 
   return (
     <View style={[s.container, { paddingTop: insets.top }]}>
@@ -878,14 +836,17 @@ export default function BookingFlow() {
       )}
 
       {step === 1 && (
-        <Step1 vendorId={vendorId!} onSelect={handleSelectService} />
+        <Step1
+          vendorId={vendorId!}
+          totalDurationBlocks={totalDurationBlocks}
+          onConfirm={handleSelectSlot}
+        />
       )}
-      {step === 2 && service && (
-        <Step2 vendorId={vendorId!} service={service} onConfirm={handleSelectSlot} />
-      )}
-      {step === 3 && service && slot && step3View === 'review' && (
-        <Step3Review
-          service={service}
+      {step === 2 && slot && step2View === 'review' && (
+        <Step2Review
+          serviceSummary={serviceSummary}
+          totalDurationBlocks={totalDurationBlocks}
+          totalServiceKobo={totalServiceKobo}
           slot={slot}
           isAutoAccept={slotIsAutoAccept}
           access={access}
@@ -895,9 +856,11 @@ export default function BookingFlow() {
           locError={locError}
         />
       )}
-      {step === 3 && service && slot && step3View === 'location' && coords && (
-        <Step3Location
-          service={service}
+      {step === 2 && slot && step2View === 'location' && coords && (
+        <Step2Location
+          serviceSummary={serviceSummary}
+          totalDurationBlocks={totalDurationBlocks}
+          totalServiceKobo={totalServiceKobo}
           slot={slot}
           isAutoAccept={slotIsAutoAccept}
           coords={coords}
@@ -909,7 +872,6 @@ export default function BookingFlow() {
         />
       )}
 
-      {/* Paystack WebView modal */}
       <Modal visible={!!paystackUrl} animationType="slide">
         <View style={{ flex: 1, paddingTop: insets.top }}>
           <View style={s.webviewHeader}>
@@ -949,30 +911,6 @@ const s = StyleSheet.create({
   stepTitle: { fontSize: 20, fontWeight: '800', color: Colors.text },
   errorBanner: { backgroundColor: Colors.error + '15', paddingHorizontal: 16, paddingVertical: 10 },
   errorText: { fontSize: 13, color: Colors.error, fontWeight: '500' },
-
-  // Services
-  serviceCard: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: Colors.surface, borderRadius: 14,
-    padding: 16, borderWidth: 1, borderColor: Colors.border,
-  },
-  serviceName: { fontSize: 16, fontWeight: '700', color: Colors.text, marginBottom: 2 },
-  serviceDesc: { fontSize: 13, color: Colors.textSecondary, lineHeight: 18, marginBottom: 4 },
-  serviceMeta: { fontSize: 12, color: Colors.textMuted, fontWeight: '500' },
-  priceCol: { alignItems: 'flex-end', gap: 4 },
-  price: { fontSize: 16, fontWeight: '800', color: Colors.text },
-  arrow: { fontSize: 20, color: Colors.textMuted },
-
-  // Day chips
-  dayChip: {
-    alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8,
-    borderRadius: 12, borderWidth: 1.5, borderColor: Colors.border,
-    backgroundColor: Colors.background, minWidth: 52,
-  },
-  dayChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  dayChipWeekday: { fontSize: 11, color: Colors.textMuted, fontWeight: '600' },
-  dayChipNum: { fontSize: 18, fontWeight: '800', color: Colors.text },
-  dayChipTextActive: { color: '#FFF' },
 
   // Slots
   slotGrid: { paddingHorizontal: 16, gap: 8, marginTop: 16 },
@@ -1021,24 +959,8 @@ const s = StyleSheet.create({
   pickerValue: { fontSize: 15, color: Colors.text },
   pickerPlaceholder: { fontSize: 15, color: Colors.textMuted },
   pickerChevron: { fontSize: 20, color: Colors.textMuted },
-  accessPrivacyNote: {
-    backgroundColor: Colors.primaryLight, borderRadius: 12, padding: 12,
-  },
+  accessPrivacyNote: { backgroundColor: Colors.primaryLight, borderRadius: 12, padding: 12 },
   accessPrivacyText: { fontSize: 13, color: Colors.primary, lineHeight: 18 },
-
-  // Floor picker modal
-  modalOverlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'flex-end',
-  },
-  pickerSheet: {
-    backgroundColor: Colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    paddingHorizontal: 20, paddingBottom: 40, maxHeight: '70%',
-  },
-  pickerHandle: {
-    width: 36, height: 4, borderRadius: 2, backgroundColor: Colors.border,
-    alignSelf: 'center', marginVertical: 12,
-  },
   pickerTitle: {
     fontSize: 16, fontWeight: '700', color: Colors.text,
     marginBottom: 12, textAlign: 'center',
@@ -1049,6 +971,7 @@ const s = StyleSheet.create({
   },
   pickerOptionText: { fontSize: 16, color: Colors.text },
   pickerOptionSelected: { color: Colors.primary, fontWeight: '700' },
+
   // Map + location
   mapThumb: { width: SCREEN_W, height: 200 },
   addressRow: {
@@ -1057,8 +980,6 @@ const s = StyleSheet.create({
     padding: 12, borderWidth: 1, borderColor: Colors.border,
   },
   addressText: { flex: 1, fontSize: 14, color: Colors.text, lineHeight: 20, fontWeight: '500' },
-
-  // Access summary card (Step 3b)
   accessSummaryCard: {
     backgroundColor: Colors.surface, borderRadius: 14,
     padding: 14, borderWidth: 1, borderColor: Colors.border, gap: 4,
@@ -1067,15 +988,13 @@ const s = StyleSheet.create({
   accessDetailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 },
   accessDetailLabel: { fontSize: 13, color: Colors.textSecondary },
   accessDetailValue: { fontSize: 13, fontWeight: '600', color: Colors.text },
-
   transportNote: { fontSize: 12, color: Colors.textSecondary, marginTop: 6, lineHeight: 17 },
-  // Info box
   infoBox: { backgroundColor: Colors.primaryLight, borderRadius: 12, padding: 14 },
   infoBoxAutoAccept: { backgroundColor: Colors.pioneerGoldSurface },
   infoText: { fontSize: 13, color: Colors.primary, lineHeight: 19, fontWeight: '500' },
   infoTextAutoAccept: { color: Colors.pioneerGoldDark },
 
-  // Slot confirm bar (Step 2)
+  // Slot confirm bar
   confirmBar: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
     backgroundColor: Colors.background,

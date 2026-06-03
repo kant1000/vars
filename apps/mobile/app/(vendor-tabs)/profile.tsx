@@ -1,11 +1,10 @@
 // ============================================================
 // VARS — Vendor Profile / Settings
-// Sections: Auto-Accept zone, Portfolio management, Account
+// Sections: Auto-Accept zone, My Services, Portfolio, Account
 // ============================================================
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Alert, Dimensions, ScrollView,
-  StyleSheet, Text, TouchableOpacity, View,
+  Alert, Dimensions, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
@@ -17,8 +16,15 @@ import { signOut } from '@/lib/auth';
 import { uploadSinglePortfolioPhoto, deletePortfolioPhoto } from '@/lib/storage';
 import { Colors } from '@/constants/colors';
 import { CloseIcon } from '@/components/icons';
+import {
+  NestableScrollContainer,
+  NestableDraggableFlatList,
+  ScaleDecorator,
+  RenderItemParams,
+} from 'react-native-draggable-flatlist';
+import { CATEGORY_L2_LABELS, MAX_VENDOR_SERVICES } from '@vars/shared';
 
-const PHOTO_SIZE = (Dimensions.get('window').width - 48 - 16) / 3; // 3 cols, 24px side padding, 8px gaps
+const PHOTO_SIZE = (Dimensions.get('window').width - 48 - 16) / 3;
 
 interface VendorZoneInfo {
   auto_accept_enabled: boolean;
@@ -36,6 +42,16 @@ interface PortfolioPhoto {
   booking_id: string | null;
 }
 
+interface VendorServiceItem {
+  id: string;
+  category_l1: string;
+  category_l2: string;
+  service_name: string;
+  price_kobo: number;
+  duration_blocks: number;
+  sort_order: number;
+}
+
 const CONSENT_LABEL: Record<string, { text: string; color: string }> = {
   unverified: { text: 'Uploaded', color: Colors.textMuted },
   pending:    { text: 'Sent to client', color: Colors.warning },
@@ -50,6 +66,9 @@ export default function VendorProfileScreen() {
 
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
 
+  const [services, setServices] = useState<VendorServiceItem[]>([]);
+  const [servicesLoading, setServicesLoading] = useState(true);
+
   const [photos, setPhotos] = useState<PortfolioPhoto[]>([]);
   const [photosLoading, setPhotosLoading] = useState(true);
   const [addingPhoto, setAddingPhoto] = useState(false);
@@ -62,9 +81,14 @@ export default function VendorProfileScreen() {
 
   const loadAll = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setZoneLoading(false); setPhotosLoading(false); return; }
+    if (!user) {
+      setZoneLoading(false);
+      setServicesLoading(false);
+      setPhotosLoading(false);
+      return;
+    }
 
-    const [zoneRes, photosRes] = await Promise.all([
+    const [zoneRes, servicesRes, photosRes] = await Promise.all([
       supabase
         .from('vendors')
         .select(`
@@ -77,6 +101,13 @@ export default function VendorProfileScreen() {
         .single(),
 
       supabase
+        .from('vendor_services')
+        .select('id, category_l1, category_l2, service_name, price_kobo, duration_blocks, sort_order')
+        .eq('vendor_id', user.id)
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true }),
+
+      supabase
         .from('portfolio_photos')
         .select('id, storage_path, consent_state, booking_id')
         .eq('vendor_id', user.id)
@@ -86,8 +117,10 @@ export default function VendorProfileScreen() {
 
     setZoneInfo(zoneRes.data ?? null);
     setProfileImageUrl(zoneRes.data?.profile_image_url ?? null);
+    setServices((servicesRes.data ?? []) as VendorServiceItem[]);
     setPhotos((photosRes.data ?? []) as PortfolioPhoto[]);
     setZoneLoading(false);
+    setServicesLoading(false);
     setPhotosLoading(false);
   };
 
@@ -108,6 +141,51 @@ export default function VendorProfileScreen() {
 
   const zoneStatus = zoneStatusLabel();
 
+  const handleDeleteService = (id: string) => {
+    Alert.alert(
+      'Remove service',
+      'This service will be removed from your profile.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove', style: 'destructive',
+          onPress: async () => {
+            const { error } = await supabase.from('vendor_services').delete().eq('id', id);
+            if (error) { Alert.alert('Error', error.message); return; }
+            setServices((prev) => prev.filter((s) => s.id !== id));
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDragEnd = async (data: VendorServiceItem[]) => {
+    setServices(data);
+    await Promise.all(
+      data.map((s, i) =>
+        supabase.from('vendor_services').update({ sort_order: i }).eq('id', s.id)
+      )
+    );
+  };
+
+  const renderServiceItem = ({ item, drag, isActive }: RenderItemParams<VendorServiceItem>) => (
+    <ScaleDecorator>
+      <View style={[s.svcRow, isActive && s.svcRowDragging]}>
+        <TouchableOpacity onLongPress={drag} hitSlop={8} style={s.dragHandle} activeOpacity={0.6}>
+          <Text style={s.dragHandleIcon}>⠿</Text>
+        </TouchableOpacity>
+        <View style={s.svcInfo}>
+          <Text style={s.svcMeta}>{CATEGORY_L2_LABELS[item.category_l2] ?? item.category_l2}</Text>
+          <Text style={s.svcName}>{item.service_name}</Text>
+          <Text style={s.svcPrice}>₦{(item.price_kobo / 100).toLocaleString('en-NG')}</Text>
+        </View>
+        <TouchableOpacity onPress={() => handleDeleteService(item.id)} style={s.svcDeleteBtn} hitSlop={8}>
+          <CloseIcon size={11} color={Colors.textMuted} />
+        </TouchableOpacity>
+      </View>
+    </ScaleDecorator>
+  );
+
   const totalPhotoCount = photos.length;
   const unverifiedCount = photos.filter((p) => p.consent_state === 'unverified').length;
   const canAddUnverified = unverifiedCount < 3 && totalPhotoCount < 10;
@@ -126,7 +204,6 @@ export default function VendorProfileScreen() {
         consent_state: 'unverified',
       });
       if (error) {
-        // Clean up the already-uploaded storage file to avoid orphans
         await supabase.storage.from('portfolio').remove([upload.path]).catch(() => {});
         throw error;
       }
@@ -168,7 +245,7 @@ export default function VendorProfileScreen() {
         <Text style={s.headerTitle}>Profile</Text>
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 60 }}>
+      <NestableScrollContainer contentContainerStyle={{ paddingBottom: 60 }}>
         {/* Name */}
         <View style={s.nameSection}>
           <View style={s.avatarWrapper}>
@@ -217,6 +294,42 @@ export default function VendorProfileScreen() {
                 ⚡ Confirm your zone to activate auto-accept today
               </Text>
             </TouchableOpacity>
+          )}
+        </View>
+
+        {/* My Services */}
+        <View style={s.section}>
+          <View style={s.sectionHeader}>
+            <Text style={s.sectionTitle}>My Services</Text>
+            <Text style={s.photoCount}>{services.length}/{MAX_VENDOR_SERVICES}</Text>
+          </View>
+
+          {servicesLoading ? (
+            <View style={{ margin: 16, alignItems: 'center' }}><ScissorsLoader size="small" color="dark" /></View>
+          ) : (
+            <>
+              {services.length > 0 && (
+                <Text style={s.dragHint}>Long-press a row to reorder</Text>
+              )}
+              <NestableDraggableFlatList
+                data={services}
+                keyExtractor={(item) => item.id}
+                renderItem={renderServiceItem}
+                onDragEnd={({ data }) => handleDragEnd(data)}
+              />
+              {services.length < MAX_VENDOR_SERVICES && (
+                <TouchableOpacity
+                  style={s.addSvcBtn}
+                  onPress={() => router.push('/vendor-services/add')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={s.addSvcText}>+ Add service</Text>
+                </TouchableOpacity>
+              )}
+              {services.length === 0 && (
+                <Text style={s.photoHint}>No services yet. Add your first one.</Text>
+              )}
+            </>
           )}
         </View>
 
@@ -294,7 +407,7 @@ export default function VendorProfileScreen() {
             <Text style={s.settingLabel}>Sign out</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
+      </NestableScrollContainer>
     </View>
   );
 }
@@ -327,7 +440,6 @@ const s = StyleSheet.create({
     fontSize: 12, fontWeight: '700', color: Colors.textMuted,
     textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12,
   },
-  sectionTitleGold: { color: Colors.pioneerGoldDark },
   photoCount: { fontSize: 12, color: Colors.textMuted, fontWeight: '600' },
 
   settingRow: {
@@ -353,6 +465,32 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.ink + '40',
   },
   confirmBannerText: { fontSize: 13, color: Colors.ink, fontWeight: '600' },
+
+  // My Services
+  dragHint: { fontSize: 11, color: Colors.textMuted, marginBottom: 8 },
+  svcRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: 12, paddingHorizontal: 4,
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
+    backgroundColor: Colors.background,
+  },
+  svcRowDragging: { backgroundColor: Colors.surface, borderRadius: 10 },
+  dragHandle: { paddingRight: 12, paddingVertical: 4 },
+  dragHandleIcon: { fontSize: 18, color: Colors.textMuted, lineHeight: 20 },
+  svcInfo: { flex: 1 },
+  svcMeta: {
+    fontSize: 11, color: Colors.textMuted, fontWeight: '600',
+    textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 1,
+  },
+  svcName: { fontSize: 15, fontWeight: '600', color: Colors.text },
+  svcPrice: { fontSize: 13, color: Colors.textSecondary, marginTop: 1 },
+  svcDeleteBtn: { padding: 8 },
+  addSvcBtn: {
+    marginTop: 12, height: 42,
+    borderRadius: 10, borderWidth: 1.5, borderColor: Colors.border,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  addSvcText: { fontSize: 14, fontWeight: '600', color: Colors.text },
 
   // Portfolio grid
   photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },

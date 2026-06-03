@@ -1,12 +1,12 @@
 // ============================================================
-// VARS — Vendor Profile Screen (Phase 6)
+// VARS — Vendor Profile Screen
 // Route: /vendor/[id]
-// Sections: hero photo, badges, bio, services, portfolio, reviews
-// "Book now" → /booking/[vendorId] (Phase 7)
+// Sections: hero, badges, bio, services (selectable), portfolio, reviews
+// Service selection → sticky "Book for NGN X,XXX" → /booking/[vendorId]
 // ============================================================
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Dimensions, FlatList,
+  Dimensions,
   Pressable, ScrollView, StyleSheet, Text,
   TouchableOpacity, View,
 } from 'react-native';
@@ -17,19 +17,21 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
+import { CATEGORY_L2_LABELS } from '@vars/shared';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const PORTFOLIO_COLS = 3;
-const PHOTO_SIZE = (SCREEN_W - 2) / PORTFOLIO_COLS; // 2px for gaps
+const PHOTO_SIZE = (SCREEN_W - 2) / PORTFOLIO_COLS;
 
 // ── Types ──────────────────────────────────────────────────
 interface VendorService {
   id: string;
-  name: string;
+  service_name: string;
   description: string | null;
   price_kobo: number;
-  duration_blocks: number;   // 1 block = 30 min
-  category_name: string;
+  duration_blocks: number;
+  category_l1: string;
+  category_l2: string;
 }
 
 interface PortfolioPhoto {
@@ -97,12 +99,12 @@ export default function VendorProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'services' | 'portfolio' | 'reviews'>('services');
   const [togglingFav, setTogglingFav] = useState(false);
+  const [selectedServiceIds, setSelectedServiceIds] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     if (!id) return;
     setLoading(true);
 
-    // Parallel fetches
     const [vendorRes, servicesRes, portfolioRes, reviewsRes, favRes] = await Promise.all([
       supabase.from('vendors')
         .select('id, full_name, bio, profile_image_url, avg_rating, total_reviews, is_online, base_location_text, badge_vars_choice, badge_top_rated, pioneer')
@@ -110,8 +112,10 @@ export default function VendorProfileScreen() {
         .single(),
 
       supabase.from('vendor_services')
-        .select('id, price_kobo, duration_blocks, services(id, name, description, service_categories(name))')
-        .eq('vendor_id', id),
+        .select('id, service_name, description, price_kobo, duration_blocks, category_l1, category_l2')
+        .eq('vendor_id', id)
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true }),
 
       supabase.from('portfolio_photos')
         .select('id, storage_path, consent_state')
@@ -141,11 +145,12 @@ export default function VendorProfileScreen() {
 
     const services: VendorService[] = (servicesRes.data ?? []).map((vs: any) => ({
       id: vs.id,
-      name: vs.services?.name ?? '',
-      description: vs.services?.description ?? null,
+      service_name: vs.service_name ?? '',
+      description: vs.description ?? null,
       price_kobo: vs.price_kobo,
       duration_blocks: vs.duration_blocks,
-      category_name: vs.services?.service_categories?.name ?? '',
+      category_l1: vs.category_l1,
+      category_l2: vs.category_l2,
     }));
 
     const portfolio: PortfolioPhoto[] = (portfolioRes.data ?? []).map((p: any) => ({
@@ -174,6 +179,18 @@ export default function VendorProfileScreen() {
 
   useEffect(() => { load(); }, [load]);
 
+  const toggleService = (serviceId: string) => {
+    setSelectedServiceIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(serviceId)) {
+        next.delete(serviceId);
+      } else {
+        next.add(serviceId);
+      }
+      return next;
+    });
+  };
+
   const toggleFavourite = async () => {
     if (!user || !vendor || togglingFav) return;
     setTogglingFav(true);
@@ -185,6 +202,9 @@ export default function VendorProfileScreen() {
     setVendor((prev) => prev ? { ...prev, is_favourited: !prev.is_favourited } : prev);
     setTogglingFav(false);
   };
+
+  const selectedServices = vendor?.services.filter((s) => selectedServiceIds.has(s.id)) ?? [];
+  const totalKobo = selectedServices.reduce((sum, s) => sum + s.price_kobo, 0);
 
   if (loading) {
     return (
@@ -219,7 +239,6 @@ export default function VendorProfileScreen() {
             </View>
           )}
 
-          {/* Back button */}
           <TouchableOpacity
             style={[styles.backBtn, { top: insets.top + 12 }]}
             onPress={() => returnTo ? router.replace(returnTo as any) : router.back()}
@@ -227,7 +246,6 @@ export default function VendorProfileScreen() {
             <Text style={styles.backBtnText}>‹</Text>
           </TouchableOpacity>
 
-          {/* Favourite */}
           <TouchableOpacity
             style={[styles.favBtn, { top: insets.top + 12 }]}
             onPress={toggleFavourite}
@@ -236,7 +254,6 @@ export default function VendorProfileScreen() {
             <Text style={styles.favBtnText}>{vendor.is_favourited ? '♥' : '♡'}</Text>
           </TouchableOpacity>
 
-          {/* Online badge */}
           {vendor.is_online && (
             <View style={styles.onlinePill}>
               <View style={styles.onlineDot} />
@@ -262,7 +279,6 @@ export default function VendorProfileScreen() {
             </View>
           </View>
 
-          {/* Badges */}
           <View style={styles.badgeRow}>
             {vendor.pioneer && <Badge label="★ Pioneer" color={Colors.badgePioneer} />}
             {vendor.badge_vars_choice && <Badge label="VARS Choice" color={Colors.badgeVarsChoice} />}
@@ -288,24 +304,39 @@ export default function VendorProfileScreen() {
           ))}
         </View>
 
-        {/* ── Services ── */}
+        {/* ── Services (selectable) ── */}
         {activeTab === 'services' && (
           <View style={styles.section}>
             {vendor.services.length === 0 ? (
               <Text style={styles.emptyText}>No services listed yet.</Text>
             ) : (
-              vendor.services.map((svc) => (
-                <View key={svc.id} style={styles.serviceRow}>
-                  <View style={styles.serviceInfo}>
-                    <Text style={styles.serviceName}>{svc.name}</Text>
-                    {svc.description ? (
-                      <Text style={styles.serviceDesc} numberOfLines={2}>{svc.description}</Text>
-                    ) : null}
-                    <Text style={styles.serviceDuration}>{formatDuration(svc.duration_blocks)}</Text>
-                  </View>
-                  <Text style={styles.servicePrice}>{formatPrice(svc.price_kobo)}</Text>
-                </View>
-              ))
+              vendor.services.map((svc) => {
+                const selected = selectedServiceIds.has(svc.id);
+                const l2Label = CATEGORY_L2_LABELS[svc.category_l2] ?? svc.category_l2;
+                return (
+                  <TouchableOpacity
+                    key={svc.id}
+                    style={[styles.serviceCard, selected && styles.serviceCardSelected]}
+                    onPress={() => toggleService(svc.id)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.serviceCardLeft}>
+                      <Text style={styles.serviceL2}>{l2Label}</Text>
+                      <Text style={styles.serviceName}>{svc.service_name}</Text>
+                      {svc.description ? (
+                        <Text style={styles.serviceDesc} numberOfLines={2}>{svc.description}</Text>
+                      ) : null}
+                      <Text style={styles.serviceDuration}>{formatDuration(svc.duration_blocks)}</Text>
+                    </View>
+                    <View style={styles.serviceCardRight}>
+                      <Text style={styles.servicePrice}>{formatPrice(svc.price_kobo)}</Text>
+                      <View style={[styles.checkbox, selected && styles.checkboxSelected]}>
+                        {selected && <Text style={styles.checkmark}>✓</Text>}
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
             )}
           </View>
         )}
@@ -357,20 +388,30 @@ export default function VendorProfileScreen() {
           </View>
         )}
 
-        {/* Bottom padding for sticky CTA */}
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* ── Sticky Book Now CTA ── */}
-      <View style={[styles.ctaWrap, { paddingBottom: insets.bottom + 12 }]}>
-        <TouchableOpacity
-          style={styles.ctaButton}
-          activeOpacity={0.88}
-          onPress={() => router.push({ pathname: '/booking/[vendorId]', params: { vendorId: vendor.id } })}
-        >
-          <Text style={styles.ctaText}>Book {vendor.full_name.split(' ')[0]}</Text>
-        </TouchableOpacity>
-      </View>
+      {/* ── Sticky CTA: appears once services are selected ── */}
+      {selectedServiceIds.size > 0 && (
+        <View style={[styles.ctaWrap, { paddingBottom: insets.bottom + 12 }]}>
+          <TouchableOpacity
+            style={styles.ctaButton}
+            activeOpacity={0.88}
+            onPress={() =>
+              router.push({
+                pathname: '/booking/[vendorId]',
+                params: {
+                  vendorId: vendor.id,
+                  service_ids: JSON.stringify([...selectedServiceIds]),
+                  total_amount: String(totalKobo),
+                },
+              })
+            }
+          >
+            <Text style={styles.ctaText}>Book for {formatPrice(totalKobo)}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
@@ -389,7 +430,6 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 16, color: Colors.text, marginBottom: 12 },
   backLink: { fontSize: 15, color: Colors.primary, fontWeight: '600' },
 
-  // Hero
   hero: { width: SCREEN_W, height: SCREEN_W * 0.75, position: 'relative' },
   heroImage: { width: '100%', height: '100%' },
   heroFallback: { backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
@@ -417,7 +457,6 @@ const styles = StyleSheet.create({
   onlineDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.success },
   onlinePillText: { color: '#FFF', fontSize: 12, fontWeight: '600' },
 
-  // Name card (sticky)
   nameCard: { backgroundColor: Colors.background, paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.border },
   nameRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   name: { fontSize: 22, fontWeight: '800', color: Colors.text, flex: 1, marginRight: 8 },
@@ -431,7 +470,6 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 11, fontWeight: '700' },
   bio: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20 },
 
-  // Section tabs
   tabRow: {
     flexDirection: 'row', backgroundColor: Colors.background,
     borderBottomWidth: 1, borderBottomColor: Colors.border,
@@ -441,19 +479,35 @@ const styles = StyleSheet.create({
   sectionTabText: { fontSize: 14, fontWeight: '600', color: Colors.textMuted },
   sectionTabTextActive: { color: Colors.primary },
 
-  // Services
   section: { paddingHorizontal: 16, paddingTop: 8 },
-  serviceRow: {
+
+  // Selectable service card
+  serviceCard: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
-    paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.border,
+    paddingVertical: 14, paddingHorizontal: 12,
+    borderWidth: 1, borderColor: Colors.border, borderRadius: 12,
+    marginBottom: 8, backgroundColor: Colors.background,
   },
-  serviceInfo: { flex: 1, marginRight: 12 },
+  serviceCardSelected: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primaryLight + '18',
+  },
+  serviceCardLeft: { flex: 1, marginRight: 12 },
+  serviceCardRight: { alignItems: 'flex-end', gap: 8 },
+  serviceL2: { fontSize: 11, color: Colors.textMuted, fontWeight: '500', marginBottom: 2 },
   serviceName: { fontSize: 15, fontWeight: '700', color: Colors.text, marginBottom: 2 },
   serviceDesc: { fontSize: 13, color: Colors.textSecondary, lineHeight: 18, marginBottom: 4 },
   serviceDuration: { fontSize: 12, color: Colors.textMuted, fontWeight: '500' },
   servicePrice: { fontSize: 16, fontWeight: '800', color: Colors.text },
+  checkbox: {
+    width: 22, height: 22, borderRadius: 11,
+    borderWidth: 1.5, borderColor: Colors.border,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: Colors.background,
+  },
+  checkboxSelected: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  checkmark: { color: '#FFF', fontSize: 13, fontWeight: '800' },
 
-  // Portfolio
   portfolioGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 1 },
   unverifiedBadge: {
     position: 'absolute', bottom: 4, left: 4,
@@ -462,10 +516,7 @@ const styles = StyleSheet.create({
   },
   unverifiedText: { color: '#FFF', fontSize: 9, fontWeight: '700', letterSpacing: 0.3 },
 
-  // Reviews
-  reviewCard: {
-    paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
+  reviewCard: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.border },
   reviewHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   reviewerName: { fontSize: 14, fontWeight: '700', color: Colors.text },
   reviewComment: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20, marginBottom: 4 },
@@ -473,7 +524,6 @@ const styles = StyleSheet.create({
 
   emptyText: { fontSize: 14, color: Colors.textMuted, paddingVertical: 20, textAlign: 'center' },
 
-  // CTA
   ctaWrap: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
     backgroundColor: Colors.background,

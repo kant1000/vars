@@ -69,12 +69,43 @@ export const CANCELLATION_POLICY = {
   },
 } as const;
 
-/** V1 service category slugs */
-export const CATEGORY_SLUGS = {
-  BARBING: 'barbing',
-  HAIR_STYLING: 'hair_styling',
-  MAKEOVERS: 'makeovers',
+/** Taxonomy V2: L1 category values (maps to category_l1_enum in DB) */
+export const CATEGORY_L1 = {
+  HAIR:   'hair',
+  BARBER: 'barber',
+  FACE:   'face',
+  NAILS:  'nails',
 } as const;
+
+/** Display labels for L1 categories */
+export const CATEGORY_L1_LABELS: Record<string, string> = {
+  hair:   'Hair',
+  barber: 'Barber',
+  face:   'Face',
+  nails:  'Nails',
+};
+
+/** L2 subcategories grouped by L1 */
+export const CATEGORY_L2_MAP: Record<string, string[]> = {
+  hair:   ['braids', 'weaves', 'locs', 'natural', 'relaxed'],
+  barber: ['cuts', 'shaves', 'beard', 'colour'],
+  face:   ['makeup', 'skincare', 'lashes', 'brows'],
+  nails:  ['manicure', 'pedicure', 'nail_art'],
+};
+
+/** Display labels for L2 subcategories */
+export const CATEGORY_L2_LABELS: Record<string, string> = {
+  braids: 'Braids', weaves: 'Weaves', locs: 'Locs', natural: 'Natural', relaxed: 'Relaxed',
+  cuts: 'Cuts', shaves: 'Shaves', beard: 'Beard', colour: 'Colour',
+  makeup: 'Makeup', skincare: 'Skincare', lashes: 'Lashes', brows: 'Brows',
+  manicure: 'Manicure', pedicure: 'Pedicure', nail_art: 'Nail Art',
+};
+
+/** Service constraints */
+export const MIN_SERVICE_PRICE_KOBO = 1_000_000;  // ₦10,000
+export const MAX_VENDOR_SERVICES    = 10;
+export const SERVICE_NAME_MAX_CHARS = 60;
+export const SERVICE_DESC_MAX_CHARS = 200;
 
 /** Vendor badge types */
 export const VENDOR_BADGES = {

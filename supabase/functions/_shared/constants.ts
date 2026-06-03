@@ -1,4 +1,27 @@
 // Mirror of packages/shared/src/constants.ts — keep in sync manually
+
+/** Taxonomy V2: L1 category values */
+export const CATEGORY_L1 = {
+  HAIR:   'hair',
+  BARBER: 'barber',
+  FACE:   'face',
+  NAILS:  'nails',
+} as const;
+
+/** L2 subcategories grouped by L1 */
+export const CATEGORY_L2_MAP: Record<string, string[]> = {
+  hair:   ['braids', 'weaves', 'locs', 'natural', 'relaxed'],
+  barber: ['cuts', 'shaves', 'beard', 'colour'],
+  face:   ['makeup', 'skincare', 'lashes', 'brows'],
+  nails:  ['manicure', 'pedicure', 'nail_art'],
+};
+
+/** Service constraints */
+export const MIN_SERVICE_PRICE_KOBO = 1_000_000;
+export const MAX_VENDOR_SERVICES    = 10;
+export const SERVICE_NAME_MAX_CHARS = 60;
+export const SERVICE_DESC_MAX_CHARS = 200;
+
 export const BOOKING_STATUS = {
   PENDING: 'pending',
   ACCEPTED: 'accepted',

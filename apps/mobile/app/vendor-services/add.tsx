@@ -1,7 +1,7 @@
 // ============================================================
-// VARS — Vendor Onboarding Step 2: Services (Taxonomy V2)
-// Free-name form with L1/L2 taxonomy. Vendors add up to 10
-// services (name, subcategory, price, duration) then continue.
+// VARS — Add Service (post-onboarding)
+// Reached from the vendor profile "My Services" section.
+// Single-service form; on save goes back to profile.
 // ============================================================
 import React, { useEffect, useState } from 'react';
 import {
@@ -13,21 +13,10 @@ import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
-import { CloseIcon } from '@/components/icons';
 import {
   CATEGORY_L1, CATEGORY_L1_LABELS, CATEGORY_L2_MAP, CATEGORY_L2_LABELS,
   MIN_SERVICE_PRICE_KOBO, MAX_VENDOR_SERVICES, SERVICE_NAME_MAX_CHARS, SERVICE_DESC_MAX_CHARS,
 } from '@vars/shared';
-
-interface DraftService {
-  tempId: string;
-  category_l1: string;
-  category_l2: string;
-  service_name: string;
-  description: string;
-  price_naira: string;
-  duration_blocks: number;
-}
 
 const L1_KEYS = Object.values(CATEGORY_L1) as string[];
 
@@ -36,7 +25,7 @@ const DURATION_OPTIONS = [1, 2, 3, 4, 6, 8].map((b) => ({
   label: b === 1 ? '30 min' : b < 4 ? `${b * 30} min` : `${b / 2} hr${b > 2 ? 's' : ''}`,
 }));
 
-export default function Step2Services() {
+export default function AddServiceScreen() {
   const { user } = useAuth();
 
   const [formL1, setFormL1] = useState<string>(CATEGORY_L1.HAIR);
@@ -45,7 +34,6 @@ export default function Step2Services() {
   const [formDesc, setFormDesc] = useState('');
   const [formPrice, setFormPrice] = useState('');
   const [formDuration, setFormDuration] = useState(2);
-  const [draftServices, setDraftServices] = useState<DraftService[]>([]);
 
   const [vendorPioneer, setVendorPioneer] = useState<{ pioneer: boolean; pioneer_bookings_completed: number } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -65,7 +53,7 @@ export default function Step2Services() {
     setFormL2(CATEGORY_L2_MAP[l1][0]);
   };
 
-  const handleAddService = () => {
+  const handleSave = async () => {
     const name = formName.trim();
     if (!name) return Alert.alert('Required', 'Service name is required.');
     if (name.length > SERVICE_NAME_MAX_CHARS) {
@@ -78,53 +66,26 @@ export default function Step2Services() {
     if (!formPrice.trim() || isNaN(priceNum) || priceNum * 100 < MIN_SERVICE_PRICE_KOBO) {
       return Alert.alert('Invalid price', `Minimum price is ₦${(MIN_SERVICE_PRICE_KOBO / 100).toLocaleString('en-NG')}.`);
     }
-    if (draftServices.length >= MAX_VENDOR_SERVICES) {
-      return Alert.alert('Limit reached', `Maximum ${MAX_VENDOR_SERVICES} services.`);
-    }
-
-    setDraftServices((prev) => [...prev, {
-      tempId: String(Date.now()),
-      category_l1: formL1,
-      category_l2: formL2,
-      service_name: name,
-      description: formDesc.trim(),
-      price_naira: formPrice,
-      duration_blocks: formDuration,
-    }]);
-    setFormName('');
-    setFormDesc('');
-    setFormPrice('');
-  };
-
-  const handleRemove = (tempId: string) => {
-    setDraftServices((prev) => prev.filter((s) => s.tempId !== tempId));
-  };
-
-  const handleNext = async () => {
-    if (draftServices.length === 0) {
-      return Alert.alert('Required', 'Add at least one service to continue.');
-    }
     if (!user) return;
+
     setIsSaving(true);
     try {
-      const rows = draftServices.map((s, i) => ({
+      const { error } = await supabase.from('vendor_services').insert({
         vendor_id: user.id,
-        category_l1: s.category_l1,
-        category_l2: s.category_l2,
-        service_name: s.service_name,
-        description: s.description || null,
-        price_kobo: Math.round(Number(s.price_naira) * 100),
-        duration_blocks: s.duration_blocks,
-        sort_order: i,
-      }));
-      const { error } = await supabase.from('vendor_services').insert(rows);
+        category_l1: formL1,
+        category_l2: formL2,
+        service_name: name,
+        description: formDesc.trim() || null,
+        price_kobo: Math.round(priceNum * 100),
+        duration_blocks: formDuration,
+      });
       if (error) {
         if (error.message.includes('vendor_service_limit_exceeded')) {
-          return Alert.alert('Limit reached', `You can have at most ${MAX_VENDOR_SERVICES} services.`);
+          return Alert.alert('Limit reached', `You can have at most ${MAX_VENDOR_SERVICES} services. Remove one first.`);
         }
         throw error;
       }
-      router.push('/vendor-onboarding/step-3-portfolio');
+      router.back();
     } catch (err: any) {
       Alert.alert('Error', err.message);
     } finally {
@@ -144,8 +105,13 @@ export default function Step2Services() {
       contentContainerStyle={styles.scroll}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={styles.title}>What do you offer?</Text>
-      <Text style={styles.sub}>Add the services you provide, with prices and duration.</Text>
+      {/* Header */}
+      <View style={styles.headerRow}>
+        <TouchableOpacity onPress={() => router.back()} hitSlop={12}>
+          <Text style={styles.back}>‹ Back</Text>
+        </TouchableOpacity>
+      </View>
+      <Text style={styles.title}>Add a service</Text>
 
       {/* L1 category pills */}
       <Text style={styles.fieldLabel}>Category</Text>
@@ -240,51 +206,16 @@ export default function Step2Services() {
         </View>
       </ScrollView>
 
-      {/* Add service */}
+      {/* Save */}
       <TouchableOpacity
-        style={[styles.addBtn, draftServices.length >= MAX_VENDOR_SERVICES && styles.addBtnDisabled]}
-        onPress={handleAddService}
-        disabled={draftServices.length >= MAX_VENDOR_SERVICES}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.addBtnText}>+ Add service</Text>
-      </TouchableOpacity>
-
-      {/* Draft list */}
-      {draftServices.length > 0 && (
-        <View style={styles.draftSection}>
-          <Text style={styles.draftHeading}>
-            Your services ({draftServices.length}/{MAX_VENDOR_SERVICES})
-          </Text>
-          {draftServices.map((svc) => (
-            <View key={svc.tempId} style={styles.draftRow}>
-              <View style={styles.draftInfo}>
-                <Text style={styles.draftMeta}>
-                  {CATEGORY_L2_LABELS[svc.category_l2]} · {CATEGORY_L1_LABELS[svc.category_l1]}
-                </Text>
-                <Text style={styles.draftName}>{svc.service_name}</Text>
-                <Text style={styles.draftDetail}>
-                  ₦{Number(svc.price_naira).toLocaleString('en-NG')} · {DURATION_OPTIONS.find((o) => o.blocks === svc.duration_blocks)?.label}
-                </Text>
-              </View>
-              <TouchableOpacity style={styles.draftRemove} onPress={() => handleRemove(svc.tempId)}>
-                <CloseIcon size={12} color={Colors.textMuted} />
-              </TouchableOpacity>
-            </View>
-          ))}
-        </View>
-      )}
-
-      {/* Next */}
-      <TouchableOpacity
-        style={[styles.nextBtn, (isSaving || draftServices.length === 0) && styles.nextBtnDisabled]}
-        onPress={handleNext}
-        disabled={isSaving || draftServices.length === 0}
+        style={[styles.saveBtn, isSaving && styles.saveBtnDisabled]}
+        onPress={handleSave}
+        disabled={isSaving}
         activeOpacity={0.85}
       >
         {isSaving
           ? <ScissorsLoader size="small" color="light" />
-          : <Text style={styles.nextBtnText}>Next — Add portfolio photos</Text>}
+          : <Text style={styles.saveBtnText}>Save service</Text>}
       </TouchableOpacity>
     </ScrollView>
   );
@@ -294,8 +225,10 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   scroll: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 60 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 26, fontWeight: '700', color: Colors.text, marginBottom: 6 },
-  sub: { fontSize: 15, color: Colors.textSecondary, marginBottom: 24 },
+
+  headerRow: { marginBottom: 12 },
+  back: { fontSize: 16, color: Colors.primary, fontWeight: '600' },
+  title: { fontSize: 26, fontWeight: '700', color: Colors.text, marginBottom: 24 },
 
   fieldLabel: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary, marginBottom: 8 },
   optional: { fontWeight: '400', color: Colors.textMuted },
@@ -327,36 +260,10 @@ const styles = StyleSheet.create({
   durationChipText: { fontSize: 13, color: Colors.textSecondary, fontWeight: '500' },
   durationChipTextActive: { color: '#FFF' },
 
-  addBtn: {
-    height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: Colors.ink, marginBottom: 24,
-  },
-  addBtnDisabled: { opacity: 0.4 },
-  addBtnText: { fontSize: 15, fontWeight: '700', color: Colors.ink },
-
-  draftSection: { marginBottom: 8 },
-  draftHeading: {
-    fontSize: 12, fontWeight: '700', color: Colors.textMuted,
-    textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10,
-  },
-  draftRow: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: Colors.surface, borderRadius: 12, padding: 14, marginBottom: 8,
-    borderWidth: 1, borderColor: Colors.border,
-  },
-  draftInfo: { flex: 1 },
-  draftMeta: {
-    fontSize: 11, color: Colors.textMuted, fontWeight: '600',
-    textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 2,
-  },
-  draftName: { fontSize: 15, fontWeight: '600', color: Colors.text, marginBottom: 2 },
-  draftDetail: { fontSize: 13, color: Colors.textSecondary },
-  draftRemove: { padding: 8 },
-
-  nextBtn: {
+  saveBtn: {
     height: 56, backgroundColor: Colors.primary, borderRadius: 14,
     alignItems: 'center', justifyContent: 'center', marginTop: 16,
   },
-  nextBtnDisabled: { opacity: 0.4 },
-  nextBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+  saveBtnDisabled: { opacity: 0.6 },
+  saveBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
 });

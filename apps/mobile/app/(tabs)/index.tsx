@@ -18,12 +18,12 @@ import { VendorCard, VendorCardData } from '@/components/VendorCard';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { Colors } from '@/constants/colors';
 
-// ── Category tabs ──────────────────────────────────────────
-const CATEGORIES: { label: string; slug: string | null }[] = [
-  { label: 'All', slug: null },
-  { label: 'Barbing', slug: 'barbing' },
-  { label: 'Hair', slug: 'hair' },
-  { label: 'Makeovers', slug: 'makeovers' },
+// ── Category tabs (taxonomy V2 L1) ─────────────────────────
+const CATEGORIES: { label: string; slug: string }[] = [
+  { label: 'Hair',   slug: 'hair' },
+  { label: 'Barber', slug: 'barber' },
+  { label: 'Face',   slug: 'face' },
+  { label: 'Nails',  slug: 'nails' },
 ];
 
 const RADIUS_KM = 5;
@@ -61,7 +61,7 @@ export default function HomeScreen() {
   const { profile } = useAuth();
   const { coords, permissionDenied } = useLocation();
 
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState<string>('hair');
   const [search, setSearch] = useState('');
   const [vendors, setVendors] = useState<VendorCardData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,7 +84,6 @@ export default function HomeScreen() {
     const { data, error } = await supabase.rpc('get_nearby_vendors', {
       lat: coords.lat,
       lng: coords.lng,
-      category_slug: cat,
       radius_km: RADIUS_KM,
       lim: PAGE_SIZE,
       ofst: offset,
@@ -100,10 +99,13 @@ export default function HomeScreen() {
 
     const results = (data as VendorCardData[]) ?? [];
 
-    // Client-side name search filter (RPC doesn't do text search)
+    // Client-side L1 category filter — server returns all nearby vendors
+    const categoryFiltered = results.filter((v) => v.category_names.includes(cat));
+
+    // Client-side name search filter
     const filtered = query.trim()
-      ? results.filter((v) => v.full_name.toLowerCase().includes(query.toLowerCase()))
-      : results;
+      ? categoryFiltered.filter((v) => v.full_name.toLowerCase().includes(query.toLowerCase()))
+      : categoryFiltered;
 
     if (append) {
       setVendors((prev) => [...prev, ...filtered]);
@@ -178,7 +180,7 @@ export default function HomeScreen() {
           const active = activeCategory === cat.slug;
           return (
             <TouchableOpacity
-              key={cat.label}
+              key={cat.slug}
               style={[styles.tab, active && styles.tabActive]}
               onPress={() => setActiveCategory(cat.slug)}
               activeOpacity={0.8}

@@ -29,7 +29,7 @@ async function getStats() {
   const db = adminClient();
   const [vendors, bookings, disputes] = await Promise.all([
     db.from('vendors').select('id, kyc_status', { count: 'exact', head: false }),
-    db.from('bookings').select('id, status, service_price_kobo', { count: 'exact', head: false }),
+    db.from('bookings').select('id, status, total_amount', { count: 'exact', head: false }),
     db.from('disputes').select('id, status', { count: 'exact', head: false }),
   ]);
 
@@ -50,7 +50,7 @@ async function getStats() {
   // VARS revenue = 20% of completed booking values
   const completedRevKobo = bookingData
     .filter((b) => b.status === BOOKING_STATUS.COMPLETED)
-    .reduce((s: number, b: any) => s + (b.service_price_kobo ?? 0), 0);
+    .reduce((s: number, b: any) => s + (b.total_amount ?? 0), 0);
   const varsRevenueKobo = Math.round(completedRevKobo * 0.2);
 
   return {

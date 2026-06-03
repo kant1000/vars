@@ -11,6 +11,7 @@ import { router } from 'expo-router';
 import { Colors } from '@/constants/colors';
 import { StarFilledIcon } from '@/components/icons';
 import { usePostHog, EVENTS } from '@/lib/analytics';
+import { CATEGORY_L1_LABELS } from '@vars/shared';
 
 export interface VendorCardData {
   id: string;
@@ -83,7 +84,7 @@ export function VendorCard({ vendor, returnTo }: Props) {
         <View style={styles.metaRow}>
           {vendor.category_names.length > 0 && (
             <Text style={styles.category} numberOfLines={1}>
-              {vendor.category_names.join(' · ')}
+              {vendor.category_names.map((n) => CATEGORY_L1_LABELS[n] ?? n).join(' · ')}
             </Text>
           )}
           <View style={styles.ratingRow}>

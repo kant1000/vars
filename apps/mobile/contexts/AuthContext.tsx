@@ -9,7 +9,7 @@ interface Profile {
   phone_number: string | null;
   email: string | null;
   profile_photo_url: string | null;
-  last_tab: 'barbing' | 'hair_styling' | 'makeovers';
+  last_tab: 'hair' | 'barber' | 'face' | 'nails';
   push_token: string | null;
 }
 
