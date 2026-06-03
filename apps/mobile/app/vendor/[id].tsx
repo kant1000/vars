@@ -56,11 +56,11 @@ interface VendorProfile {
   profile_image_url: string | null;
   avg_rating: number;
   total_reviews: number;
-  is_online: boolean;
   base_location_text: string | null;
   badge_vars_choice: boolean;
   badge_top_rated: boolean;
   pioneer: boolean;
+  avg_response_minutes: number | null;
   services: VendorService[];
   portfolio: PortfolioPhoto[];
   reviews: Review[];
@@ -88,6 +88,13 @@ function StarRow({ rating, size = 14 }: { rating: number; size?: number }) {
       ))}
     </View>
   );
+}
+
+function formatAcceptTime(mins: number | null): string {
+  if (!mins || mins >= 60) return 'Usually accepts within 1 hour';
+  if (mins <= 15) return 'Typically accepts in under 15 min';
+  if (mins <= 30) return 'Typically accepts in under 30 min';
+  return 'Typically accepts within 1 hour';
 }
 
 function Badge({ label, color }: { label: string; color: string }) {
@@ -119,7 +126,7 @@ export default function VendorProfileScreen() {
 
     const [vendorRes, servicesRes, portfolioRes, reviewsRes, favRes] = await Promise.all([
       supabase.from('vendors')
-        .select('id, full_name, bio, profile_image_url, avg_rating, total_reviews, is_online, base_location_text, badge_vars_choice, badge_top_rated, pioneer')
+        .select('id, full_name, bio, profile_image_url, avg_rating, total_reviews, base_location_text, badge_vars_choice, badge_top_rated, pioneer, avg_response_minutes')
         .eq('id', id)
         .single(),
 
@@ -177,7 +184,7 @@ export default function VendorProfileScreen() {
       reviewer_name: r.profiles?.full_name ?? 'Customer',
     }));
 
-    setVendor({ ...v, services, portfolio, reviews, is_favourited: !!favRes.data });
+    setVendor({ ...v, avg_response_minutes: v.avg_response_minutes ?? null, services, portfolio, reviews, is_favourited: !!favRes.data });
     setLoading(false);
   }, [id, user]);
 
@@ -277,7 +284,6 @@ export default function VendorProfileScreen() {
                 <Text style={styles.avatarInitial}>{vendor.full_name?.[0]?.toUpperCase()}</Text>
               </View>
             )}
-            {vendor.is_online && <View style={styles.onlineDot} />}
           </View>
 
           <View style={styles.profileInfo}>
@@ -300,6 +306,7 @@ export default function VendorProfileScreen() {
               <Badge label="Verified" color={Colors.badgeVerified} />
             </View>
             {vendor.bio ? <Text style={styles.bio} numberOfLines={3}>{vendor.bio}</Text> : null}
+            <Text style={styles.responseTime}>{formatAcceptTime(vendor.avg_response_minutes)}</Text>
           </View>
         </View>
 
@@ -485,16 +492,10 @@ const styles = StyleSheet.create({
     gap: 14,
     backgroundColor: Colors.background,
   },
-  avatarWrap: { position: 'relative' },
+  avatarWrap: {},
   avatar: { width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2 },
   avatarFallback: { backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
   avatarInitial: { fontSize: 28, fontWeight: '800', color: Colors.primary },
-  onlineDot: {
-    position: 'absolute', bottom: 2, right: 2,
-    width: 12, height: 12, borderRadius: 6,
-    backgroundColor: Colors.success,
-    borderWidth: 2, borderColor: Colors.background,
-  },
   profileInfo: { flex: 1, paddingTop: 2 },
   name: { fontSize: 20, fontWeight: '800', color: Colors.text, marginBottom: 4 },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginBottom: 6 },
@@ -506,6 +507,7 @@ const styles = StyleSheet.create({
   badge: { borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
   badgeText: { fontSize: 10, fontWeight: '700' },
   bio: { fontSize: 13, color: Colors.textSecondary, lineHeight: 19 },
+  responseTime: { fontSize: 12, color: Colors.textMuted, marginTop: 4 },
 
   // Carousel
   carouselEmpty: { height: 0 },

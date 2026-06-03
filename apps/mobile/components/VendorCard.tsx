@@ -66,8 +66,6 @@ export function VendorCard({ vendor, returnTo }: Props) {
             </Text>
           </View>
         )}
-        {/* Online dot */}
-        {vendor.is_online && <View style={styles.onlineDot} />}
       </View>
 
       {/* Info */}
@@ -137,16 +135,10 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.border,
     marginHorizontal: 16, marginBottom: 12,
   },
-  avatarWrap: { position: 'relative' },
+  avatarWrap: {},
   avatar: { width: 68, height: 68, borderRadius: 34 },
   avatarFallback: { backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
   avatarInitial: { fontSize: 24, fontWeight: '700', color: Colors.primary },
-  onlineDot: {
-    position: 'absolute', bottom: 2, right: 2,
-    width: 12, height: 12, borderRadius: 6,
-    backgroundColor: Colors.success,
-    borderWidth: 2, borderColor: Colors.background,
-  },
   info: { flex: 1, gap: 4 },
   nameRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   name: { fontSize: 16, fontWeight: '700', color: Colors.text, flex: 1, marginRight: 6 },

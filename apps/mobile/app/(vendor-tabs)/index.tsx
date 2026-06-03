@@ -11,9 +11,10 @@
 // ============================================================
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Alert, Modal, RefreshControl,
+  Alert, Linking, Modal, RefreshControl,
   ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -594,6 +595,7 @@ export default function VendorJobsScreen() {
   const [isPioneer, setIsPioneer] = useState(false);
   const [togglingOnline, setTogglingOnline] = useState(false);
   const [toggleError, setToggleError] = useState<string | null>(null);
+  const [blockReason, setBlockReason] = useState<'kyc' | 'no_services' | 'no_notifications' | null>(null);
   const [zoneModal, setZoneModal] = useState<ZoneStatus | null>(null);
   const [vendorPhotoCount, setVendorPhotoCount] = useState(0);
   const [bookingPhotoIds, setBookingPhotoIds] = useState<Set<string>>(new Set());
@@ -684,39 +686,72 @@ export default function VendorJobsScreen() {
     setRefreshing(false);
   }, []);
 
-  // Fetch vendor online status + zone confirmation check
-  useEffect(() => {
-    (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data } = await supabase
+  // Fetch vendor online status, zone confirmation check, and go-live prerequisites
+  const checkGoLive = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const [vendorRes, svcRes, notifPerms] = await Promise.all([
+      supabase
         .from('vendors')
-        .select('is_online, pioneer, pioneer_bookings_completed, auto_accept_enabled, auto_accept_zone_confirmed_date, auto_accept_zone_lat, auto_accept_zone_lng, auto_accept_zone_radius_km, auto_accept_paused_due_to_drift')
+        .select('is_online, kyc_status, pioneer, pioneer_bookings_completed, auto_accept_enabled, auto_accept_zone_confirmed_date, auto_accept_zone_lat, auto_accept_zone_lng, auto_accept_zone_radius_km, auto_accept_paused_due_to_drift')
         .eq('id', user.id)
-        .single();
-      if (data) {
-        setIsOnline(data.is_online);
-        setIsPioneer(data.pioneer === true && (data.pioneer_bookings_completed ?? 3) < 3);
-        // Show zone confirmation modal if auto-accept is on but not confirmed today
-        const today = new Date().toISOString().slice(0, 10);
-        const zoneConfigured = data.auto_accept_zone_lat != null;
-        const confirmedToday = data.auto_accept_zone_confirmed_date === today;
-        if (zoneConfigured && data.auto_accept_enabled && !confirmedToday) {
-          setZoneModal({
-            zone_configured: true,
-            auto_accept_enabled: true,
-            confirmed_today: false,
-            needs_confirmation: true,
-            zone: {
-              lat: data.auto_accept_zone_lat,
-              lng: data.auto_accept_zone_lng,
-              radius_km: data.auto_accept_zone_radius_km,
-            },
-          });
-        }
-      }
-    })();
-  }, []);
+        .single(),
+      supabase
+        .from('vendor_services')
+        .select('id', { count: 'exact', head: true })
+        .eq('vendor_id', user.id)
+        .eq('is_active', true),
+      Notifications.getPermissionsAsync(),
+    ]);
+
+    const data = vendorRes.data;
+    if (!data) return;
+
+    setIsOnline(data.is_online);
+    setIsPioneer(data.pioneer === true && (data.pioneer_bookings_completed ?? 3) < 3);
+
+    // Derive the single most relevant blocking reason
+    if (data.kyc_status !== 'verified') {
+      setBlockReason('kyc');
+    } else if ((svcRes.count ?? 0) === 0) {
+      setBlockReason('no_services');
+    } else if (notifPerms.status !== 'granted') {
+      setBlockReason('no_notifications');
+    } else {
+      setBlockReason(null);
+    }
+
+    // Show zone confirmation modal if auto-accept is on but not confirmed today
+    const today = new Date().toISOString().slice(0, 10);
+    const zoneConfigured = data.auto_accept_zone_lat != null;
+    const confirmedToday = data.auto_accept_zone_confirmed_date === today;
+    if (zoneConfigured && data.auto_accept_enabled && !confirmedToday) {
+      setZoneModal({
+        zone_configured: true,
+        auto_accept_enabled: true,
+        confirmed_today: false,
+        needs_confirmation: true,
+        zone: {
+          lat: data.auto_accept_zone_lat,
+          lng: data.auto_accept_zone_lng,
+          radius_km: data.auto_accept_zone_radius_km,
+        },
+      });
+    }
+  };
+
+  useEffect(() => { checkGoLive(); }, []);
+
+  // Re-check notification permission on focus (user may have changed it in Settings)
+  useFocusEffect(useCallback(() => {
+    Notifications.getPermissionsAsync().then(({ status }) => {
+      setBlockReason((prev) => {
+        if (prev !== 'no_notifications') return prev;
+        return status === 'granted' ? null : 'no_notifications';
+      });
+    });
+  }, []));
 
   // useFocusEffect handles both initial mount and return-from-navigation refreshes
   useFocusEffect(useCallback(() => { load(); }, [load]));
@@ -730,6 +765,9 @@ export default function VendorJobsScreen() {
   }, [load]);
 
   const toggleOnline = async () => {
+    // Block going online if prerequisites are not met
+    if (!isOnline && blockReason) return;
+
     setTogglingOnline(true);
     setToggleError(null);
     const { data: { user } } = await supabase.auth.getUser();
@@ -831,7 +869,7 @@ export default function VendorJobsScreen() {
         <Text style={c.headerTitle}>My Jobs</Text>
         <View style={{ alignItems: 'flex-end' }}>
           <TouchableOpacity
-            style={[c.onlineToggle, togglingOnline && c.btnDisabled]}
+            style={[c.onlineToggle, (togglingOnline || (!isOnline && !!blockReason)) && c.btnDisabled]}
             onPress={toggleOnline}
             disabled={togglingOnline}
           >
@@ -849,6 +887,22 @@ export default function VendorJobsScreen() {
           {toggleError && <Text style={c.inlineError}>{toggleError}</Text>}
         </View>
       </View>
+
+      {/* Go-live prerequisite banner — shows the single most relevant blocker */}
+      {!isOnline && blockReason && (
+        <View style={c.blockBanner}>
+          <Text style={c.blockBannerText}>
+            {blockReason === 'kyc' && 'Complete your identity check to go live.'}
+            {blockReason === 'no_services' && 'Add at least one service to your profile to go live.'}
+            {blockReason === 'no_notifications' && 'Turn on notifications to receive booking requests.'}
+          </Text>
+          {blockReason === 'no_notifications' && (
+            <TouchableOpacity onPress={() => Linking.openSettings()}>
+              <Text style={c.blockBannerLink}>Open Settings</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -1061,6 +1115,14 @@ const c = StyleSheet.create({
   addPhotoBtnText: { fontSize: 12, color: Colors.ink, fontWeight: '600' },
   photoSent: { fontSize: 12, color: Colors.textMuted, marginTop: 4 },
   photoFull: { fontSize: 12, color: Colors.textMuted, marginTop: 4, fontStyle: 'italic' },
+
+  blockBanner: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: Colors.primaryLight, paddingHorizontal: 16, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: Colors.border, gap: 8,
+  },
+  blockBannerText: { flex: 1, fontSize: 13, color: Colors.primary, fontWeight: '500', lineHeight: 18 },
+  blockBannerLink: { fontSize: 13, fontWeight: '700', color: Colors.primary, textDecorationLine: 'underline' },
 
   empty: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 40 },
   emptyTitle: { fontSize: 20, fontWeight: '700', color: Colors.text, marginBottom: 8 },
