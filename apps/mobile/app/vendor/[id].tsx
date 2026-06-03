@@ -1,16 +1,18 @@
 // ============================================================
 // VARS — Vendor Profile Screen
 // Route: /vendor/[id]
-// Sections: hero, badges, bio, services (selectable), portfolio, reviews
-// Service selection → sticky "Book for NGN X,XXX" → /booking/[vendorId]
+// Layout: compact profile row → portfolio carousel → sticky
+// tabs (Services | Reviews) — services visible by default.
+// Swipe left/right on content to switch tabs.
 // ============================================================
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Dimensions,
-  Pressable, ScrollView, StyleSheet, Text,
+  Dimensions, FlatList, PanResponder,
+  ScrollView, StyleSheet, Text,
   TouchableOpacity, View,
 } from 'react-native';
 import { Image } from 'expo-image';
+import ImageViewing from 'react-native-image-viewing';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,8 +22,8 @@ import { Colors } from '@/constants/colors';
 import { CATEGORY_L2_LABELS } from '@vars/shared';
 
 const { width: SCREEN_W } = Dimensions.get('window');
-const PORTFOLIO_COLS = 3;
-const PHOTO_SIZE = (SCREEN_W - 2) / PORTFOLIO_COLS;
+const CAROUSEL_H = 240;
+const AVATAR_SIZE = 72;
 
 // ── Types ──────────────────────────────────────────────────
 interface VendorService {
@@ -37,7 +39,6 @@ interface VendorService {
 interface PortfolioPhoto {
   id: string;
   storage_path: string;
-  consent_state: 'unverified' | 'approved';
 }
 
 interface Review {
@@ -89,6 +90,14 @@ function StarRow({ rating, size = 14 }: { rating: number; size?: number }) {
   );
 }
 
+function Badge({ label, color }: { label: string; color: string }) {
+  return (
+    <View style={[styles.badge, { backgroundColor: color + '1A' }]}>
+      <Text style={[styles.badgeText, { color }]}>{label}</Text>
+    </View>
+  );
+}
+
 // ── Main component ───────────────────────────────────────────
 export default function VendorProfileScreen() {
   const { id, returnTo } = useLocalSearchParams<{ id: string; returnTo?: string }>();
@@ -97,9 +106,12 @@ export default function VendorProfileScreen() {
 
   const [vendor, setVendor] = useState<VendorProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'services' | 'portfolio' | 'reviews'>('services');
+  const [activeTab, setActiveTab] = useState<'services' | 'reviews'>('services');
   const [togglingFav, setTogglingFav] = useState(false);
   const [selectedServiceIds, setSelectedServiceIds] = useState<Set<string>>(new Set());
+  const [carouselIndex, setCarouselIndex] = useState(0);
+  const [lightboxVisible, setLightboxVisible] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -118,9 +130,9 @@ export default function VendorProfileScreen() {
         .order('sort_order', { ascending: true }),
 
       supabase.from('portfolio_photos')
-        .select('id, storage_path, consent_state')
+        .select('id, storage_path')
         .eq('vendor_id', id)
-        .in('consent_state', ['unverified', 'approved'])
+        .eq('consent_state', 'approved')
         .order('created_at', { ascending: false })
         .limit(30),
 
@@ -140,7 +152,6 @@ export default function VendorProfileScreen() {
     ]);
 
     if (vendorRes.error || !vendorRes.data) { setLoading(false); return; }
-
     const v = vendorRes.data as any;
 
     const services: VendorService[] = (servicesRes.data ?? []).map((vs: any) => ({
@@ -156,7 +167,6 @@ export default function VendorProfileScreen() {
     const portfolio: PortfolioPhoto[] = (portfolioRes.data ?? []).map((p: any) => ({
       id: p.id,
       storage_path: p.storage_path,
-      consent_state: p.consent_state,
     }));
 
     const reviews: Review[] = (reviewsRes.data ?? []).map((r: any) => ({
@@ -167,13 +177,7 @@ export default function VendorProfileScreen() {
       reviewer_name: r.profiles?.full_name ?? 'Customer',
     }));
 
-    setVendor({
-      ...v,
-      services,
-      portfolio,
-      reviews,
-      is_favourited: !!favRes.data,
-    });
+    setVendor({ ...v, services, portfolio, reviews, is_favourited: !!favRes.data });
     setLoading(false);
   }, [id, user]);
 
@@ -182,11 +186,7 @@ export default function VendorProfileScreen() {
   const toggleService = (serviceId: string) => {
     setSelectedServiceIds((prev) => {
       const next = new Set(prev);
-      if (next.has(serviceId)) {
-        next.delete(serviceId);
-      } else {
-        next.add(serviceId);
-      }
+      if (next.has(serviceId)) next.delete(serviceId); else next.add(serviceId);
       return next;
     });
   };
@@ -203,8 +203,17 @@ export default function VendorProfileScreen() {
     setTogglingFav(false);
   };
 
-  const selectedServices = vendor?.services.filter((s) => selectedServiceIds.has(s.id)) ?? [];
-  const totalKobo = selectedServices.reduce((sum, s) => sum + s.price_kobo, 0);
+  // Horizontal swipe on content area switches tabs
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gs) =>
+        Math.abs(gs.dx) > Math.abs(gs.dy) && Math.abs(gs.dx) > 25,
+      onPanResponderRelease: (_, gs) => {
+        if (gs.dx < -60) setActiveTab('reviews');
+        if (gs.dx > 60) setActiveTab('services');
+      },
+    })
+  ).current;
 
   if (loading) {
     return (
@@ -225,73 +234,117 @@ export default function VendorProfileScreen() {
     );
   }
 
+  const carouselUris: string[] = vendor.portfolio.map((p) => {
+    const { data } = supabase.storage.from('portfolio').getPublicUrl(p.storage_path);
+    return data.publicUrl;
+  });
+
+  const selectedServices = vendor.services.filter((s) => selectedServiceIds.has(s.id));
+  const totalKobo = selectedServices.reduce((sum, s) => sum + s.price_kobo, 0);
+
   return (
     <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false} stickyHeaderIndices={[1]}>
 
-        {/* ── Hero ── */}
-        <View style={styles.hero}>
-          {vendor.profile_image_url ? (
-            <Image source={{ uri: vendor.profile_image_url }} style={styles.heroImage} contentFit="cover" cachePolicy="memory-disk" />
-          ) : (
-            <View style={[styles.heroImage, styles.heroFallback]}>
-              <Text style={styles.heroInitial}>{vendor.full_name?.[0]?.toUpperCase()}</Text>
-            </View>
-          )}
+      {/* Floating nav buttons — always visible above scroll */}
+      <TouchableOpacity
+        style={[styles.backBtn, { top: insets.top + 8 }]}
+        onPress={() => returnTo ? router.replace(returnTo as any) : router.back()}
+      >
+        <Text style={styles.backBtnText}>‹</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.favBtn, { top: insets.top + 8 }]}
+        onPress={toggleFavourite}
+        disabled={togglingFav}
+      >
+        <Text style={styles.favBtnText}>{vendor.is_favourited ? '♥' : '♡'}</Text>
+      </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.backBtn, { top: insets.top + 12 }]}
-            onPress={() => returnTo ? router.replace(returnTo as any) : router.back()}
-          >
-            <Text style={styles.backBtnText}>‹</Text>
-          </TouchableOpacity>
+      <ScrollView showsVerticalScrollIndicator={false} stickyHeaderIndices={[2]}>
 
-          <TouchableOpacity
-            style={[styles.favBtn, { top: insets.top + 12 }]}
-            onPress={toggleFavourite}
-            disabled={togglingFav}
-          >
-            <Text style={styles.favBtnText}>{vendor.is_favourited ? '♥' : '♡'}</Text>
-          </TouchableOpacity>
+        {/* ── [0] Profile row ── */}
+        <View style={[styles.profileRow, { paddingTop: insets.top + 52 }]}>
+          <View style={styles.avatarWrap}>
+            {vendor.profile_image_url ? (
+              <Image
+                source={{ uri: vendor.profile_image_url }}
+                style={styles.avatar}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+              />
+            ) : (
+              <View style={[styles.avatar, styles.avatarFallback]}>
+                <Text style={styles.avatarInitial}>{vendor.full_name?.[0]?.toUpperCase()}</Text>
+              </View>
+            )}
+            {vendor.is_online && <View style={styles.onlineDot} />}
+          </View>
 
-          {vendor.is_online && (
-            <View style={styles.onlinePill}>
-              <View style={styles.onlineDot} />
-              <Text style={styles.onlinePillText}>Available now</Text>
-            </View>
-          )}
-        </View>
-
-        {/* ── Name / rating (sticky) ── */}
-        <View style={styles.nameCard}>
-          <View style={styles.nameRow}>
+          <View style={styles.profileInfo}>
             <Text style={styles.name} numberOfLines={1}>{vendor.full_name}</Text>
             <View style={styles.ratingRow}>
               {vendor.total_reviews === 0 ? (
                 <Text style={styles.newOnVars}>New on VARS</Text>
               ) : (
                 <>
-                  <Text style={styles.star}>★</Text>
+                  <Text style={styles.starText}>★</Text>
                   <Text style={styles.ratingText}>{vendor.avg_rating.toFixed(1)}</Text>
                   <Text style={styles.reviewCount}>({vendor.total_reviews})</Text>
                 </>
               )}
             </View>
+            <View style={styles.badgeRow}>
+              {vendor.pioneer && <Badge label="★ Pioneer" color={Colors.badgePioneer} />}
+              {vendor.badge_vars_choice && <Badge label="VARS Choice" color={Colors.badgeVarsChoice} />}
+              {vendor.badge_top_rated && <Badge label="Top Rated" color={Colors.badgeTopRated} />}
+              <Badge label="Verified" color={Colors.badgeVerified} />
+            </View>
+            {vendor.bio ? <Text style={styles.bio} numberOfLines={3}>{vendor.bio}</Text> : null}
           </View>
-
-          <View style={styles.badgeRow}>
-            {vendor.pioneer && <Badge label="★ Pioneer" color={Colors.badgePioneer} />}
-            {vendor.badge_vars_choice && <Badge label="VARS Choice" color={Colors.badgeVarsChoice} />}
-            {vendor.badge_top_rated && <Badge label="Top Rated" color={Colors.badgeTopRated} />}
-            <Badge label="Verified" color={Colors.badgeVerified} />
-          </View>
-
-          {vendor.bio ? <Text style={styles.bio}>{vendor.bio}</Text> : null}
         </View>
 
-        {/* ── Section tabs ── */}
+        {/* ── [1] Portfolio carousel ── */}
+        <View style={carouselUris.length === 0 ? styles.carouselEmpty : undefined}>
+          {carouselUris.length > 0 && (
+            <>
+              <FlatList
+                data={carouselUris}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(_, i) => String(i)}
+                onMomentumScrollEnd={(e) => {
+                  const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_W);
+                  setCarouselIndex(idx);
+                }}
+                renderItem={({ item, index }) => (
+                  <TouchableOpacity
+                    activeOpacity={0.95}
+                    onPress={() => { setLightboxIndex(index); setLightboxVisible(true); }}
+                  >
+                    <Image
+                      source={{ uri: item }}
+                      style={{ width: SCREEN_W, height: CAROUSEL_H }}
+                      contentFit="cover"
+                      cachePolicy="memory-disk"
+                    />
+                  </TouchableOpacity>
+                )}
+              />
+              {carouselUris.length > 1 && (
+                <View style={styles.dotsRow}>
+                  {carouselUris.map((_, i) => (
+                    <View key={i} style={[styles.dot, i === carouselIndex && styles.dotActive]} />
+                  ))}
+                </View>
+              )}
+            </>
+          )}
+        </View>
+
+        {/* ── [2] Tab row (sticky) ── */}
         <View style={styles.tabRow}>
-          {(['services', 'portfolio', 'reviews'] as const).map((t) => (
+          {(['services', 'reviews'] as const).map((t) => (
             <TouchableOpacity
               key={t}
               style={[styles.sectionTab, activeTab === t && styles.sectionTabActive]}
@@ -304,94 +357,71 @@ export default function VendorProfileScreen() {
           ))}
         </View>
 
-        {/* ── Services (selectable) ── */}
-        {activeTab === 'services' && (
-          <View style={styles.section}>
-            {vendor.services.length === 0 ? (
-              <Text style={styles.emptyText}>No services listed yet.</Text>
-            ) : (
-              vendor.services.map((svc) => {
-                const selected = selectedServiceIds.has(svc.id);
-                const l2Label = CATEGORY_L2_LABELS[svc.category_l2] ?? svc.category_l2;
-                return (
-                  <TouchableOpacity
-                    key={svc.id}
-                    style={[styles.serviceCard, selected && styles.serviceCardSelected]}
-                    onPress={() => toggleService(svc.id)}
-                    activeOpacity={0.8}
-                  >
-                    <View style={styles.serviceCardLeft}>
-                      <Text style={styles.serviceL2}>{l2Label}</Text>
-                      <Text style={styles.serviceName}>{svc.service_name}</Text>
-                      {svc.description ? (
-                        <Text style={styles.serviceDesc} numberOfLines={2}>{svc.description}</Text>
-                      ) : null}
-                      <Text style={styles.serviceDuration}>{formatDuration(svc.duration_blocks)}</Text>
-                    </View>
-                    <View style={styles.serviceCardRight}>
-                      <Text style={styles.servicePrice}>{formatPrice(svc.price_kobo)}</Text>
-                      <View style={[styles.checkbox, selected && styles.checkboxSelected]}>
-                        {selected && <Text style={styles.checkmark}>✓</Text>}
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })
-            )}
-          </View>
-        )}
+        {/* ── [3] Content (swipe left/right to switch tabs) ── */}
+        <View {...panResponder.panHandlers}>
 
-        {/* ── Portfolio ── */}
-        {activeTab === 'portfolio' && (
-          <View style={styles.portfolioGrid}>
-            {vendor.portfolio.length === 0 ? (
-              <Text style={[styles.emptyText, { margin: 20 }]}>No portfolio photos yet.</Text>
-            ) : (
-              vendor.portfolio.map((photo) => {
-                const { data: { publicUrl } } = supabase.storage
-                  .from('portfolio')
-                  .getPublicUrl(photo.storage_path);
-                return (
-                  <View key={photo.id} style={{ width: PHOTO_SIZE, height: PHOTO_SIZE }}>
-                    <Image source={{ uri: publicUrl }} style={{ width: '100%', height: '100%' }} contentFit="cover" cachePolicy="memory-disk" />
-                    {photo.consent_state === 'unverified' && (
-                      <View style={styles.unverifiedBadge}>
-                        <Text style={styles.unverifiedText}>Unverified</Text>
+          {activeTab === 'services' && (
+            <View style={styles.section}>
+              {vendor.services.length === 0 ? (
+                <Text style={styles.emptyText}>No services listed yet.</Text>
+              ) : (
+                vendor.services.map((svc) => {
+                  const selected = selectedServiceIds.has(svc.id);
+                  const l2Label = CATEGORY_L2_LABELS[svc.category_l2] ?? svc.category_l2;
+                  return (
+                    <TouchableOpacity
+                      key={svc.id}
+                      style={[styles.serviceCard, selected && styles.serviceCardSelected]}
+                      onPress={() => toggleService(svc.id)}
+                      activeOpacity={0.8}
+                    >
+                      <View style={styles.serviceCardLeft}>
+                        <Text style={styles.serviceL2}>{l2Label}</Text>
+                        <Text style={styles.serviceName}>{svc.service_name}</Text>
+                        {svc.description ? (
+                          <Text style={styles.serviceDesc} numberOfLines={2}>{svc.description}</Text>
+                        ) : null}
+                        <Text style={styles.serviceDuration}>{formatDuration(svc.duration_blocks)}</Text>
                       </View>
-                    )}
-                  </View>
-                );
-              })
-            )}
-          </View>
-        )}
+                      <View style={styles.serviceCardRight}>
+                        <Text style={styles.servicePrice}>{formatPrice(svc.price_kobo)}</Text>
+                        <View style={[styles.checkbox, selected && styles.checkboxSelected]}>
+                          {selected && <Text style={styles.checkmark}>✓</Text>}
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+            </View>
+          )}
 
-        {/* ── Reviews ── */}
-        {activeTab === 'reviews' && (
-          <View style={styles.section}>
-            {vendor.reviews.length === 0 ? (
-              <Text style={styles.emptyText}>No reviews yet.</Text>
-            ) : (
-              vendor.reviews.map((rev) => (
-                <View key={rev.id} style={styles.reviewCard}>
-                  <View style={styles.reviewHeader}>
-                    <Text style={styles.reviewerName}>{rev.reviewer_name}</Text>
-                    <StarRow rating={rev.rating} />
+          {activeTab === 'reviews' && (
+            <View style={styles.section}>
+              {vendor.reviews.length === 0 ? (
+                <Text style={styles.emptyText}>No reviews yet.</Text>
+              ) : (
+                vendor.reviews.map((rev) => (
+                  <View key={rev.id} style={styles.reviewCard}>
+                    <View style={styles.reviewHeader}>
+                      <Text style={styles.reviewerName}>{rev.reviewer_name}</Text>
+                      <StarRow rating={rev.rating} />
+                    </View>
+                    {rev.comment ? <Text style={styles.reviewComment}>{rev.comment}</Text> : null}
+                    <Text style={styles.reviewDate}>
+                      {new Date(rev.created_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </Text>
                   </View>
-                  {rev.comment ? <Text style={styles.reviewComment}>{rev.comment}</Text> : null}
-                  <Text style={styles.reviewDate}>
-                    {new Date(rev.created_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}
-                  </Text>
-                </View>
-              ))
-            )}
-          </View>
-        )}
+                ))
+              )}
+            </View>
+          )}
+        </View>
 
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* ── Sticky CTA: appears once services are selected ── */}
+      {/* ── Sticky CTA ── */}
       {selectedServiceIds.size > 0 && (
         <View style={[styles.ctaWrap, { paddingBottom: insets.bottom + 12 }]}>
           <TouchableOpacity
@@ -412,14 +442,14 @@ export default function VendorProfileScreen() {
           </TouchableOpacity>
         </View>
       )}
-    </View>
-  );
-}
 
-function Badge({ label, color }: { label: string; color: string }) {
-  return (
-    <View style={[styles.badge, { backgroundColor: color + '1A' }]}>
-      <Text style={[styles.badgeText, { color }]}>{label}</Text>
+      {/* ── Lightbox ── */}
+      <ImageViewing
+        images={carouselUris.map((uri) => ({ uri }))}
+        imageIndex={lightboxIndex}
+        visible={lightboxVisible}
+        onRequestClose={() => setLightboxVisible(false)}
+      />
     </View>
   );
 }
@@ -430,46 +460,63 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 16, color: Colors.text, marginBottom: 12 },
   backLink: { fontSize: 15, color: Colors.primary, fontWeight: '600' },
 
-  hero: { width: SCREEN_W, height: SCREEN_W * 0.75, position: 'relative' },
-  heroImage: { width: '100%', height: '100%' },
-  heroFallback: { backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
-  heroInitial: { fontSize: 72, fontWeight: '800', color: Colors.primary },
+  // Floating nav buttons
   backBtn: {
-    position: 'absolute', left: 16,
+    position: 'absolute', left: 16, zIndex: 10,
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: 'rgba(0,0,0,0.35)',
     alignItems: 'center', justifyContent: 'center',
   },
   backBtnText: { color: '#FFF', fontSize: 26, lineHeight: 30, marginTop: -2 },
   favBtn: {
-    position: 'absolute', right: 16,
+    position: 'absolute', right: 16, zIndex: 10,
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: 'rgba(0,0,0,0.35)',
     alignItems: 'center', justifyContent: 'center',
   },
   favBtnText: { color: '#FFF', fontSize: 20 },
-  onlinePill: {
-    position: 'absolute', bottom: 12, left: 12,
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 20,
-    paddingHorizontal: 10, paddingVertical: 5,
+
+  // Profile row
+  profileRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 14,
+    backgroundColor: Colors.background,
   },
-  onlineDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.success },
-  onlinePillText: { color: '#FFF', fontSize: 12, fontWeight: '600' },
+  avatarWrap: { position: 'relative' },
+  avatar: { width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2 },
+  avatarFallback: { backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
+  avatarInitial: { fontSize: 28, fontWeight: '800', color: Colors.primary },
+  onlineDot: {
+    position: 'absolute', bottom: 2, right: 2,
+    width: 12, height: 12, borderRadius: 6,
+    backgroundColor: Colors.success,
+    borderWidth: 2, borderColor: Colors.background,
+  },
+  profileInfo: { flex: 1, paddingTop: 2 },
+  name: { fontSize: 20, fontWeight: '800', color: Colors.text, marginBottom: 4 },
+  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginBottom: 6 },
+  starText: { color: Colors.star, fontSize: 13 },
+  ratingText: { fontSize: 13, fontWeight: '700', color: Colors.text },
+  reviewCount: { fontSize: 12, color: Colors.textMuted },
+  newOnVars: { fontSize: 12, fontWeight: '600', color: Colors.badgeNew },
+  badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginBottom: 6 },
+  badge: { borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
+  badgeText: { fontSize: 10, fontWeight: '700' },
+  bio: { fontSize: 13, color: Colors.textSecondary, lineHeight: 19 },
 
-  nameCard: { backgroundColor: Colors.background, paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.border },
-  nameRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  name: { fontSize: 22, fontWeight: '800', color: Colors.text, flex: 1, marginRight: 8 },
-  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  star: { color: Colors.star, fontSize: 14 },
-  ratingText: { fontSize: 14, fontWeight: '700', color: Colors.text },
-  reviewCount: { fontSize: 13, color: Colors.textMuted },
-  newOnVars: { fontSize: 13, fontWeight: '600', color: Colors.badgeNew },
-  badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
-  badge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
-  badgeText: { fontSize: 11, fontWeight: '700' },
-  bio: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20 },
+  // Carousel
+  carouselEmpty: { height: 0 },
+  dotsRow: {
+    flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
+    gap: 6, paddingVertical: 10, backgroundColor: Colors.background,
+  },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.border },
+  dotActive: { width: 18, backgroundColor: Colors.primary },
 
+  // Tabs
   tabRow: {
     flexDirection: 'row', backgroundColor: Colors.background,
     borderBottomWidth: 1, borderBottomColor: Colors.border,
@@ -481,7 +528,7 @@ const styles = StyleSheet.create({
 
   section: { paddingHorizontal: 16, paddingTop: 8 },
 
-  // Selectable service card
+  // Service card
   serviceCard: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
     paddingVertical: 14, paddingHorizontal: 12,
@@ -508,14 +555,7 @@ const styles = StyleSheet.create({
   checkboxSelected: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   checkmark: { color: '#FFF', fontSize: 13, fontWeight: '800' },
 
-  portfolioGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 1 },
-  unverifiedBadge: {
-    position: 'absolute', bottom: 4, left: 4,
-    backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 4,
-    paddingHorizontal: 5, paddingVertical: 2,
-  },
-  unverifiedText: { color: '#FFF', fontSize: 9, fontWeight: '700', letterSpacing: 0.3 },
-
+  // Reviews
   reviewCard: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.border },
   reviewHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   reviewerName: { fontSize: 14, fontWeight: '700', color: Colors.text },
@@ -524,6 +564,7 @@ const styles = StyleSheet.create({
 
   emptyText: { fontSize: 14, color: Colors.textMuted, paddingVertical: 20, textAlign: 'center' },
 
+  // CTA
   ctaWrap: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
     backgroundColor: Colors.background,
