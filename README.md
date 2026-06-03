@@ -98,8 +98,8 @@ vars/
 
 ### For Customers
 
-- **Discovery** — browse vendors by L1 category (Hair / Barber / Face / Nails); filter by distance from their current location using PostGIS; client-side L1 filter applied after RPC returns all nearby vendors
-- **Vendor profile** — service cards (L2 subcategory label, name, description, price, duration) with multi-select checkboxes; sticky "Book for ₦X,XXX" CTA appears once at least one service is selected
+- **Discovery** — browse vendors by L1 category (Hair / Barber / Face / Nails); filter by distance from their current location using PostGIS; client-side L1 filter applied after RPC returns all nearby vendors; only `is_online = TRUE` vendors are returned — offline vendors are invisible to customers
+- **Vendor profile** — compact side-by-side header (72px avatar + name / rating / badges / bio / "Typically accepts in X"); portfolio photo carousel underneath (approved photos only, tap to expand via lightbox); sticky Services | Reviews tab row; Services visible by default; swipe left/right on content to switch tabs; sticky "Book for ₦X,XXX" CTA once at least one service is selected
 - **Booking flow** — 2-step: schedule (date & time) → review access details + pay
   - Service selection happens on the vendor profile screen before entering the booking flow
   - Review step: customer enters building name, floor, flat number, gate code; all inputs are silently filtered (no `@` signs, no sequences of 7+ digits)
@@ -115,6 +115,7 @@ vars/
 
 - **Onboarding** — multi-step: profile → services (free-name, L1/L2 taxonomy, price + duration) → portfolio → KYC (Youverify) → instant activation on clean pass
 - **Jobs dashboard** — incoming requests with 1-hour accept window; active jobs with flow buttons (On My Way → Arrived → Service Rendered); cancel button for accepted/in-progress bookings; history
+- **Online / offline toggle** — going online makes the vendor visible in the customer discovery feed; offline means invisible. Three prerequisites must all be met before a vendor can go online: KYC verified, at least one active service, and device notifications granted. The most relevant unmet condition is shown as a banner. If any condition fails while the vendor is online (checked every 2 minutes and on every screen focus return), the vendor is automatically taken offline and the DB is updated. Customers never see online/offline status — only "Typically accepts in X" on the vendor profile.
 - **Schedule management** — Calendar/List toggle (persisted); calendar shows 14-day grid with booked slot overlays (client name, service, status dot); list view shows all upcoming bookings; tapping any booking opens a detail bottom sheet
   - Bottom sheet: customer location map thumbnail, access details (revealed 15 min before appointment), accept/decline/on-way/arrived/service-rendered action buttons
   - Auto-accept grace banner: amber countdown + "Cancel penalty-free" button for auto-accepted bookings within the 5-minute window
@@ -177,6 +178,7 @@ Twenty migration files build up the schema incrementally:
 | `20260531000001_vendor_trust_layer` | Adds `profile_image_url`, `profile_image_raw_url`, `profile_image_locked` to `vendors`; tightens `vendors_update_own` RLS to block client writes on those columns; creates `vendor-identity-images` storage bucket; updates `get_nearby_vendors` to return `profile_image_url` |
 | `20260531000002_transport_surcharge` | Adds `transport_fee_kobo`, `distance_km`, `pre_transport_buffer_slots` to `bookings`; recreates `bookings_user_update` and `bookings_vendor_update` RLS policies with correlated-subquery guards to block client JWT writes on those three columns |
 | `20260603000001_service_taxonomy_v2` | Drops `service_categories`, `services`, and old `vendor_services`; creates `category_l1_enum` (hair/barber/face/nails) and `category_l2_enum` (16 subcategories); recreates `vendor_services` as free-name (name, description, `price_kobo`, `duration_blocks`, `category_l1`, `category_l2`, `sort_order`, max 10 per vendor enforced by trigger); creates `booking_services` join table (snapshots service name + price per service; INSERT restricted to service role); adds `service_summary TEXT` and `total_amount INTEGER` to bookings; compat mirrors (`service_name`, `service_price_kobo`, `service_duration_blocks`) retained on bookings for untouched paystack functions; fixes `profiles.last_tab` CHECK constraint to new L1 values; rewrites `get_nearby_vendors` to aggregate L1 names, keeps `category_slug` param (ignored) for safe rollout |
+| `20260603000002_online_visibility_and_response_time` | Adds `avg_response_minutes INT` to `vendors` — exponential moving average (80/20) of manual booking acceptance time, updated by trigger on `pending → accepted` (auto-accepted bookings excluded); adds `trg_vendor_response_time` trigger; updates `get_nearby_vendors` to filter `is_online = TRUE` so offline vendors never appear in customer discovery, and sorts by distance only |
 
 ### Key Tables
 
@@ -445,13 +447,15 @@ All loading states across the app use a custom `ScissorsLoader` component (`apps
 
 ### VendorPriceInput
 
-`components/VendorPriceInput.tsx` is a reusable price input for vendor-facing screens that shows a live earnings preview as the vendor types.
+`components/VendorPriceInput.tsx` is a reusable price selector for vendor-facing screens that opens a bottom-sheet scroll picker and shows a live earnings preview.
 
-- Renders a `₦` prefix + numeric `TextInput`, with a read-only preview line beneath it
-- Preview is hidden when the field is empty or zero; updates on every keystroke
+- Tapping the row opens a `BottomSheetModal` with a native `Picker` wheel (₦10,000–₦999,000 in ₦1,000 steps; 990 items)
+- Row displays "Set price" placeholder or the formatted selected price; a `›` chevron signals it is tappable
+- Picker always starts at ₦10,000 (MIN_SERVICE_PRICE_KOBO) if no value is set
+- Preview is hidden when no value is set; updates on confirm
 - Pioneer window: if `vendor.pioneer === true` and `vendor.pioneer_bookings_completed < 3`, preview shows 100% (`"You keep 100% — Pioneer booking · ₦X,XXX"`); otherwise shows 80% (`"You'll receive: ₦X,XXX"`)
-- Pioneer data is passed as props — no per-keystroke fetch
-- Used in: vendor onboarding step 2, vendor-services/add (post-onboarding service management)
+- Same `value`/`onChangeText` string interface as the old TextInput — call sites unchanged
+- Used in: vendor onboarding step 2, vendor-services/add (post-onboarding service management); both screens show a travel cost hint below the component
 
 ---
 

@@ -183,6 +183,7 @@ CREATE INDEX idx_booking_services_booking_id ON booking_services(booking_id);
 -- pg_constraint so this is safe regardless of the auto-generated name.
 -- ============================================================
 
+-- Drop old constraint FIRST so the UPDATE below is not blocked by it
 DO $$
 DECLARE
   v_constraint_name TEXT;
@@ -198,6 +199,15 @@ BEGIN
   END IF;
 END;
 $$;
+
+-- Migrate old category values to new L1 taxonomy
+UPDATE profiles SET last_tab = CASE
+  WHEN last_tab = 'barbing'       THEN 'barber'
+  WHEN last_tab = 'hair_styling'  THEN 'hair'
+  WHEN last_tab = 'makeovers'     THEN 'face'
+  ELSE 'hair'
+END
+WHERE last_tab IS NULL OR last_tab NOT IN ('hair', 'barber', 'face', 'nails');
 
 ALTER TABLE profiles
   ADD CONSTRAINT profiles_last_tab_check
