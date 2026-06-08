@@ -286,6 +286,15 @@ async function handleChargeSuccess(
       scheduledStr,
       totalDurationBlocks
     );
+    if (preBufferSlots > 0) {
+      await createPreTransportBuffers(
+        supabase,
+        vendor_id as string,
+        booking.id,
+        scheduledStr,
+        preBufferSlots
+      );
+    }
   }
 
   // ── Fetch vendor and user for notifications ─────────────────
