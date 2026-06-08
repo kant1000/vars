@@ -98,7 +98,7 @@ vars/
 
 ### For Customers
 
-- **Discovery** — browse vendors by L1 category (Hair / Barber / Face / Nails); filter by distance from their current location using PostGIS; client-side L1 filter applied after RPC returns all nearby vendors; only `is_online = TRUE` vendors are returned — offline vendors are invisible to customers
+- **Discovery** — single `get_nearby_vendors` RPC call fetches all vendors within 30 km on screen mount; results sorted by `is_online DESC, distance_km ASC`; list rendered progressively from the in-memory pool (20 initially, +10 on each scroll-to-bottom); L1 category tabs and name search both filter in-memory — instant with no re-fetch; only online vendors are returned via server-side `is_online = TRUE` filter in the RPC
 - **Vendor profile** — compact side-by-side header (72px avatar + name / rating / badges / bio / "Typically accepts in X"); portfolio photo carousel underneath (approved photos only, tap to expand via lightbox); sticky Services | Reviews tab row; Services visible by default; swipe left/right on content to switch tabs; sticky "Book for ₦X,XXX" CTA once at least one service is selected
 - **Booking flow** — 2-step: schedule (date & time) → review access details + pay
   - Service selection happens on the vendor profile screen before entering the booking flow

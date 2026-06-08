@@ -1,10 +1,10 @@
 // ============================================================
-// VARS — Home / Discover screen (Phase 5)
-// Location-based vendor feed with category tabs.
-// Tabs: All | Barbing | Hair | Makeovers
-// Calls get_nearby_vendors RPC (PostGIS) via supabase.rpc().
+// VARS — Home / Discover screen
+// Single 30 km RPC fetch on mount; in-memory progressive slice.
+// Category and name filtering are both in-memory — no round-trip
+// on category switch or search.
 // ============================================================
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FlatList, RefreshControl,
   StyleSheet, Text, TouchableOpacity, View,
@@ -26,8 +26,10 @@ const CATEGORIES: { label: string; slug: string }[] = [
   { label: 'Nails',  slug: 'nails' },
 ];
 
-const RADIUS_KM = 5;
-const PAGE_SIZE = 20;
+const RADIUS_KM       = 30;   // hard cap — never query beyond this
+const MAX_VENDORS     = 500;  // generous upper bound for the single fetch
+const INITIAL_SLICE   = 20;
+const SLICE_INCREMENT = 10;
 
 // ── Hook: device location ──────────────────────────────────
 // Permission is requested during onboarding (Get Started CTA).
@@ -63,93 +65,83 @@ export default function HomeScreen() {
 
   const [activeCategory, setActiveCategory] = useState<string>('hair');
   const [search, setSearch] = useState('');
-  const [vendors, setVendors] = useState<VendorCardData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [allVendors, setAllVendors] = useState<VendorCardData[]>([]);
+  const [sliceCursor, setSliceCursor] = useState(INITIAL_SLICE);
+  const [isLoadingInitial, setIsLoadingInitial] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const offsetRef = useRef(0);
-  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const firstName = profile?.full_name?.split(' ')[0] ?? 'there';
 
-  const fetchVendors = useCallback(async (
-    cat: string | null,
-    query: string,
-    offset: number,
-    append: boolean,
-  ) => {
-    if (!coords) return;
-    if (offset === 0) setLoading(true);
+  // ── In-memory filtering: category + name search ──────────
+  // Both filters run on the already-fetched 30 km pool, so category
+  // switches and name searches are instant with no additional RPC call.
+  const filteredVendors = useMemo(() => {
+    let list = allVendors.filter((v) => v.category_names.includes(activeCategory));
+    const q = search.trim().toLowerCase();
+    if (q) list = list.filter((v) => v.full_name.toLowerCase().includes(q));
+    return list;
+  }, [allVendors, activeCategory, search]);
 
-    const { data, error } = await supabase.rpc('get_nearby_vendors', {
-      lat: coords.lat,
-      lng: coords.lng,
-      radius_km: RADIUS_KM,
-      lim: PAGE_SIZE,
-      ofst: offset,
-    });
+  const renderedVendors = filteredVendors.slice(0, sliceCursor);
+  const hasMore = sliceCursor < filteredVendors.length;
 
-    setLoading(false);
+  // Reset slice cursor whenever the visible filter set changes
+  useEffect(() => {
+    setSliceCursor(INITIAL_SLICE);
+  }, [activeCategory, search]);
+
+  // ── Single 30 km fetch with 3-attempt retry ───────────────
+  // fetchWithRetry wraps raw HTTP — it can't wrap supabase.rpc(), so
+  // the retry loop is inlined here with the same 3-attempt / exponential
+  // backoff behaviour.
+  const fetchAll = useCallback(async (isRefresh = false) => {
+    if (!isRefresh) setIsLoadingInitial(true);
+
+    let lastErr: unknown;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) {
+        await new Promise<void>((r) => setTimeout(r, 1_000 * 2 ** (attempt - 1)));
+      }
+      const { data, error } = await supabase.rpc('get_nearby_vendors', {
+        lat: coords.lat,
+        lng: coords.lng,
+        radius_km: RADIUS_KM,
+        lim: MAX_VENDORS,
+        ofst: 0,
+      });
+      if (!error) {
+        setAllVendors((data as VendorCardData[]) ?? []);
+        setSliceCursor(INITIAL_SLICE);
+        setIsLoadingInitial(false);
+        setRefreshing(false);
+        return;
+      }
+      lastErr = error;
+    }
+
+    console.error('get_nearby_vendors:', lastErr);
+    setIsLoadingInitial(false);
     setRefreshing(false);
-
-    if (error) {
-      console.error('get_nearby_vendors:', error.message);
-      return;
-    }
-
-    const results = (data as VendorCardData[]) ?? [];
-
-    // Client-side L1 category filter — server returns all nearby vendors
-    const categoryFiltered = results.filter((v) => v.category_names.includes(cat));
-
-    // Client-side name search filter
-    const filtered = query.trim()
-      ? categoryFiltered.filter((v) => v.full_name.toLowerCase().includes(query.toLowerCase()))
-      : categoryFiltered;
-
-    if (append) {
-      setVendors((prev) => [...prev, ...filtered]);
-    } else {
-      setVendors(filtered);
-    }
-
-    setHasMore(results.length === PAGE_SIZE);
-    offsetRef.current = offset + results.length;
   }, [coords]);
 
-  // Re-fetch when location or category changes (search is handled via debounce only)
+  // Re-fetch when location changes (GPS resolves after default Lagos coords)
   useEffect(() => {
-    if (!coords) return;
-    offsetRef.current = 0;
-    setHasMore(true);
-    fetchVendors(activeCategory, search, 0, false);
-  }, [coords, activeCategory, fetchVendors]);
+    fetchAll();
+  }, [fetchAll]);
 
   const onRefresh = () => {
     setRefreshing(true);
-    offsetRef.current = 0;
-    fetchVendors(activeCategory, search, 0, false);
+    fetchAll(true);
+  };
+
+  const onEndReached = () => {
+    if (hasMore) setSliceCursor((c) => c + SLICE_INCREMENT);
   };
 
   const renderItem = useCallback(
     ({ item }: { item: VendorCardData }) => <VendorCard vendor={item} />,
     [],
   );
-
-  const onEndReached = () => {
-    if (hasMore && !loading) {
-      fetchVendors(activeCategory, search, offsetRef.current, true);
-    }
-  };
-
-  const onSearchChange = (text: string) => {
-    setSearch(text);
-    if (searchTimeout.current) clearTimeout(searchTimeout.current);
-    searchTimeout.current = setTimeout(() => {
-      offsetRef.current = 0;
-      fetchVendors(activeCategory, text, 0, false);
-    }, 350);
-  };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -168,7 +160,7 @@ export default function HomeScreen() {
           placeholder="Search vendors..."
           placeholderTextColor={Colors.textMuted}
           value={search}
-          onChangeText={onSearchChange}
+          onChangeText={setSearch}
           returnKeyType="search"
           clearButtonMode="while-editing"
         />
@@ -201,13 +193,13 @@ export default function HomeScreen() {
       )}
 
       {/* ── Vendor list ── */}
-      {loading && vendors.length === 0 ? (
+      {isLoadingInitial ? (
         <View style={styles.loadingWrap}>
           <ScissorsLoader size="medium" color="dark" />
         </View>
       ) : (
         <FlatList
-          data={vendors}
+          data={renderedVendors}
           keyExtractor={(v) => v.id}
           renderItem={renderItem}
           contentContainerStyle={styles.list}
@@ -230,17 +222,15 @@ export default function HomeScreen() {
           onEndReached={onEndReached}
           onEndReachedThreshold={0.4}
           ListEmptyComponent={
-            !loading ? (
-              <View style={styles.empty}>
-                <Text style={styles.emptyTitle}>No vendors nearby</Text>
-                <Text style={styles.emptyBody}>
-                  We're growing fast. Check back soon or try a wider search.
-                </Text>
-              </View>
-            ) : null
+            <View style={styles.empty}>
+              <Text style={styles.emptyTitle}>No vendors nearby</Text>
+              <Text style={styles.emptyBody}>
+                We're growing fast. Check back soon or try a wider search.
+              </Text>
+            </View>
           }
           ListFooterComponent={
-            hasMore && vendors.length > 0 ? (
+            hasMore && renderedVendors.length > 0 ? (
               <View style={styles.centered}><ScissorsLoader size="small" color="dark" /></View>
             ) : null
           }
