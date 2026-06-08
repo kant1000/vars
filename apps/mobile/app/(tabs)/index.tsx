@@ -27,7 +27,7 @@ const CATEGORIES: { label: string; slug: string }[] = [
 ];
 
 const RADIUS_KM       = 30;   // hard cap — never query beyond this
-const MAX_VENDORS     = 500;  // generous upper bound for the single fetch
+const MAX_VENDORS     = 100;  // upper bound for the single fetch; revisit when online vendors exceed this
 const INITIAL_SLICE   = 20;
 const SLICE_INCREMENT = 10;
 
