@@ -32,6 +32,13 @@ export function VendorPriceInput({
       : `You'll receive: ${formatNaira(num * 0.8)}`
     : null;
 
+  const handleBlur = () => {
+    const n = Number(value);
+    if (value.trim() !== '' && !isNaN(n) && n < MIN_PRICE) {
+      onChangeText(String(MIN_PRICE));
+    }
+  };
+
   return (
     <View style={styles.wrapper}>
       <View style={styles.inputRow}>
@@ -40,7 +47,8 @@ export function VendorPriceInput({
           style={styles.input}
           value={value}
           onChangeText={onChangeText}
-          placeholder={`${(MIN_PRICE).toLocaleString('en-NG')}`}
+          onBlur={handleBlur}
+          placeholder={MIN_PRICE.toLocaleString('en-NG')}
           placeholderTextColor={Colors.textMuted}
           keyboardType="numeric"
           returnKeyType="done"

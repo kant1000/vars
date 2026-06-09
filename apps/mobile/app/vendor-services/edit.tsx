@@ -1,7 +1,7 @@
 // ============================================================
-// VARS — Add Service (post-onboarding)
+// VARS — Edit Service
 // Reached from the vendor profile "My Services" section.
-// Single-service form; on save goes back to profile.
+// Pre-fills an existing service; on save updates in-place.
 // ============================================================
 import React, { useEffect, useState } from 'react';
 import {
@@ -9,13 +9,13 @@ import {
 } from 'react-native';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { VendorPriceInput } from '@/components/VendorPriceInput';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 import {
   CATEGORY_L1, CATEGORY_L1_LABELS, CATEGORY_L2_MAP, CATEGORY_L2_LABELS,
-  MIN_SERVICE_PRICE_KOBO, MAX_VENDOR_SERVICES, SERVICE_NAME_MAX_CHARS, SERVICE_DESC_MAX_CHARS,
+  MIN_SERVICE_PRICE_KOBO, SERVICE_NAME_MAX_CHARS, SERVICE_DESC_MAX_CHARS,
 } from '@vars/shared';
 
 const L1_KEYS = Object.values(CATEGORY_L1) as string[];
@@ -44,8 +44,9 @@ const BASE_DURATIONS = [1, 2, 3, 4, 6, 8].map(b => ({ blocks: b, label: duration
 const BRAIDS_EXTRA  = [10, 12, 14, 16].map(b => ({ blocks: b, label: durationLabel(b) }));
 const BRAIDS_DURATIONS = [...BASE_DURATIONS, ...BRAIDS_EXTRA];
 
-export default function AddServiceScreen() {
+export default function EditServiceScreen() {
   const { user } = useAuth();
+  const { id } = useLocalSearchParams<{ id: string }>();
 
   const [formL1, setFormL1] = useState<string>(CATEGORY_L1.HAIR);
   const [formL2, setFormL2] = useState<string>('');
@@ -59,13 +60,32 @@ export default function AddServiceScreen() {
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    if (!user) { setIsLoading(false); return; }
-    supabase.from('vendors')
-      .select('pioneer, pioneer_bookings_completed')
-      .eq('id', user.id)
-      .single()
-      .then(({ data }) => { setVendorPioneer(data ?? null); setIsLoading(false); });
-  }, [user]);
+    if (!user || !id) { setIsLoading(false); return; }
+
+    Promise.all([
+      supabase.from('vendor_services')
+        .select('category_l1, category_l2, service_name, description, price_kobo, duration_blocks')
+        .eq('id', id)
+        .eq('vendor_id', user.id)
+        .single(),
+      supabase.from('vendors')
+        .select('pioneer, pioneer_bookings_completed')
+        .eq('id', user.id)
+        .single(),
+    ]).then(([svcRes, vendorRes]) => {
+      if (svcRes.data) {
+        const d = svcRes.data;
+        setFormL1(d.category_l1);
+        setFormL2(d.category_l2);
+        setFormName(d.service_name);
+        setFormDesc(d.description ?? '');
+        setFormPrice(String(d.price_kobo / 100));
+        setFormDuration(d.duration_blocks);
+      }
+      setVendorPioneer(vendorRes.data ?? null);
+      setIsLoading(false);
+    });
+  }, [user, id]);
 
   const handleL1Change = (l1: string) => {
     setFormL1(l1);
@@ -75,7 +95,6 @@ export default function AddServiceScreen() {
 
   const handleL2Change = (l2: string) => {
     setFormL2(l2);
-    // reset duration if the braids-only options are no longer valid
     if (l2 !== 'braids' && formDuration !== null && formDuration > 8) {
       setFormDuration(null);
     }
@@ -96,25 +115,19 @@ export default function AddServiceScreen() {
       return Alert.alert('Invalid price', `Minimum price is ₦${(MIN_SERVICE_PRICE_KOBO / 100).toLocaleString('en-NG')}.`);
     }
     if (!formDuration) return Alert.alert('Required', 'Please select a duration.');
-    if (!user) return;
+    if (!user || !id) return;
 
     setIsSaving(true);
     try {
-      const { error } = await supabase.from('vendor_services').insert({
-        vendor_id: user.id,
+      const { error } = await supabase.from('vendor_services').update({
         category_l1: formL1,
         category_l2: formL2,
         service_name: name,
         description: formDesc.trim() || null,
         price_kobo: Math.round(priceNum * 100),
         duration_blocks: formDuration,
-      });
-      if (error) {
-        if (error.message.includes('vendor_service_limit_exceeded')) {
-          return Alert.alert('Limit reached', `You can have at most ${MAX_VENDOR_SERVICES} services. Remove one first.`);
-        }
-        throw error;
-      }
+      }).eq('id', id).eq('vendor_id', user.id);
+      if (error) throw error;
       router.back();
     } catch (err: any) {
       Alert.alert('Error', err.message);
@@ -142,7 +155,7 @@ export default function AddServiceScreen() {
           <Text style={styles.back}>‹ Back</Text>
         </TouchableOpacity>
       </View>
-      <Text style={styles.title}>Add a service</Text>
+      <Text style={styles.title}>Edit service</Text>
 
       {/* L1 category pills */}
       <Text style={styles.fieldLabel}>Category <Text style={styles.required}>*</Text></Text>
@@ -249,7 +262,7 @@ export default function AddServiceScreen() {
       >
         {isSaving
           ? <ScissorsLoader size="small" color="light" />
-          : <Text style={styles.saveBtnText}>Save service</Text>}
+          : <Text style={styles.saveBtnText}>Save changes</Text>}
       </TouchableOpacity>
     </ScrollView>
   );

@@ -599,7 +599,13 @@ export default function ScheduleScreen() {
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState<string | null>(null);
   const [selectedBooking, setSelectedBooking] = useState<VendorBooking | null>(null);
-  const [zoneInfo, setZoneInfo] = useState<{ enabled: boolean; confirmedDate: string | null; paused: boolean } | null>(null);
+  const [zoneInfo, setZoneInfo] = useState<{
+    enabled: boolean;
+    confirmedDate: string | null;
+    paused: boolean;
+    radius_km: number | null;
+    zoneConfigured: boolean;
+  } | null>(null);
 
   // Load persisted view mode
   useEffect(() => {
@@ -626,7 +632,7 @@ export default function ScheduleScreen() {
     if (!vendorId) return;
     const { data } = await supabase
       .from('vendors')
-      .select('auto_accept_enabled, auto_accept_zone_confirmed_date, auto_accept_paused_due_to_drift')
+      .select('auto_accept_enabled, auto_accept_zone_confirmed_date, auto_accept_paused_due_to_drift, auto_accept_zone_lat, auto_accept_zone_radius_km')
       .eq('id', vendorId)
       .single();
     if (data) {
@@ -634,11 +640,16 @@ export default function ScheduleScreen() {
         enabled: data.auto_accept_enabled ?? false,
         confirmedDate: data.auto_accept_zone_confirmed_date ?? null,
         paused: data.auto_accept_paused_due_to_drift ?? false,
+        radius_km: data.auto_accept_zone_radius_km ?? null,
+        zoneConfigured: data.auto_accept_zone_lat != null,
       });
     }
   }, [vendorId]);
 
+  // Re-fetch on focus (e.g. returning from zone setup) AND when vendorId first arrives
+  // (vendorId is set async so useFocusEffect alone misses the initial load).
   useFocusEffect(useCallback(() => { loadZoneInfo(); }, [loadZoneInfo]));
+  useEffect(() => { loadZoneInfo(); }, [loadZoneInfo]);
 
   const parseBooking = (b: any): VendorBooking => ({
     id: b.id,
@@ -828,13 +839,29 @@ export default function ScheduleScreen() {
     zoneInfo.confirmedDate === selectedDayStr
   );
 
+  // Zone status for the header widget (always uses today, not selected day).
+  const todayStr = toLocalDateStr(getEffectiveToday());
+  const confirmedToday = zoneInfo?.confirmedDate === todayStr;
+  const zoneStatus = (() => {
+    if (!zoneInfo) return { text: 'Loading...', color: Colors.textMuted };
+    if (!zoneInfo.zoneConfigured) return { text: 'No zone set', color: Colors.textMuted };
+    if (!zoneInfo.enabled) return { text: 'Off', color: Colors.textMuted };
+    if (zoneInfo.paused) return { text: 'Outside your zone', color: Colors.warning };
+    if (!confirmedToday) return { text: 'Confirm for today', color: Colors.warning };
+    return { text: `Active · ${zoneInfo.radius_km} km`, color: Colors.success };
+  })();
+
   return (
     <View style={[s.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={s.header}>
         <Text style={s.headerTitle}>My Schedule</Text>
         <TouchableOpacity style={s.zoneBtn} onPress={() => router.push('/vendor-zone-setup' as any)}>
-          <Text style={s.zoneBtnText}>⚡ Auto-accept</Text>
+          <Text style={s.zoneBtnLabel}>⚡ Auto-accept</Text>
+          <View style={s.zoneStatusRow}>
+            <View style={[s.zoneStatusDot, { backgroundColor: zoneStatus.color }]} />
+            <Text style={[s.zoneStatusText, { color: zoneStatus.color }]}>{zoneStatus.text}</Text>
+          </View>
         </TouchableOpacity>
       </View>
 
@@ -1043,10 +1070,14 @@ const s = StyleSheet.create({
   },
   headerTitle: { fontSize: 24, fontWeight: '800', color: Colors.text },
   zoneBtn: {
-    paddingHorizontal: 12, paddingVertical: 6,
+    paddingHorizontal: 12, paddingVertical: 8,
     borderRadius: 5, borderWidth: 1.5, borderColor: Colors.ink, backgroundColor: 'transparent',
+    alignItems: 'flex-start',
   },
-  zoneBtnText: { fontSize: 13, fontWeight: '700', color: Colors.ink },
+  zoneBtnLabel: { fontSize: 13, fontWeight: '700', color: Colors.ink },
+  zoneStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
+  zoneStatusDot: { width: 6, height: 6, borderRadius: 3 },
+  zoneStatusText: { fontSize: 11, fontWeight: '600' },
 
   toggleRow: {
     flexDirection: 'row', marginHorizontal: 16, marginVertical: 10,

@@ -148,7 +148,7 @@ export default function VendorZoneSetup() {
   if (loading) {
     return (
       <View style={s.centered}>
-        <ScissorsLoader size="large" color="dark" />
+        <ScissorsLoader size="medium" color="dark" />
       </View>
     );
   }

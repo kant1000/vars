@@ -1,6 +1,6 @@
 // ============================================================
 // VARS — Vendor Profile / Settings
-// Sections: Auto-Accept zone, My Services, Portfolio, Account
+// Sections: My Services, Portfolio, Account
 // ============================================================
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -15,7 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { signOut } from '@/lib/auth';
 import { uploadSinglePortfolioPhoto, deletePortfolioPhoto } from '@/lib/storage';
 import { Colors } from '@/constants/colors';
-import { CloseIcon } from '@/components/icons';
+import { CloseIcon, EditIcon } from '@/components/icons';
 import {
   NestableScrollContainer,
   NestableDraggableFlatList,
@@ -25,15 +25,6 @@ import {
 import { CATEGORY_L2_LABELS, MAX_VENDOR_SERVICES } from '@vars/shared';
 
 const PHOTO_SIZE = (Dimensions.get('window').width - 48 - 16) / 3;
-
-interface VendorZoneInfo {
-  auto_accept_enabled: boolean;
-  auto_accept_paused_due_to_drift: boolean;
-  auto_accept_zone_confirmed_date: string | null;
-  auto_accept_zone_radius_km: number | null;
-  auto_accept_zone_lat: number | null;
-  auto_accept_zone_lng: number | null;
-}
 
 interface PortfolioPhoto {
   id: string;
@@ -61,8 +52,6 @@ const CONSENT_LABEL: Record<string, { text: string; color: string }> = {
 export default function VendorProfileScreen() {
   const insets = useSafeAreaInsets();
   const { profile } = useAuth();
-  const [zoneInfo, setZoneInfo] = useState<VendorZoneInfo | null>(null);
-  const [zoneLoading, setZoneLoading] = useState(true);
 
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
 
@@ -73,8 +62,6 @@ export default function VendorProfileScreen() {
   const [photosLoading, setPhotosLoading] = useState(true);
   const [addingPhoto, setAddingPhoto] = useState(false);
 
-  const today = new Date().toISOString().slice(0, 10);
-
   useFocusEffect(useCallback(() => {
     loadAll();
   }, []));
@@ -82,21 +69,15 @@ export default function VendorProfileScreen() {
   const loadAll = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      setZoneLoading(false);
       setServicesLoading(false);
       setPhotosLoading(false);
       return;
     }
 
-    const [zoneRes, servicesRes, photosRes] = await Promise.all([
+    const [vendorRes, servicesRes, photosRes] = await Promise.all([
       supabase
         .from('vendors')
-        .select(`
-          auto_accept_enabled, auto_accept_paused_due_to_drift,
-          auto_accept_zone_confirmed_date, auto_accept_zone_radius_km,
-          auto_accept_zone_lat, auto_accept_zone_lng,
-          profile_image_url
-        `)
+        .select('profile_image_url')
         .eq('id', user.id)
         .single(),
 
@@ -115,31 +96,12 @@ export default function VendorProfileScreen() {
         .order('created_at', { ascending: false }),
     ]);
 
-    setZoneInfo(zoneRes.data ?? null);
-    setProfileImageUrl(zoneRes.data?.profile_image_url ?? null);
+    setProfileImageUrl(vendorRes.data?.profile_image_url ?? null);
     setServices((servicesRes.data ?? []) as VendorServiceItem[]);
     setPhotos((photosRes.data ?? []) as PortfolioPhoto[]);
-    setZoneLoading(false);
     setServicesLoading(false);
     setPhotosLoading(false);
   };
-
-  const zoneConfigured = zoneInfo?.auto_accept_zone_lat != null;
-  const confirmedToday = zoneInfo?.auto_accept_zone_confirmed_date === today;
-  const autoActive =
-    zoneInfo?.auto_accept_enabled &&
-    !zoneInfo?.auto_accept_paused_due_to_drift &&
-    confirmedToday;
-
-  const zoneStatusLabel = () => {
-    if (!zoneConfigured) return { text: 'No zone set', color: Colors.textMuted };
-    if (!zoneInfo?.auto_accept_enabled) return { text: 'Off', color: Colors.textMuted };
-    if (zoneInfo?.auto_accept_paused_due_to_drift) return { text: 'Outside your zone', color: Colors.warning };
-    if (!confirmedToday) return { text: 'Needs daily confirmation', color: Colors.warning };
-    return { text: `Active · ${zoneInfo.auto_accept_zone_radius_km} km radius`, color: Colors.success };
-  };
-
-  const zoneStatus = zoneStatusLabel();
 
   const handleDeleteService = (id: string) => {
     Alert.alert(
@@ -171,16 +133,19 @@ export default function VendorProfileScreen() {
   const renderServiceItem = ({ item, drag, isActive }: RenderItemParams<VendorServiceItem>) => (
     <ScaleDecorator>
       <View style={[s.svcRow, isActive && s.svcRowDragging]}>
-        <TouchableOpacity onLongPress={drag} hitSlop={8} style={s.dragHandle} activeOpacity={0.6}>
-          <Text style={s.dragHandleIcon}>⠿</Text>
-        </TouchableOpacity>
         <View style={s.svcInfo}>
           <Text style={s.svcMeta}>{CATEGORY_L2_LABELS[item.category_l2] ?? item.category_l2}</Text>
           <Text style={s.svcName}>{item.service_name}</Text>
           <Text style={s.svcPrice}>₦{(item.price_kobo / 100).toLocaleString('en-NG')}</Text>
         </View>
-        <TouchableOpacity onPress={() => handleDeleteService(item.id)} style={s.svcDeleteBtn} hitSlop={8}>
+        <TouchableOpacity onPress={() => router.push(`/vendor-services/edit?id=${item.id}` as any)} style={s.svcActionBtn} hitSlop={8}>
+          <EditIcon size={14} color={Colors.textMuted} />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => handleDeleteService(item.id)} style={s.svcActionBtn} hitSlop={8}>
           <CloseIcon size={11} color={Colors.textMuted} />
+        </TouchableOpacity>
+        <TouchableOpacity onLongPress={drag} hitSlop={8} style={s.dragHandle} activeOpacity={0.6}>
+          <Text style={s.dragHandleIcon}>⠿</Text>
         </TouchableOpacity>
       </View>
     </ScaleDecorator>
@@ -260,41 +225,6 @@ export default function VendorProfileScreen() {
             )}
           </View>
           <Text style={s.name}>{profile?.full_name ?? 'Vendor'}</Text>
-        </View>
-
-        {/* Auto-Accept Zone */}
-        <View style={s.section}>
-          {zoneLoading ? (
-            <View style={{ margin: 16, alignItems: 'center' }}><ScissorsLoader size="small" color="dark" /></View>
-          ) : (
-            <TouchableOpacity
-              style={[s.settingRow, s.settingRowGold]}
-              onPress={() => router.push('/vendor-zone-setup')}
-              activeOpacity={0.7}
-            >
-              <View style={s.settingLeft}>
-                <Text style={s.settingLabel}>⚡ Auto-accept zone</Text>
-                <View style={s.statusRow}>
-                  <View style={[s.statusDot, { backgroundColor: zoneStatus.color }]} />
-                  <Text style={[s.statusText, { color: Colors.inkMuted }]}>
-                    {zoneStatus.text}
-                  </Text>
-                </View>
-              </View>
-              <Text style={s.editLabel}>Edit ›</Text>
-            </TouchableOpacity>
-          )}
-
-          {zoneConfigured && zoneInfo?.auto_accept_enabled && !confirmedToday && (
-            <TouchableOpacity
-              style={s.confirmBanner}
-              onPress={() => router.push('/vendor-zone-setup')}
-            >
-              <Text style={s.confirmBannerText}>
-                ⚡ Confirm your zone to activate auto-accept today
-              </Text>
-            </TouchableOpacity>
-          )}
         </View>
 
         {/* My Services */}
@@ -447,24 +377,7 @@ const s = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  settingRowGold: {
-    backgroundColor: 'transparent', borderRadius: 5, paddingHorizontal: 14,
-    borderWidth: 1, borderColor: Colors.ink, borderBottomWidth: 1,
-    borderBottomColor: Colors.ink,
-  },
-  settingLeft: { flex: 1 },
   settingLabel: { fontSize: 15, fontWeight: '600', color: Colors.text },
-  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 3 },
-  statusDot: { width: 8, height: 8, borderRadius: 4 },
-  statusText: { fontSize: 13 },
-  editLabel: { fontSize: 13, fontWeight: '700', color: Colors.ink },
-
-  confirmBanner: {
-    marginTop: 10, padding: 12,
-    backgroundColor: 'transparent', borderRadius: 5,
-    borderWidth: 1, borderColor: Colors.ink + '40',
-  },
-  confirmBannerText: { fontSize: 13, color: Colors.ink, fontWeight: '600' },
 
   // My Services
   dragHint: { fontSize: 11, color: Colors.textMuted, marginBottom: 8 },
@@ -475,7 +388,7 @@ const s = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   svcRowDragging: { backgroundColor: Colors.surface, borderRadius: 5 },
-  dragHandle: { paddingRight: 12, paddingVertical: 4 },
+  dragHandle: { paddingLeft: 12, paddingVertical: 4 },
   dragHandleIcon: { fontSize: 18, color: Colors.textMuted, lineHeight: 20 },
   svcInfo: { flex: 1 },
   svcMeta: {
@@ -484,7 +397,7 @@ const s = StyleSheet.create({
   },
   svcName: { fontSize: 15, fontWeight: '600', color: Colors.text },
   svcPrice: { fontSize: 13, color: Colors.textSecondary, marginTop: 1 },
-  svcDeleteBtn: { padding: 8 },
+  svcActionBtn: { padding: 8 },
   addSvcBtn: {
     marginTop: 12, height: 42,
     borderRadius: 5, borderWidth: 1.5, borderColor: Colors.border,
