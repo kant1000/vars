@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
   subGreeting: { fontSize: 14, color: Colors.textSecondary, marginTop: 2 },
   searchWrap: { paddingHorizontal: 16, paddingVertical: 10 },
   searchInput: {
-    backgroundColor: Colors.surface, borderRadius: 10,
+    backgroundColor: Colors.surface, borderRadius: 5,
     paddingHorizontal: 16, paddingVertical: 11,
     fontSize: 15, color: Colors.text,
     borderWidth: 1, borderColor: Colors.border,
@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
   tabs: { flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 12, gap: 8 },
   tab: {
     paddingVertical: 8, paddingHorizontal: 16, alignItems: 'center',
-    borderRadius: 20, borderWidth: 1.5, borderColor: Colors.border,
+    borderRadius: 5, borderWidth: 1.5, borderColor: Colors.border,
     backgroundColor: Colors.background,
   },
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
   locBanner: {
     marginHorizontal: 16, marginBottom: 8,
     backgroundColor: Colors.warning + '20',
-    borderRadius: 10, padding: 10,
+    borderRadius: 5, padding: 10,
   },
   locBannerText: { fontSize: 12, color: Colors.warning, fontWeight: '500' },
   list: { paddingTop: 4, paddingBottom: 40 },

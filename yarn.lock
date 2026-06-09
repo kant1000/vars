@@ -2193,6 +2193,11 @@
     "@sentry/browser" "10.53.1"
     "@sentry/core" "10.53.1"
 
+"@shopify/flash-list@^2.3.1":
+  version "2.3.1"
+  resolved "https://registry.yarnpkg.com/@shopify/flash-list/-/flash-list-2.3.1.tgz#d4f90b1471a741a97c07d9aadbfaf200e92c86f7"
+  integrity sha512-7oktg2NQR7KAODjFoDaWe8/OBzyYbdTE3zQTrUBMxjIbxHTHN7UXRX1hX3DHk8KvtkgQdRfZOV8Gjj2l4fGrXw==
+
 "@sinclair/typebox@^0.27.8":
   version "0.27.10"
   resolved "https://registry.yarnpkg.com/@sinclair/typebox/-/typebox-0.27.10.tgz#beefe675f1853f73676aecc915b2bd2ac98c4fc6"

@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
   sub: { fontSize: 15, color: Colors.textSecondary, marginBottom: 24 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
   photoWrapper: { position: 'relative', width: '30%', aspectRatio: 1 },
-  photo: { width: '100%', height: '100%', borderRadius: 10 },
+  photo: { width: '100%', height: '100%', borderRadius: 5 },
   removeButton: {
     position: 'absolute', top: 4, right: 4,
     width: 22, height: 22, borderRadius: 11,
@@ -138,15 +138,15 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   addButton: {
-    width: '30%', aspectRatio: 1, borderRadius: 10,
+    width: '30%', aspectRatio: 1, borderRadius: 5,
     borderWidth: 1.5, borderColor: Colors.border, borderStyle: 'dashed',
     alignItems: 'center', justifyContent: 'center', gap: 4,
   },
   addIcon: { fontSize: 28, color: Colors.primary, fontWeight: '300' },
   addLabel: { fontSize: 12, color: Colors.textSecondary, fontWeight: '500' },
-  note: { backgroundColor: Colors.surface, borderRadius: 12, padding: 14, marginBottom: 28 },
+  note: { backgroundColor: Colors.surface, borderRadius: 5, padding: 14, marginBottom: 28 },
   noteText: { fontSize: 13, color: Colors.textSecondary, lineHeight: 18 },
-  button: { height: 56, backgroundColor: Colors.primary, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  button: { height: 56, backgroundColor: Colors.primary, borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
   buttonDisabled: { opacity: 0.6 },
   buttonText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
 });

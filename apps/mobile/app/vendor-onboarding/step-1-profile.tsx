@@ -151,19 +151,19 @@ const styles = StyleSheet.create({
   form: { gap: 12, marginBottom: 28 },
   input: {
     height: 54, borderWidth: 1.5, borderColor: Colors.border,
-    borderRadius: 14, paddingHorizontal: 16, fontSize: 16, color: Colors.text,
+    borderRadius: 5, paddingHorizontal: 16, fontSize: 16, color: Colors.text,
   },
   bioInput: { height: 90, paddingTop: 14, textAlignVertical: 'top' },
   charCount: { fontSize: 12, color: Colors.textMuted, textAlign: 'right', marginTop: 4 },
   locationButton: {
     height: 54, borderWidth: 1.5, borderColor: Colors.border,
-    borderRadius: 14, paddingHorizontal: 16, justifyContent: 'center',
+    borderRadius: 5, paddingHorizontal: 16, justifyContent: 'center',
   },
   locationSet: { fontSize: 16, color: Colors.text, fontWeight: '500' },
   locationUnset: { fontSize: 16, color: Colors.primary, fontWeight: '500' },
   locationHelper: { fontSize: 13, color: Colors.textSecondary, marginTop: -4, marginLeft: 4 },
   button: {
-    height: 56, backgroundColor: Colors.primary, borderRadius: 14,
+    height: 56, backgroundColor: Colors.primary, borderRadius: 5,
     alignItems: 'center', justifyContent: 'center',
   },
   buttonDisabled: { opacity: 0.6 },

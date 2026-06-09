@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
   pillRowInner: { flexDirection: 'row', gap: 8, paddingRight: 24 },
   pill: {
     paddingVertical: 8, paddingHorizontal: 16,
-    borderRadius: 20, borderWidth: 1.5, borderColor: Colors.border,
+    borderRadius: 5, borderWidth: 1.5, borderColor: Colors.border,
     backgroundColor: Colors.background,
   },
   pillActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
   pillTextActive: { color: '#FFF' },
 
   textInput: {
-    height: 44, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 10,
+    height: 44, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 5,
     paddingHorizontal: 12, fontSize: 15, color: Colors.text, marginBottom: 16,
     backgroundColor: Colors.surface,
   },
@@ -327,14 +327,14 @@ const styles = StyleSheet.create({
   durationRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
   durationChip: {
     paddingVertical: 8, paddingHorizontal: 16,
-    borderRadius: 20, borderWidth: 1.5, borderColor: Colors.border,
+    borderRadius: 5, borderWidth: 1.5, borderColor: Colors.border,
   },
   durationChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   durationChipText: { fontSize: 13, color: Colors.textSecondary, fontWeight: '500' },
   durationChipTextActive: { color: '#FFF' },
 
   addBtn: {
-    height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+    height: 48, borderRadius: 5, alignItems: 'center', justifyContent: 'center',
     borderWidth: 1.5, borderColor: Colors.ink, marginBottom: 24,
   },
   addBtnDisabled: { opacity: 0.4 },
@@ -347,7 +347,7 @@ const styles = StyleSheet.create({
   },
   draftRow: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: Colors.surface, borderRadius: 12, padding: 14, marginBottom: 8,
+    backgroundColor: Colors.surface, borderRadius: 5, padding: 14, marginBottom: 8,
     borderWidth: 1, borderColor: Colors.border,
   },
   draftInfo: { flex: 1 },
@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
   draftRemove: { padding: 8 },
 
   nextBtn: {
-    height: 56, backgroundColor: Colors.primary, borderRadius: 14,
+    height: 56, backgroundColor: Colors.primary, borderRadius: 5,
     alignItems: 'center', justifyContent: 'center', marginTop: 16,
   },
   nextBtnDisabled: { opacity: 0.4 },

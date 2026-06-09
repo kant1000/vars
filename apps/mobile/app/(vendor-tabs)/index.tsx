@@ -1043,7 +1043,7 @@ const c = StyleSheet.create({
   },
   headerTitle: { fontSize: 24, fontWeight: '800', color: Colors.text },
   onlineToggle: {
-    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 5,
     borderWidth: 1.5, borderColor: Colors.ink, backgroundColor: 'transparent',
   },
   onlineOn:  {},
@@ -1057,7 +1057,7 @@ const c = StyleSheet.create({
 
   // Cards
   card: {
-    backgroundColor: Colors.surface, borderRadius: 16,
+    backgroundColor: Colors.surface, borderRadius: 5,
     padding: 16, borderWidth: 1, borderColor: Colors.border, marginBottom: 10, gap: 6,
   },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },
@@ -1080,25 +1080,25 @@ const c = StyleSheet.create({
 
   btnRow: { flexDirection: 'row', gap: 10, marginTop: 8 },
   declineBtn: {
-    flex: 1, height: 44, borderRadius: 12,
+    flex: 1, height: 44, borderRadius: 5,
     borderWidth: 1.5, borderColor: Colors.border,
     alignItems: 'center', justifyContent: 'center',
   },
   declineBtnText: { fontSize: 14, fontWeight: '700', color: Colors.textSecondary },
   acceptBtn: {
-    flex: 2, height: 44, borderRadius: 12,
+    flex: 2, height: 44, borderRadius: 5,
     backgroundColor: Colors.primary,
     alignItems: 'center', justifyContent: 'center',
   },
   acceptBtnText: { fontSize: 14, fontWeight: '700', color: '#FFF' },
 
   flowBtn: {
-    height: 48, borderRadius: 12, marginTop: 8,
+    height: 48, borderRadius: 5, marginTop: 8,
     alignItems: 'center', justifyContent: 'center',
   },
   flowBtnText: { fontSize: 15, fontWeight: '700', color: '#FFF' },
   waitingBox: {
-    backgroundColor: Colors.primaryLight, borderRadius: 10, padding: 10, marginTop: 4,
+    backgroundColor: Colors.primaryLight, borderRadius: 5, padding: 10, marginTop: 4,
   },
   waitingText: { fontSize: 12, color: Colors.primary, lineHeight: 17 },
 
@@ -1108,14 +1108,14 @@ const c = StyleSheet.create({
   // Service-rendered reminder banner
   renderReminderBanner: {
     backgroundColor: Colors.offlineText,
-    borderRadius: 10, padding: 10, marginTop: 4,
+    borderRadius: 5, padding: 10, marginTop: 4,
     borderWidth: 1, borderColor: Colors.amberBorder,
   },
   renderReminderText: { fontSize: 13, color: Colors.offlineBg, fontWeight: '600', lineHeight: 18 },
 
   // Vendor cancel button on active cards
   vendorCancelBtn: {
-    marginTop: 4, height: 38, borderRadius: 10,
+    marginTop: 4, height: 38, borderRadius: 5,
     alignItems: 'center', justifyContent: 'center',
   },
   vendorCancelText: { fontSize: 13, fontWeight: '600', color: Colors.error },
@@ -1125,7 +1125,7 @@ const c = StyleSheet.create({
   graceBadge: { fontSize: 12, fontWeight: '700', color: Colors.ink, flex: 1 },
   graceCountdown: { fontSize: 12, fontWeight: '700', color: Colors.accentRed, fontVariant: ['tabular-nums'] },
   graceCancelBtn: {
-    marginTop: 8, height: 42, borderRadius: 10,
+    marginTop: 8, height: 42, borderRadius: 5,
     borderWidth: 1.5, borderColor: Colors.ink,
     alignItems: 'center', justifyContent: 'center',
   },
@@ -1165,21 +1165,21 @@ const zm = StyleSheet.create({
   },
   sheet: {
     backgroundColor: Colors.background,
-    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    borderTopLeftRadius: 5, borderTopRightRadius: 5,
     padding: 28, width: '100%', alignItems: 'center', gap: 8,
   },
   title: { fontSize: 20, fontWeight: '800', color: Colors.text, textAlign: 'center' },
   body:  { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 8 },
   confirmBtn: {
     width: '100%', height: 54, backgroundColor: Colors.pioneerGold,
-    borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+    borderRadius: 5, alignItems: 'center', justifyContent: 'center',
   },
   btnDisabled: { opacity: 0.5 },
   confirmBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
   changeBtn: {
     width: '100%', height: 48,
     borderWidth: 1.5, borderColor: Colors.border,
-    borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+    borderRadius: 5, alignItems: 'center', justifyContent: 'center',
     marginTop: 4,
   },
   changeBtnText: { fontSize: 15, fontWeight: '700', color: Colors.textSecondary },

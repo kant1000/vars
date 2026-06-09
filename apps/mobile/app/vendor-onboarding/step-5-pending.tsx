@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
   body: { fontSize: 15, color: Colors.textSecondary, textAlign: 'center', lineHeight: 22, marginBottom: 32 },
   steps: {
     width: '100%', backgroundColor: Colors.surface,
-    borderRadius: 16, padding: 20, gap: 14, marginBottom: 24,
+    borderRadius: 5, padding: 20, gap: 14, marginBottom: 24,
   },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   rowIcon: { fontSize: 16, width: 24, textAlign: 'center' },
@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
     textAlign: 'center', lineHeight: 19, marginBottom: 32,
   },
   button: {
-    height: 56, backgroundColor: Colors.primary, borderRadius: 14,
+    height: 56, backgroundColor: Colors.primary, borderRadius: 5,
     alignItems: 'center', justifyContent: 'center',
     paddingHorizontal: 40, width: '100%',
   },

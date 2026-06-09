@@ -917,7 +917,7 @@ const s = StyleSheet.create({
   slotRow: { flexDirection: 'row', gap: 8 },
   slot: {
     paddingVertical: 10,
-    borderRadius: 10, borderWidth: 1.5, borderColor: Colors.primary,
+    borderRadius: 5, borderWidth: 1.5, borderColor: Colors.primary,
     alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 4,
   },
   slotUnavailable: { borderColor: Colors.border, backgroundColor: Colors.surface },
@@ -930,7 +930,7 @@ const s = StyleSheet.create({
   slotTextSelected: { color: '#FFF' },
   autoAcceptLegend: {
     marginHorizontal: 16, marginBottom: 8, marginTop: 4,
-    backgroundColor: Colors.pioneerGoldSurface, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6,
+    backgroundColor: Colors.pioneerGoldSurface, borderRadius: 5, paddingHorizontal: 10, paddingVertical: 6,
     borderWidth: 1, borderColor: Colors.pioneerGold + '30',
   },
   autoAcceptLegendText: { fontSize: 12, color: Colors.pioneerGoldDark, fontWeight: '600' },
@@ -940,7 +940,7 @@ const s = StyleSheet.create({
   optionalTag: { fontSize: 13, fontWeight: '400', color: Colors.textMuted },
   accessHint: { fontSize: 13, color: Colors.textSecondary, marginTop: -8 },
   summaryCard: {
-    backgroundColor: Colors.surface, borderRadius: 16,
+    backgroundColor: Colors.surface, borderRadius: 5,
     padding: 16, borderWidth: 1, borderColor: Colors.border,
   },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
@@ -950,7 +950,7 @@ const s = StyleSheet.create({
   divider: { height: 1, backgroundColor: Colors.border, marginVertical: 6 },
   fieldLabel: { fontSize: 14, fontWeight: '600', color: Colors.text, marginBottom: 6 },
   textInput: {
-    backgroundColor: Colors.surface, borderRadius: 12,
+    backgroundColor: Colors.surface, borderRadius: 5,
     borderWidth: 1, borderColor: Colors.border,
     paddingHorizontal: 14, paddingVertical: 12,
     fontSize: 15, color: Colors.text,
@@ -959,7 +959,7 @@ const s = StyleSheet.create({
   pickerValue: { fontSize: 15, color: Colors.text },
   pickerPlaceholder: { fontSize: 15, color: Colors.textMuted },
   pickerChevron: { fontSize: 20, color: Colors.textMuted },
-  accessPrivacyNote: { backgroundColor: Colors.primaryLight, borderRadius: 12, padding: 12 },
+  accessPrivacyNote: { backgroundColor: Colors.primaryLight, borderRadius: 5, padding: 12 },
   accessPrivacyText: { fontSize: 13, color: Colors.primary, lineHeight: 18 },
   pickerTitle: {
     fontSize: 16, fontWeight: '700', color: Colors.text,
@@ -976,12 +976,12 @@ const s = StyleSheet.create({
   mapThumb: { width: SCREEN_W, height: 200 },
   addressRow: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 8,
-    backgroundColor: Colors.surface, borderRadius: 12,
+    backgroundColor: Colors.surface, borderRadius: 5,
     padding: 12, borderWidth: 1, borderColor: Colors.border,
   },
   addressText: { flex: 1, fontSize: 14, color: Colors.text, lineHeight: 20, fontWeight: '500' },
   accessSummaryCard: {
-    backgroundColor: Colors.surface, borderRadius: 14,
+    backgroundColor: Colors.surface, borderRadius: 5,
     padding: 14, borderWidth: 1, borderColor: Colors.border, gap: 4,
   },
   accessSummaryTitle: { fontSize: 13, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 },
@@ -989,7 +989,7 @@ const s = StyleSheet.create({
   accessDetailLabel: { fontSize: 13, color: Colors.textSecondary },
   accessDetailValue: { fontSize: 13, fontWeight: '600', color: Colors.text },
   transportNote: { fontSize: 12, color: Colors.textSecondary, marginTop: 6, lineHeight: 17 },
-  infoBox: { backgroundColor: Colors.primaryLight, borderRadius: 12, padding: 14 },
+  infoBox: { backgroundColor: Colors.primaryLight, borderRadius: 5, padding: 14 },
   infoBoxAutoAccept: { backgroundColor: Colors.pioneerGoldSurface },
   infoText: { fontSize: 13, color: Colors.primary, lineHeight: 19, fontWeight: '500' },
   infoTextAutoAccept: { color: Colors.pioneerGoldDark },
@@ -1003,7 +1003,7 @@ const s = StyleSheet.create({
   },
   confirmBtn: {
     height: 54, backgroundColor: Colors.primary,
-    borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+    borderRadius: 5, alignItems: 'center', justifyContent: 'center',
   },
   confirmBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
 
@@ -1016,7 +1016,7 @@ const s = StyleSheet.create({
   },
   payBtn: {
     height: 58, backgroundColor: Colors.primary,
-    borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+    borderRadius: 5, alignItems: 'center', justifyContent: 'center',
   },
   payBtnDisabled: { backgroundColor: Colors.textMuted },
   payBtnText: { color: '#FFF', fontSize: 17, fontWeight: '800' },

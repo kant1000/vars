@@ -213,24 +213,24 @@ const styles = StyleSheet.create({
   body: { fontSize: 15, color: Colors.textSecondary, lineHeight: 22, marginBottom: 24 },
   vendorName: { fontWeight: '700', color: Colors.text },
   photo: {
-    width: '100%', aspectRatio: 1, borderRadius: 16, marginBottom: 28,
+    width: '100%', aspectRatio: 1, borderRadius: 5, marginBottom: 28,
   },
   actions: { flexDirection: 'row', gap: 12, marginBottom: 16 },
   declineBtn: {
     flex: 1, height: 54, borderWidth: 1.5, borderColor: Colors.error,
-    borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+    borderRadius: 5, alignItems: 'center', justifyContent: 'center',
   },
   declineBtnText: { color: Colors.error, fontSize: 16, fontWeight: '700' },
   approveBtn: {
     flex: 1, height: 54, backgroundColor: Colors.primary,
-    borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+    borderRadius: 5, alignItems: 'center', justifyContent: 'center',
   },
   approveBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
   btnDisabled: { opacity: 0.6 },
   hint: { fontSize: 12, color: Colors.textMuted, textAlign: 'center', lineHeight: 17 },
   errorText: { fontSize: 16, color: Colors.text, textAlign: 'center', marginBottom: 20 },
   backBtn: {
-    height: 50, backgroundColor: Colors.primary, borderRadius: 14,
+    height: 50, backgroundColor: Colors.primary, borderRadius: 5,
     paddingHorizontal: 32, alignItems: 'center', justifyContent: 'center', marginTop: 8,
   },
   backBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },

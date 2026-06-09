@@ -342,7 +342,7 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.background },
   unauthText: { fontSize: 16, color: Colors.textSecondary, marginBottom: 20 },
-  signInBtn: { paddingHorizontal: 32, paddingVertical: 14, backgroundColor: Colors.primary, borderRadius: 14 },
+  signInBtn: { paddingHorizontal: 32, paddingVertical: 14, backgroundColor: Colors.primary, borderRadius: 5 },
   signInBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
 
   // Header
@@ -363,26 +363,26 @@ const s = StyleSheet.create({
   },
   name: { fontSize: 22, fontWeight: '800', color: Colors.text, marginBottom: 4 },
   phoneDisplay: { fontSize: 14, color: Colors.textSecondary, marginBottom: 12 },
-  editBtn: { paddingHorizontal: 20, paddingVertical: 8, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 20 },
+  editBtn: { paddingHorizontal: 20, paddingVertical: 8, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 5 },
   editBtnText: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
 
   // Edit form
   editForm: { width: '100%', gap: 10, marginTop: 4 },
   input: {
-    backgroundColor: Colors.surface, borderRadius: 12,
+    backgroundColor: Colors.surface, borderRadius: 5,
     borderWidth: 1, borderColor: Colors.border,
     paddingHorizontal: 14, paddingVertical: 11,
     fontSize: 15, color: Colors.text,
   },
   editActions: { flexDirection: 'row', gap: 10 },
   cancelBtn: {
-    flex: 1, height: 46, borderRadius: 12,
+    flex: 1, height: 46, borderRadius: 5,
     borderWidth: 1.5, borderColor: Colors.border,
     alignItems: 'center', justifyContent: 'center',
   },
   cancelBtnText: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
   saveBtn: {
-    flex: 2, height: 46, borderRadius: 12,
+    flex: 2, height: 46, borderRadius: 5,
     backgroundColor: Colors.primary,
     alignItems: 'center', justifyContent: 'center',
   },
@@ -397,7 +397,7 @@ const s = StyleSheet.create({
   },
   sectionBody: {
     backgroundColor: Colors.background,
-    borderRadius: 14, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden',
+    borderRadius: 5, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden',
   },
 
   // Booking rows
@@ -409,10 +409,10 @@ const s = StyleSheet.create({
   bookingService: { fontSize: 14, fontWeight: '700', color: Colors.text },
   bookingMeta: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
   bookingPrice: { fontSize: 14, fontWeight: '700', color: Colors.text },
-  statusPill: { borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 },
+  statusPill: { borderRadius: 5, paddingHorizontal: 7, paddingVertical: 2 },
   statusText: { fontSize: 11, fontWeight: '700', textTransform: 'capitalize' },
   reviewBtn: {
-    backgroundColor: Colors.star + '20', borderRadius: 6,
+    backgroundColor: Colors.star + '20', borderRadius: 5,
     paddingHorizontal: 8, paddingVertical: 3,
   },
   reviewBtnText: { fontSize: 11, fontWeight: '700', color: Colors.star },
@@ -430,7 +430,7 @@ const s = StyleSheet.create({
 
   // Sign out
   signOutWrap: { alignItems: 'center', paddingTop: 32, paddingBottom: 8, gap: 12 },
-  signOutBtn: { paddingHorizontal: 32, paddingVertical: 12, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 12 },
+  signOutBtn: { paddingHorizontal: 32, paddingVertical: 12, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 5 },
   signOutText: { fontSize: 15, fontWeight: '600', color: Colors.error },
   versionText: { fontSize: 12, color: Colors.textMuted },
 });

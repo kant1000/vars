@@ -318,14 +318,14 @@ const styles = StyleSheet.create({
   modeToggle: {
     flexDirection: 'row',
     backgroundColor: Colors.surface,
-    borderRadius: 12,
+    borderRadius: 5,
     padding: 4,
     marginBottom: 28,
   },
   modeButton: {
     flex: 1,
     paddingVertical: 10,
-    borderRadius: 10,
+    borderRadius: 5,
     alignItems: 'center',
   },
   modeButtonActive: {
@@ -353,7 +353,7 @@ const styles = StyleSheet.create({
     height: 54,
     borderWidth: 1.5,
     borderColor: Colors.border,
-    borderRadius: 14,
+    borderRadius: 5,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -388,7 +388,7 @@ const styles = StyleSheet.create({
     height: 54,
     borderWidth: 1.5,
     borderColor: Colors.border,
-    borderRadius: 14,
+    borderRadius: 5,
     paddingHorizontal: 16,
     fontSize: 16,
     color: Colors.text,
@@ -403,7 +403,7 @@ const styles = StyleSheet.create({
   submitButton: {
     height: 54,
     backgroundColor: Colors.primary,
-    borderRadius: 14,
+    borderRadius: 5,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 4,

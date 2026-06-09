@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
   segment: {
     flex: 1,
     height: 3,
-    borderRadius: 2,
+    borderRadius: 5,
   },
   segmentFilled: { backgroundColor: Colors.primary },
   segmentEmpty: { backgroundColor: Colors.border },

@@ -89,6 +89,11 @@ Keep this file under 200 lines total. Add project-specific rules below these 12.
 - Lead with forward momentum, not failure. "Let's try that again" not "Identity check didn't go through". "Confirming..." not "Awaiting vendor". "Outside your zone" not "Paused — outside zone".
 - Passive blame and deficit labels (`"Unverified"`, `"couldn't"`, `"didn't"`, `"wasn't"`) are banned from user-facing copy.
 
+### Mobile Design System
+- **Border radius is always `5`.** No exceptions for UI surfaces. Use `BORDER_RADIUS` exported from `apps/mobile/constants/colors.ts` — never a hardcoded number.
+- Circular elements (avatars, status dots) are exempt: they use `borderRadius = width / 2` to remain circular.
+- When adding any new component or style, set `borderRadius: BORDER_RADIUS` (not `borderRadius: 5` inline — import the constant).
+
 ### Constants and Types
 - `BookingStatus` type and `BOOKING_STATUS` constant live in `packages/shared/src/constants.ts` and `types.ts`.
 - Mobile and admin import from `@vars/shared`. Edge functions import from `supabase/functions/_shared/constants.ts` (Deno cannot resolve workspace packages — keep the mirror in sync manually).

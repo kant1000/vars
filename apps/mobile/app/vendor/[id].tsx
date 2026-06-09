@@ -504,7 +504,7 @@ const styles = StyleSheet.create({
   reviewCount: { fontSize: 12, color: Colors.textMuted },
   newOnVars: { fontSize: 12, fontWeight: '600', color: Colors.badgeNew },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginBottom: 6 },
-  badge: { borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
+  badge: { borderRadius: 5, paddingHorizontal: 7, paddingVertical: 3 },
   badgeText: { fontSize: 10, fontWeight: '700' },
   bio: { fontSize: 13, color: Colors.textSecondary, lineHeight: 19 },
   responseTime: { fontSize: 12, color: Colors.textMuted, marginTop: 4 },
@@ -534,7 +534,7 @@ const styles = StyleSheet.create({
   serviceCard: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
     paddingVertical: 14, paddingHorizontal: 12,
-    borderWidth: 1, borderColor: Colors.border, borderRadius: 12,
+    borderWidth: 1, borderColor: Colors.border, borderRadius: 5,
     marginBottom: 8, backgroundColor: Colors.background,
   },
   serviceCardSelected: {
@@ -574,7 +574,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20, paddingTop: 12,
   },
   ctaButton: {
-    height: 56, backgroundColor: Colors.primary, borderRadius: 14,
+    height: 56, backgroundColor: Colors.primary, borderRadius: 5,
     alignItems: 'center', justifyContent: 'center',
   },
   ctaText: { color: '#FFF', fontSize: 17, fontWeight: '800' },

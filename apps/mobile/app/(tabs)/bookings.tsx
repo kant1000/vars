@@ -204,7 +204,7 @@ const st = StyleSheet.create({
   },
   card: {
     marginHorizontal: 16, marginBottom: 10,
-    backgroundColor: Colors.surface, borderRadius: 12,
+    backgroundColor: Colors.surface, borderRadius: 5,
     padding: 16, borderWidth: 1, borderColor: Colors.border, gap: 4,
   },
   cardTop: {
@@ -212,7 +212,7 @@ const st = StyleSheet.create({
     alignItems: 'center', marginBottom: 4,
   },
   vendorName: { fontSize: 15, fontWeight: '700', color: Colors.text },
-  statusPill: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+  statusPill: { borderRadius: 5, paddingHorizontal: 8, paddingVertical: 3 },
   statusText: { fontSize: 12, fontWeight: '700' },
   serviceName: { fontSize: 14, color: Colors.textSecondary },
   cardBottom: {
@@ -225,7 +225,7 @@ const st = StyleSheet.create({
   emptyTitle: { fontSize: 18, fontWeight: '700', color: Colors.text, marginBottom: 8 },
   emptyBody: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
   cta: {
-    marginTop: 16, backgroundColor: Colors.primary, borderRadius: 14,
+    marginTop: 16, backgroundColor: Colors.primary, borderRadius: 5,
     paddingHorizontal: 32, paddingVertical: 14,
   },
   ctaText: { color: '#FFF', fontSize: 16, fontWeight: '700' },

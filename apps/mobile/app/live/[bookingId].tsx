@@ -240,14 +240,14 @@ function DisputeModal({
 }
 const dm = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: Colors.overlay, justifyContent: 'flex-end' },
-  sheet: { backgroundColor: Colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24 },
+  sheet: { backgroundColor: Colors.background, borderTopLeftRadius: 5, borderTopRightRadius: 5, padding: 24 },
   title: { fontSize: 20, fontWeight: '800', color: Colors.text, marginBottom: 8 },
   body: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20, marginBottom: 16 },
   categories: { gap: 8 },
   categoryRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingVertical: 12, paddingHorizontal: 14,
-    borderRadius: 12, borderWidth: 1.5, borderColor: Colors.border,
+    borderRadius: 5, borderWidth: 1.5, borderColor: Colors.border,
     backgroundColor: Colors.surface,
   },
   categoryRowSelected: { borderColor: Colors.error, backgroundColor: Colors.error + '0D' },
@@ -259,13 +259,13 @@ const dm = StyleSheet.create({
   categoryLabel: { fontSize: 14, color: Colors.text, flex: 1 },
   categoryLabelSelected: { fontWeight: '600', color: Colors.error },
   input: {
-    backgroundColor: Colors.surface, borderRadius: 12, borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: Colors.surface, borderRadius: 5, borderWidth: 1, borderColor: Colors.border,
     paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, color: Colors.text, minHeight: 80,
   },
   btns: { flexDirection: 'row', gap: 12, marginTop: 16 },
-  cancel: { flex: 1, height: 48, borderRadius: 12, borderWidth: 1.5, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
+  cancel: { flex: 1, height: 48, borderRadius: 5, borderWidth: 1.5, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
   cancelText: { fontSize: 15, fontWeight: '600', color: Colors.text },
-  submit: { flex: 2, height: 48, backgroundColor: Colors.error, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  submit: { flex: 2, height: 48, backgroundColor: Colors.error, borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
   submitDisabled: { backgroundColor: Colors.textMuted },
   submitText: { fontSize: 15, fontWeight: '700', color: '#FFF' },
 });
@@ -673,44 +673,44 @@ const s = StyleSheet.create({
 
   statusPill: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    margin: 16, borderRadius: 16, padding: 14,
+    margin: 16, borderRadius: 5, padding: 14,
   },
   statusLabel: { fontSize: 17, fontWeight: '800' },
 
   card: {
     marginHorizontal: 16, marginBottom: 12,
-    backgroundColor: Colors.surface, borderRadius: 16,
+    backgroundColor: Colors.surface, borderRadius: 5,
     padding: 16, borderWidth: 1, borderColor: Colors.border, gap: 4,
   },
   cardTitle: { fontSize: 18, fontWeight: '800', color: Colors.text },
   cardMeta: { fontSize: 13, color: Colors.textSecondary },
   cardPrice: { fontSize: 15, fontWeight: '700', color: Colors.primary, marginTop: 4 },
 
-  mapWrap: { marginHorizontal: 16, marginBottom: 12, borderRadius: 16, overflow: 'hidden', height: 200 },
+  mapWrap: { marginHorizontal: 16, marginBottom: 12, borderRadius: 5, overflow: 'hidden', height: 200 },
   map: { flex: 1 },
 
   phoneCard: {
     marginHorizontal: 16, marginBottom: 12,
-    backgroundColor: Colors.success + '15', borderRadius: 14,
+    backgroundColor: Colors.success + '15', borderRadius: 5,
     padding: 16, borderWidth: 1, borderColor: Colors.success + '40',
   },
   phoneLabel: { fontSize: 15, fontWeight: '700', color: Colors.success, marginBottom: 2 },
   phoneNum: { fontSize: 18, fontWeight: '800', color: Colors.text },
   phoneCountdown: {
     marginHorizontal: 16, marginBottom: 12,
-    backgroundColor: Colors.warning + '15', borderRadius: 14, padding: 12,
+    backgroundColor: Colors.warning + '15', borderRadius: 5, padding: 12,
   },
   phoneCountdownText: { fontSize: 13, color: Colors.warning, fontWeight: '500' },
 
   autoReleaseBox: {
     marginHorizontal: 16, marginBottom: 12,
-    backgroundColor: Colors.primaryLight, borderRadius: 12, padding: 12,
+    backgroundColor: Colors.primaryLight, borderRadius: 5, padding: 12,
   },
   autoReleaseText: { fontSize: 13, color: Colors.primary, lineHeight: 18 },
 
   staleLocBox: {
     marginHorizontal: 16, marginBottom: 8,
-    backgroundColor: Colors.warning + '18', borderRadius: 10, padding: 10,
+    backgroundColor: Colors.warning + '18', borderRadius: 5, padding: 10,
     borderWidth: 1, borderColor: Colors.warning + '50',
   },
   staleLocText: { fontSize: 12, color: Colors.warning, fontWeight: '500' },
@@ -727,13 +727,13 @@ const s = StyleSheet.create({
   },
   confirmBtn: {
     height: 56, backgroundColor: Colors.primary,
-    borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+    borderRadius: 5, alignItems: 'center', justifyContent: 'center',
   },
   confirmBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
   btnDisabled: { backgroundColor: Colors.textMuted },
   cancelBtn: {
     height: 44, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: Colors.error, borderRadius: 12,
+    borderWidth: 1.5, borderColor: Colors.error, borderRadius: 5,
   },
   cancelBtnText: { fontSize: 14, color: Colors.error, fontWeight: '700' },
   disputeBtn: {

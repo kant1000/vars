@@ -790,7 +790,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 20, paddingVertical: 20,
     borderBottomWidth: 1, gap: 8,
   },
-  statusPill: { alignSelf: 'flex-start', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 5 },
+  statusPill: { alignSelf: 'flex-start', borderRadius: 5, paddingHorizontal: 12, paddingVertical: 5 },
   statusPillText: { fontSize: 14, fontWeight: '700' },
   statusDescription: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20 },
   escrowNote: { fontSize: 13, color: Colors.textMuted, lineHeight: 18 },
@@ -802,7 +802,7 @@ const s = StyleSheet.create({
   },
 
   card: {
-    backgroundColor: Colors.surface, borderRadius: 16,
+    backgroundColor: Colors.surface, borderRadius: 5,
     padding: 16, borderWidth: 1, borderColor: Colors.border, gap: 2,
   },
   cardDivider: { height: 1, backgroundColor: Colors.border, marginVertical: 6 },
@@ -811,34 +811,34 @@ const s = StyleSheet.create({
   summaryValue: { fontSize: 14, fontWeight: '600', color: Colors.text, maxWidth: '60%', textAlign: 'right' },
   summaryValueBold: { fontSize: 16, fontWeight: '800', color: Colors.primary },
 
-  mapThumb: { width: '100%', height: 180, borderRadius: 14, overflow: 'hidden', marginBottom: 8 },
+  mapThumb: { width: '100%', height: 180, borderRadius: 5, overflow: 'hidden', marginBottom: 8 },
   addressRow: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 6,
-    backgroundColor: Colors.surface, borderRadius: 10,
+    backgroundColor: Colors.surface, borderRadius: 5,
     padding: 10, borderWidth: 1, borderColor: Colors.border,
   },
   addressText: { flex: 1, fontSize: 13, color: Colors.text, lineHeight: 18 },
 
-  errorBanner: { backgroundColor: Colors.error + '15', marginHorizontal: 16, marginTop: 16, borderRadius: 10, padding: 12 },
+  errorBanner: { backgroundColor: Colors.error + '15', marginHorizontal: 16, marginTop: 16, borderRadius: 5, padding: 12 },
   errorText: { fontSize: 13, color: Colors.error, fontWeight: '500' },
   errorTitle: { fontSize: 18, fontWeight: '700', color: Colors.text, marginBottom: 12 },
-  backLink: { paddingHorizontal: 24, paddingVertical: 12, backgroundColor: Colors.primary, borderRadius: 12 },
+  backLink: { paddingHorizontal: 24, paddingVertical: 12, backgroundColor: Colors.primary, borderRadius: 5 },
   backLinkText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
 
   // Action buttons
   actionSection: { paddingHorizontal: 16, paddingTop: 16, gap: 10 },
   primaryBtn: {
     height: 56, backgroundColor: Colors.primary,
-    borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+    borderRadius: 5, alignItems: 'center', justifyContent: 'center',
   },
   primaryBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
   secondaryBtn: {
-    height: 50, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+    height: 50, borderRadius: 5, alignItems: 'center', justifyContent: 'center',
     borderWidth: 1.5, borderColor: Colors.border,
   },
   secondaryBtnText: { fontSize: 15, fontWeight: '600', color: Colors.textSecondary },
   cancelBtn: {
-    height: 50, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+    height: 50, borderRadius: 5, alignItems: 'center', justifyContent: 'center',
     borderWidth: 1.5, borderColor: Colors.error + '60',
   },
   cancelBtnText: { fontSize: 15, fontWeight: '600', color: Colors.error },
@@ -848,7 +848,7 @@ const s = StyleSheet.create({
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
   modalSheet: {
     backgroundColor: Colors.background,
-    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    borderTopLeftRadius: 5, borderTopRightRadius: 5,
     padding: 24, paddingBottom: 40, gap: 12,
   },
   modalTitle: { fontSize: 20, fontWeight: '800', color: Colors.text },
@@ -856,17 +856,17 @@ const s = StyleSheet.create({
   modalBold: { fontWeight: '700', color: Colors.text },
   modalActions: { flexDirection: 'row', gap: 10, marginTop: 4 },
   modalKeepBtn: {
-    flex: 1, height: 52, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+    flex: 1, height: 52, borderRadius: 5, alignItems: 'center', justifyContent: 'center',
     backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
   },
   modalKeepText: { fontSize: 15, fontWeight: '700', color: Colors.text },
   modalCancelBtn: {
-    flex: 1, height: 52, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+    flex: 1, height: 52, borderRadius: 5, alignItems: 'center', justifyContent: 'center',
     backgroundColor: Colors.error,
   },
   modalCancelText: { fontSize: 15, fontWeight: '700', color: '#FFF' },
   disputeInput: {
-    backgroundColor: Colors.surface, borderRadius: 12,
+    backgroundColor: Colors.surface, borderRadius: 5,
     borderWidth: 1, borderColor: Colors.border,
     paddingHorizontal: 14, paddingVertical: 12,
     fontSize: 15, color: Colors.text, minHeight: 80,
@@ -874,7 +874,7 @@ const s = StyleSheet.create({
   categoryRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingVertical: 12, paddingHorizontal: 14,
-    borderRadius: 12, borderWidth: 1.5, borderColor: Colors.border,
+    borderRadius: 5, borderWidth: 1.5, borderColor: Colors.border,
     backgroundColor: Colors.surface,
   },
   categoryRowSelected: { borderColor: Colors.error, backgroundColor: Colors.error + '0D' },
@@ -889,7 +889,7 @@ const s = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center', padding: 24,
   },
   rescheduleSheet: {
-    backgroundColor: Colors.background, borderRadius: 24,
+    backgroundColor: Colors.background, borderRadius: 5,
     padding: 24, width: '100%', gap: 12, alignItems: 'center',
   },
   rescheduleVendorName: {
@@ -900,7 +900,7 @@ const s = StyleSheet.create({
     fontSize: 22, fontWeight: '800', color: Colors.text, textAlign: 'center',
   },
   rescheduleTimeCard: {
-    backgroundColor: Colors.surface, borderRadius: 16,
+    backgroundColor: Colors.surface, borderRadius: 5,
     padding: 20, borderWidth: 1, borderColor: Colors.border,
     alignItems: 'center', width: '100%', marginVertical: 4,
   },
@@ -918,7 +918,7 @@ const s = StyleSheet.create({
   },
   liveLabel: { fontSize: 13, fontWeight: '600', color: '#22C55E', flex: 1 },
   liveUpdated: { fontSize: 12, color: Colors.textMuted },
-  liveMap: { width: '100%', height: 260, borderRadius: 14, overflow: 'hidden' },
+  liveMap: { width: '100%', height: 260, borderRadius: 5, overflow: 'hidden' },
   liveLoadingOverlay: {
     position: 'absolute', top: 32, left: 0, right: 0,
     alignItems: 'center', gap: 8,

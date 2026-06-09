@@ -20,6 +20,13 @@ import {
 
 const L1_KEYS = Object.values(CATEGORY_L1) as string[];
 
+const DESC_PLACEHOLDER: Record<string, string> = {
+  hair:   'e.g. Knotless braids, mid-back length, feeds included...',
+  barber: 'e.g. Low fade with line-up and beard shape-up...',
+  face:   'e.g. Full glam beat, contouring and lashes included...',
+  nails:  'e.g. Gel extensions, any shape, nail art on request...',
+};
+
 const DURATION_OPTIONS = [1, 2, 3, 4, 6, 8].map((b) => ({
   blocks: b,
   label: b === 1 ? '30 min' : b < 4 ? `${b * 30} min` : `${b / 2} hr${b > 2 ? 's' : ''}`,
@@ -152,7 +159,7 @@ export default function AddServiceScreen() {
       </ScrollView>
 
       {/* Service name */}
-      <Text style={styles.fieldLabel}>Service name</Text>
+      <Text style={styles.fieldLabel}>Service name <Text style={styles.required}>*</Text></Text>
       <TextInput
         style={styles.textInput}
         value={formName}
@@ -171,17 +178,15 @@ export default function AddServiceScreen() {
         style={[styles.textInput, styles.textArea]}
         value={formDesc}
         onChangeText={setFormDesc}
-        placeholder="Briefly describe the service..."
+        placeholder={DESC_PLACEHOLDER[formL1] ?? 'Briefly describe the service...'}
         placeholderTextColor={Colors.textMuted}
         maxLength={SERVICE_DESC_MAX_CHARS}
         multiline
         numberOfLines={3}
         textAlignVertical="top"
       />
-      <Text style={styles.inputHint}>Keep it short.</Text>
-
       {/* Price */}
-      <Text style={styles.fieldLabel}>Price</Text>
+      <Text style={styles.fieldLabel}>Price <Text style={styles.required}>*</Text></Text>
       <VendorPriceInput
         value={formPrice}
         onChangeText={setFormPrice}
@@ -189,7 +194,7 @@ export default function AddServiceScreen() {
         pioneerBookingsCompleted={vendorPioneer?.pioneer_bookings_completed}
       />
       <Text style={styles.priceHint}>
-        Factor in local travel cost. VARS only adds a distance fee when the customer is far away.
+        Travel cost is added automatically for clients over 5km away
       </Text>
 
       {/* Duration */}
@@ -236,38 +241,38 @@ const styles = StyleSheet.create({
 
   fieldLabel: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary, marginBottom: 8 },
   optional: { fontWeight: '400', color: Colors.textMuted },
+  required: { color: Colors.error, fontWeight: '700' },
 
   pillRow: { marginBottom: 16 },
   pillRowInner: { flexDirection: 'row', gap: 8, paddingRight: 24 },
   pill: {
     paddingVertical: 8, paddingHorizontal: 16,
-    borderRadius: 20, borderWidth: 1.5, borderColor: Colors.border,
+    borderRadius: 5, borderWidth: 1.5, borderColor: Colors.border,
     backgroundColor: Colors.background,
   },
-  pillActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  pillActive: { backgroundColor: Colors.ink, borderColor: Colors.ink },
   pillText: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
   pillTextActive: { color: '#FFF' },
 
   textInput: {
-    height: 44, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 10,
+    height: 44, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 5,
     paddingHorizontal: 12, fontSize: 15, color: Colors.text, marginBottom: 16,
     backgroundColor: Colors.surface,
   },
   textArea: { height: 80, paddingTop: 10, lineHeight: 20 },
-  inputHint: { fontSize: 12, color: Colors.textMuted, marginTop: -10, marginBottom: 16 },
   priceHint: { fontSize: 12, color: Colors.textMuted, marginTop: 6, marginBottom: 16 },
 
   durationRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
   durationChip: {
     paddingVertical: 8, paddingHorizontal: 16,
-    borderRadius: 20, borderWidth: 1.5, borderColor: Colors.border,
+    borderRadius: 5, borderWidth: 1.5, borderColor: Colors.border,
   },
-  durationChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  durationChipActive: { backgroundColor: Colors.ink, borderColor: Colors.ink },
   durationChipText: { fontSize: 13, color: Colors.textSecondary, fontWeight: '500' },
   durationChipTextActive: { color: '#FFF' },
 
   saveBtn: {
-    height: 56, backgroundColor: Colors.primary, borderRadius: 14,
+    height: 56, backgroundColor: Colors.ink, borderRadius: 5,
     alignItems: 'center', justifyContent: 'center', marginTop: 16,
   },
   saveBtnDisabled: { opacity: 0.6 },

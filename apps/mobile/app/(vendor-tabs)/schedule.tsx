@@ -566,12 +566,12 @@ function DetailRow({ label, value, bold }: { label: string; value: string; bold?
 }
 
 // ── Sub-components ────────────────────────────────────────────
-function LegendDot({ borderColor, label, glyph, glyphColor, borderWidth = 1.5 }: {
-  borderColor: string; label: string; glyph?: string; glyphColor?: string; borderWidth?: number;
+function LegendDot({ borderColor, backgroundColor = 'transparent', label, glyph, glyphColor, borderWidth = 1.5 }: {
+  borderColor: string; backgroundColor?: string; label: string; glyph?: string; glyphColor?: string; borderWidth?: number;
 }) {
   return (
     <View style={s.legendItem}>
-      <View style={[s.legendDot, { borderColor, borderWidth, backgroundColor: 'transparent' }]}>
+      <View style={[s.legendDot, { borderColor, borderWidth, backgroundColor }]}>
         {glyph ? <Text style={{ fontSize: 13, color: glyphColor ?? borderColor, lineHeight: 16 }}>{glyph}</Text> : null}
       </View>
       <Text style={s.legendLabel}>{label}</Text>
@@ -857,7 +857,7 @@ export default function ScheduleScreen() {
       {viewMode === 'calendar' ? (
         <>
           {/* Day strip — fixed, does not scroll with the grid */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.dayStrip}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.dayStripScroll} contentContainerStyle={s.dayStrip}>
             {DAYS.map((d) => {
               const active = d.toDateString() === selectedDay.toDateString();
               return (
@@ -879,7 +879,7 @@ export default function ScheduleScreen() {
           <View style={s.legend}>
             <LegendDot borderColor={Colors.inkFaint} label="Available" />
             <LegendDot borderColor={Colors.inkFaint} label="Blocked" glyph="✕" glyphColor={Colors.accentRed} />
-            <LegendDot borderColor={Colors.ink}      label="Booked"  borderWidth={2.5} />
+            <LegendDot borderColor={Colors.ink} backgroundColor={Colors.ink} label="Booked" borderWidth={2.5} />
           </View>
 
           {/* Hint — fixed */}
@@ -1044,30 +1044,32 @@ const s = StyleSheet.create({
   headerTitle: { fontSize: 24, fontWeight: '800', color: Colors.text },
   zoneBtn: {
     paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: 20, borderWidth: 1.5, borderColor: Colors.ink, backgroundColor: 'transparent',
+    borderRadius: 5, borderWidth: 1.5, borderColor: Colors.ink, backgroundColor: 'transparent',
   },
   zoneBtnText: { fontSize: 13, fontWeight: '700', color: Colors.ink },
 
   toggleRow: {
     flexDirection: 'row', marginHorizontal: 16, marginVertical: 10,
-    backgroundColor: 'transparent', borderRadius: 10,
+    backgroundColor: 'transparent', borderRadius: 5,
     borderWidth: 1, borderColor: Colors.ink, padding: 3,
   },
   toggleBtn: {
-    flex: 1, paddingVertical: 7, borderRadius: 8, alignItems: 'center',
+    flex: 1, paddingVertical: 7, borderRadius: 5, alignItems: 'center',
   },
   toggleBtnActive: { backgroundColor: Colors.ink },
   toggleBtnText: { fontSize: 14, fontWeight: '600', color: Colors.inkMuted },
   toggleBtnTextActive: { color: Colors.white },
 
-  dayStrip: { paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
+  dayStripScroll: { height: 68 },
+  dayStrip: { paddingHorizontal: 16, paddingVertical: 6, gap: 8, alignItems: 'center' },
   dayChip: {
-    alignItems: 'center', paddingHorizontal: 12, paddingVertical: 5,
-    borderRadius: 20, borderWidth: 1.5, borderColor: Colors.inkFaint, minWidth: 48,
+    alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 12, paddingVertical: 7,
+    borderRadius: 5, borderWidth: 1.5, borderColor: Colors.inkFaint, minWidth: 44,
   },
   dayChipActive: { backgroundColor: Colors.ink, borderColor: Colors.ink },
-  dayWeekday: { fontSize: 10, color: Colors.textMuted, fontWeight: '600' },
-  dayNum: { fontSize: 17, fontWeight: '800', color: Colors.text },
+  dayWeekday: { fontSize: 9, color: Colors.textMuted, fontWeight: '600' },
+  dayNum: { fontSize: 14, fontWeight: '800', color: Colors.text },
   dayTextActive: { color: '#FFF' },
 
   legend: {
@@ -1075,32 +1077,32 @@ const s = StyleSheet.create({
     paddingHorizontal: 16, paddingTop: 4, paddingBottom: 2,
   },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  legendDot: { width: 22, height: 22, borderRadius: 4, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  legendDot: { width: 22, height: 22, borderRadius: 5, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   legendLabel: { fontSize: 12, color: Colors.textSecondary },
 
   hint: { fontSize: 12, color: Colors.textMuted, marginHorizontal: 16, marginBottom: 10, marginTop: 2 },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, gap: 12 },
   slot: {
-    width: SLOT_W, height: 60, borderRadius: 10,
+    width: SLOT_W, height: 60, borderRadius: 5,
     borderWidth: 1.5, alignItems: 'center', justifyContent: 'center',
   },
   slotPast: { opacity: 0.35 },
   slotTime: { fontSize: 11, fontWeight: '600' },
 
-  // Booked slot — thick ink border is the sole booked indicator
+  // Booked slot — solid black fill with white text
   slotBooked: {
     borderColor: Colors.ink,
     borderWidth: 2.5,
-    backgroundColor: 'transparent',
+    backgroundColor: Colors.ink,
     justifyContent: 'center', alignItems: 'center',
     paddingHorizontal: 3,
   },
-  slotBookedName: { fontSize: 10, fontWeight: '700', color: Colors.ink, textAlign: 'center' },
-  slotBookedService: { fontSize: 9, color: Colors.inkMuted, textAlign: 'center', marginTop: 1 },
+  slotBookedName: { fontSize: 10, fontWeight: '700', color: '#FFF', textAlign: 'center' },
+  slotBookedService: { fontSize: 9, color: 'rgba(255,255,255,0.75)', textAlign: 'center', marginTop: 1 },
   slotGlyph: { position: 'absolute', bottom: 7, right: 7 },
   slotContinuation: {
-    width: '60%', height: 3, borderRadius: 2,
+    width: '60%', height: 3, borderRadius: 5,
     backgroundColor: 'rgba(0,0,0,0.15)',
   },
 
@@ -1112,12 +1114,12 @@ const s = StyleSheet.create({
   listEmptyTitle: { fontSize: 17, fontWeight: '700', color: Colors.text, marginBottom: 6 },
   listEmptyBody: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center' },
   listCard: {
-    backgroundColor: 'transparent', borderRadius: 16,
+    backgroundColor: 'transparent', borderRadius: 5,
     padding: 16, borderWidth: 1, borderColor: Colors.ink, gap: 4,
   },
   listCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
   listClientName: { fontSize: 15, fontWeight: '700', color: Colors.text },
-  listStatusPill: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+  listStatusPill: { borderRadius: 5, paddingHorizontal: 8, paddingVertical: 3 },
   listStatusText: { fontSize: 11, fontWeight: '700' },
   listServiceName: { fontSize: 14, color: Colors.textSecondary },
   listCardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
@@ -1133,11 +1135,11 @@ const bs = StyleSheet.create({
   },
   sheet: {
     backgroundColor: Colors.background,
-    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    borderTopLeftRadius: 5, borderTopRightRadius: 5,
     maxHeight: '90%', paddingHorizontal: 20,
   },
   handle: {
-    width: 36, height: 4, borderRadius: 2, backgroundColor: Colors.inkFaint,
+    width: 36, height: 4, borderRadius: 5, backgroundColor: Colors.inkFaint,
     alignSelf: 'center', marginVertical: 12,
   },
   headerRow: {
@@ -1145,21 +1147,21 @@ const bs = StyleSheet.create({
     marginBottom: 16,
   },
   clientName: { fontSize: 20, fontWeight: '800', color: Colors.text, marginBottom: 6 },
-  statusPill: { alignSelf: 'flex-start', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+  statusPill: { alignSelf: 'flex-start', borderRadius: 5, paddingHorizontal: 8, paddingVertical: 3 },
   statusText: { fontSize: 12, fontWeight: '700' },
   closeBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
 
-  map: { width: '100%', height: 180, borderRadius: 14, marginBottom: 10, overflow: 'hidden' },
+  map: { width: '100%', height: 180, borderRadius: 5, marginBottom: 10, overflow: 'hidden' },
   addressRow: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 6,
-    backgroundColor: 'transparent', borderRadius: 10,
+    backgroundColor: 'transparent', borderRadius: 5,
     padding: 10, borderWidth: 1, borderColor: Colors.inkFaint,
     marginBottom: 12,
   },
   addressText: { flex: 1, fontSize: 13, color: Colors.text, lineHeight: 18 },
 
   card: {
-    backgroundColor: 'transparent', borderRadius: 14,
+    backgroundColor: 'transparent', borderRadius: 5,
     padding: 14, borderWidth: 1, borderColor: Colors.ink,
     marginBottom: 12, gap: 2,
   },
@@ -1179,24 +1181,24 @@ const bs = StyleSheet.create({
 
   graceBanner: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: 'transparent', borderRadius: 12, padding: 14,
+    backgroundColor: 'transparent', borderRadius: 5, padding: 14,
     borderWidth: 1, borderColor: Colors.ink, marginBottom: 12,
   },
   graceTitle: { fontSize: 12, fontWeight: '700', color: Colors.ink, marginBottom: 2 },
   graceTimer: { fontSize: 13, color: Colors.inkMuted },
   graceBtn: {
-    borderWidth: 1.5, borderColor: Colors.ink, borderRadius: 10,
+    borderWidth: 1.5, borderColor: Colors.ink, borderRadius: 5,
     paddingHorizontal: 12, minHeight: 40,
     alignItems: 'center', justifyContent: 'center',
   },
   graceBtnText: { fontSize: 13, fontWeight: '700', color: Colors.ink },
 
-  errorBox: { backgroundColor: Colors.error + '15', borderRadius: 10, padding: 12, marginBottom: 12 },
+  errorBox: { backgroundColor: Colors.error + '15', borderRadius: 5, padding: 12, marginBottom: 12 },
   errorText: { fontSize: 13, color: Colors.error, fontWeight: '500' },
 
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
   actionBtn: {
-    flex: 1, height: 52, borderRadius: 12,
+    flex: 1, height: 52, borderRadius: 5,
     alignItems: 'center', justifyContent: 'center',
   },
   actionBtnDisabled: { opacity: 0.5 },
@@ -1207,13 +1209,13 @@ const bs = StyleSheet.create({
 
   primaryBtn: {
     height: 54, backgroundColor: Colors.ink,
-    borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+    borderRadius: 5, alignItems: 'center', justifyContent: 'center',
     marginTop: 4,
   },
   primaryBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
 
   waitingBox: {
-    backgroundColor: 'transparent', borderRadius: 12,
+    backgroundColor: 'transparent', borderRadius: 5,
     padding: 14, borderWidth: 1, borderColor: Colors.inkFaint,
     alignItems: 'center', marginTop: 4,
   },
@@ -1221,12 +1223,12 @@ const bs = StyleSheet.create({
 
   // Reschedule suggestion UI
   rescheduleBtn: {
-    height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+    height: 48, borderRadius: 5, alignItems: 'center', justifyContent: 'center',
     borderWidth: 1.5, borderColor: Colors.ink, marginTop: 8,
   },
   rescheduleBtnText: { fontSize: 15, fontWeight: '600', color: Colors.ink },
   rescheduleWrap: {
-    backgroundColor: 'transparent', borderRadius: 14,
+    backgroundColor: 'transparent', borderRadius: 5,
     padding: 14, borderWidth: 1, borderColor: Colors.inkFaint, marginBottom: 12,
   },
   rescheduleHeading: { fontSize: 14, fontWeight: '700', color: Colors.ink, marginBottom: 12 },
@@ -1236,7 +1238,7 @@ const bs = StyleSheet.create({
   },
   rescheduleChip: {
     paddingHorizontal: 12, paddingVertical: 8,
-    borderRadius: 10, borderWidth: 1.5, borderColor: Colors.ink, alignItems: 'center',
+    borderRadius: 5, borderWidth: 1.5, borderColor: Colors.ink, alignItems: 'center',
   },
   rescheduleChipUnavailable: { borderColor: Colors.inkFaint, backgroundColor: 'transparent' },
   rescheduleChipSelected: { backgroundColor: Colors.ink, borderColor: Colors.ink },

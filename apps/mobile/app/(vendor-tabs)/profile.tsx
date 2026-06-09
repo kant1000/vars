@@ -448,7 +448,7 @@ const s = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
   settingRowGold: {
-    backgroundColor: 'transparent', borderRadius: 12, paddingHorizontal: 14,
+    backgroundColor: 'transparent', borderRadius: 5, paddingHorizontal: 14,
     borderWidth: 1, borderColor: Colors.ink, borderBottomWidth: 1,
     borderBottomColor: Colors.ink,
   },
@@ -461,7 +461,7 @@ const s = StyleSheet.create({
 
   confirmBanner: {
     marginTop: 10, padding: 12,
-    backgroundColor: 'transparent', borderRadius: 10,
+    backgroundColor: 'transparent', borderRadius: 5,
     borderWidth: 1, borderColor: Colors.ink + '40',
   },
   confirmBannerText: { fontSize: 13, color: Colors.ink, fontWeight: '600' },
@@ -474,7 +474,7 @@ const s = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: Colors.border,
     backgroundColor: Colors.background,
   },
-  svcRowDragging: { backgroundColor: Colors.surface, borderRadius: 10 },
+  svcRowDragging: { backgroundColor: Colors.surface, borderRadius: 5 },
   dragHandle: { paddingRight: 12, paddingVertical: 4 },
   dragHandleIcon: { fontSize: 18, color: Colors.textMuted, lineHeight: 20 },
   svcInfo: { flex: 1 },
@@ -487,7 +487,7 @@ const s = StyleSheet.create({
   svcDeleteBtn: { padding: 8 },
   addSvcBtn: {
     marginTop: 12, height: 42,
-    borderRadius: 10, borderWidth: 1.5, borderColor: Colors.border,
+    borderRadius: 5, borderWidth: 1.5, borderColor: Colors.border,
     alignItems: 'center', justifyContent: 'center',
   },
   addSvcText: { fontSize: 14, fontWeight: '600', color: Colors.text },
@@ -495,11 +495,11 @@ const s = StyleSheet.create({
   // Portfolio grid
   photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
   photoWrapper: { width: PHOTO_SIZE, position: 'relative' },
-  photo: { width: PHOTO_SIZE, height: PHOTO_SIZE, borderRadius: 10 },
+  photo: { width: PHOTO_SIZE, height: PHOTO_SIZE, borderRadius: 5 },
   photoBadge: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
     backgroundColor: 'rgba(255,255,255,0.88)',
-    borderBottomLeftRadius: 10, borderBottomRightRadius: 10,
+    borderBottomLeftRadius: 5, borderBottomRightRadius: 5,
     paddingVertical: 3, alignItems: 'center',
   },
   photoBadgeText: { fontSize: 10, fontWeight: '700' },
@@ -510,7 +510,7 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   addPhotoBtn: {
-    width: PHOTO_SIZE, height: PHOTO_SIZE, borderRadius: 10,
+    width: PHOTO_SIZE, height: PHOTO_SIZE, borderRadius: 5,
     borderWidth: 1.5, borderColor: Colors.ink, borderStyle: 'dashed',
     alignItems: 'center', justifyContent: 'center', gap: 4,
   },

@@ -294,13 +294,13 @@ const s = StyleSheet.create({
   mapHintText: {
     backgroundColor: 'rgba(0,0,0,0.55)',
     color: '#FFF', fontSize: 12, fontWeight: '600',
-    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12,
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 5,
     overflow: 'hidden',
   },
 
   controls: { padding: 20, gap: 20 },
 
-  dateRow: { backgroundColor: Colors.ink, borderRadius: 12, padding: 14 },
+  dateRow: { backgroundColor: Colors.ink, borderRadius: 5, padding: 14 },
   dateLabelText: {
     fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.65)',
     textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4,
@@ -314,7 +314,7 @@ const s = StyleSheet.create({
   radiusRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   radiusChip: {
     paddingHorizontal: 16, paddingVertical: 10,
-    borderRadius: 20, borderWidth: 1.5, borderColor: Colors.inkFaint,
+    borderRadius: 5, borderWidth: 1.5, borderColor: Colors.inkFaint,
   },
   radiusChipActive: { backgroundColor: Colors.ink, borderColor: Colors.ink },
   radiusChipText:   { fontSize: 14, fontWeight: '700', color: Colors.textSecondary },
@@ -322,14 +322,14 @@ const s = StyleSheet.create({
 
   toggleRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: 'transparent', borderRadius: 14, padding: 16,
+    backgroundColor: 'transparent', borderRadius: 5, padding: 16,
     borderWidth: 1, borderColor: Colors.ink,
   },
   toggleLabel: { fontSize: 15, fontWeight: '700', color: Colors.text, marginBottom: 3 },
   toggleSub:   { fontSize: 13, color: Colors.textSecondary, lineHeight: 18 },
 
   infoBox: {
-    backgroundColor: 'transparent', borderRadius: 12, padding: 14,
+    backgroundColor: 'transparent', borderRadius: 5, padding: 14,
     borderWidth: 1, borderColor: Colors.inkFaint,
   },
   infoTitle: { fontSize: 13, fontWeight: '700', color: Colors.ink, marginBottom: 6 },
@@ -337,7 +337,7 @@ const s = StyleSheet.create({
 
   saveBtn: {
     height: 56, backgroundColor: Colors.ink,
-    borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+    borderRadius: 5, alignItems: 'center', justifyContent: 'center',
   },
   btnDisabled: { opacity: 0.5 },
   saveBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },

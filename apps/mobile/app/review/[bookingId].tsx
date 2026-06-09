@@ -198,7 +198,7 @@ const s = StyleSheet.create({
   body: { padding: 20, gap: 16, paddingBottom: 60 },
 
   contextCard: {
-    backgroundColor: Colors.surface, borderRadius: 14,
+    backgroundColor: Colors.surface, borderRadius: 5,
     padding: 16, borderWidth: 1, borderColor: Colors.border,
     alignItems: 'center',
   },
@@ -213,19 +213,19 @@ const s = StyleSheet.create({
   ratingLabel: { textAlign: 'center', fontSize: 15, fontWeight: '700', color: Colors.star },
 
   commentInput: {
-    backgroundColor: Colors.surface, borderRadius: 14,
+    backgroundColor: Colors.surface, borderRadius: 5,
     borderWidth: 1, borderColor: Colors.border,
     paddingHorizontal: 14, paddingVertical: 12,
     fontSize: 15, color: Colors.text, minHeight: 100,
   },
   charCount: { fontSize: 12, color: Colors.textMuted, textAlign: 'right', marginTop: -10 },
 
-  note: { backgroundColor: Colors.primaryLight, borderRadius: 12, padding: 12 },
+  note: { backgroundColor: Colors.primaryLight, borderRadius: 5, padding: 12 },
   noteText: { fontSize: 13, color: Colors.primary, lineHeight: 18 },
 
   submitBtn: {
     height: 58, backgroundColor: Colors.primary,
-    borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+    borderRadius: 5, alignItems: 'center', justifyContent: 'center',
   },
   btnDisabled: { backgroundColor: Colors.textMuted },
   submitBtnText: { color: '#FFF', fontSize: 17, fontWeight: '800' },

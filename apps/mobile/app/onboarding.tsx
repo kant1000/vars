@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
   },
   ctaButton: {
     backgroundColor: '#111111',
-    borderRadius: 14,
+    borderRadius: 5,
     paddingVertical: 18,
     alignItems: 'center',
     marginTop: 24,
@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
   nextButton: {
     borderWidth: 1.5,
     borderColor: '#1A1A1A',
-    borderRadius: 14,
+    borderRadius: 5,
     paddingVertical: 18,
     alignItems: 'center',
     marginTop: 24,
