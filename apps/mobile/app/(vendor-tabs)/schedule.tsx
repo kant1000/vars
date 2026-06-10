@@ -844,6 +844,20 @@ export default function ScheduleScreen() {
   const confirmedToday = zoneInfo?.confirmedDate === todayStr;
   const autoAcceptLive = !!(zoneInfo?.enabled && !zoneInfo.paused && confirmedToday);
 
+  // Scroll to first non-past slot when calendar opens or day changes.
+  // Each row is 60px tall with a 12px gap = 72px stride. Two slots per row.
+  const slotScrollRef = useRef<ScrollView>(null);
+  useEffect(() => {
+    if (viewMode !== 'calendar' || loading) return;
+    const now = new Date();
+    const firstFuture = slots.findIndex((slot) => slot >= now);
+    if (firstFuture <= 1) return; // already at top, no scroll needed
+    const row = Math.floor(firstFuture / 2);
+    const y = 4 + row * 72;
+    const timer = setTimeout(() => slotScrollRef.current?.scrollTo({ y, animated: false }), 80);
+    return () => clearTimeout(timer);
+  }, [slots, viewMode, loading, selectedDay]);
+
   return (
     <View style={[s.container, { paddingTop: insets.top }]}>
       {/* Header */}
@@ -851,7 +865,7 @@ export default function ScheduleScreen() {
         <Text style={s.headerTitle}>My Schedule</Text>
         <TouchableOpacity style={s.zoneBtn} onPress={() => router.push('/vendor-zone-setup' as any)}>
           <LightningIcon size={13} color={autoAcceptLive ? Colors.ink : Colors.textMuted} />
-          <Text style={s.zoneBtnLabel}>Auto-accept</Text>
+          <Text style={[s.zoneBtnLabel, { color: autoAcceptLive ? Colors.ink : Colors.textMuted }]}>Auto-accept</Text>
         </TouchableOpacity>
       </View>
 
@@ -899,11 +913,8 @@ export default function ScheduleScreen() {
             <LegendDot borderColor={Colors.ink} backgroundColor={Colors.ink} label="Booked" borderWidth={2.5} />
           </View>
 
-          {/* Hint — fixed */}
-          <Text style={s.hint}>Tap to cycle: available → blocked</Text>
-
           {/* Slot grid — scrollable */}
-          <ScrollView contentContainerStyle={{ paddingBottom: 60, paddingTop: 4 }}>
+          <ScrollView ref={slotScrollRef} contentContainerStyle={{ paddingBottom: 60, paddingTop: 4 }}>
           <View style={s.grid}>
             {slots.map((slot) => {
               const iso = slot.toISOString();
@@ -1097,8 +1108,6 @@ const s = StyleSheet.create({
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   legendDot: { width: 22, height: 22, borderRadius: 5, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   legendLabel: { fontSize: 12, color: Colors.textSecondary },
-
-  hint: { fontSize: 12, color: Colors.textMuted, marginHorizontal: 16, marginBottom: 10, marginTop: 2 },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, gap: 12 },
   slot: {
