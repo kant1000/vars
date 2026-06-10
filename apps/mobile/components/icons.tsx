@@ -28,6 +28,9 @@ export function HeartIcon({ size = 16, color = '#1A1A1A' }: P) {
 export function EditIcon({ size = 16, color = '#1A1A1A' }: P) {
   return <Svg {...base(size, color)}><Path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><Path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></Svg>;
 }
+export function PenLineIcon({ size = 16, color = '#1A1A1A' }: P) {
+  return <Svg {...base(size, color)}><Path d="M12 20h9" /><Path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></Svg>;
+}
 export function StarFilledIcon({ size = 16, color = '#1A1A1A' }: P) {
   return <Svg width={size} height={size} viewBox="0 0 24 24"><Path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill={color} stroke={color} strokeWidth="1.75" strokeLinejoin="round" /></Svg>;
 }

@@ -4,18 +4,17 @@
 // ============================================================
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Alert, Dimensions, StyleSheet, Text, TouchableOpacity, View,
+  Alert, Dimensions, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/contexts/AuthContext';
 import { signOut } from '@/lib/auth';
 import { uploadSinglePortfolioPhoto, deletePortfolioPhoto } from '@/lib/storage';
 import { Colors } from '@/constants/colors';
-import { CloseIcon, EditIcon } from '@/components/icons';
+import { CheckIcon, CloseIcon, EditIcon, PenLineIcon } from '@/components/icons';
 import {
   NestableScrollContainer,
   NestableDraggableFlatList,
@@ -51,9 +50,13 @@ const CONSENT_LABEL: Record<string, { text: string; color: string }> = {
 
 export default function VendorProfileScreen() {
   const insets = useSafeAreaInsets();
-  const { profile } = useAuth();
 
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
+  const [vendorName, setVendorName] = useState('');
+  const [kycLegalName, setKycLegalName] = useState<string | null>(null);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editNameValue, setEditNameValue] = useState('');
+  const [isSavingName, setIsSavingName] = useState(false);
 
   const [services, setServices] = useState<VendorServiceItem[]>([]);
   const [servicesLoading, setServicesLoading] = useState(true);
@@ -77,7 +80,7 @@ export default function VendorProfileScreen() {
     const [vendorRes, servicesRes, photosRes] = await Promise.all([
       supabase
         .from('vendors')
-        .select('profile_image_url')
+        .select('full_name, kyc_legal_name, profile_image_url')
         .eq('id', user.id)
         .single(),
 
@@ -96,6 +99,8 @@ export default function VendorProfileScreen() {
         .order('created_at', { ascending: false }),
     ]);
 
+    setVendorName(vendorRes.data?.full_name ?? '');
+    setKycLegalName(vendorRes.data?.kyc_legal_name ?? null);
     setProfileImageUrl(vendorRes.data?.profile_image_url ?? null);
     setServices((servicesRes.data ?? []) as VendorServiceItem[]);
     setPhotos((photosRes.data ?? []) as PortfolioPhoto[]);
@@ -128,6 +133,22 @@ export default function VendorProfileScreen() {
         supabase.from('vendor_services').update({ sort_order: i }).eq('id', s.id)
       )
     );
+  };
+
+  const handleSaveName = async () => {
+    const trimmed = editNameValue.trim();
+    if (!trimmed || isSavingName) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    setIsSavingName(true);
+    const { error } = await supabase.from('vendors').update({ full_name: trimmed }).eq('id', user.id);
+    if (!error) {
+      setVendorName(trimmed);
+      setIsEditingName(false);
+    } else {
+      Alert.alert('Error', error.message);
+    }
+    setIsSavingName(false);
   };
 
   const renderServiceItem = ({ item, drag, isActive }: RenderItemParams<VendorServiceItem>) => (
@@ -211,20 +232,57 @@ export default function VendorProfileScreen() {
       </View>
 
       <NestableScrollContainer contentContainerStyle={{ paddingBottom: 60 }}>
-        {/* Name */}
-        <View style={s.nameSection}>
-          <View style={s.avatarWrapper}>
+        {/* Hero */}
+        <View style={s.heroRow}>
+          <View style={s.heroAvatarWrap}>
             {profileImageUrl ? (
-              <Image source={{ uri: profileImageUrl }} style={s.avatarImage} contentFit="cover" />
+              <Image source={{ uri: profileImageUrl }} style={s.heroAvatar} contentFit="cover" />
             ) : (
-              <View style={s.avatar}>
-                <Text style={s.avatarText}>
-                  {(profile?.full_name ?? 'V').charAt(0).toUpperCase()}
-                </Text>
+              <View style={[s.heroAvatar, s.heroAvatarFallback]}>
+                <Text style={s.heroAvatarText}>{(vendorName || 'V').charAt(0).toUpperCase()}</Text>
               </View>
             )}
           </View>
-          <Text style={s.name}>{profile?.full_name ?? 'Vendor'}</Text>
+
+          <View style={s.heroInfo}>
+            <View style={s.heroNameRow}>
+              {isEditingName ? (
+                <TextInput
+                  style={s.heroNameInput}
+                  value={editNameValue}
+                  onChangeText={setEditNameValue}
+                  maxLength={20}
+                  autoFocus
+                  returnKeyType="done"
+                  onSubmitEditing={handleSaveName}
+                  selectTextOnFocus
+                />
+              ) : (
+                <Text style={s.heroName} numberOfLines={1}>{vendorName || 'Vendor'}</Text>
+              )}
+              <TouchableOpacity
+                onPress={() => {
+                  if (isEditingName) { handleSaveName(); }
+                  else { setEditNameValue(vendorName); setIsEditingName(true); }
+                }}
+                hitSlop={8}
+                style={s.heroEditBtn}
+                disabled={isSavingName}
+                activeOpacity={0.7}
+              >
+                {isEditingName
+                  ? <CheckIcon size={16} color={Colors.success} />
+                  : <PenLineIcon size={14} color={Colors.textMuted} />}
+              </TouchableOpacity>
+            </View>
+
+            {kycLegalName ? (
+              <View style={s.heroLegalRow}>
+                <CheckIcon size={10} color={Colors.textMuted} />
+                <Text style={s.heroLegalText}>{kycLegalName} · Verified by VARS</Text>
+              </View>
+            ) : null}
+          </View>
         </View>
 
         {/* My Services */}
@@ -350,16 +408,25 @@ const s = StyleSheet.create({
   },
   headerTitle: { fontSize: 24, fontWeight: '800', color: Colors.text },
 
-  nameSection: { alignItems: 'center', paddingVertical: 28, gap: 10 },
-  avatarWrapper: { width: 72, height: 72, borderRadius: 36, position: 'relative' },
-  avatar: {
-    width: 72, height: 72, borderRadius: 36,
-    backgroundColor: Colors.ink,
-    alignItems: 'center', justifyContent: 'center',
+  heroRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 20, paddingVertical: 20, gap: 14,
   },
-  avatarImage: { width: 72, height: 72, borderRadius: 36 },
-  avatarText: { fontSize: 28, fontWeight: '800', color: Colors.white },
-  name: { fontSize: 20, fontWeight: '700', color: Colors.text },
+  heroAvatarWrap: { width: 56, height: 56 },
+  heroAvatar: { width: 56, height: 56, borderRadius: 28 },
+  heroAvatarFallback: { backgroundColor: Colors.ink, alignItems: 'center', justifyContent: 'center' },
+  heroAvatarText: { fontSize: 22, fontWeight: '800', color: Colors.white },
+  heroInfo: { flex: 1 },
+  heroNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  heroName: { fontSize: 18, fontWeight: '700', color: Colors.text, flex: 1 },
+  heroNameInput: {
+    flex: 1, fontSize: 18, fontWeight: '700', color: Colors.text,
+    borderBottomWidth: 1.5, borderBottomColor: Colors.ink,
+    paddingVertical: 1, paddingHorizontal: 0,
+  },
+  heroEditBtn: { padding: 3 },
+  heroLegalRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 5 },
+  heroLegalText: { fontSize: 12, color: Colors.textMuted },
 
   section: {
     marginTop: 8, borderTopWidth: 1, borderTopColor: Colors.border,

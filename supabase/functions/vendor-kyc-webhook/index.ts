@@ -32,6 +32,30 @@ async function verifyYouverifySignature(req: Request, body: string): Promise<boo
   return computed === sig;
 }
 
+// Extract the legal name from the Youverify payload.
+// Youverify's field paths vary by flow (NIN, BVN, CWB). We try known paths
+// in priority order and log which succeeded on the first sandbox webhook hit.
+function extractLegalName(payload: any): string | null {
+  const candidates = [
+    { first: payload?.data?.firstName,               last: payload?.data?.lastName,               mid: payload?.data?.middleName },
+    { first: payload?.data?.applicant?.firstName,    last: payload?.data?.applicant?.lastName,    mid: payload?.data?.applicant?.middleName },
+    { first: payload?.validations?.identity?.firstName, last: payload?.validations?.identity?.lastName, mid: null },
+    { first: payload?.data?.nin?.firstName,          last: payload?.data?.nin?.lastName,          mid: payload?.data?.nin?.middleName },
+    { first: payload?.data?.bvn?.firstName,          last: payload?.data?.bvn?.lastName,          mid: payload?.data?.bvn?.middleName },
+    { first: payload?.data?.firstName,               last: payload?.data?.surname,                mid: null },
+  ];
+
+  for (let i = 0; i < candidates.length; i++) {
+    const c = candidates[i];
+    if (typeof c.first === 'string' && c.first.trim().length > 0) {
+      console.log(`vendor-kyc-webhook: legal name found at candidate index ${i}`);
+      const parts = [c.first.trim(), c.mid?.trim(), c.last?.trim()].filter(Boolean);
+      return parts.join(' ') || null;
+    }
+  }
+  return null;
+}
+
 // Extract the liveness face image URL from the Youverify payload.
 // Youverify's field path differs between CWB and standalone liveness flows.
 // We try known paths in priority order and log which one succeeded so the
@@ -131,6 +155,17 @@ Deno.serve(async (req: Request) => {
   const dbUpdate: Record<string, unknown> = isVerified
     ? { kyc_status: 'verified', is_active: true, kyc_rejection_reason: null }
     : { kyc_status: 'rejected', kyc_rejection_reason: reason };
+
+  // ---- On a clean pass: extract legal name ----
+  if (isVerified) {
+    const legalName = extractLegalName(payload);
+    if (legalName) {
+      dbUpdate.kyc_legal_name = legalName;
+      console.log(`vendor-kyc-webhook: legal name stored for vendor ${vendorId}: ${legalName}`);
+    } else {
+      console.warn('vendor-kyc-webhook: no legal name found in payload for vendor', vendorId);
+    }
+  }
 
   // ---- On a clean pass: extract and upload identity images ----
   if (isVerified) {

@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
+import { CheckIcon } from '@/components/icons';
 import { CATEGORY_L2_LABELS } from '@vars/shared';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -52,6 +53,7 @@ interface Review {
 interface VendorProfile {
   id: string;
   full_name: string;
+  kyc_legal_name: string | null;
   bio: string | null;
   profile_image_url: string | null;
   avg_rating: number;
@@ -126,7 +128,7 @@ export default function VendorProfileScreen() {
 
     const [vendorRes, servicesRes, portfolioRes, reviewsRes, favRes] = await Promise.all([
       supabase.from('vendors')
-        .select('id, full_name, bio, profile_image_url, avg_rating, total_reviews, base_location_text, badge_vars_choice, badge_top_rated, pioneer, avg_response_minutes')
+        .select('id, full_name, kyc_legal_name, bio, profile_image_url, avg_rating, total_reviews, base_location_text, badge_vars_choice, badge_top_rated, pioneer, avg_response_minutes')
         .eq('id', id)
         .single(),
 
@@ -288,6 +290,12 @@ export default function VendorProfileScreen() {
 
           <View style={styles.profileInfo}>
             <Text style={styles.name} numberOfLines={1}>{vendor.full_name}</Text>
+            {vendor.kyc_legal_name ? (
+              <View style={styles.legalNameRow}>
+                <CheckIcon size={10} color={Colors.textMuted} />
+                <Text style={styles.legalNameText}>{vendor.kyc_legal_name} · Verified by VARS</Text>
+              </View>
+            ) : null}
             <View style={styles.ratingRow}>
               {vendor.total_reviews === 0 ? (
                 <Text style={styles.newOnVars}>New on VARS</Text>
@@ -497,7 +505,9 @@ const styles = StyleSheet.create({
   avatarFallback: { backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
   avatarInitial: { fontSize: 28, fontWeight: '800', color: Colors.primary },
   profileInfo: { flex: 1, paddingTop: 2 },
-  name: { fontSize: 20, fontWeight: '800', color: Colors.text, marginBottom: 4 },
+  name: { fontSize: 20, fontWeight: '800', color: Colors.text, marginBottom: 2 },
+  legalNameRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 },
+  legalNameText: { fontSize: 12, color: Colors.textMuted },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginBottom: 6 },
   starText: { color: Colors.star, fontSize: 13 },
   ratingText: { fontSize: 13, fontWeight: '700', color: Colors.text },

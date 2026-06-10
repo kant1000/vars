@@ -839,17 +839,10 @@ export default function ScheduleScreen() {
     zoneInfo.confirmedDate === selectedDayStr
   );
 
-  // Zone status for the header widget (always uses today, not selected day).
+  // Zone icon colour: black when live, grey when not.
   const todayStr = toLocalDateStr(getEffectiveToday());
   const confirmedToday = zoneInfo?.confirmedDate === todayStr;
-  const zoneStatus = (() => {
-    if (!zoneInfo) return { text: 'Loading...', color: Colors.textMuted };
-    if (!zoneInfo.zoneConfigured) return { text: 'No zone set', color: Colors.textMuted };
-    if (!zoneInfo.enabled) return { text: 'Off', color: Colors.textMuted };
-    if (zoneInfo.paused) return { text: 'Outside your zone', color: Colors.warning };
-    if (!confirmedToday) return { text: 'Confirm for today', color: Colors.warning };
-    return { text: `Active · ${zoneInfo.radius_km} km`, color: Colors.success };
-  })();
+  const autoAcceptLive = !!(zoneInfo?.enabled && !zoneInfo.paused && confirmedToday);
 
   return (
     <View style={[s.container, { paddingTop: insets.top }]}>
@@ -857,11 +850,8 @@ export default function ScheduleScreen() {
       <View style={s.header}>
         <Text style={s.headerTitle}>My Schedule</Text>
         <TouchableOpacity style={s.zoneBtn} onPress={() => router.push('/vendor-zone-setup' as any)}>
-          <Text style={s.zoneBtnLabel}>⚡ Auto-accept</Text>
-          <View style={s.zoneStatusRow}>
-            <View style={[s.zoneStatusDot, { backgroundColor: zoneStatus.color }]} />
-            <Text style={[s.zoneStatusText, { color: zoneStatus.color }]}>{zoneStatus.text}</Text>
-          </View>
+          <LightningIcon size={13} color={autoAcceptLive ? Colors.ink : Colors.textMuted} />
+          <Text style={s.zoneBtnLabel}>Auto-accept</Text>
         </TouchableOpacity>
       </View>
 
@@ -1070,14 +1060,11 @@ const s = StyleSheet.create({
   },
   headerTitle: { fontSize: 24, fontWeight: '800', color: Colors.text },
   zoneBtn: {
-    paddingHorizontal: 12, paddingVertical: 8,
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 12, paddingVertical: 6,
     borderRadius: 5, borderWidth: 1.5, borderColor: Colors.ink, backgroundColor: 'transparent',
-    alignItems: 'flex-start',
   },
   zoneBtnLabel: { fontSize: 13, fontWeight: '700', color: Colors.ink },
-  zoneStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
-  zoneStatusDot: { width: 6, height: 6, borderRadius: 3 },
-  zoneStatusText: { fontSize: 11, fontWeight: '600' },
 
   toggleRow: {
     flexDirection: 'row', marginHorizontal: 16, marginVertical: 10,
