@@ -20,7 +20,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 import { fmtPrice, fmtDuration, fmtTime, fmtDate } from '@/lib/format';
-import { CloseIcon, PinIcon, LockIcon, LightningIcon } from '@/components/icons';
+import { CheckIcon, CloseIcon, PinIcon, LockIcon, LightningIcon } from '@/components/icons';
 import * as Haptics from 'expo-haptics';
 import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { BookingStatus, BOOKING_STATUS } from '@vars/shared';
@@ -825,11 +825,23 @@ export default function ScheduleScreen() {
     (b) => b.block_state === 'unavailable' || b.block_state === 'transport_buffer',
   ).length;
 
+  // Hooks must come before any early return (Rules of Hooks).
+  const slots = generateSlots(selectedDay);
+  const slotScrollRef = useRef<ScrollView>(null);
+  useEffect(() => {
+    if (viewMode !== 'calendar' || loading) return;
+    const now = new Date();
+    const firstFuture = slots.findIndex((slot) => slot >= now);
+    if (firstFuture <= 1) return;
+    const row = Math.floor(firstFuture / 2);
+    const y = 4 + row * 72;
+    const timer = setTimeout(() => slotScrollRef.current?.scrollTo({ y, animated: false }), 80);
+    return () => clearTimeout(timer);
+  }, [slots, viewMode, loading, selectedDay]);
+
   if (loading) {
     return <View style={s.centered}><ScissorsLoader size="small" color="dark" /></View>;
   }
-
-  const slots = generateSlots(selectedDay);
 
   // Show ⚡ on available slots only when the vendor has confirmed their zone
   // for the selected day and auto-accept is active (not paused by drift).
@@ -844,27 +856,13 @@ export default function ScheduleScreen() {
   const confirmedToday = zoneInfo?.confirmedDate === todayStr;
   const autoAcceptLive = !!(zoneInfo?.enabled && !zoneInfo.paused && confirmedToday);
 
-  // Scroll to first non-past slot when calendar opens or day changes.
-  // Each row is 60px tall with a 12px gap = 72px stride. Two slots per row.
-  const slotScrollRef = useRef<ScrollView>(null);
-  useEffect(() => {
-    if (viewMode !== 'calendar' || loading) return;
-    const now = new Date();
-    const firstFuture = slots.findIndex((slot) => slot >= now);
-    if (firstFuture <= 1) return; // already at top, no scroll needed
-    const row = Math.floor(firstFuture / 2);
-    const y = 4 + row * 72;
-    const timer = setTimeout(() => slotScrollRef.current?.scrollTo({ y, animated: false }), 80);
-    return () => clearTimeout(timer);
-  }, [slots, viewMode, loading, selectedDay]);
-
   return (
     <View style={[s.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={s.header}>
         <Text style={s.headerTitle}>My Schedule</Text>
         <TouchableOpacity style={s.zoneBtn} onPress={() => router.push('/vendor-zone-setup' as any)}>
-          <LightningIcon size={13} color={autoAcceptLive ? Colors.ink : Colors.textMuted} />
+          <LightningIcon size={13} color={autoAcceptLive ? Colors.success : Colors.textMuted} />
           <Text style={[s.zoneBtnLabel, { color: autoAcceptLive ? Colors.ink : Colors.textMuted }]}>Auto-accept</Text>
         </TouchableOpacity>
       </View>
@@ -908,8 +906,9 @@ export default function ScheduleScreen() {
 
           {/* Legend — fixed, one line */}
           <View style={s.legend}>
-            <LegendDot borderColor={Colors.inkFaint} label="Available" />
+            <LegendDot borderColor={Colors.inkFaint} label="Available" glyph="✓" glyphColor={Colors.success} />
             <LegendDot borderColor={Colors.inkFaint} label="Blocked" glyph="✕" glyphColor={Colors.accentRed} />
+            <LegendDot borderColor={Colors.inkFaint} label="Auto-accept" glyph="⚡" glyphColor={Colors.success} />
             <LegendDot borderColor={Colors.ink} backgroundColor={Colors.ink} label="Booked" borderWidth={2.5} />
           </View>
 
@@ -971,7 +970,9 @@ export default function ScheduleScreen() {
                         {(state === 'unavailable' || state === 'transport_buffer') ? (
                           <CloseIcon size={16} color={Colors.accentRed} />
                         ) : autoAcceptActiveForDay && !isPast ? (
-                          <LightningIcon size={14} color={Colors.ink} />
+                          <LightningIcon size={14} color={Colors.success} />
+                        ) : !isPast ? (
+                          <CheckIcon size={16} color={Colors.success} />
                         ) : null}
                       </View>
                     </>
@@ -1102,7 +1103,7 @@ const s = StyleSheet.create({
   dayTextActive: { color: '#FFF' },
 
   legend: {
-    flexDirection: 'row', gap: 12,
+    flexDirection: 'row', flexWrap: 'wrap', gap: 8,
     paddingHorizontal: 16, paddingTop: 4, paddingBottom: 2,
   },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },

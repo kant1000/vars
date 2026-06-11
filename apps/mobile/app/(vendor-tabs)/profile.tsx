@@ -4,7 +4,7 @@
 // ============================================================
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Alert, Dimensions, StyleSheet, Text, TextInput, TouchableOpacity, View,
+  Alert, Dimensions, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
@@ -285,6 +285,73 @@ export default function VendorProfileScreen() {
           </View>
         </View>
 
+        {/* Portfolio */}
+        <View style={s.section}>
+          <View style={s.sectionHeader}>
+            <Text style={s.sectionTitle}>Portfolio</Text>
+            <Text style={s.photoCount}>{totalPhotoCount}/10 photos</Text>
+          </View>
+
+          {photosLoading ? (
+            <View style={{ margin: 16, alignItems: 'center' }}><ScissorsLoader size="small" color="dark" /></View>
+          ) : (
+            <>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.photoScrollContent}>
+                {canAddUnverified && (
+                  <TouchableOpacity
+                    style={s.addPhotoBtn}
+                    onPress={handleAddUnverifiedPhoto}
+                    disabled={addingPhoto}
+                  >
+                    {addingPhoto ? (
+                      <ScissorsLoader size="small" color="dark" />
+                    ) : (
+                      <>
+                        <Text style={s.addPhotoIcon}>+</Text>
+                        <Text style={s.addPhotoLabel}>Add photo</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
+                {photos.map((photo) => {
+                  const { data: { publicUrl } } = supabase.storage
+                    .from('portfolio')
+                    .getPublicUrl(photo.storage_path);
+                  const label = CONSENT_LABEL[photo.consent_state];
+                  return (
+                    <View key={photo.id} style={s.photoWrapper}>
+                      <Image source={{ uri: publicUrl }} style={s.photo} contentFit="cover" cachePolicy="memory-disk" />
+                      <View style={s.photoBadge}>
+                        <Text style={[s.photoBadgeText, { color: label.color }]}>
+                          {label.text}
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        style={s.photoDeleteBtn}
+                        onPress={() => handleDeletePhoto(photo)}
+                        hitSlop={11}
+                      >
+                        <CloseIcon size={11} color="#FFF" />
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+
+              {!canAddUnverified && totalPhotoCount < 10 && (
+                <Text style={s.photoHint}>
+                  Your starter photos are set. Complete bookings to add verified photos.
+                </Text>
+              )}
+              {totalPhotoCount >= 10 && (
+                <Text style={s.photoHint}>
+                  Profile full (10/10). Delete a photo to add more.
+                </Text>
+              )}
+            </>
+          )}
+        </View>
+
         {/* My Services */}
         <View style={s.section}>
           <View style={s.sectionHeader}>
@@ -296,9 +363,6 @@ export default function VendorProfileScreen() {
             <View style={{ margin: 16, alignItems: 'center' }}><ScissorsLoader size="small" color="dark" /></View>
           ) : (
             <>
-              {services.length > 0 && (
-                <Text style={s.dragHint}>Long-press a row to reorder</Text>
-              )}
               <NestableDraggableFlatList
                 data={services}
                 keyExtractor={(item) => item.id}
@@ -316,73 +380,6 @@ export default function VendorProfileScreen() {
               )}
               {services.length === 0 && (
                 <Text style={s.photoHint}>No services yet. Add your first one.</Text>
-              )}
-            </>
-          )}
-        </View>
-
-        {/* Portfolio */}
-        <View style={s.section}>
-          <View style={s.sectionHeader}>
-            <Text style={s.sectionTitle}>Portfolio</Text>
-            <Text style={s.photoCount}>{totalPhotoCount}/10 photos</Text>
-          </View>
-
-          {photosLoading ? (
-            <View style={{ margin: 16, alignItems: 'center' }}><ScissorsLoader size="small" color="dark" /></View>
-          ) : (
-            <>
-              <View style={s.photoGrid}>
-                {photos.map((photo) => {
-                  const { data: { publicUrl } } = supabase.storage
-                    .from('portfolio')
-                    .getPublicUrl(photo.storage_path);
-                  const label = CONSENT_LABEL[photo.consent_state];
-                  return (
-                    <View key={photo.id} style={s.photoWrapper}>
-                      <Image source={{ uri: publicUrl }} style={s.photo} contentFit="cover" cachePolicy="memory-disk" />
-                      <View style={s.photoBadge}>
-                        <Text style={[s.photoBadgeText, { color: label.color }]}>
-                          {label.text}
-                        </Text>
-                      </View>
-                      <TouchableOpacity
-                        style={s.photoDeleteBtn}
-                        onPress={() => handleDeletePhoto(photo)}
-                      >
-                        <CloseIcon size={11} color="#FFF" />
-                      </TouchableOpacity>
-                    </View>
-                  );
-                })}
-
-                {canAddUnverified && (
-                  <TouchableOpacity
-                    style={s.addPhotoBtn}
-                    onPress={handleAddUnverifiedPhoto}
-                    disabled={addingPhoto}
-                  >
-                    {addingPhoto ? (
-                      <ScissorsLoader size="small" color="dark" />
-                    ) : (
-                      <>
-                        <Text style={s.addPhotoIcon}>+</Text>
-                        <Text style={s.addPhotoLabel}>Add photo</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {!canAddUnverified && totalPhotoCount < 10 && (
-                <Text style={s.photoHint}>
-                  Your starter photos are set. Complete bookings to add verified photos.
-                </Text>
-              )}
-              {totalPhotoCount >= 10 && (
-                <Text style={s.photoHint}>
-                  Profile full (10/10). Delete a photo to add more.
-                </Text>
               )}
             </>
           )}
@@ -424,7 +421,7 @@ const s = StyleSheet.create({
     borderBottomWidth: 1.5, borderBottomColor: Colors.ink,
     paddingVertical: 1, paddingHorizontal: 0,
   },
-  heroEditBtn: { padding: 3 },
+  heroEditBtn: { padding: 8 },
   heroLegalRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 5 },
   heroLegalText: { fontSize: 12, color: Colors.textMuted },
 
@@ -447,7 +444,6 @@ const s = StyleSheet.create({
   settingLabel: { fontSize: 15, fontWeight: '600', color: Colors.text },
 
   // My Services
-  dragHint: { fontSize: 11, color: Colors.textMuted, marginBottom: 8 },
   svcRow: {
     flexDirection: 'row', alignItems: 'center',
     paddingVertical: 12, paddingHorizontal: 4,
@@ -472,8 +468,8 @@ const s = StyleSheet.create({
   },
   addSvcText: { fontSize: 14, fontWeight: '600', color: Colors.text },
 
-  // Portfolio grid
-  photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
+  // Portfolio scroll
+  photoScrollContent: { flexDirection: 'row', gap: 8, paddingBottom: 8 },
   photoWrapper: { width: PHOTO_SIZE, position: 'relative' },
   photo: { width: PHOTO_SIZE, height: PHOTO_SIZE, borderRadius: 5 },
   photoBadge: {

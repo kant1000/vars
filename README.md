@@ -119,8 +119,9 @@ vars/
 - **Schedule management** — Calendar/List toggle (persisted); calendar shows 14-day grid with booked slot overlays (client name, service, status dot); list view shows all upcoming bookings; tapping any booking opens a detail bottom sheet
   - Bottom sheet: customer location map thumbnail, access details (revealed 15 min before appointment), accept/decline/on-way/arrived/service-rendered action buttons
   - Auto-accept grace banner: amber countdown + "Cancel penalty-free" button for auto-accepted bookings within the 5-minute window
+  - Slot states: green ✓ (available), red ✕ (blocked), green ⚡ (auto-accept active), thick black fill (booked)
 - **Auto-Accept** — geographic zone system for instant booking confirmation (see below)
-- **Earnings** — per-booking breakdown; Paystack automatic payout (80% revenue share)
+- **Earnings (Stage 1)** — period-filtered earnings hero (Today / This week / This month / All time) with hide-balance toggle; booking-level list showing client, service, date, amount, and payment status (Paid / Confirming); data sourced from completed and service_rendered bookings
 - **Pioneer programme** — lead capture and conversion flow (cohort complete as of May 2026; landing form now presents general stylist registration for all new vendors)
 
 ### Landing Page & Blog

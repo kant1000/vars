@@ -425,7 +425,7 @@ const styles = StyleSheet.create({
   vendorLink: {
     alignItems: 'center',
     marginTop: 28,
-    paddingBottom: 8,
+    paddingVertical: 14,
   },
   vendorLinkText: {
     fontSize: 13,

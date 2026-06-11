@@ -92,6 +92,16 @@ This roadmap tracks the practical path to make the whole app work as intended.
 
 - **`avg_response_minutes` EMA trigger** (`supabase/migrations/20260603000002_online_visibility_and_response_time.sql`): New `INT` column on `vendors`; exponential moving average (80/20) updated by `trg_vendor_response_time` trigger on `pending → accepted` status changes (auto-accepted bookings excluded). Displayed on vendor profile as "Typically accepts in under 15 min / 30 min / within 1 hour". **Pending: apply this migration to remote Supabase.** Done.
 
+- **Schedule crash fix — hooks-after-early-return** (`app/(vendor-tabs)/schedule.tsx`): `useRef` and `useEffect` for the slot scroll position were declared after an `if (loading) return` early return, violating React Rules of Hooks and causing a blank white screen. Fixed by moving `const slots = generateSlots(selectedDay)`, `slotScrollRef`, and the scroll `useEffect` above the early return. Pure derived values (selectedDayStr, autoAcceptActiveForDay, etc.) are not hooks and remain after. Done.
+
+- **Schedule slot icon system** (`app/(vendor-tabs)/schedule.tsx`, `components/icons.tsx`): Added green `CheckIcon` (✓) for available slots — same stroke style as the red `CloseIcon` (✕). Auto-accept (`⚡`) changed from black to `Colors.success` green in both the slot grid and the header Auto-accept button (text stays black). Legend updated to four states: green ✓ Available, red ✕ Blocked, green ⚡ Auto-accept, thick black fill Booked. `EyeIcon` and `EyeOffIcon` added to `components/icons.tsx`. Done.
+
+- **Vendor profile screen** (`app/(vendor-tabs)/profile.tsx`): Portfolio section moved before My Services. "Long-press a row to reorder" hint line removed entirely. Portfolio redesigned from flex-wrap 3-column grid to horizontal `ScrollView` with "Add photo" tile always first on the left (hidden at 10/10 photos). WCAG accessibility: `heroEditBtn` padding increased (touch area ~36px → ~46px), `photoDeleteBtn` `hitSlop={11}` (22×22 → 44×44 effective area). Done.
+
+- **Login screen accessibility** (`app/auth/login.tsx`): STYLIST LOGIN link `paddingBottom: 8` (~21px touch target) replaced with `paddingVertical: 14` (~41px). Done.
+
+- **Earnings screen Stage 1** (`app/(vendor-tabs)/earnings.tsx`): Full rewrite. Period filter (Today / This week / This month / All time); earnings hero card with period total + paid/confirming split; hide-balance eye toggle (Nigerian fintech privacy convention); booking-level FlatList showing client name, service, date/time, amount, and status pill (Paid in green / Confirming in amber). Data sourced from `bookings` with `status IN (service_rendered, completed)`, gross `service_price_kobo`. Stage 2 items identified: weekly goal progress bar, bar chart, revenue-by-service breakdown. Done.
+
 ## Immediate Next Steps
 
 **Current roadmap position** (source of truth: `apps/landing/src/app/roadmap/data/milestones.ts`):
