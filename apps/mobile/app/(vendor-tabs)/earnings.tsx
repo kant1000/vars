@@ -137,8 +137,15 @@ export default function EarningsScreen() {
 
       {/* Hero card */}
       <View style={s.hero}>
-        <Text style={s.heroLabel}>EARNINGS</Text>
-        <Text style={s.heroAmount} numberOfLines={1} adjustsFontSizeToFit>
+        <View style={s.heroLabelRow}>
+          <Text style={s.heroLabel}>EARNINGS</Text>
+          <TouchableOpacity onPress={() => setHidden((h) => !h)} hitSlop={10}>
+            {hidden
+              ? <EyeOffIcon size={16} color={Colors.inkMuted} />
+              : <EyeIcon    size={16} color={Colors.inkMuted} />}
+          </TouchableOpacity>
+        </View>
+        <Text style={s.heroAmount} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
           {fmt(totalKobo)}
         </Text>
         {(paidKobo > 0 || confirmingKobo > 0) ? (
@@ -172,11 +179,6 @@ export default function EarningsScreen() {
       {/* Header */}
       <View style={s.header}>
         <Text style={s.headerTitle}>Earnings</Text>
-        <TouchableOpacity onPress={() => setHidden((h) => !h)} style={s.eyeBtn} hitSlop={10}>
-          {hidden
-            ? <EyeOffIcon size={20} color={Colors.inkMuted} />
-            : <EyeIcon    size={20} color={Colors.inkMuted} />}
-        </TouchableOpacity>
       </View>
 
       <FlatList
@@ -235,12 +237,10 @@ const s = StyleSheet.create({
   centered:  { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingVertical: 14,
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
   headerTitle: { fontSize: 24, fontWeight: '800', color: Colors.text },
-  eyeBtn: { padding: 4 },
 
   filterRow: {
     paddingHorizontal: 16, paddingTop: 14, paddingBottom: 4, gap: 8,
@@ -260,14 +260,17 @@ const s = StyleSheet.create({
     padding: 20,
     borderRadius: BORDER_RADIUS, borderWidth: 1.5, borderColor: Colors.ink,
   },
+  heroLabelRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginBottom: 6,
+  },
   heroLabel: {
     fontSize: 11, fontWeight: '700', color: Colors.inkMuted,
-    letterSpacing: 0.8, marginBottom: 6,
+    letterSpacing: 0.8,
   },
   heroAmount: {
     fontSize: 40, fontWeight: '800', color: Colors.ink,
     letterSpacing: -1, marginBottom: 12,
-    minWidth: '50%',
   },
   heroSplit: { flexDirection: 'row', gap: 16, flexWrap: 'wrap' },
   heroChip:  { flexDirection: 'row', alignItems: 'center', gap: 6 },

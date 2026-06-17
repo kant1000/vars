@@ -102,6 +102,10 @@ This roadmap tracks the practical path to make the whole app work as intended.
 
 - **Earnings screen Stage 1** (`app/(vendor-tabs)/earnings.tsx`): Full rewrite. Period filter (Today / This week / This month / All time); earnings hero card with period total + paid/confirming split; hide-balance eye toggle (Nigerian fintech privacy convention); booking-level FlatList showing client name, service, date/time, amount, and status pill (Paid in green / Confirming in amber). Data sourced from `bookings` with `status IN (service_rendered, completed)`, gross `service_price_kobo`. Stage 2 items identified: weekly goal progress bar, bar chart, revenue-by-service breakdown. Done.
 
+## Phase 2b+++++ Work Done (June 2026)
+
+- **Schedule UX — block/unblock range + legend hints** (`app/(vendor-tabs)/schedule.tsx`, `vendor-services/add.tsx`): Three improvements from a moderated vendor user test. (1) Add-service screen: context copy "Tell us what you do. Customers will book you to come to their home." added below the title — addresses vendors naming their service after the category rather than the actual service. (2) Schedule legend: "What the slots mean" heading + "Tap any slot to block or unblock it." hint; "Block a range" underlined link in the legend footer. (3) `BlockRangeSheet` component: Block | Unblock mode toggle; From/To 30-min time chip pickers; Mon–Sun day-of-week chips; Just this week / Until a date repeat modes (flash-calendar picker, 8-week cap); live slot count preview; batch writes/deletes to `vendor_calendar` (skips active bookings + `transport_buffer` rows); 10-second undo toast — block undo deletes inserted rows and reverts any `auto_accept` rows; unblock undo re-inserts deleted rows. Done.
+
 ## Immediate Next Steps
 
 **Current roadmap position** (source of truth: `apps/landing/src/app/roadmap/data/milestones.ts`):

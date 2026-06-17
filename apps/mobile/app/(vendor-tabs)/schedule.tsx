@@ -23,12 +23,19 @@ import { fmtPrice, fmtDuration, fmtTime, fmtDate } from '@/lib/format';
 import { CheckIcon, CloseIcon, PinIcon, LockIcon, LightningIcon } from '@/components/icons';
 import * as Haptics from 'expo-haptics';
 import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import { Calendar, toDateId, fromDateId } from '@marceloterreiro/flash-calendar';
 import { BookingStatus, BOOKING_STATUS } from '@vars/shared';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
 // ── Types ─────────────────────────────────────────────────────
 type BlockState = 'unavailable' | 'available' | 'auto_accept' | 'transport_buffer';
+
+interface UndoPayload {
+  toDelete:   string[];
+  toRevert:   { id: string; block_state: string }[];
+  toReInsert: { vendor_id: string; start_time: string; end_time: string; block_state: string }[];
+}
 
 interface CalendarBlock {
   id: string;
@@ -90,6 +97,65 @@ const STATUS_LABEL: Record<BookingStatus, { text: string; color: string }> = {
   rescheduled_pending:  { text: 'Reschedule pending', color: Colors.statusPending   },
 };
 
+
+// ── Block-range constants ──────────────────────────────────────
+const BR_WORK_START  = 8 * 60;   // 480 min = 08:00
+const BR_WORK_END    = 22 * 60;  // 1320 min = 22:00
+const BR_STEP        = 30;
+const BR_MAX_DAYS    = 56;       // 8 weeks
+
+const BR_WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+// JS getDay(): 0=Sun,1=Mon,...,6=Sat — map to Mon-first display order
+const BR_WEEKDAY_JS     = [1, 2, 3, 4, 5, 6, 0];
+
+function brMinToStr(min: number): string {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  const period = h < 12 ? 'AM' : 'PM';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${m === 0 ? '00' : '30'} ${period}`;
+}
+
+function brEndOfWeek(ref: Date): Date {
+  const d = new Date(ref); d.setHours(0, 0, 0, 0);
+  const dow = d.getDay(); // 0=Sun
+  d.setDate(d.getDate() + (dow === 0 ? 0 : 7 - dow));
+  return d;
+}
+
+function brBuildDateRange(mode: 'week' | 'until', untilDate: Date | null): Date[] {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  let end: Date;
+  if (mode === 'week') {
+    end = brEndOfWeek(today);
+  } else if (untilDate) {
+    const maxEnd = new Date(today); maxEnd.setDate(maxEnd.getDate() + BR_MAX_DAYS);
+    const u = new Date(untilDate); u.setHours(0, 0, 0, 0);
+    end = u > maxEnd ? maxEnd : u;
+  } else {
+    return [];
+  }
+  const dates: Date[] = [];
+  const cur = new Date(today);
+  while (cur <= end) { dates.push(new Date(cur)); cur.setDate(cur.getDate() + 1); }
+  return dates;
+}
+
+function brCountSlots(
+  dates: Date[], weekdays: Set<number>, startMin: number, endMin: number,
+): number {
+  const now = new Date();
+  let count = 0;
+  for (const date of dates) {
+    if (!weekdays.has(date.getDay())) continue;
+    for (let m = startMin; m < endMin; m += BR_STEP) {
+      const slot = new Date(date);
+      slot.setHours(Math.floor(m / 60), m % 60, 0, 0);
+      if (slot > now) count++;
+    }
+  }
+  return count;
+}
 
 // ── Helpers ───────────────────────────────────────────────────
 function addMinutes(d: Date, m: number) { return new Date(d.getTime() + m * 60000); }
@@ -566,16 +632,373 @@ function DetailRow({ label, value, bold }: { label: string; value: string; bold?
 }
 
 // ── Sub-components ────────────────────────────────────────────
-function LegendDot({ borderColor, backgroundColor = 'transparent', label, glyph, glyphColor, borderWidth = 1.5 }: {
-  borderColor: string; backgroundColor?: string; label: string; glyph?: string; glyphColor?: string; borderWidth?: number;
+function LegendDot({ borderColor, backgroundColor = 'transparent', label, icon, borderWidth = 1.5 }: {
+  borderColor: string; backgroundColor?: string; label: string; icon?: React.ReactNode; borderWidth?: number;
 }) {
   return (
     <View style={s.legendItem}>
       <View style={[s.legendDot, { borderColor, borderWidth, backgroundColor }]}>
-        {glyph ? <Text style={{ fontSize: 13, color: glyphColor ?? borderColor, lineHeight: 16 }}>{glyph}</Text> : null}
+        {icon ?? null}
       </View>
       <Text style={s.legendLabel}>{label}</Text>
     </View>
+  );
+}
+
+// ── BlockRangeSheet ───────────────────────────────────────────
+function BlockRangeSheet({
+  vendorId,
+  initialDay,
+  onClose,
+  onSaved,
+}: {
+  vendorId: string;
+  initialDay: Date;
+  onClose: () => void;
+  onSaved: (count: number, undo: UndoPayload) => void;
+}) {
+  const sheetRef = useRef<BottomSheetModal>(null);
+  useEffect(() => { sheetRef.current?.present(); }, []);
+  const handleClose = () => sheetRef.current?.dismiss();
+
+  const defaultStart = () => {
+    const now = new Date();
+    const nowMin = now.getHours() * 60 + (now.getMinutes() >= 30 ? 30 : 0) + 30;
+    return Math.max(BR_WORK_START, Math.min(nowMin, 21 * 60));
+  };
+
+  const [action, setAction]           = useState<'block' | 'unblock'>('block');
+  const [startMin, setStartMin]       = useState(() => defaultStart());
+  const [endMin, setEndMin]           = useState(() => Math.min(defaultStart() + 120, BR_WORK_END));
+  const [weekdays, setWeekdays]       = useState<Set<number>>(() => new Set([initialDay.getDay()]));
+  const [repeatMode, setRepeatMode]   = useState<'week' | 'until'>('week');
+  const [untilDate, setUntilDate]     = useState<Date | null>(null);
+  const [saving, setSaving]           = useState(false);
+  const [saveError, setSaveError]     = useState<string | null>(null);
+
+  useEffect(() => {
+    if (endMin <= startMin) setEndMin(Math.min(startMin + BR_STEP, BR_WORK_END));
+  }, [startMin]);
+
+  const startOptions = useMemo(() => {
+    const opts: number[] = [];
+    for (let m = BR_WORK_START; m <= BR_WORK_END - BR_STEP; m += BR_STEP) opts.push(m);
+    return opts;
+  }, []);
+
+  const endOptions = useMemo(() => {
+    const opts: number[] = [];
+    for (let m = startMin + BR_STEP; m <= BR_WORK_END; m += BR_STEP) opts.push(m);
+    return opts;
+  }, [startMin]);
+
+  const toggleWeekday = (jsDay: number) => {
+    setWeekdays(prev => {
+      const next = new Set(prev);
+      if (next.has(jsDay) && next.size > 1) next.delete(jsDay);
+      else next.add(jsDay);
+      return next;
+    });
+  };
+
+  const dateRange = useMemo(
+    () => brBuildDateRange(repeatMode, untilDate),
+    [repeatMode, untilDate],
+  );
+  const slotCount = useMemo(
+    () => brCountSlots(dateRange, weekdays, startMin, endMin),
+    [dateRange, weekdays, startMin, endMin],
+  );
+
+  const today    = useMemo(() => { const d = new Date(); d.setHours(0,0,0,0); return d; }, []);
+  const tomorrow = useMemo(() => { const d = new Date(today); d.setDate(d.getDate() + 1); return d; }, [today]);
+  const maxUntil = useMemo(() => { const d = new Date(today); d.setDate(d.getDate() + BR_MAX_DAYS); return d; }, [today]);
+
+  const canConfirm = slotCount > 0 && !saving && (repeatMode === 'week' || untilDate != null);
+
+  const buildTargetSlots = (): Date[] => {
+    const now = new Date();
+    const slots: Date[] = [];
+    for (const date of dateRange) {
+      if (!weekdays.has(date.getDay())) continue;
+      for (let m = startMin; m < endMin; m += BR_STEP) {
+        const slot = new Date(date);
+        slot.setHours(Math.floor(m / 60), m % 60, 0, 0);
+        if (slot > now) slots.push(slot);
+      }
+    }
+    return slots;
+  };
+
+  const handleSave = async () => {
+    if (!canConfirm) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const targetSlots = buildTargetSlots();
+      if (targetSlots.length === 0) { setSaving(false); return; }
+
+      const rangeStart = targetSlots[0];
+      const rangeEnd   = addMinutes(targetSlots[targetSlots.length - 1], BR_STEP);
+
+      const [{ data: calRows }, { data: bkRows }] = await Promise.all([
+        supabase.from('vendor_calendar')
+          .select('id, start_time, end_time, block_state')
+          .eq('vendor_id', vendorId)
+          .gte('start_time', rangeStart.toISOString())
+          .lt('start_time', rangeEnd.toISOString()),
+        supabase.from('bookings')
+          .select('scheduled_at, service_duration_blocks')
+          .eq('vendor_id', vendorId)
+          .in('status', ACTIVE_STATUSES)
+          .gte('scheduled_at', rangeStart.toISOString())
+          .lt('scheduled_at', rangeEnd.toISOString()),
+      ]);
+
+      const calMap = new Map((calRows ?? []).map(r => [r.start_time, r] as const));
+
+      const slotHasBooking = (slot: Date): boolean => {
+        const slotEnd = addMinutes(slot, BR_STEP);
+        return (bkRows ?? []).some(bk => {
+          const bkS = new Date(bk.scheduled_at);
+          const bkE = addMinutes(bkS, bk.service_duration_blocks * 30);
+          return slot < bkE && slotEnd > bkS;
+        });
+      };
+
+      let written = 0;
+      let undo: UndoPayload;
+
+      if (action === 'block') {
+        const toInsert: { vendor_id: string; start_time: string; end_time: string; block_state: string }[] = [];
+        const toUpdateRows: { id: string; block_state: string }[] = [];
+
+        for (const slot of targetSlots) {
+          const iso = slot.toISOString();
+          if (slotHasBooking(slot)) continue;
+          const row = calMap.get(iso);
+          if (row?.block_state === 'transport_buffer') continue;
+          if (row?.block_state === 'unavailable') continue;
+          if (row) {
+            toUpdateRows.push({ id: row.id, block_state: row.block_state });
+          } else {
+            toInsert.push({
+              vendor_id: vendorId,
+              start_time: iso,
+              end_time: addMinutes(slot, BR_STEP).toISOString(),
+              block_state: 'unavailable',
+            });
+          }
+          written++;
+        }
+
+        let insertedIds: string[] = [];
+        if (toInsert.length > 0) {
+          const { data: inserted, error } = await supabase
+            .from('vendor_calendar').insert(toInsert).select('id');
+          if (error) throw error;
+          insertedIds = (inserted ?? []).map((r: any) => r.id as string);
+        }
+        for (const { id } of toUpdateRows) {
+          await supabase.from('vendor_calendar').update({ block_state: 'unavailable' }).eq('id', id);
+        }
+
+        undo = {
+          toDelete:   insertedIds,
+          toRevert:   toUpdateRows,
+          toReInsert: [],
+        };
+      } else {
+        // unblock path
+        const idsToDelete: string[] = [];
+        const toReInsert: { vendor_id: string; start_time: string; end_time: string; block_state: string }[] = [];
+
+        for (const slot of targetSlots) {
+          const iso = slot.toISOString();
+          if (slotHasBooking(slot)) continue;
+          const row = calMap.get(iso);
+          if (!row || row.block_state !== 'unavailable') continue;
+          idsToDelete.push(row.id);
+          toReInsert.push({
+            vendor_id: vendorId,
+            start_time: iso,
+            end_time: addMinutes(slot, BR_STEP).toISOString(),
+            block_state: 'unavailable',
+          });
+          written++;
+        }
+
+        if (idsToDelete.length > 0) {
+          const { error } = await supabase.from('vendor_calendar').delete().in('id', idsToDelete);
+          if (error) throw error;
+        }
+
+        undo = { toDelete: [], toRevert: [], toReInsert };
+      }
+
+      handleClose();
+      onSaved(written, undo);
+    } catch (err: any) {
+      setSaveError(err.message ?? 'Something went wrong. Try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const isBlock = action === 'block';
+
+  return (
+    <BottomSheetModal
+      ref={sheetRef}
+      snapPoints={['75%', '95%']}
+      enableDynamicSizing={false}
+      onDismiss={onClose}
+    >
+      <BottomSheetScrollView showsVerticalScrollIndicator={false} contentContainerStyle={br.scrollContent}>
+
+        {/* Block / Unblock toggle */}
+        <View style={br.actionRow}>
+          {(['block', 'unblock'] as const).map(a => (
+            <TouchableOpacity
+              key={a}
+              style={[br.actionBtn, action === a && br.actionBtnActive]}
+              onPress={() => setAction(a)}
+              activeOpacity={0.8}
+            >
+              <Text style={[br.actionBtnText, action === a && br.actionBtnTextActive]}>
+                {a === 'block' ? 'Block' : 'Unblock'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <Text style={br.heading}>{isBlock ? 'Block a range' : 'Unblock a range'}</Text>
+
+        <Text style={br.fieldLabel}>From</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={br.chipRow}>
+          {startOptions.map(min => (
+            <TouchableOpacity
+              key={min}
+              style={[br.timeChip, startMin === min && br.timeChipActive]}
+              onPress={() => setStartMin(min)}
+              activeOpacity={0.7}
+            >
+              <Text style={[br.timeChipText, startMin === min && br.timeChipTextActive]}>
+                {brMinToStr(min)}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        <Text style={[br.fieldLabel, { marginTop: 14 }]}>To</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={br.chipRow}>
+          {endOptions.map(min => (
+            <TouchableOpacity
+              key={min}
+              style={[br.timeChip, endMin === min && br.timeChipActive]}
+              onPress={() => setEndMin(min)}
+              activeOpacity={0.7}
+            >
+              <Text style={[br.timeChipText, endMin === min && br.timeChipTextActive]}>
+                {brMinToStr(min)}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        <Text style={[br.fieldLabel, { marginTop: 18 }]}>Repeat on</Text>
+        <View style={br.weekdayRow}>
+          {BR_WEEKDAY_LABELS.map((label, i) => {
+            const jsDay = BR_WEEKDAY_JS[i];
+            const active = weekdays.has(jsDay);
+            return (
+              <TouchableOpacity
+                key={jsDay}
+                style={[br.dayChip, active && br.dayChipActive]}
+                onPress={() => toggleWeekday(jsDay)}
+                activeOpacity={0.7}
+              >
+                <Text style={[br.dayChipText, active && br.dayChipTextActive]}>{label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <Text style={[br.fieldLabel, { marginTop: 18 }]}>Repeat</Text>
+        <View style={br.repeatRow}>
+          {(['week', 'until'] as const).map(mode => (
+            <TouchableOpacity
+              key={mode}
+              style={[br.repeatBtn, repeatMode === mode && br.repeatBtnActive]}
+              onPress={() => setRepeatMode(mode)}
+              activeOpacity={0.8}
+            >
+              <Text style={[br.repeatBtnText, repeatMode === mode && br.repeatBtnTextActive]}>
+                {mode === 'week' ? 'Just this week' : 'Until a date'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {repeatMode === 'until' && (
+          <View style={{ marginTop: 12 }}>
+            <Calendar
+              calendarMinDateId={toDateId(tomorrow)}
+              calendarMaxDateId={toDateId(maxUntil)}
+              calendarActiveDateRanges={
+                untilDate ? [{ startId: toDateId(untilDate), endId: toDateId(untilDate) }] : []
+              }
+              onCalendarDayPress={(dateId) => setUntilDate(fromDateId(dateId))}
+              theme={{
+                itemDay: {
+                  active: () => ({
+                    container: { backgroundColor: Colors.ink },
+                    content: { color: '#FFF' },
+                  }),
+                  today: () => ({
+                    content: { color: Colors.ink, fontWeight: '700' },
+                  }),
+                },
+                rowMonth: {
+                  content: { color: Colors.text, fontWeight: '700', fontSize: 15 },
+                },
+              }}
+            />
+          </View>
+        )}
+
+        {slotCount > 0 && (
+          <View style={br.preview}>
+            <Text style={br.previewText}>
+              {isBlock
+                ? `This will block up to ${slotCount} slot${slotCount !== 1 ? 's' : ''}.`
+                : `This will unblock up to ${slotCount} slot${slotCount !== 1 ? 's' : ''}.`}
+            </Text>
+          </View>
+        )}
+
+        {saveError != null && (
+          <View style={br.errorBox}>
+            <Text style={br.errorText}>{saveError}</Text>
+          </View>
+        )}
+
+        <TouchableOpacity
+          style={[br.confirmBtn, !canConfirm && br.confirmBtnDisabled]}
+          onPress={handleSave}
+          disabled={!canConfirm}
+          activeOpacity={0.85}
+        >
+          {saving
+            ? <ScissorsLoader size="small" color="light" />
+            : <Text style={br.confirmBtnText}>
+                {slotCount > 0
+                  ? `${isBlock ? 'Block' : 'Unblock'} ${slotCount} slot${slotCount !== 1 ? 's' : ''}`
+                  : isBlock ? 'Block slots' : 'Unblock slots'}
+              </Text>}
+        </TouchableOpacity>
+      </BottomSheetScrollView>
+    </BottomSheetModal>
   );
 }
 
@@ -599,6 +1022,10 @@ export default function ScheduleScreen() {
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState<string | null>(null);
   const [selectedBooking, setSelectedBooking] = useState<VendorBooking | null>(null);
+  const [blockRangeOpen, setBlockRangeOpen] = useState(false);
+  const [savedInfo, setSavedInfo] = useState<{ msg: string; undo: UndoPayload } | null>(null);
+  const [undoing, setUndoing] = useState(false);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [zoneInfo, setZoneInfo] = useState<{
     enabled: boolean;
     confirmedDate: string | null;
@@ -839,6 +1266,28 @@ export default function ScheduleScreen() {
     return () => clearTimeout(timer);
   }, [slots, viewMode, loading, selectedDay]);
 
+  const handleUndo = async (undo: UndoPayload) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setSavedInfo(null);
+    setUndoing(true);
+    try {
+      if (undo.toDelete.length > 0) {
+        await supabase.from('vendor_calendar').delete().in('id', undo.toDelete);
+      }
+      for (const row of undo.toRevert) {
+        await supabase.from('vendor_calendar').update({ block_state: row.block_state }).eq('id', row.id);
+      }
+      if (undo.toReInsert.length > 0) {
+        await supabase.from('vendor_calendar').insert(undo.toReInsert);
+      }
+      loadData();
+    } catch {
+      // best-effort undo — silently ignore failures
+    } finally {
+      setUndoing(false);
+    }
+  };
+
   if (loading) {
     return <View style={s.centered}><ScissorsLoader size="small" color="dark" /></View>;
   }
@@ -904,12 +1353,20 @@ export default function ScheduleScreen() {
             })}
           </ScrollView>
 
-          {/* Legend — fixed, one line */}
-          <View style={s.legend}>
-            <LegendDot borderColor={Colors.inkFaint} label="Available" glyph="✓" glyphColor={Colors.success} />
-            <LegendDot borderColor={Colors.inkFaint} label="Blocked" glyph="✕" glyphColor={Colors.accentRed} />
-            <LegendDot borderColor={Colors.inkFaint} label="Auto-accept" glyph="⚡" glyphColor={Colors.success} />
-            <LegendDot borderColor={Colors.ink} backgroundColor={Colors.ink} label="Booked" borderWidth={2.5} />
+          {/* Legend */}
+          <View style={s.legendWrap}>
+            <Text style={s.legendHeading}>What the slots mean</Text>
+            <View style={s.legend}>
+              <LegendDot borderColor={Colors.inkFaint} label="Available" icon={<CheckIcon size={13} color={Colors.success} />} />
+              <LegendDot borderColor={Colors.inkFaint} label="Blocked" icon={<CloseIcon size={13} color={Colors.accentRed} />} />
+              <LegendDot borderColor={Colors.ink} backgroundColor={Colors.ink} label="Booked" borderWidth={2.5} />
+            </View>
+            <View style={s.legendFooter}>
+              <Text style={s.legendHint}>Tap any slot to block or unblock it.</Text>
+              <TouchableOpacity onPress={() => setBlockRangeOpen(true)} hitSlop={8}>
+                <Text style={s.blockRangeLink}>Block a range</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Slot grid — scrollable */}
@@ -1048,6 +1505,22 @@ export default function ScheduleScreen() {
         />
       )}
 
+      {/* Saved toast */}
+      {(savedInfo != null || undoing) && (
+        <View style={s.savedToast}>
+          {undoing ? (
+            <ScissorsLoader size="small" color="light" />
+          ) : (
+            <>
+              <Text style={s.savedToastText}>{savedInfo!.msg}</Text>
+              <TouchableOpacity onPress={() => handleUndo(savedInfo!.undo)} hitSlop={8}>
+                <Text style={s.savedToastUndo}>Undo</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      )}
+
       {/* Booking bottom sheet */}
       {selectedBooking && (
         <BookingBottomSheet
@@ -1055,6 +1528,24 @@ export default function ScheduleScreen() {
           session={session}
           onClose={() => setSelectedBooking(null)}
           onAction={() => { setSelectedBooking(null); loadData(); loadListBookings(); }}
+        />
+      )}
+
+      {/* Block range sheet */}
+      {blockRangeOpen && vendorId && (
+        <BlockRangeSheet
+          vendorId={vendorId}
+          initialDay={selectedDay}
+          onClose={() => setBlockRangeOpen(false)}
+          onSaved={(count, undo) => {
+            setBlockRangeOpen(false);
+            loadData();
+            const isUnblock = undo.toReInsert.length > 0;
+            const verb = isUnblock ? 'unblocked' : 'blocked';
+            setSavedInfo({ msg: `${count} slot${count !== 1 ? 's' : ''} ${verb}.`, undo });
+            if (toastTimer.current) clearTimeout(toastTimer.current);
+            toastTimer.current = setTimeout(() => setSavedInfo(null), 10000);
+          }}
         />
       )}
     </View>
@@ -1074,7 +1565,7 @@ const s = StyleSheet.create({
   zoneBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: 5, borderWidth: 1.5, borderColor: Colors.ink, backgroundColor: 'transparent',
+    borderRadius: 5, borderWidth: 1.5, borderColor: Colors.ink, backgroundColor: Colors.background,
   },
   zoneBtnLabel: { fontSize: 13, fontWeight: '700', color: Colors.ink },
 
@@ -1102,10 +1593,14 @@ const s = StyleSheet.create({
   dayNum: { fontSize: 14, fontWeight: '800', color: Colors.text },
   dayTextActive: { color: '#FFF' },
 
+  legendWrap: { paddingHorizontal: 16, paddingTop: 6, paddingBottom: 2 },
+  legendHeading: { fontSize: 11, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 },
   legend: {
-    flexDirection: 'row', flexWrap: 'wrap', gap: 8,
-    paddingHorizontal: 16, paddingTop: 4, paddingBottom: 2,
+    flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 6,
   },
+  legendFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  legendHint: { fontSize: 12, color: Colors.textMuted },
+  blockRangeLink: { fontSize: 12, fontWeight: '700', color: Colors.ink, textDecorationLine: 'underline' },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   legendDot: { width: 22, height: 22, borderRadius: 5, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   legendLabel: { fontSize: 12, color: Colors.textSecondary },
@@ -1153,6 +1648,15 @@ const s = StyleSheet.create({
   listCardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
   listDateTime: { fontSize: 12, color: Colors.textMuted },
   listPrice: { fontSize: 14, fontWeight: '700', color: Colors.text },
+
+  savedToast: {
+    position: 'absolute', bottom: 80, alignSelf: 'center',
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    backgroundColor: Colors.ink, borderRadius: 5,
+    paddingHorizontal: 16, paddingVertical: 10,
+  },
+  savedToastText: { fontSize: 13, fontWeight: '700', color: '#FFF' },
+  savedToastUndo: { fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.65)', textDecorationLine: 'underline' },
 });
 
 // ── Bottom sheet styles ───────────────────────────────────────
@@ -1273,4 +1777,64 @@ const bs = StyleSheet.create({
   rescheduleChipText: { fontSize: 13, fontWeight: '700', color: Colors.ink },
   rescheduleChipTextUnavailable: { color: Colors.inkMuted },
   rescheduleChipTextSelected: { color: '#FFF' },
+});
+
+// ── Block-range sheet styles ──────────────────────────────────
+const br = StyleSheet.create({
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 48 },
+
+  actionRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  actionBtn: {
+    flex: 1, paddingVertical: 10, borderRadius: 5,
+    borderWidth: 1.5, borderColor: Colors.inkFaint, alignItems: 'center',
+  },
+  actionBtnActive: { borderColor: Colors.ink, backgroundColor: Colors.ink },
+  actionBtnText: { fontSize: 14, fontWeight: '700', color: Colors.inkMuted },
+  actionBtnTextActive: { color: '#FFF' },
+
+  heading: { fontSize: 20, fontWeight: '800', color: Colors.text, marginTop: 4, marginBottom: 20 },
+  fieldLabel: { fontSize: 12, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 },
+
+  chipRow: { gap: 8 },
+  timeChip: {
+    paddingHorizontal: 12, paddingVertical: 8,
+    borderRadius: 5, borderWidth: 1.5, borderColor: Colors.inkFaint,
+  },
+  timeChipActive: { borderColor: Colors.ink, backgroundColor: Colors.ink },
+  timeChipText: { fontSize: 13, fontWeight: '600', color: Colors.ink },
+  timeChipTextActive: { color: '#FFF' },
+
+  weekdayRow: { flexDirection: 'row', gap: 6 },
+  dayChip: {
+    flex: 1, paddingVertical: 9, borderRadius: 5,
+    borderWidth: 1.5, borderColor: Colors.inkFaint, alignItems: 'center',
+  },
+  dayChipActive: { borderColor: Colors.ink, backgroundColor: Colors.ink },
+  dayChipText: { fontSize: 11, fontWeight: '700', color: Colors.inkMuted },
+  dayChipTextActive: { color: '#FFF' },
+
+  repeatRow: { flexDirection: 'row', gap: 10 },
+  repeatBtn: {
+    flex: 1, paddingVertical: 10, borderRadius: 5,
+    borderWidth: 1.5, borderColor: Colors.inkFaint, alignItems: 'center',
+  },
+  repeatBtnActive: { borderColor: Colors.ink, backgroundColor: Colors.ink },
+  repeatBtnText: { fontSize: 13, fontWeight: '700', color: Colors.inkMuted },
+  repeatBtnTextActive: { color: '#FFF' },
+
+  preview: {
+    marginTop: 20, paddingVertical: 12, paddingHorizontal: 14,
+    borderRadius: 5, borderWidth: 1, borderColor: Colors.inkFaint,
+  },
+  previewText: { fontSize: 14, color: Colors.text, fontWeight: '500' },
+
+  errorBox: { marginTop: 12, backgroundColor: Colors.error + '15', borderRadius: 5, padding: 12 },
+  errorText: { fontSize: 13, color: Colors.error, fontWeight: '500' },
+
+  confirmBtn: {
+    marginTop: 16, height: 54, backgroundColor: Colors.ink,
+    borderRadius: 5, alignItems: 'center', justifyContent: 'center',
+  },
+  confirmBtnDisabled: { opacity: 0.4 },
+  confirmBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
 });

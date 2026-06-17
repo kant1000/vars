@@ -143,6 +143,7 @@ export default function AddServiceScreen() {
         </TouchableOpacity>
       </View>
       <Text style={styles.title}>Add a service</Text>
+      <Text style={styles.subtitle}>Tell us what you do. Customers will book you to come to their home.</Text>
 
       {/* L1 category pills */}
       <Text style={styles.fieldLabel}>Category <Text style={styles.required}>*</Text></Text>
@@ -262,7 +263,8 @@ const styles = StyleSheet.create({
 
   headerRow: { marginBottom: 12 },
   back: { fontSize: 16, color: Colors.primary, fontWeight: '600' },
-  title: { fontSize: 26, fontWeight: '700', color: Colors.text, marginBottom: 24 },
+  title: { fontSize: 26, fontWeight: '700', color: Colors.text, marginBottom: 6 },
+  subtitle: { fontSize: 14, color: Colors.textSecondary, marginBottom: 24 },
 
   fieldLabel: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary, marginBottom: 8 },
   optional: { fontWeight: '400', color: Colors.textMuted },
