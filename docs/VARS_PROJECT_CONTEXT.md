@@ -32,12 +32,12 @@ The README is the canonical record of what's implemented — screens, edge funct
 
 | Item | Status |
 |---|---|
-| Paystack live mode | Blocked — Nigerian CAC business registration in progress. Swap `PAYSTACK_SECRET_KEY` in Supabase secrets (test → live) and register webhooks against production URLs once complete. |
-| Youverify credentials | Blocked — pricing negotiation with Ayotomide pending. Integration fully built; production API key and webhook secret must replace sandbox values in Supabase secrets. |
+| Paystack live mode | Blocked — CAC registration complete, business bank account open. Now pending Paystack account activation review (ticket ref: Vars 1850306, opened mid-May; escalation email sent 17 June to hello@paystack.com, no response yet). Pursuing via Paystack live chat and @PaystackHelp on X. Swap `PAYSTACK_SECRET_KEY` in Supabase secrets (test → live) and register webhooks against production URLs once live keys are issued. |
+| Youverify credentials | Done — all three secrets set in Supabase (`YOUVERIFY_API_KEY`, `YOUVERIFY_BASE_URL`, `YOUVERIFY_WEBHOOK_SECRET`), production values, webhook URL pointed at `vendor-kyc-webhook`. KYC is live-ready. |
 | Google Maps API key | Set in `apps/mobile/.env` and Supabase secrets. No code changes needed — activate billing in Google Cloud Console. |
 | Android APK | Use EAS Cloud Build (`eas build --platform android --profile preview`) — avoids Windows PATH/JDK friction, produces a shareable `.apk` without local Android Studio. |
 | Email delivery (outreach + marketing) | Ready — `RESEND_API_KEY`, `DELIVER_OUTREACH_SECRET`, `UNSUBSCRIBE_SECRET` are set. Set `DELIVERY_LIVE=true` to activate. |
-| WhatsApp delivery | Blocked — Meta HSM template approval required before Termii will deliver. Submit intro, reengagement, and go-live templates via Termii dashboard. Then set `TERMII_API_KEY`, `TERMII_SENDER_ID` in Supabase secrets and `DELIVERY_LIVE=true`. |
+| WhatsApp delivery | Blocked — two layers: (1) Termii account flagged/blocked by 360dialog (Termii's Meta BSP partner) on the Termii dashboard, no reason given via notification; draft escalation email to Termii contact Emmanuel Danso prepared, pending send. Account block must resolve before (2) Meta HSM template approval (intro, reengagement, go-live templates submitted via Termii dashboard) can proceed. Once both clear, set `TERMII_API_KEY`, `TERMII_SENDER_ID` in Supabase secrets and `DELIVERY_LIVE=true`. |
 
 **In-progress work:** See `docs/codex/CLEANUP_ROADMAP.md` — Phases 3–6 (Supabase health audit, app flow verification, product polish, delivery) are still pending.
 
@@ -205,14 +205,17 @@ All push and in-app notification copy lives here as exported functions. Never wr
 
 ## 7. Youverify KYC Integration
 
-**Status: Integration fully built. Credentials not yet activated — blocked on pricing negotiation with Ayotomide.**
+**Status: Live. Production credentials set in Supabase secrets (19 June 2026). Webhook URL configured in Youverify dashboard.**
 
 What is built:
-- `vendor-kyc-init` initiates a Youverify session
-- `vendor-kyc-webhook` receives the result — clean pass sets `kyc_status = verified` and `is_active = true` instantly; rejection populates `kyc_rejection_reason` and routes to admin queue
-- Webhook authenticated via HMAC (`YOUVERIFY_WEBHOOK_SECRET`)
-
-Before going live: confirm `YOUVERIFY_API_KEY` and `YOUVERIFY_WEBHOOK_SECRET` in Supabase secrets are production values (not sandbox), and that the webhook endpoint registered with Youverify points to the production edge function URL.
+- `vendor-kyc-init` initiates a Youverify hosted KYC session; returns a URL opened in a WebView.
+- `vendor-kyc-webhook` receives the result and handles three outcomes:
+  - **Verified** (`status: "found"`, `allValidationPassed: true`): extracts liveness face image (base64 data URI at `data.image`) and legal name (`data.firstName/middleName/lastName`), crops to passport-style 400×400, uploads raw + cropped to `vendor-identity-images` bucket, sets `kyc_status = verified`, `is_active = true`, `profile_image_locked = true`.
+  - **Rejected** (`status: "found"`, `allValidationPassed: false`, or `failed/rejected/declined`): sets `kyc_status = rejected`, stores reason, sends "try again" push notification.
+  - **needs_review**: if face image or legal name is missing from the webhook payload, the webhook calls `GET /v2/api/identity/:id` as a fallback. If data is still missing after the GET, sets `kyc_status = needs_review` — vendor stays unverified; admin resolves manually using the Youverify dashboard.
+- Webhook authenticated via HMAC-SHA256 (`YOUVERIFY_WEBHOOK_SECRET`).
+- `kyc_status_enum` includes: `pending`, `verified`, `rejected`, `needs_review` (migration `20260619000001`).
+- All three Supabase secrets are set to production values: `YOUVERIFY_API_KEY`, `YOUVERIFY_BASE_URL`, `YOUVERIFY_WEBHOOK_SECRET`.
 
 ---
 
@@ -258,7 +261,7 @@ Phase 2 entry conditions were met as of May 2026: 100+ verified vendors, 4+ Lago
 ### Partnerships in discussion
 
 - **Marketing Extension** — Nigerian marketing agency (fintech/B2B SaaS background). Marketing brief sent. Decision pending.
-- **Youverify** — KYC provider. Sales conversation in progress re: startup pricing (contact: Ayotomide).
+- **Youverify** — KYC provider. Production credentials active as of 19 June 2026 (contact: Ayotomide).
 
 ---
 

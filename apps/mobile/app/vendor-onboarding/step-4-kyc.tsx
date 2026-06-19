@@ -16,7 +16,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 
 // 'failed' covers both in-session WebView failures and returning after a webhook rejection
-type KycState = 'idle' | 'loading' | 'webview' | 'failed' | 'done';
+// 'review' covers needs_review — KYC passed but data capture failed; admin resolves
+type KycState = 'idle' | 'loading' | 'webview' | 'failed' | 'review' | 'done';
 
 interface BankInfo {
   accountNumber: string;
@@ -64,6 +65,8 @@ export default function Step4Kyc() {
       if (data.kyc_status === 'rejected') {
         setKycState('failed');
         setKycErrorReason(data.kyc_rejection_reason ?? null);
+      } else if (data.kyc_status === 'needs_review') {
+        setKycState('review');
       }
 
       // Pre-load saved bank account if one exists
@@ -237,6 +240,15 @@ export default function Step4Kyc() {
             </View>
           )}
 
+          {kycState === 'review' && (
+            <View style={styles.reviewCallout}>
+              <Text style={styles.reviewCalloutTitle}>Confirming your details</Text>
+              <Text style={styles.reviewCalloutBody}>
+                This usually takes a few minutes. You'll get a notification once you're verified.
+              </Text>
+            </View>
+          )}
+
           <Text style={styles.photoNotice}>
             The photo taken during your identity check will be your permanent profile picture on VARS. Make sure you're in good lighting and facing the camera directly.
           </Text>
@@ -245,7 +257,7 @@ export default function Step4Kyc() {
             <View style={styles.verifiedBadge}>
               <Text style={styles.verifiedText}>✓ Identity verified</Text>
             </View>
-          ) : (
+          ) : kycState !== 'review' ? (
             <TouchableOpacity
               style={[styles.kycButton, kycState === 'loading' && styles.buttonDisabled]}
               onPress={handleStartKyc}
@@ -258,7 +270,7 @@ export default function Step4Kyc() {
                     {kycState === 'failed' ? 'Try again' : 'Start identity check'}
                   </Text>}
             </TouchableOpacity>
-          )}
+          ) : null}
         </View>
 
         {/* ---- Bank Account Section ---- */}
@@ -355,6 +367,9 @@ const styles = StyleSheet.create({
   errorCalloutTitle: { fontSize: 15, fontWeight: '700', color: Colors.error },
   errorCalloutBody: { fontSize: 14, color: Colors.error, opacity: 0.85 },
   errorCalloutHint: { fontSize: 13, color: Colors.textSecondary, lineHeight: 18 },
+  reviewCallout: { backgroundColor: '#F0F9FF', borderRadius: 5, padding: 14, gap: 6 },
+  reviewCalloutTitle: { fontSize: 15, fontWeight: '700', color: Colors.text },
+  reviewCalloutBody: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20 },
   photoNotice: { fontSize: 13, color: Colors.textSecondary, lineHeight: 19 },
   kycButton: { height: 50, backgroundColor: Colors.primary, borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
   kycButtonText: { color: '#FFF', fontSize: 15, fontWeight: '700' },

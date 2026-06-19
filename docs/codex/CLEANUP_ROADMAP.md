@@ -106,6 +106,10 @@ This roadmap tracks the practical path to make the whole app work as intended.
 
 - **Schedule UX — block/unblock range + legend hints** (`app/(vendor-tabs)/schedule.tsx`, `vendor-services/add.tsx`): Three improvements from a moderated vendor user test. (1) Add-service screen: context copy "Tell us what you do. Customers will book you to come to their home." added below the title — addresses vendors naming their service after the category rather than the actual service. (2) Schedule legend: "What the slots mean" heading + "Tap any slot to block or unblock it." hint; "Block a range" underlined link in the legend footer. (3) `BlockRangeSheet` component: Block | Unblock mode toggle; From/To 30-min time chip pickers; Mon–Sun day-of-week chips; Just this week / Until a date repeat modes (flash-calendar picker, 8-week cap); live slot count preview; batch writes/deletes to `vendor_calendar` (skips active bookings + `transport_buffer` rows); 10-second undo toast — block undo deletes inserted rows and reverts any `auto_accept` rows; unblock undo re-inserts deleted rows. Done.
 
+## Phase 2b++++++ Work Done (June 2026)
+
+- **Youverify KYC webhook hardening** (`supabase/functions/vendor-kyc-webhook/index.ts`, `apps/mobile/app/vendor-onboarding/step-4-kyc.tsx`): Fixed two critical bugs discovered from Youverify API docs review. (1) Status detection: KYC Link flow sends `status: "found"` + `allValidationPassed` boolean — not `success/verified/approved`. Previous code classified every webhook as intermediate and silently ignored it; no vendor would ever have been verified or rejected. (2) Face image format: Youverify sends the liveness image as a base64 data URI (`data:image/jpg;base64,...`) at `data.image` — not an HTTP URL. Previous code checked `startsWith('http')` and always skipped it; every vendor would go live with no locked profile photo. Added GET API fallback (`GET /v2/api/identity/:id`) when webhook payload is thin. If both webhook and GET miss image or name, sets `kyc_status = needs_review` — vendor stays unverified, admin resolves via Youverify dashboard. `needs_review` added to `kyc_status_enum` (migration `20260619000001`). Mobile KYC screen handles `needs_review` with a "Confirming your details" callout (no retry button). Done. Also: Youverify production credentials activated (19 June 2026) — `YOUVERIFY_API_KEY`, `YOUVERIFY_BASE_URL`, `YOUVERIFY_WEBHOOK_SECRET` all set in Supabase secrets; webhook URL configured in Youverify dashboard.
+
 ## Immediate Next Steps
 
 **Current roadmap position** (source of truth: `apps/landing/src/app/roadmap/data/milestones.ts`):
@@ -118,6 +122,5 @@ This roadmap tracks the practical path to make the whole app work as intended.
 
 - Build vendor pipeline to 400 — 75 have registered interest. Outreach system is live; delivery activates when `DELIVERY_LIVE=true` is set in Supabase secrets.
 - Android APK delivery: use EAS Cloud Build (`eas build --platform android --profile preview`) — avoids Windows PATH/JDK friction, produces a shareable `.apk` without local Android Studio.
-- Activate Paystack live credentials. Blocked on Nigerian business registration completion.
-- Activate Youverify credentials. Blocked on pricing negotiation with Ayotomide.
+- Activate Paystack live credentials. Blocked on Paystack account activation review (ticket Vars 1850306).
 - Activate Google Maps API key. Set in mobile `.env.local` and Supabase Edge Function secrets; no code changes needed.
