@@ -21,6 +21,7 @@ import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
 import { fmtPrice, fmtDuration, fmtTime, fmtDate } from '@/lib/format';
 import { LightningIcon, CheckIcon, CloseIcon, PinIcon } from '@/components/icons';
+import { ConfirmModal } from '@/components/ConfirmModal';
 import { Calendar, toDateId, fromDateId } from '@marceloterreiro/flash-calendar';
 import { BottomSheetModal, BottomSheetFlatList } from '@gorhom/bottom-sheet';
 import { BOOKING_STATUS, TRANSPORT_FEE_TIERS, BASE_RADIUS_KM } from '@vars/shared';
@@ -659,6 +660,8 @@ export default function BookingFlow() {
   const [paying, setPaying] = useState(false);
   const [paystackUrl, setPaystackUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showCancellationNotice, setShowCancellationNotice] = useState(false);
+  const [hasAcknowledgedCancellation, setHasAcknowledgedCancellation] = useState(false);
 
   useEffect(() => {
     if (!vendorId) return;
@@ -725,6 +728,11 @@ export default function BookingFlow() {
     } finally {
       setLocating(false);
     }
+  };
+
+  const handlePayGate = () => {
+    if (hasAcknowledgedCancellation) { handlePay(); return; }
+    setShowCancellationNotice(true);
   };
 
   const handlePay = async () => {
@@ -867,10 +875,26 @@ export default function BookingFlow() {
           locAddress={locAddress}
           access={access}
           vendorZone={vendorZone}
-          onPay={handlePay}
+          onPay={handlePayGate}
           paying={paying}
         />
       )}
+
+      <ConfirmModal
+        visible={showCancellationNotice}
+        title="One thing before you pay"
+        body={
+          `If you cancel, a fee may apply. Cancel sooner and you get more back.\n\nYour payment is held securely until your service is complete.`
+        }
+        confirmLabel={`Pay ${fmtPrice(totalServiceKobo + (coords && vendorZone ? calcPreviewSurcharge(coords.lat, coords.lng, vendorZone.lat, vendorZone.lng) : 0))} — let's go`}
+        dismissLabel="Go back"
+        onConfirm={() => {
+          setShowCancellationNotice(false);
+          setHasAcknowledgedCancellation(true);
+          handlePay();
+        }}
+        onDismiss={() => setShowCancellationNotice(false)}
+      />
 
       <Modal visible={!!paystackUrl} animationType="slide">
         <View style={{ flex: 1, paddingTop: insets.top }}>

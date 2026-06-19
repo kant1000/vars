@@ -13,6 +13,7 @@ import {
   Alert, StyleSheet, Text,
   TouchableOpacity, View, Switch, ScrollView,
 } from 'react-native';
+import { ConfirmModal } from '@/components/ConfirmModal';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import MapView, { Circle, Marker, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
@@ -50,6 +51,10 @@ export default function VendorZoneSetup() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showAutoAcceptModal, setShowAutoAcceptModal] = useState(false);
+  // Track the value of autoEnabled when this screen was first loaded so we
+  // only show the liability modal when the vendor is actively turning it ON.
+  const wasAlreadyEnabled = useRef(false);
 
   const effectiveDay     = getEffectiveToday();
   const effectiveDateKey = toLocalDateStr(effectiveDay);
@@ -95,13 +100,23 @@ export default function VendorZoneSetup() {
       }
       if (vendor?.auto_accept_enabled != null) {
         setAutoEnabled(vendor.auto_accept_enabled);
+        wasAlreadyEnabled.current = vendor.auto_accept_enabled;
       }
 
       setLoading(false);
     })();
   }, []);
 
-  const handleSave = async () => {
+  const handleSave = () => {
+    // Show the liability modal the first time a vendor turns auto-accept on.
+    if (autoEnabled && !wasAlreadyEnabled.current) {
+      setShowAutoAcceptModal(true);
+      return;
+    }
+    commitSave();
+  };
+
+  const commitSave = async () => {
     setSaving(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -268,6 +283,18 @@ export default function VendorZoneSetup() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <ConfirmModal
+        visible={showAutoAcceptModal}
+        title="You're going live on auto-accept"
+        body={
+          `Bookings in your zone for ${effectiveDateStr} are yours instantly. No review needed, just show up.\n\nYour schedule handles the spacing. No two jobs will ever overlap.\n\nYou have 5 minutes to cancel any auto-accepted booking, penalty-free.`
+        }
+        confirmLabel="Turn on auto-accept"
+        dismissLabel="Not yet"
+        onConfirm={() => { setShowAutoAcceptModal(false); commitSave(); }}
+        onDismiss={() => setShowAutoAcceptModal(false)}
+      />
     </View>
   );
 }

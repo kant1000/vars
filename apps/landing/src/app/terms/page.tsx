@@ -17,7 +17,7 @@ export default function TermsPage() {
         <Link href="/" className="legal-back">Back to VARS</Link>
         <p className="legal-kicker">Terms of Use</p>
         <h1>Using VARS</h1>
-        <p className="legal-updated">Last updated: 1 June 2026</p>
+        <p className="legal-updated">Last updated: 19 June 2026</p>
 
         <section>
           <h2>What VARS is</h2>
@@ -195,19 +195,21 @@ export default function TermsPage() {
             After a completed service, a stylist may request permission to include
             a photo from the session in their VARS portfolio. The customer receives
             a notification and can approve or decline. No photo is added to any
-            public profile without explicit customer approval. Requests expire if
-            not responded to.
+            public profile without explicit customer approval.
           </p>
         </section>
 
         <section>
-          <h2>Fair use</h2>
-          <p>
-            You must not use VARS to submit false information, impersonate
-            another person, harass other users, circumvent platform payment rules,
-            upload unlawful content, interfere with the service, or misuse
-            customer or stylist information.
-          </p>
+          <h2>Acceptable Use Policy</h2>
+          <p>You must not use VARS to:</p>
+          <ul>
+            <li>Submit false information, impersonate another person, or harass other users.</li>
+            <li>Circumvent platform payment rules, upload unlawful content, or interfere with the service.</li>
+            <li>Misuse customer or stylist information.</li>
+            <li>Solicit or accept payment for a VARS booking outside the Paystack-processed flow. All transactions must go through the platform.</li>
+            <li>Create multiple accounts to circumvent platform rules, bans, or the Pioneer programme limit.</li>
+            <li>Share or request contact information before the platform reveals it. Phone numbers are shared automatically 15 minutes before the appointment.</li>
+          </ul>
         </section>
 
         <section>

@@ -17,7 +17,7 @@ export default function PrivacyPage() {
         <Link href="/" className="legal-back">Back to VARS</Link>
         <p className="legal-kicker">Privacy Policy</p>
         <h1>How VARS handles your information</h1>
-        <p className="legal-updated">Last updated: 1 June 2026</p>
+        <p className="legal-updated">Last updated: 19 June 2026</p>
 
         <section>
           <h2>Our approach</h2>
@@ -137,9 +137,8 @@ export default function PrivacyPage() {
           <p>
             After a completed service, a stylist may upload a photo and request
             the customer&apos;s consent to include it in their VARS portfolio.
-            The photo is held privately until consent is granted. If the customer
-            declines or does not respond, the photo is not published. Approved
-            photos are displayed on the stylist&apos;s public VARS profile.
+            If the customer declines, the photo is not published and is removed.
+            Approved photos are displayed on the stylist&apos;s public VARS profile.
           </p>
         </section>
 

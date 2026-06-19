@@ -14,6 +14,7 @@ import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
+import { ConfirmModal } from '@/components/ConfirmModal';
 
 // 'failed' covers both in-session WebView failures and returning after a webhook rejection
 // 'review' covers needs_review — KYC passed but data capture failed; admin resolves
@@ -31,6 +32,7 @@ export default function Step4Kyc() {
   const { user, session } = useAuth();
 
   // KYC state
+  const [showKycModal, setShowKycModal] = useState(false);
   const [kycState, setKycState] = useState<KycState>('idle');
   const [kycUrl, setKycUrl] = useState('');
   const [kycVerified, setKycVerified] = useState(false);
@@ -101,7 +103,13 @@ export default function Step4Kyc() {
   };
 
   // ---- KYC via Youverify ----
-  const handleStartKyc = async () => {
+  const handleStartKyc = () => {
+    // On retry (failed state) skip the disclosure — they've already seen it.
+    if (kycState === 'failed') { launchKyc(); return; }
+    setShowKycModal(true);
+  };
+
+  const launchKyc = async () => {
     if (!user) return;
     setKycState('loading');
     setKycErrorReason(null);
@@ -249,10 +257,6 @@ export default function Step4Kyc() {
             </View>
           )}
 
-          <Text style={styles.photoNotice}>
-            The photo taken during your identity check will be your permanent profile picture on VARS. Make sure you're in good lighting and facing the camera directly.
-          </Text>
-
           {kycVerified ? (
             <View style={styles.verifiedBadge}>
               <Text style={styles.verifiedText}>✓ Identity verified</Text>
@@ -351,6 +355,17 @@ export default function Step4Kyc() {
             : <Text style={styles.buttonText}>Submit for review</Text>}
         </TouchableOpacity>
       </ScrollView>
+      <ConfirmModal
+        visible={showKycModal}
+        title="Your photo and name will be on your profile"
+        body={
+          `The selfie and name from your ID check become your permanent VARS profile. Every customer sees them before booking you.\n\nGood lighting, face the camera directly, and you're set.`
+        }
+        confirmLabel="Got it, start the check"
+        dismissLabel="Not now"
+        onConfirm={() => { setShowKycModal(false); launchKyc(); }}
+        onDismiss={() => setShowKycModal(false)}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -370,7 +385,6 @@ const styles = StyleSheet.create({
   reviewCallout: { backgroundColor: '#F0F9FF', borderRadius: 5, padding: 14, gap: 6 },
   reviewCalloutTitle: { fontSize: 15, fontWeight: '700', color: Colors.text },
   reviewCalloutBody: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20 },
-  photoNotice: { fontSize: 13, color: Colors.textSecondary, lineHeight: 19 },
   kycButton: { height: 50, backgroundColor: Colors.primary, borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
   kycButtonText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
   verifiedBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0FDF4', borderRadius: 5, padding: 12 },
