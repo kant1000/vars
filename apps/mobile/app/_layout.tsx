@@ -8,7 +8,8 @@
 import * as Sentry from '@sentry/react-native';
 import { PostHogProvider } from 'posthog-react-native';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-import { useEffect, useRef, useState } from 'react';
+import { Component, useEffect, useRef, useState } from 'react';
+import { ScrollView } from 'react-native';
 import { Stack } from 'expo-router';
 import { router, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -20,6 +21,43 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+
+// ── Debug error boundary — shows full error on screen instead of crashing ──
+import { Text, View } from 'react-native';
+
+class ErrorBoundary extends Component<
+  { children: React.ReactNode },
+  { error: Error | null }
+> {
+  constructor(props: any) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  componentDidCatch(error: Error, info: any) {
+    // Persist crash so it survives even if the error screen itself fails
+    AsyncStorage.setItem('vars_last_crash', JSON.stringify({
+      message: error.message,
+      stack: (error.stack ?? '').slice(0, 3000),
+      componentStack: (info?.componentStack ?? '').slice(0, 2000),
+      time: new Date().toISOString(),
+    })).catch(() => {});
+  }
+  render() {
+    if (!this.state.error) return this.props.children;
+    const msg = String(this.state.error.message ?? '');
+    const stack = String(this.state.error.stack ?? '').slice(0, 2000);
+    return (
+      <View style={{ flex: 1, backgroundColor: '#ffffff', paddingTop: 60, paddingHorizontal: 16 }}>
+        <Text style={{ fontSize: 15, fontWeight: 'bold', color: '#cc0000', marginBottom: 12 }}>
+          {'JS Error: ' + msg}
+        </Text>
+        <ScrollView>
+          <Text style={{ fontSize: 11, color: '#333333', lineHeight: 16 }}>
+            {stack}
+          </Text>
+        </ScrollView>
+      </View>
+    );
+  }
+}
 
 Sentry.init({
   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
@@ -166,5 +204,9 @@ function RootLayout() {
   );
 }
 
-export default Sentry.wrap(RootLayout);
+function RootLayoutWithBoundary() {
+  return <ErrorBoundary><RootLayout /></ErrorBoundary>;
+}
+
+export default Sentry.wrap(RootLayoutWithBoundary);
 

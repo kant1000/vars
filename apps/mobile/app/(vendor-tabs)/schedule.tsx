@@ -5,11 +5,12 @@
 // List: upcoming bookings in chronological order
 // Part 1: types, helpers, calendar view with booked overlay
 // ============================================================
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Dimensions, FlatList, Platform,
+  Dimensions, FlatList, Modal, Platform,
   RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
+import { Calendar as RNCalendar } from 'react-native-calendars';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,7 +24,20 @@ import { fmtPrice, fmtDuration, fmtTime, fmtDate } from '@/lib/format';
 import { CheckIcon, CloseIcon, PinIcon, LockIcon, LightningIcon } from '@/components/icons';
 import * as Haptics from 'expo-haptics';
 import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
-import { Calendar, toDateId, fromDateId } from '@marceloterreiro/flash-calendar';
+// flash-calendar is lazy-loaded so its top-level require('@shopify/flash-list') does not
+// run during schedule.tsx module initialisation, which crashed the app in release builds.
+const FlashCalendarLazy = React.lazy(() =>
+  import('@marceloterreiro/flash-calendar').then((m) => ({ default: m.Calendar }))
+);
+const toDateId = (d: Date): string => {
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${day}`;
+};
+const fromDateId = (id: string): Date => {
+  const [y, mo, dy] = id.split('-').map(Number);
+  return new Date(y, mo - 1, dy);
+};
 import { BookingStatus, BOOKING_STATUS } from '@vars/shared';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
@@ -105,6 +119,8 @@ const BR_STEP        = 30;
 const BR_MAX_DAYS    = 56;       // 8 weeks
 
 const BR_WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const MONTH_SHORT   = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 // JS getDay(): 0=Sun,1=Mon,...,6=Sat — map to Mon-first display order
 const BR_WEEKDAY_JS     = [1, 2, 3, 4, 5, 6, 0];
 
@@ -942,28 +958,30 @@ function BlockRangeSheet({
 
         {repeatMode === 'until' && (
           <View style={{ marginTop: 12 }}>
-            <Calendar
-              calendarMinDateId={toDateId(tomorrow)}
-              calendarMaxDateId={toDateId(maxUntil)}
-              calendarActiveDateRanges={
-                untilDate ? [{ startId: toDateId(untilDate), endId: toDateId(untilDate) }] : []
-              }
-              onCalendarDayPress={(dateId) => setUntilDate(fromDateId(dateId))}
-              theme={{
-                itemDay: {
-                  active: () => ({
-                    container: { backgroundColor: Colors.ink },
-                    content: { color: '#FFF' },
-                  }),
-                  today: () => ({
-                    content: { color: Colors.ink, fontWeight: '700' },
-                  }),
-                },
-                rowMonth: {
-                  content: { color: Colors.text, fontWeight: '700', fontSize: 15 },
-                },
-              }}
-            />
+            <Suspense fallback={null}>
+              <FlashCalendarLazy
+                calendarMinDateId={toDateId(tomorrow)}
+                calendarMaxDateId={toDateId(maxUntil)}
+                calendarActiveDateRanges={
+                  untilDate ? [{ startId: toDateId(untilDate), endId: toDateId(untilDate) }] : []
+                }
+                onCalendarDayPress={(dateId) => setUntilDate(fromDateId(dateId))}
+                theme={{
+                  itemDay: {
+                    active: () => ({
+                      container: { backgroundColor: Colors.ink },
+                      content: { color: '#FFF' },
+                    }),
+                    today: () => ({
+                      content: { color: Colors.ink, fontWeight: '700' },
+                    }),
+                  },
+                  rowMonth: {
+                    content: { color: Colors.text, fontWeight: '700', fontSize: 15 },
+                  },
+                }}
+              />
+            </Suspense>
           </View>
         )}
 
@@ -1007,13 +1025,6 @@ export default function ScheduleScreen() {
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
 
-  const DAYS = useMemo(() => {
-    const base = getEffectiveToday();
-    return Array.from({ length: 14 }, (_, i) => {
-      const d = new Date(base); d.setDate(d.getDate() + i); return d;
-    });
-  }, []);
-
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
   const [vendorId, setVendorId] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState(() => getEffectiveToday());
@@ -1026,6 +1037,18 @@ export default function ScheduleScreen() {
   const [savedInfo, setSavedInfo] = useState<{ msg: string; undo: UndoPayload } | null>(null);
   const [undoing, setUndoing] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rangeStartRef = useRef<string | null>(null);
+
+  // Calendar modal state
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [rangeStart, setRangeStart] = useState<string | null>(null);
+  const [rangeEnd, setRangeEnd] = useState<string | null>(null);
+  const [dayDots, setDayDots] = useState<Record<string, boolean>>({});
+  const [blockingDay, setBlockingDay] = useState(false);
+  const [blockingRange, setBlockingRange] = useState(false);
+  // Recurring weekly blocks
+  const [recurringDays, setRecurringDays] = useState<number[]>([]);
+  const [savingRecurring, setSavingRecurring] = useState(false);
   const [zoneInfo, setZoneInfo] = useState<{
     enabled: boolean;
     confirmedDate: string | null;
@@ -1046,6 +1069,12 @@ export default function ScheduleScreen() {
     AsyncStorage.setItem(STORAGE_KEY, mode);
   };
 
+  const showSavedInfo = useCallback((count: number, verb: string, undo: UndoPayload) => {
+    setSavedInfo({ msg: `${count} slot${count !== 1 ? 's' : ''} ${verb}.`, undo });
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setSavedInfo(null), 3000);
+  }, []);
+
   // Get vendor id
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -1059,7 +1088,7 @@ export default function ScheduleScreen() {
     if (!vendorId) return;
     const { data } = await supabase
       .from('vendors')
-      .select('auto_accept_enabled, auto_accept_zone_confirmed_date, auto_accept_paused_due_to_drift, auto_accept_zone_lat, auto_accept_zone_radius_km')
+      .select('auto_accept_enabled, auto_accept_zone_confirmed_date, auto_accept_paused_due_to_drift, auto_accept_zone_lat, auto_accept_zone_radius_km, recurring_block_weekdays')
       .eq('id', vendorId)
       .single();
     if (data) {
@@ -1070,13 +1099,157 @@ export default function ScheduleScreen() {
         radius_km: data.auto_accept_zone_radius_km ?? null,
         zoneConfigured: data.auto_accept_zone_lat != null,
       });
+      const days = ((data as any).recurring_block_weekdays ?? []) as number[];
+      setRecurringDays(days);
+      // Apply recurring blocks inline so we use the fresh values, not stale state
+      if (days.length > 0 && vendorId) applyRecurringBlocksDirect(vendorId, days);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vendorId]);
 
   // Re-fetch on focus (e.g. returning from zone setup) AND when vendorId first arrives
   // (vendorId is set async so useFocusEffect alone misses the initial load).
   useFocusEffect(useCallback(() => { loadZoneInfo(); }, [loadZoneInfo]));
   useEffect(() => { loadZoneInfo(); }, [loadZoneInfo]);
+
+  const loadDayDots = useCallback(async () => {
+    if (!vendorId) return;
+    const now   = new Date();
+    const base  = getEffectiveToday();
+    const maxD  = new Date(base); maxD.setDate(maxD.getDate() + 13); maxD.setHours(23, 59, 59, 999);
+    const { data } = await supabase
+      .from('vendor_calendar')
+      .select('start_time')
+      .eq('vendor_id', vendorId)
+      .eq('block_state', 'unavailable')
+      .gte('start_time', base.toISOString())
+      .lte('start_time', maxD.toISOString());
+    if (!data) return;
+    // Build a count of blocked future slots per day
+    const blocked: Record<string, number> = {};
+    for (const row of data) {
+      const key = toLocalDateStr(new Date(row.start_time));
+      blocked[key] = (blocked[key] ?? 0) + 1;
+    }
+    // Mark days where every future slot is blocked
+    const dots: Record<string, boolean> = {};
+    const cur = new Date(base);
+    while (cur <= maxD) {
+      const dayStr = toLocalDateStr(cur);
+      const futureCount = generateSlots(cur).filter(s => s > now).length;
+      if (futureCount > 0 && (blocked[dayStr] ?? 0) >= futureCount) dots[dayStr] = true;
+      cur.setDate(cur.getDate() + 1);
+    }
+    setDayDots(dots);
+  }, [vendorId]);
+
+  useEffect(() => { if (vendorId) loadDayDots(); }, [vendorId, loadDayDots]);
+
+  // ── Recurring block helpers ───────────────────────────────────
+  // Plain async (not useCallback) so loadZoneInfo can call it with fresh
+  // values from the DB without stale-closure issues.
+  async function applyRecurringBlocksDirect(vid: string, days: number[]) {
+    if (days.length === 0) return;
+    const effectiveToday = getEffectiveToday();
+    const maxD = new Date(effectiveToday); maxD.setDate(maxD.getDate() + 13);
+    const now = new Date();
+    const windowStart = new Date(effectiveToday); windowStart.setHours(0, 0, 0, 0);
+    const windowEnd   = new Date(maxD);           windowEnd.setHours(23, 59, 59, 999);
+
+    const [{ data: existingBlocks }, { data: bkRows }] = await Promise.all([
+      supabase.from('vendor_calendar')
+        .select('id, start_time, block_state')
+        .eq('vendor_id', vid)
+        .gte('start_time', windowStart.toISOString())
+        .lte('start_time', windowEnd.toISOString()),
+      supabase.from('bookings')
+        .select('scheduled_at, service_duration_blocks')
+        .eq('vendor_id', vid)
+        .in('status', ACTIVE_STATUSES)
+        .gte('scheduled_at', windowStart.toISOString())
+        .lte('scheduled_at', windowEnd.toISOString()),
+    ]);
+
+    const blockMap = new Map<number, { id: string; block_state: string }>();
+    for (const b of existingBlocks ?? []) blockMap.set(new Date(b.start_time).getTime(), { id: b.id, block_state: b.block_state });
+
+    const bookedSet = new Set<number>();
+    for (const bk of bkRows ?? []) {
+      const bkStart = new Date(bk.scheduled_at);
+      for (let i = 0; i < bk.service_duration_blocks; i++) bookedSet.add(addMinutes(bkStart, i * 30).getTime());
+    }
+
+    const toInsert: { vendor_id: string; start_time: string; end_time: string; block_state: string }[] = [];
+    const toUpdateIds: string[] = [];
+    const cur = new Date(effectiveToday);
+    while (cur <= maxD) {
+      if (days.includes(cur.getDay())) {
+        for (const slot of generateSlots(cur).filter(s => s > now)) {
+          if (bookedSet.has(slot.getTime())) continue;
+          const ex = blockMap.get(slot.getTime());
+          if (!ex) {
+            toInsert.push({ vendor_id: vid, start_time: slot.toISOString(), end_time: addMinutes(slot, 30).toISOString(), block_state: 'unavailable' });
+          } else if (ex.block_state !== 'unavailable' && ex.block_state !== 'transport_buffer') {
+            toUpdateIds.push(ex.id);
+          }
+        }
+      }
+      cur.setDate(cur.getDate() + 1);
+    }
+
+    const ops: Promise<any>[] = [];
+    if (toInsert.length > 0) ops.push(supabase.from('vendor_calendar').insert(toInsert));
+    for (const id of toUpdateIds) ops.push(supabase.from('vendor_calendar').update({ block_state: 'unavailable' }).eq('id', id));
+    if (ops.length > 0) await Promise.all(ops);
+  }
+
+  const handleAddRecurringDay = useCallback(async (jsDay: number) => {
+    if (!vendorId || savingRecurring || recurringDays.includes(jsDay)) return;
+    setSavingRecurring(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const newDays = [...recurringDays, jsDay];
+    await supabase.from('vendors').update({ recurring_block_weekdays: newDays }).eq('id', vendorId);
+    setRecurringDays(newDays);
+    await applyRecurringBlocksDirect(vendorId, newDays);
+    await loadData();
+    await loadDayDots();
+    setSavingRecurring(false);
+  }, [vendorId, recurringDays, savingRecurring, loadData, loadDayDots]);
+
+  const handleRemoveRecurringDay = useCallback(async (jsDay: number) => {
+    if (!vendorId || savingRecurring) return;
+    setSavingRecurring(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const newDays = recurringDays.filter(d => d !== jsDay);
+    await supabase.from('vendors').update({ recurring_block_weekdays: newDays }).eq('id', vendorId);
+    setRecurringDays(newDays);
+    // Remove future unbooked blocks for that weekday across the window
+    const effectiveToday = getEffectiveToday();
+    const maxD = new Date(effectiveToday); maxD.setDate(maxD.getDate() + 13);
+    const now = new Date();
+    const windowStart = new Date(effectiveToday); windowStart.setHours(0, 0, 0, 0);
+    const windowEnd   = new Date(maxD);           windowEnd.setHours(23, 59, 59, 999);
+    const [{ data: blockedRows }, { data: bkRows }] = await Promise.all([
+      supabase.from('vendor_calendar').select('id, start_time')
+        .eq('vendor_id', vendorId).eq('block_state', 'unavailable')
+        .gte('start_time', windowStart.toISOString()).lte('start_time', windowEnd.toISOString()),
+      supabase.from('bookings').select('scheduled_at, service_duration_blocks')
+        .eq('vendor_id', vendorId).in('status', ACTIVE_STATUSES)
+        .gte('scheduled_at', windowStart.toISOString()).lte('scheduled_at', windowEnd.toISOString()),
+    ]);
+    const bookedSet = new Set<number>();
+    for (const bk of bkRows ?? []) {
+      const bkStart = new Date(bk.scheduled_at);
+      for (let i = 0; i < bk.service_duration_blocks; i++) bookedSet.add(addMinutes(bkStart, i * 30).getTime());
+    }
+    const idsToDelete = (blockedRows ?? [])
+      .filter(r => { const t = new Date(r.start_time); return t > now && t.getDay() === jsDay && !bookedSet.has(t.getTime()); })
+      .map(r => r.id);
+    if (idsToDelete.length > 0) await supabase.from('vendor_calendar').delete().in('id', idsToDelete);
+    await loadData();
+    await loadDayDots();
+    setSavingRecurring(false);
+  }, [vendorId, recurringDays, savingRecurring, loadData, loadDayDots]);
 
   const parseBooking = (b: any): VendorBooking => ({
     id: b.id,
@@ -1257,6 +1430,12 @@ export default function ScheduleScreen() {
   const slotScrollRef = useRef<ScrollView>(null);
   useEffect(() => {
     if (viewMode !== 'calendar' || loading) return;
+    const effectiveToday = getEffectiveToday();
+    const isToday = selectedDay.toDateString() === effectiveToday.toDateString();
+    if (!isToday) {
+      const timer = setTimeout(() => slotScrollRef.current?.scrollTo({ y: 0, animated: false }), 80);
+      return () => clearTimeout(timer);
+    }
     const now = new Date();
     const firstFuture = slots.findIndex((slot) => slot >= now);
     if (firstFuture <= 1) return;
@@ -1265,6 +1444,155 @@ export default function ScheduleScreen() {
     const timer = setTimeout(() => slotScrollRef.current?.scrollTo({ y, animated: false }), 80);
     return () => clearTimeout(timer);
   }, [slots, viewMode, loading, selectedDay]);
+
+  const handleBlockDay = useCallback(async () => {
+    if (!vendorId || blockingDay) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setBlockingDay(true);
+    const now = new Date();
+    const futureSlots = generateSlots(selectedDay).filter(s => s > now);
+    // Slots covered by active bookings are untouched
+    const bookedSet = new Set<number>();
+    for (const bk of bookings) {
+      const bkStart = new Date(bk.scheduled_at);
+      for (let i = 0; i < bk.service_duration_blocks; i++) {
+        bookedSet.add(addMinutes(bkStart, i * 30).getTime());
+      }
+    }
+    const targetSlots = futureSlots.filter(s => !bookedSet.has(s.getTime()));
+    if (targetSlots.length === 0) { setBlockingDay(false); return; }
+    const isAllBlocked = targetSlots.every(s => getBlockForSlot(s)?.block_state === 'unavailable');
+    if (isAllBlocked) {
+      const toDelete = blocks
+        .filter(b => b.block_state === 'unavailable' && targetSlots.some(s => s.getTime() === new Date(b.start_time).getTime()))
+        .map(b => b.id);
+      const undo: UndoPayload = {
+        toDelete: [],
+        toRevert: [],
+        toReInsert: toDelete.map(id => {
+          const b = blocks.find(b => b.id === id)!;
+          return { vendor_id: vendorId, start_time: b.start_time, end_time: b.end_time, block_state: 'unavailable' };
+        }),
+      };
+      if (toDelete.length > 0) await supabase.from('vendor_calendar').delete().in('id', toDelete);
+      await loadData();
+      await loadDayDots();
+      showSavedInfo(toDelete.length, 'unblocked', undo);
+    } else {
+      const toInsert: { vendor_id: string; start_time: string; end_time: string; block_state: string }[] = [];
+      const toRevert: { id: string; block_state: string }[] = [];
+      for (const slot of targetSlots) {
+        const b = getBlockForSlot(slot);
+        if (b?.block_state === 'unavailable') continue;
+        if (b) {
+          toRevert.push({ id: b.id, block_state: b.block_state });
+          await supabase.from('vendor_calendar').update({ block_state: 'unavailable' }).eq('id', b.id);
+        } else {
+          toInsert.push({ vendor_id: vendorId, start_time: slot.toISOString(), end_time: addMinutes(slot, 30).toISOString(), block_state: 'unavailable' });
+        }
+      }
+      let insertedIds: string[] = [];
+      if (toInsert.length > 0) {
+        const { data: ins } = await supabase.from('vendor_calendar').insert(toInsert).select('id');
+        insertedIds = (ins ?? []).map((r: any) => r.id as string);
+      }
+      await loadData();
+      await loadDayDots();
+      showSavedInfo(toInsert.length + toRevert.length, 'blocked', { toDelete: insertedIds, toRevert, toReInsert: [] });
+    }
+    setBlockingDay(false);
+  }, [vendorId, selectedDay, blocks, bookings, blockingDay, loadData, loadDayDots, getBlockForSlot, showSavedInfo]);
+
+  const handleRangeBlock = useCallback(async () => {
+    if (!vendorId || !rangeStart || blockingRange) return;
+    const effectiveEnd = rangeEnd ?? rangeStart;
+    setBlockingRange(true);
+    setCalendarOpen(false);
+    setRangeStart(null);
+    setRangeEnd(null);
+    rangeStartRef.current = null;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const now        = new Date();
+    const startDate  = fromDateId(rangeStart);
+    const endDate    = fromDateId(effectiveEnd);
+    const startOfRange = new Date(startDate); startOfRange.setHours(0, 0, 0, 0);
+    const endOfRange   = new Date(endDate);   endOfRange.setHours(23, 59, 59, 999);
+    const [{ data: existingBlocks }, { data: rangeBookings }] = await Promise.all([
+      supabase.from('vendor_calendar')
+        .select('id, start_time, end_time, block_state')
+        .eq('vendor_id', vendorId)
+        .gte('start_time', startOfRange.toISOString())
+        .lte('start_time', endOfRange.toISOString()),
+      supabase.from('bookings')
+        .select('scheduled_at, service_duration_blocks')
+        .eq('vendor_id', vendorId)
+        .in('status', ACTIVE_STATUSES)
+        .gte('scheduled_at', startOfRange.toISOString())
+        .lte('scheduled_at', endOfRange.toISOString()),
+    ]);
+    const bookedSet = new Set<number>();
+    for (const bk of rangeBookings ?? []) {
+      const bkStart = new Date(bk.scheduled_at);
+      for (let i = 0; i < bk.service_duration_blocks; i++) bookedSet.add(addMinutes(bkStart, i * 30).getTime());
+    }
+    const blockMap = new Map<number, { id: string; block_state: string }>();
+    for (const b of existingBlocks ?? []) blockMap.set(new Date(b.start_time).getTime(), { id: b.id, block_state: b.block_state });
+    // Collect all target slots
+    const targetSlots: Date[] = [];
+    const cur = new Date(startDate);
+    while (cur <= endDate) {
+      for (const slot of generateSlots(cur).filter(s => s > now && !bookedSet.has(s.getTime()))) {
+        targetSlots.push(slot);
+      }
+      cur.setDate(cur.getDate() + 1);
+    }
+    const allAlreadyBlocked = targetSlots.length > 0 &&
+      targetSlots.every(slot => blockMap.get(slot.getTime())?.block_state === 'unavailable');
+    let insertedIds: string[] = [];
+    let written = 0;
+    let verb: string;
+    let undo: UndoPayload;
+    if (allAlreadyBlocked) {
+      // Unblock
+      const idsToDelete: string[] = [];
+      const toReInsert: { vendor_id: string; start_time: string; end_time: string; block_state: string }[] = [];
+      for (const slot of targetSlots) {
+        const ex = blockMap.get(slot.getTime());
+        if (!ex || ex.block_state !== 'unavailable') continue;
+        idsToDelete.push(ex.id);
+        toReInsert.push({ vendor_id: vendorId, start_time: slot.toISOString(), end_time: addMinutes(slot, 30).toISOString(), block_state: 'unavailable' });
+        written++;
+      }
+      if (idsToDelete.length > 0) await supabase.from('vendor_calendar').delete().in('id', idsToDelete);
+      verb = 'unblocked';
+      undo = { toDelete: [], toRevert: [], toReInsert };
+    } else {
+      // Block
+      const toInsert: { vendor_id: string; start_time: string; end_time: string; block_state: string }[] = [];
+      const toRevert: { id: string; block_state: string }[] = [];
+      for (const slot of targetSlots) {
+        const ex = blockMap.get(slot.getTime());
+        if (ex?.block_state === 'unavailable' || ex?.block_state === 'transport_buffer') continue;
+        if (ex) {
+          toRevert.push({ id: ex.id, block_state: ex.block_state });
+          await supabase.from('vendor_calendar').update({ block_state: 'unavailable' }).eq('id', ex.id);
+        } else {
+          toInsert.push({ vendor_id: vendorId, start_time: slot.toISOString(), end_time: addMinutes(slot, 30).toISOString(), block_state: 'unavailable' });
+        }
+        written++;
+      }
+      if (toInsert.length > 0) {
+        const { data: ins } = await supabase.from('vendor_calendar').insert(toInsert).select('id');
+        insertedIds = (ins ?? []).map((r: any) => r.id as string);
+      }
+      verb = 'blocked';
+      undo = { toDelete: insertedIds, toRevert, toReInsert: [] };
+    }
+    await loadData();
+    await loadDayDots();
+    showSavedInfo(written, verb, undo);
+    setBlockingRange(false);
+  }, [vendorId, rangeStart, rangeEnd, blockingRange, loadData, loadDayDots, showSavedInfo]);
 
   const handleUndo = async (undo: UndoPayload) => {
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -1281,6 +1609,7 @@ export default function ScheduleScreen() {
         await supabase.from('vendor_calendar').insert(undo.toReInsert);
       }
       loadData();
+      loadDayDots();
     } catch {
       // best-effort undo — silently ignore failures
     } finally {
@@ -1334,40 +1663,79 @@ export default function ScheduleScreen() {
 
       {viewMode === 'calendar' ? (
         <>
-          {/* Day strip — fixed, does not scroll with the grid */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.dayStripScroll} contentContainerStyle={s.dayStrip}>
-            {DAYS.map((d) => {
-              const active = d.toDateString() === selectedDay.toDateString();
-              return (
+          {/* Day nav — replaces day strip */}
+          {(() => {
+            const effectiveToday = getEffectiveToday();
+            const maxNavDay = new Date(effectiveToday); maxNavDay.setDate(maxNavDay.getDate() + 13);
+            const isFirstDay = selectedDay.toDateString() === effectiveToday.toDateString();
+            const isLastDay  = selectedDay.toDateString() === maxNavDay.toDateString();
+            const isToday    = isFirstDay;
+            const dateLabel  = isToday
+              ? 'Today'
+              : `${WEEKDAY_NAMES[selectedDay.getDay()]}, ${selectedDay.getDate()} ${MONTH_SHORT[selectedDay.getMonth()]}`;
+            return (
+              <View style={s.dayNavRow}>
                 <TouchableOpacity
-                  key={d.toISOString()}
-                  style={[s.dayChip, active && s.dayChipActive]}
-                  onPress={() => setSelectedDay(d)}
+                  onPress={() => setSelectedDay(prev => { const d = new Date(prev); d.setDate(d.getDate() - 1); return d; })}
+                  disabled={isFirstDay}
+                  hitSlop={10}
+                  style={s.navArrowBtn}
                 >
-                  <Text style={[s.dayWeekday, active && s.dayTextActive]}>
-                    {d.toLocaleDateString('en-NG', { weekday: 'short' })}
-                  </Text>
-                  <Text style={[s.dayNum, active && s.dayTextActive]}>{d.getDate()}</Text>
+                  <Text style={[s.navArrow, isFirstDay && s.navArrowDisabled]}>‹</Text>
                 </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+                <TouchableOpacity
+                  onPress={() => { loadDayDots(); setCalendarOpen(true); }}
+                  style={s.dateLabelWrap}
+                >
+                  <Text style={s.dateLabel}>{dateLabel}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setSelectedDay(prev => { const d = new Date(prev); d.setDate(d.getDate() + 1); return d; })}
+                  disabled={isLastDay}
+                  hitSlop={10}
+                  style={s.navArrowBtn}
+                >
+                  <Text style={[s.navArrow, isLastDay && s.navArrowDisabled]}>›</Text>
+                </TouchableOpacity>
+              </View>
+            );
+          })()}
 
-          {/* Legend */}
-          <View style={s.legendWrap}>
-            <Text style={s.legendHeading}>What the slots mean</Text>
-            <View style={s.legend}>
-              <LegendDot borderColor={Colors.inkFaint} label="Available" icon={<CheckIcon size={13} color={Colors.success} />} />
-              <LegendDot borderColor={Colors.inkFaint} label="Blocked" icon={<CloseIcon size={13} color={Colors.accentRed} />} />
-              <LegendDot borderColor={Colors.ink} backgroundColor={Colors.ink} label="Booked" borderWidth={2.5} />
-            </View>
-            <View style={s.legendFooter}>
-              <Text style={s.legendHint}>Tap any slot to block or unblock it.</Text>
-              <TouchableOpacity onPress={() => setBlockRangeOpen(true)} hitSlop={8}>
-                <Text style={s.blockRangeLink}>Block a range</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+          {/* Block day + Today nav */}
+          {(() => {
+            const effectiveToday = getEffectiveToday();
+            const isOnToday = selectedDay.toDateString() === effectiveToday.toDateString();
+            const now = new Date();
+            const futureNonBooked = generateSlots(selectedDay).filter(s => s > now && !getBookingForSlot(s));
+            const allBlocked = futureNonBooked.length > 0 && futureNonBooked.every(s => getBlockForSlot(s)?.block_state === 'unavailable');
+            if (futureNonBooked.length === 0 && isOnToday) return null;
+            return (
+              <View style={s.blockDayRow}>
+                {futureNonBooked.length > 0 && (
+                  <TouchableOpacity
+                    style={s.blockDayBtn}
+                    onPress={handleBlockDay}
+                    disabled={blockingDay}
+                    activeOpacity={0.75}
+                  >
+                    {blockingDay
+                      ? <ScissorsLoader size="small" color="dark" />
+                      : <Text style={s.blockDayBtnText}>{allBlocked ? 'Unblock day' : 'Block day'}</Text>
+                    }
+                  </TouchableOpacity>
+                )}
+                {!isOnToday && (
+                  <TouchableOpacity
+                    style={s.todayBtn}
+                    onPress={() => setSelectedDay(effectiveToday)}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={s.todayBtnText}>Go to today</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            );
+          })()}
 
           {/* Slot grid — scrollable */}
           <ScrollView ref={slotScrollRef} contentContainerStyle={{ paddingBottom: 60, paddingTop: 4 }}>
@@ -1541,13 +1909,153 @@ export default function ScheduleScreen() {
             setBlockRangeOpen(false);
             loadData();
             const isUnblock = undo.toReInsert.length > 0;
-            const verb = isUnblock ? 'unblocked' : 'blocked';
-            setSavedInfo({ msg: `${count} slot${count !== 1 ? 's' : ''} ${verb}.`, undo });
-            if (toastTimer.current) clearTimeout(toastTimer.current);
-            toastTimer.current = setTimeout(() => setSavedInfo(null), 10000);
+            showSavedInfo(count, isUnblock ? 'unblocked' : 'blocked', undo);
           }}
         />
       )}
+
+      {/* Calendar modal */}
+      {calendarOpen && (() => {
+        const effectiveToday = getEffectiveToday();
+        const maxNavDay = new Date(effectiveToday); maxNavDay.setDate(maxNavDay.getDate() + 13);
+        const markedDates: Record<string, any> = {};
+        // Red dots for fully-blocked days
+        for (const [ds, blocked] of Object.entries(dayDots)) {
+          if (blocked) markedDates[ds] = { ...markedDates[ds], marked: true, dotColor: Colors.accentRed };
+        }
+        // Range highlighting
+        if (rangeStart) {
+          const end = rangeEnd ?? rangeStart;
+          const cur = new Date(fromDateId(rangeStart));
+          const endD = fromDateId(end);
+          while (cur <= endD) {
+            const ds = toDateId(cur);
+            const isS = ds === rangeStart;
+            const isE = ds === end;
+            markedDates[ds] = {
+              ...(markedDates[ds] ?? {}),
+              startingDay: isS,
+              endingDay: isE,
+              color: isS || isE ? Colors.ink : 'rgba(0,0,0,0.10)',
+              textColor: isS || isE ? '#FFF' : Colors.text,
+            };
+            cur.setDate(cur.getDate() + 1);
+          }
+        }
+        const closeCalendar = () => {
+          setCalendarOpen(false);
+          setRangeStart(null);
+          setRangeEnd(null);
+          rangeStartRef.current = null;
+        };
+        // Check if entire selected range is fully blocked (for Unblock label)
+        const rangeAllBlocked = rangeStart ? (() => {
+          const end = rangeEnd ?? rangeStart;
+          const c = new Date(fromDateId(rangeStart));
+          const ed = fromDateId(end);
+          while (c <= ed) {
+            if (!dayDots[toLocalDateStr(c)]) return false;
+            c.setDate(c.getDate() + 1);
+          }
+          return true;
+        })() : false;
+        return (
+          <Modal transparent animationType="slide" onRequestClose={closeCalendar}>
+            <View style={cal.overlay}>
+              <TouchableOpacity style={cal.backdrop} onPress={closeCalendar} activeOpacity={1} />
+              <View style={cal.sheet}>
+                <View style={cal.handle} />
+                <RNCalendar
+                  minDate={toDateId(effectiveToday)}
+                  maxDate={toDateId(maxNavDay)}
+                  markedDates={markedDates}
+                  markingType="period"
+                  hideExtraDays={true}
+                  onDayPress={(day: { dateString: string }) => {
+                    const currentRangeStart = rangeStartRef.current;
+                    if (currentRangeStart && !rangeEnd) {
+                      // Setting range end
+                      if (day.dateString <= currentRangeStart) {
+                        rangeStartRef.current = day.dateString;
+                        setRangeEnd(currentRangeStart);
+                        setRangeStart(day.dateString);
+                      } else {
+                        setRangeEnd(day.dateString);
+                      }
+                      return;
+                    }
+                    // Navigate to day
+                    setSelectedDay(fromDateId(day.dateString));
+                    closeCalendar();
+                  }}
+                  onDayLongPress={(day: { dateString: string }) => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    rangeStartRef.current = day.dateString;
+                    setRangeStart(day.dateString);
+                    setRangeEnd(null);
+                  }}
+                  theme={{
+                    todayTextColor: Colors.ink,
+                    arrowColor: Colors.ink,
+                    monthTextColor: Colors.text,
+                    textMonthFontWeight: '800',
+                    textDayFontWeight: '600',
+                    textDayHeaderFontWeight: '700',
+                    disabledDotColor: Colors.inkFaint,
+                    textDisabledColor: Colors.inkFaint,
+                    backgroundColor: Colors.background,
+                    calendarBackground: Colors.background,
+                  }}
+                />
+                {rangeStart ? (
+                  <View style={cal.rangeBar}>
+                    <Text style={cal.rangeHint}>
+                      {rangeEnd && rangeEnd !== rangeStart
+                        ? `${fromDateId(rangeStart).getDate()} ${MONTH_SHORT[fromDateId(rangeStart).getMonth()]} – ${fromDateId(rangeEnd).getDate()} ${MONTH_SHORT[fromDateId(rangeEnd).getMonth()]}`
+                        : 'Tap an end date'}
+                    </Text>
+                    <TouchableOpacity
+                      style={[cal.blockRangeBtn, blockingRange && { opacity: 0.5 }]}
+                      onPress={handleRangeBlock}
+                      disabled={blockingRange}
+                    >
+                      {blockingRange
+                        ? <ScissorsLoader size="small" color="light" />
+                        : <Text style={cal.blockRangeBtnText}>{rangeAllBlocked ? 'Unblock' : 'Block'}</Text>
+                      }
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <Text style={cal.hint}>Hold a day to block a range</Text>
+                )}
+
+                {/* Recurring weekly blocks */}
+                <View style={cal.recurringSection}>
+                  <Text style={cal.recurringSectionTitle}>BLOCK EVERY</Text>
+                  <View style={cal.recurringRow}>
+                    {BR_WEEKDAY_JS.map((jsDay, i) => {
+                      const active = recurringDays.includes(jsDay);
+                      return (
+                        <TouchableOpacity
+                          key={jsDay}
+                          style={[cal.recurringChip, active && cal.recurringChipActive]}
+                          onPress={() => active ? handleRemoveRecurringDay(jsDay) : handleAddRecurringDay(jsDay)}
+                          disabled={savingRecurring}
+                          activeOpacity={0.75}
+                        >
+                          <Text style={[cal.recurringChipText, active && cal.recurringChipTextActive]}>
+                            {BR_WEEKDAY_LABELS[i]}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              </View>
+            </View>
+          </Modal>
+        );
+      })()}
     </View>
   );
 }
@@ -1581,29 +2089,31 @@ const s = StyleSheet.create({
   toggleBtnText: { fontSize: 14, fontWeight: '600', color: Colors.inkMuted },
   toggleBtnTextActive: { color: Colors.white },
 
-  dayStripScroll: { height: 68 },
-  dayStrip: { paddingHorizontal: 16, paddingVertical: 6, gap: 8, alignItems: 'center' },
-  dayChip: {
-    alignItems: 'center', justifyContent: 'center',
-    paddingHorizontal: 12, paddingVertical: 7,
-    borderRadius: 5, borderWidth: 1.5, borderColor: Colors.inkFaint, minWidth: 44,
+  // Day nav header
+  dayNavRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 10,
   },
-  dayChipActive: { backgroundColor: Colors.ink, borderColor: Colors.ink },
-  dayWeekday: { fontSize: 9, color: Colors.textMuted, fontWeight: '600' },
-  dayNum: { fontSize: 14, fontWeight: '800', color: Colors.text },
-  dayTextActive: { color: '#FFF' },
+  navArrowBtn: { width: 36, alignItems: 'center', justifyContent: 'center' },
+  navArrow: { fontSize: 28, fontWeight: '300', color: Colors.ink, lineHeight: 34 },
+  navArrowDisabled: { color: Colors.inkFaint },
+  dateLabelWrap: { alignItems: 'center', minWidth: 200 },
+  dateLabel: { fontSize: 17, fontWeight: '700', color: Colors.text, textAlign: 'center' },
 
-  legendWrap: { paddingHorizontal: 16, paddingTop: 6, paddingBottom: 2 },
-  legendHeading: { fontSize: 11, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 },
-  legend: {
-    flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 6,
+  // Block Day button + Today nav
+  blockDayRow: { paddingHorizontal: 16, paddingBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  blockDayBtn: {
+    paddingHorizontal: 14, paddingVertical: 7,
+    borderRadius: 5, borderWidth: 1.5, borderColor: Colors.ink,
+    minWidth: 110, alignItems: 'center',
   },
-  legendFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  legendHint: { fontSize: 12, color: Colors.textMuted },
-  blockRangeLink: { fontSize: 12, fontWeight: '700', color: Colors.ink, textDecorationLine: 'underline' },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  legendDot: { width: 22, height: 22, borderRadius: 5, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
-  legendLabel: { fontSize: 12, color: Colors.textSecondary },
+  blockDayBtnText: { fontSize: 13, fontWeight: '700', color: Colors.ink },
+  todayBtn: {
+    paddingHorizontal: 14, paddingVertical: 7,
+    borderRadius: 5, borderWidth: 1.5, borderColor: Colors.inkFaint,
+    alignItems: 'center',
+  },
+  todayBtnText: { fontSize: 13, fontWeight: '700', color: Colors.textMuted },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, gap: 12 },
   slot: {
@@ -1837,4 +2347,49 @@ const br = StyleSheet.create({
   },
   confirmBtnDisabled: { opacity: 0.4 },
   confirmBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+});
+
+// ── Calendar modal styles ─────────────────────────────────────
+const cal = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  backdrop: { ...StyleSheet.absoluteFillObject },
+  sheet: {
+    backgroundColor: Colors.background,
+    borderTopLeftRadius: 5, borderTopRightRadius: 5,
+    paddingBottom: 28,
+  },
+  handle: {
+    width: 36, height: 4, borderRadius: 5, backgroundColor: Colors.inkFaint,
+    alignSelf: 'center', marginVertical: 12,
+  },
+  rangeBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingTop: 12,
+  },
+  rangeHint: { fontSize: 14, fontWeight: '600', color: Colors.text },
+  blockRangeBtn: {
+    backgroundColor: Colors.ink, borderRadius: 5,
+    paddingHorizontal: 18, paddingVertical: 9, minWidth: 80, alignItems: 'center',
+  },
+  blockRangeBtnText: { fontSize: 14, fontWeight: '700', color: '#FFF' },
+  hint: {
+    textAlign: 'center', fontSize: 12, color: Colors.textMuted,
+    paddingTop: 12, paddingBottom: 4,
+  },
+  recurringSection: {
+    paddingHorizontal: 20, paddingTop: 14, paddingBottom: 8,
+    borderTopWidth: 1, borderTopColor: Colors.border, marginTop: 10,
+  },
+  recurringSectionTitle: {
+    fontSize: 11, fontWeight: '700', color: Colors.textMuted,
+    letterSpacing: 0.5, marginBottom: 10,
+  },
+  recurringRow: { flexDirection: 'row', gap: 6 },
+  recurringChip: {
+    flex: 1, paddingVertical: 9, borderRadius: 5,
+    borderWidth: 1.5, borderColor: Colors.inkFaint, alignItems: 'center',
+  },
+  recurringChipActive: { borderColor: Colors.ink, backgroundColor: Colors.ink },
+  recurringChipText: { fontSize: 11, fontWeight: '700', color: Colors.inkMuted },
+  recurringChipTextActive: { color: '#FFF' },
 });
