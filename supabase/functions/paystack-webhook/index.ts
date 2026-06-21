@@ -439,10 +439,15 @@ async function checkAutoAccept(
     return { shouldAutoAccept: false, reason: 'vendor drifted from zone' };
   }
 
-  // Zone must be confirmed today
+  // Zone must be confirmed for today OR the booking's date.
+  // After 22:00 WAT (10pm), getEffectiveToday() on mobile advances to tomorrow, so vendors
+  // can pre-confirm for the next working day — that writes confirmed_date = tomorrow (UTC).
+  // The booking itself is for tomorrow, so bookingDate matches. Accept either.
   const today = new Date().toISOString().slice(0, 10);
-  if (vendor.auto_accept_zone_confirmed_date !== today) {
-    return { shouldAutoAccept: false, reason: 'zone not confirmed today' };
+  const bookingDate = new Date(scheduledAt).toISOString().slice(0, 10);
+  const confirmedDate = vendor.auto_accept_zone_confirmed_date;
+  if (confirmedDate !== today && confirmedDate !== bookingDate) {
+    return { shouldAutoAccept: false, reason: 'zone not confirmed for booking day' };
   }
 
   // Zone must be configured
@@ -464,26 +469,14 @@ async function checkAutoAccept(
     return { shouldAutoAccept: false, reason: `user ${userDistanceKm.toFixed(1)}km outside zone (radius ${vendor.auto_accept_zone_radius_km}km)` };
   }
 
-  // Condition 1: the booked time slot must have block_state = 'auto_accept'
+  // Slot must be free — not blocked by unavailable/transport_buffer or an active booking.
+  // No per-slot auto_accept calendar rows exist; the mobile app uses day-level zone
+  // confirmation (confirmed_date) to enable auto-accept across all free slots for the day.
   const slotStart = new Date(scheduledAt);
   const slotEnd = new Date(slotStart.getTime() + durationBlocks * 30 * 60 * 1000);
 
-  // Slot must be free — no unavailable/transport_buffer blocks and no booking conflicts
   if (!await isSlotFree(supabase, vendorId, slotStart, slotEnd, durationBlocks * 30 * 60 * 1000)) {
     return { shouldAutoAccept: false, reason: 'slot blocked' };
-  }
-
-  // At least one auto_accept block must cover the start of the slot
-  const { data: autoBlocks } = await supabase
-    .from('vendor_calendar')
-    .select('start_time, end_time, block_state')
-    .eq('vendor_id', vendorId)
-    .eq('block_state', 'auto_accept')
-    .lte('start_time', slotStart.toISOString())
-    .gt('end_time', slotStart.toISOString());
-
-  if (!autoBlocks || autoBlocks.length === 0) {
-    return { shouldAutoAccept: false, reason: 'slot not marked as auto_accept' };
   }
 
   console.log(`Auto-accept: all conditions met for vendor ${vendorId}, slot ${scheduledAt}`);

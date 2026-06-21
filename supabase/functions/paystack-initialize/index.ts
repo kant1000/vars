@@ -220,23 +220,19 @@ Deno.serve(async (req: Request) => {
 
     // 7. Check auto-accept likelihood for UX hint
     const today = new Date().toISOString().slice(0, 10);
-    const zoneConfirmedToday = vendor.auto_accept_zone_confirmed_date === today;
+    const bookingDateUTC = scheduledDate.toISOString().slice(0, 10);
+    const confirmedDate = vendor.auto_accept_zone_confirmed_date;
+    const zoneConfirmedToday = confirmedDate === today || confirmedDate === bookingDateUTC;
     const vendorSettingsOk =
       vendor.auto_accept_enabled &&
       !vendor.auto_accept_paused_due_to_drift &&
       zoneConfirmedToday;
 
+    // Auto-accept is likely when vendor settings are valid and the slot is free.
+    // No per-slot auto_accept calendar rows exist; day-level zone confirmation is sufficient.
     let autoAcceptLikely = false;
     if (vendorSettingsOk) {
-      const { data: autoBlock } = await supabase
-        .from('vendor_calendar')
-        .select('id')
-        .eq('vendor_id', vendorIds[0])
-        .eq('block_state', 'auto_accept')
-        .lte('start_time', scheduledDate.toISOString())
-        .gt('end_time', scheduledDate.toISOString())
-        .maybeSingle();
-      autoAcceptLikely = !!autoBlock;
+      autoAcceptLikely = await isSlotFree(supabase, vendorIds[0], scheduledDate, slotEnd, durationMs);
     }
 
     return jsonResponse({

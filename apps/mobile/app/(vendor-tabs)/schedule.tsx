@@ -1,13 +1,11 @@
 // ============================================================
 // VARS — Vendor Schedule
-// Calendar/List toggle (AsyncStorage-persisted)
 // Calendar: 3-state slot grid + booked-slot overlay
-// List: upcoming bookings in chronological order
 // Part 1: types, helpers, calendar view with booked overlay
 // ============================================================
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Dimensions, FlatList, Modal, Platform,
+  Dimensions, Modal, PanResponder, Platform,
   RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { Calendar as RNCalendar } from 'react-native-calendars';
@@ -15,7 +13,6 @@ import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -83,7 +80,6 @@ export interface VendorBooking {
 // ── Constants ─────────────────────────────────────────────────
 const SCREEN_W = Dimensions.get('window').width;
 const SLOT_W   = (SCREEN_W - 32 - 12) / 2;  // 2-col grid, 12px gap
-const STORAGE_KEY = 'vars_vendor_schedule_view';
 const ACTIVE_STATUSES: BookingStatus[] = [
   BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ON_WAY,
   BOOKING_STATUS.ARRIVED, BOOKING_STATUS.SERVICE_RENDERED, BOOKING_STATUS.RESCHEDULED_PENDING,
@@ -118,11 +114,11 @@ const BR_WORK_END    = 22 * 60;  // 1320 min = 22:00
 const BR_STEP        = 30;
 const BR_MAX_DAYS    = 56;       // 8 weeks
 
-const BR_WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const BR_WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const MONTH_SHORT   = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-// JS getDay(): 0=Sun,1=Mon,...,6=Sat — map to Mon-first display order
-const BR_WEEKDAY_JS     = [1, 2, 3, 4, 5, 6, 0];
+// JS getDay(): 0=Sun,1=Mon,...,6=Sat — Sun-first to match the calendar header
+const BR_WEEKDAY_JS     = [0, 1, 2, 3, 4, 5, 6];
 
 function brMinToStr(min: number): string {
   const h = Math.floor(min / 60);
@@ -1025,7 +1021,6 @@ export default function ScheduleScreen() {
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
 
-  const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
   const [vendorId, setVendorId] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState(() => getEffectiveToday());
   const [blocks, setBlocks] = useState<CalendarBlock[]>([]);
@@ -1056,18 +1051,6 @@ export default function ScheduleScreen() {
     radius_km: number | null;
     zoneConfigured: boolean;
   } | null>(null);
-
-  // Load persisted view mode
-  useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then((v) => {
-      if (v === 'list' || v === 'calendar') setViewMode(v);
-    });
-  }, []);
-
-  const handleViewMode = (mode: 'calendar' | 'list') => {
-    setViewMode(mode);
-    AsyncStorage.setItem(STORAGE_KEY, mode);
-  };
 
   const showSavedInfo = useCallback((count: number, verb: string, undo: UndoPayload) => {
     setSavedInfo({ msg: `${count} slot${count !== 1 ? 's' : ''} ${verb}.`, undo });
@@ -1309,37 +1292,6 @@ export default function ScheduleScreen() {
 
   useEffect(() => { if (vendorId) loadData(); }, [loadData, vendorId]);
 
-  // ── List view data ────────────────────────────────────────────
-  const [listBookings, setListBookings] = useState<VendorBooking[]>([]);
-  const [listLoading, setListLoading] = useState(false);
-  const [listRefreshing, setListRefreshing] = useState(false);
-
-  const loadListBookings = useCallback(async () => {
-    if (!vendorId) return;
-    const { data } = await supabase
-      .from('bookings')
-      .select(`
-        id, status, service_name, service_duration_blocks, service_price_kobo,
-        scheduled_at, suggested_scheduled_at, phone_revealed, user_location_lat, user_location_lng,
-        user_location_address, access_building, access_floor, access_flat, access_code,
-        profiles:user_id(full_name, phone_number)
-      `)
-      .eq('vendor_id', vendorId)
-      .in('status', ACTIVE_STATUSES)
-      .order('scheduled_at', { ascending: true })
-      .limit(40);
-    setListBookings((data ?? []).map(parseBooking));
-    setListLoading(false);
-    setListRefreshing(false);
-  }, [vendorId]);
-
-  useEffect(() => {
-    if (vendorId && viewMode === 'list') {
-      setListLoading(true);
-      loadListBookings();
-    }
-  }, [vendorId, viewMode, loadListBookings]);
-
   useEffect(() => {
     if (!vendorId) return;
     const channel = supabase
@@ -1349,14 +1301,14 @@ export default function ScheduleScreen() {
         schema: 'public',
         table: 'bookings',
         filter: `vendor_id=eq.${vendorId}`,
-      }, () => { loadData(); loadListBookings(); })
+      }, () => { loadData(); })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [vendorId, loadData, loadListBookings]);
+  }, [vendorId, loadData]);
 
   // ── Live location push while on_way ───────────────────────────
   useEffect(() => {
-    const isOnWay = [...bookings, ...listBookings].some((b) => b.status === BOOKING_STATUS.ON_WAY);
+    const isOnWay = bookings.some((b) => b.status === BOOKING_STATUS.ON_WAY);
     if (!isOnWay || !session?.access_token) return;
 
     const pushLocation = async () => {
@@ -1375,7 +1327,7 @@ export default function ScheduleScreen() {
     pushLocation();
     const interval = setInterval(pushLocation, 60_000);
     return () => clearInterval(interval);
-  }, [bookings, listBookings, session?.access_token]);
+  }, [bookings, session?.access_token]);
 
   // ── Calendar helpers ──────────────────────────────────────────
   const getBlockForSlot = (slotTime: Date): CalendarBlock | undefined => {
@@ -1429,7 +1381,7 @@ export default function ScheduleScreen() {
   const slots = generateSlots(selectedDay);
   const slotScrollRef = useRef<ScrollView>(null);
   useEffect(() => {
-    if (viewMode !== 'calendar' || loading) return;
+    if (loading) return;
     const effectiveToday = getEffectiveToday();
     const isToday = selectedDay.toDateString() === effectiveToday.toDateString();
     if (!isToday) {
@@ -1443,7 +1395,7 @@ export default function ScheduleScreen() {
     const y = 4 + row * 72;
     const timer = setTimeout(() => slotScrollRef.current?.scrollTo({ y, animated: false }), 80);
     return () => clearTimeout(timer);
-  }, [slots, viewMode, loading, selectedDay]);
+  }, [slots, loading, selectedDay]);
 
   const handleBlockDay = useCallback(async () => {
     if (!vendorId || blockingDay) return;
@@ -1645,24 +1597,6 @@ export default function ScheduleScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Calendar / List toggle */}
-      <View style={s.toggleRow}>
-        <TouchableOpacity
-          style={[s.toggleBtn, viewMode === 'calendar' && s.toggleBtnActive]}
-          onPress={() => handleViewMode('calendar')}
-        >
-          <Text style={[s.toggleBtnText, viewMode === 'calendar' && s.toggleBtnTextActive]}>Calendar</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[s.toggleBtn, viewMode === 'list' && s.toggleBtnActive]}
-          onPress={() => handleViewMode('list')}
-        >
-          <Text style={[s.toggleBtnText, viewMode === 'list' && s.toggleBtnTextActive]}>List</Text>
-        </TouchableOpacity>
-      </View>
-
-      {viewMode === 'calendar' ? (
-        <>
           {/* Day nav — replaces day strip */}
           {(() => {
             const effectiveToday = getEffectiveToday();
@@ -1821,60 +1755,6 @@ export default function ScheduleScreen() {
             </View>
           )}
           </ScrollView>
-        </>
-      ) : listLoading ? (
-        <View style={s.centered}><ScissorsLoader size="small" color="dark" /></View>
-      ) : (
-        <FlatList
-          data={listBookings}
-          keyExtractor={(b) => b.id}
-          contentContainerStyle={{ padding: 16, paddingBottom: 60, gap: 10 }}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={listRefreshing}
-              onRefresh={() => { setListRefreshing(true); loadListBookings(); }}
-              tintColor="transparent"
-              colors={['transparent']}
-            />
-          }
-          ListHeaderComponent={
-            listRefreshing ? (
-              <View style={{ alignItems: 'center', paddingVertical: 12 }}>
-                <ScissorsLoader size="small" color="dark" />
-              </View>
-            ) : null
-          }
-          ListEmptyComponent={
-            <View style={s.listEmpty}>
-              <Text style={s.listEmptyTitle}>No upcoming bookings</Text>
-              <Text style={s.listEmptyBody}>Active bookings will appear here.</Text>
-            </View>
-          }
-          renderItem={({ item: bk }) => {
-            const sl = STATUS_LABEL[bk.status];
-            return (
-              <TouchableOpacity
-                style={s.listCard}
-                onPress={() => setSelectedBooking(bk)}
-                activeOpacity={0.85}
-              >
-                <View style={s.listCardTop}>
-                  <Text style={s.listClientName}>{bk.client_name}</Text>
-                  <View style={[s.listStatusPill, { borderWidth: 1, borderColor: Colors.inkFaint }]}>
-                    <Text style={[s.listStatusText, { color: sl.color }]}>{sl.text}</Text>
-                  </View>
-                </View>
-                <Text style={s.listServiceName}>{bk.service_name}</Text>
-                <View style={s.listCardBottom}>
-                  <Text style={s.listDateTime}>{fmtDate(bk.scheduled_at)} · {fmtTime(bk.scheduled_at)}</Text>
-                  <Text style={s.listPrice}>{fmtPrice(bk.service_price_kobo)}</Text>
-                </View>
-              </TouchableOpacity>
-            );
-          }}
-        />
-      )}
 
       {/* Saved toast */}
       {(savedInfo != null || undoing) && (
@@ -1898,7 +1778,7 @@ export default function ScheduleScreen() {
           booking={selectedBooking}
           session={session}
           onClose={() => setSelectedBooking(null)}
-          onAction={() => { setSelectedBooking(null); loadData(); loadListBookings(); }}
+          onAction={() => { setSelectedBooking(null); loadData(); }}
         />
       )}
 
@@ -1951,6 +1831,11 @@ export default function ScheduleScreen() {
           setRangeEnd(null);
           rangeStartRef.current = null;
         };
+        const handlePan = PanResponder.create({
+          onStartShouldSetPanResponder: () => true,
+          onMoveShouldSetPanResponder: (_, gs) => gs.dy > 2,
+          onPanResponderRelease: (_, gs) => { if (gs.dy > 50) closeCalendar(); },
+        });
         // Check if entire selected range is fully blocked (for Unblock label)
         const rangeAllBlocked = rangeStart ? (() => {
           const end = rangeEnd ?? rangeStart;
@@ -1967,7 +1852,10 @@ export default function ScheduleScreen() {
             <View style={cal.overlay}>
               <TouchableOpacity style={cal.backdrop} onPress={closeCalendar} activeOpacity={1} />
               <View style={cal.sheet}>
-                <View style={cal.handle} />
+                {/* Full-width drag zone so the handle is easy to grab */}
+                <View {...handlePan.panHandlers} style={cal.handleZone}>
+                  <View style={cal.handle} />
+                </View>
                 <RNCalendar
                   minDate={toDateId(effectiveToday)}
                   maxDate={toDateId(maxNavDay)}
@@ -1983,11 +1871,12 @@ export default function ScheduleScreen() {
                     const isStart = !!marking?.startingDay;
                     const isEnd = !!marking?.endingDay;
                     const periodColor: string | undefined = marking?.color;
-                    const periodText: string | undefined = marking?.textColor;
                     const isMiddle = !!periodColor && !isStart && !isEnd;
+                    const isSingleSel = isStart && isEnd;
                     const textCol = !inWindow
                       ? Colors.inkFaint
-                      : periodText ?? (isToday ? Colors.ink : Colors.text);
+                      : (isStart || isEnd) ? '#fff' : (isToday ? Colors.ink : Colors.text);
+                    const BAND = 'rgba(0,0,0,0.09)';
                     return (
                       <TouchableOpacity
                         disabled={!inWindow}
@@ -2009,21 +1898,30 @@ export default function ScheduleScreen() {
                           setRangeEnd(null);
                         }}
                         activeOpacity={0.7}
-                        style={{ flex: 1, alignItems: 'center', paddingVertical: 5,
-                          backgroundColor: isMiddle ? 'rgba(0,0,0,0.07)' : 'transparent' }}
+                        style={{ width: 46, height: 46, alignItems: 'center', justifyContent: 'center' }}
                       >
-                        <View style={{ width: 34, height: 34, borderRadius: 17,
+                        {/* Connecting band — right-half for start, full for middle, left-half for end */}
+                        {isStart && !isSingleSel && (
+                          <View style={{ position: 'absolute', left: '50%', right: 0, top: 10, bottom: 10, backgroundColor: BAND }} />
+                        )}
+                        {isMiddle && (
+                          <View style={{ position: 'absolute', left: 0, right: 0, top: 10, bottom: 10, backgroundColor: BAND }} />
+                        )}
+                        {isEnd && !isSingleSel && (
+                          <View style={{ position: 'absolute', left: 0, right: '50%', top: 10, bottom: 10, backgroundColor: BAND }} />
+                        )}
+                        <View style={{ width: 26, height: 26, borderRadius: 13,
                           backgroundColor: (isStart || isEnd) ? Colors.ink : 'transparent',
                           alignItems: 'center', justifyContent: 'center' }}>
-                          <Text style={{ fontSize: 14,
+                          <Text style={{ fontSize: 13,
                             fontWeight: isToday ? '800' : '600',
                             color: textCol }}>
                             {date.day}
                           </Text>
                         </View>
                         {hasDot && inWindow && (
-                          <View style={{ width: 4, height: 4, borderRadius: 2,
-                            backgroundColor: Colors.accentRed, marginTop: 2 }} />
+                          <View style={{ position: 'absolute', bottom: 3, width: 4, height: 4, borderRadius: 2,
+                            backgroundColor: Colors.accentRed }} />
                         )}
                       </TouchableOpacity>
                     );
@@ -2109,18 +2007,6 @@ const s = StyleSheet.create({
   },
   zoneBtnLabel: { fontSize: 13, fontWeight: '700', color: Colors.ink },
 
-  toggleRow: {
-    flexDirection: 'row', marginHorizontal: 16, marginVertical: 10,
-    backgroundColor: 'transparent', borderRadius: 5,
-    borderWidth: 1, borderColor: Colors.ink, padding: 3,
-  },
-  toggleBtn: {
-    flex: 1, paddingVertical: 7, borderRadius: 5, alignItems: 'center',
-  },
-  toggleBtnActive: { backgroundColor: Colors.ink },
-  toggleBtnText: { fontSize: 14, fontWeight: '600', color: Colors.inkMuted },
-  toggleBtnTextActive: { color: Colors.white },
-
   // Day nav header
   dayNavRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -2173,23 +2059,6 @@ const s = StyleSheet.create({
 
   summary: { paddingHorizontal: 16, paddingTop: 12 },
   summaryText: { fontSize: 13, color: Colors.textSecondary, fontWeight: '500' },
-
-  // List view
-  listEmpty: { alignItems: 'center', paddingTop: 80 },
-  listEmptyTitle: { fontSize: 17, fontWeight: '700', color: Colors.text, marginBottom: 6 },
-  listEmptyBody: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center' },
-  listCard: {
-    backgroundColor: 'transparent', borderRadius: 5,
-    padding: 16, borderWidth: 1, borderColor: Colors.ink, gap: 4,
-  },
-  listCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
-  listClientName: { fontSize: 15, fontWeight: '700', color: Colors.text },
-  listStatusPill: { borderRadius: 5, paddingHorizontal: 8, paddingVertical: 3 },
-  listStatusText: { fontSize: 11, fontWeight: '700' },
-  listServiceName: { fontSize: 14, color: Colors.textSecondary },
-  listCardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
-  listDateTime: { fontSize: 12, color: Colors.textMuted },
-  listPrice: { fontSize: 14, fontWeight: '700', color: Colors.text },
 
   savedToast: {
     position: 'absolute', bottom: 80, alignSelf: 'center',
@@ -2390,10 +2259,8 @@ const cal = StyleSheet.create({
     borderTopLeftRadius: 5, borderTopRightRadius: 5,
     paddingBottom: 28,
   },
-  handle: {
-    width: 36, height: 4, borderRadius: 5, backgroundColor: Colors.inkFaint,
-    alignSelf: 'center', marginVertical: 12,
-  },
+  handleZone: { width: '100%', alignItems: 'center', paddingVertical: 14 },
+  handle: { width: 36, height: 4, borderRadius: 5, backgroundColor: Colors.inkFaint },
   rangeBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingTop: 12,

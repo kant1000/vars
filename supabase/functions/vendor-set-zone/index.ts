@@ -33,6 +33,7 @@ Deno.serve(async (req: Request) => {
     lng?: number;
     radius_km?: number;
     auto_accept_enabled?: boolean;
+    effective_date?: string;
   };
 
   try {
@@ -41,7 +42,7 @@ Deno.serve(async (req: Request) => {
     return errorResponse('Invalid JSON body', 400);
   }
 
-  const { lat, lng, radius_km, auto_accept_enabled } = body;
+  const { lat, lng, radius_km, auto_accept_enabled, effective_date } = body;
 
   // Validate
   if (lat == null || typeof lat !== 'number' || lat < -90 || lat > 90) {
@@ -76,19 +77,32 @@ Deno.serve(async (req: Request) => {
 
   if (auto_accept_enabled != null) {
     update.auto_accept_enabled = auto_accept_enabled;
-    // Disabling auto-accept also clears drift pause
     if (!auto_accept_enabled) {
       update.auto_accept_paused_due_to_drift = false;
     }
   }
 
-  // Reset daily confirmation ONLY when the pin location actually changed.
-  // Just adjusting the radius doesn't invalidate today's confirmation.
-  const PIN_EPSILON = 0.0001; // ~11m — treat smaller moves as noise
-  const latChanged = Math.abs((vendor.auto_accept_zone_lat ?? 0) - lat) > PIN_EPSILON;
-  const lngChanged = Math.abs((vendor.auto_accept_zone_lng ?? 0) - lng) > PIN_EPSILON;
-  if (latChanged || lngChanged) {
-    update.auto_accept_zone_confirmed_date = null;
+  // When enabling auto-accept, write confirmed_date atomically so the schedule
+  // shows ⚡ immediately without a separate confirm-zone call. The mobile passes
+  // effective_date as the local calendar date (WAT), which may be tomorrow UTC
+  // after 22:00; validate ±1 day from UTC today and accept it.
+  const today = new Date().toISOString().slice(0, 10);
+  if (auto_accept_enabled === true && effective_date && /^\d{4}-\d{2}-\d{2}$/.test(effective_date)) {
+    const diff = Math.abs(new Date(effective_date).getTime() - new Date(today).getTime());
+    if (diff <= 86_400_000) {
+      update.auto_accept_zone_confirmed_date = effective_date;
+    }
+  }
+
+  // Reset daily confirmation ONLY when the pin location actually changed AND
+  // we aren't already setting it above (enabling with a fresh confirmed date).
+  if (!('auto_accept_zone_confirmed_date' in update)) {
+    const PIN_EPSILON = 0.0001; // ~11m
+    const latChanged = Math.abs((vendor.auto_accept_zone_lat ?? 0) - lat) > PIN_EPSILON;
+    const lngChanged = Math.abs((vendor.auto_accept_zone_lng ?? 0) - lng) > PIN_EPSILON;
+    if (latChanged || lngChanged) {
+      update.auto_accept_zone_confirmed_date = null;
+    }
   }
 
   const { error } = await supabase

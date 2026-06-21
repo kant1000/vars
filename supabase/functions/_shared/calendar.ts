@@ -4,6 +4,13 @@
 
 import { createAdminClient } from './supabase.ts';
 import { isSlotFree } from './slot.ts';
+import { BOOKING_STATUS } from './constants.ts';
+
+const PRE_BUFFER_ACTIVE_STATUSES = [
+  BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ON_WAY,
+  BOOKING_STATUS.ARRIVED, BOOKING_STATUS.SERVICE_RENDERED,
+];
+const MAX_SERVICE_MS = 4 * 60 * 60 * 1000;
 
 /**
  * Insert two 30-min transport_buffer blocks immediately after a confirmed booking ends.
@@ -118,7 +125,30 @@ export async function createPreTransportBuffers(
 
   const inserts: Record<string, unknown>[] = [];
   for (const { start, end } of candidates) {
-    if (await isSlotFree(supabase, vendorId, start, end)) {
+    const [calResult, bookingResult] = await Promise.all([
+      supabase.from('vendor_calendar').select('id, block_state')
+        .eq('vendor_id', vendorId)
+        .lt('start_time', end.toISOString())
+        .gt('end_time', start.toISOString())
+        .in('block_state', ['unavailable', 'transport_buffer'])
+        .limit(1),
+      supabase.from('bookings').select('id')
+        .eq('vendor_id', vendorId)
+        .in('status', PRE_BUFFER_ACTIVE_STATUSES)
+        .lt('scheduled_at', end.toISOString())
+        .gt('scheduled_at', new Date(start.getTime() - MAX_SERVICE_MS).toISOString())
+        .limit(1),
+    ]);
+    const calBlock = calResult.data?.[0] as { id: string; block_state: string } | undefined;
+    const hasBookingConflict = (bookingResult.data?.length ?? 0) > 0;
+
+    if (hasBookingConflict || calBlock?.block_state === 'transport_buffer') {
+      // Hard conflict: another booking is occupying this time window.
+      console.warn(`Pre-buffer collision for booking ${bookingId} at ${start.toISOString()} — slot occupied, skipping`);
+    } else if (calBlock?.block_state === 'unavailable') {
+      // Vendor's own manual block — already serves as implicit travel buffer; no insert needed.
+      console.log(`Pre-buffer for booking ${bookingId} at ${start.toISOString()} — vendor's manual block used as implicit buffer`);
+    } else {
       inserts.push({
         vendor_id: vendorId,
         start_time: start.toISOString(),
@@ -126,8 +156,6 @@ export async function createPreTransportBuffers(
         block_state: 'transport_buffer',
         transport_buffer_source_booking_id: bookingId,
       });
-    } else {
-      console.warn(`Pre-buffer collision for booking ${bookingId} at ${start.toISOString()} — slot occupied, skipping`);
     }
   }
 

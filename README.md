@@ -116,7 +116,7 @@ vars/
 - **Onboarding** — multi-step: profile → services (free-name, L1/L2 taxonomy, price + duration) → portfolio → KYC (Youverify) → instant activation on clean pass
 - **Jobs dashboard** — incoming requests with 1-hour accept window; active jobs with flow buttons (On My Way → Arrived → Service Rendered); cancel button for accepted/in-progress bookings; history
 - **Online / offline toggle** — going online makes the vendor visible in the customer discovery feed; offline means invisible. Three prerequisites must all be met before a vendor can go online: KYC verified, at least one active service, and device notifications granted. The most relevant unmet condition is shown as a banner. If any condition fails while the vendor is online (checked every 2 minutes and on every screen focus return), the vendor is automatically taken offline and the DB is updated. Customers never see online/offline status — only "Typically accepts in X" on the vendor profile.
-- **Schedule management** — Calendar/List toggle (persisted); calendar shows 14-day slot grid with booked slot overlays (client name, service); list view shows all upcoming bookings; tapping any booking opens a detail bottom sheet
+- **Schedule management** — calendar shows 14-day slot grid with booked slot overlays (client name, service); tapping any booking opens a detail bottom sheet
   - Bottom sheet: customer location map thumbnail, access details (revealed 15 min before appointment), accept/decline/on-way/arrived/service-rendered action buttons
   - Auto-accept grace banner: amber countdown + "Cancel penalty-free" button for auto-accepted bookings within the 5-minute window
   - Slot states: green ✓ (available), red ✕ (blocked), green ⚡ (auto-accept active), thick black fill (booked)
@@ -196,7 +196,7 @@ Twenty migration files build up the schema incrementally:
 | `vendor_services` | A vendor's offered services — free-name with L1/L2 taxonomy, `price_kobo`, `duration_blocks`, `sort_order`; max 10 per vendor; INSERT/DELETE managed by vendor via RLS |
 | `booking_services` | Join table: one row per service per booking — snapshots `service_name` and `price_kobo` at booking time; INSERT restricted to service role (webhook only) |
 | `bookings` | All bookings; holds Paystack reference, escrow state, access details (`access_building/floor/flat/code`), customer location (`user_location_lat/lng`), `service_summary` (comma-joined names), `total_amount` (sum of service prices in kobo) |
-| `vendor_calendar` | Blocked slot records — state: `unavailable` / `auto_accept` / `transport_buffer`. No row = slot is open. |
+| `vendor_calendar` | Blocked slot records — state: `unavailable` / `transport_buffer`. No row = slot is open. |
 | `reviews` | Star ratings + comments |
 | `disputes` | Customer-raised issues; includes `category` enum for instant triage |
 | `payout_history` | Vendor payout records — `UNIQUE (booking_id)` enforced at DB level to prevent duplicate transfers |
@@ -267,8 +267,8 @@ All functions live in `supabase/functions/` and run on Deno.
 | `deliver-outreach` | POST | Picks up approved `vendor_lead_outreach` records and delivers via the appropriate channel (WhatsApp/SMS via Termii, email via Resend). Controlled by `DELIVERY_LIVE` secret — logs only when unset. Accepts optional `{ record_id }` or `{ lead_id }` to scope delivery |
 | `unsubscribe-lead` | GET | One-click email unsubscribe — verifies HMAC-SHA256 token, sets `email_unsubscribed = true` on `vendor_leads`. Linked from every outreach and marketing email footer |
 | `send-marketing-email` | POST | Sends a bulk HTML campaign email to a segment of vendor leads. Segmentation via Supabase (`service_type`, `pioneer`, `lead_state`, `converted`). Renders per-lead HTML with unsubscribe URL. Delivers via Resend Batch API (100/request). Called by admin marketing panel |
-| `vendor-set-zone` | POST | Saves vendor's auto-accept geographic zone |
-| `vendor-confirm-zone` | GET/POST | GET: returns zone status; POST: marks zone confirmed for today |
+| `vendor-set-zone` | POST | Saves vendor's auto-accept geographic zone; when `auto_accept_enabled = true`, also writes `auto_accept_zone_confirmed_date` atomically so no separate confirm-zone call is needed from zone setup |
+| `vendor-confirm-zone` | GET/POST | GET: returns zone status; POST: marks zone confirmed for today (called from the home-screen daily confirmation prompt) |
 | `vendor-update-location` | POST | Called every 60s by vendor app while `on_way`; writes `vendor_current_lat/lng` to vendors table for customer live tracking map; also detects zone drift |
 | `photo-consent-request` | POST | Vendor requests permission to use a booking photo in their portfolio — creates a consent record with 72-hour expiry, notifies customer |
 | `photo-consent-respond` | POST | Customer approves or declines a photo consent request |
@@ -548,19 +548,26 @@ paystack-settle
 
 ## Auto-Accept System
 
-Vendors can opt into **Auto-Accept**: bookings that fall within their configured geographic zone and an auto-accept time slot are confirmed instantly — no waiting for the vendor to manually accept.
+Vendors can opt into **Auto-Accept**: bookings that fall within their configured geographic zone are confirmed instantly — no waiting for the vendor to manually accept.
 
 ### How It Works
 
-Three conditions must all be true at the moment of payment for auto-accept to fire:
+Four conditions must all be true at the moment of payment for auto-accept to fire:
 
-1. **Slot marked auto-accept** — vendor has tagged the specific 30-minute block as `auto_accept` in their calendar
-2. **User within zone** — the customer's location is within the vendor's zone radius (Haversine distance check)
-3. **Vendor settings active** — `auto_accept_enabled = true`, `auto_accept_paused_due_to_drift = false`, and the vendor has confirmed their zone today
+1. **Vendor settings active** — `auto_accept_enabled = true`, `auto_accept_paused_due_to_drift = false`
+2. **Zone confirmed for the booking day** — `auto_accept_zone_confirmed_date` matches either the UTC calendar date of the booking or the UTC calendar date of payment
+3. **Slot free** — no `unavailable` or `transport_buffer` block in `vendor_calendar` overlaps the booking window, and no active booking already occupies that time
+4. **User within zone** — the customer's location is within the vendor's zone radius (Haversine distance check)
+
+There is **no per-slot auto-accept tagging**. All free slots on a confirmed day are eligible. The `auto_accept` block state in the DB enum is deprecated and no longer written or checked.
 
 ### Zone Confirmation
 
-Vendors must confirm their zone each morning before auto-accept activates for the day. A bottom-sheet modal appears when they open the app. Confirmation is stored as `auto_accept_zone_confirmed_date = today`.
+Vendors confirm their zone each day via two paths:
+- **Zone setup save** — when the vendor saves zone settings with auto-accept enabled, `confirmed_date` is written atomically in the same DB update (no separate call needed)
+- **Home-screen daily prompt** — a bottom-sheet appears on app open when the stored date doesn't match today; calls `vendor-confirm-zone` POST
+
+Confirmation is stored as `auto_accept_zone_confirmed_date`. The webhook accepts dates matching either UTC today or the booking's UTC date to handle the WAT/UTC midnight boundary (Nigeria is UTC+1, so after 23:00 WAT the mobile's local date is already tomorrow UTC).
 
 ### Zone Drift Detection
 
@@ -613,11 +620,10 @@ The slot grid uses a monochrome shell — border weight signals "has a state", a
 |---|---|---|
 | *(no record)* | Available | 1px faint grey border, transparent fill, no glyph |
 | `unavailable` | Blocked | 1.5px black border, transparent fill, ✕ glyph in red |
-| `auto_accept` | Auto-accept | 1.5px black border, transparent fill, ⚡ glyph in amber |
 | `transport_buffer` | Buffer | 1px black border, 4% black tint fill, 🚗 glyph — read-only |
 | *(booking overlay)* | Booked | 1.5px black border, client name + service label, 6px blue dot bottom-right |
 
-Tapping a slot cycles through the three user-controlled states: Available → Blocked → Auto-accept → Available. Transport buffer slots cannot be toggled.
+When auto-accept is active for the day (zone confirmed + enabled + not drifted), free slots also display a ⚡ glyph in amber — this is a UI overlay, not a DB state. Tapping a slot toggles between Available → Blocked → Available. Transport buffer slots cannot be toggled.
 
 ---
 

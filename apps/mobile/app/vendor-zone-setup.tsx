@@ -67,33 +67,42 @@ export default function VendorZoneSetup() {
   const [radius, setRadius]     = useState<RadiusKm>(1);
   const [autoEnabled, setAutoEnabled] = useState(false);
 
-  // Load existing zone from DB
+  // Load location and DB zone settings in parallel so GPS wait doesn't delay the form.
   useEffect(() => {
     (async () => {
-      // Request location for initial pin placement
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status === 'granted') {
-        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        setPinLat(loc.coords.latitude);
-        setPinLng(loc.coords.longitude);
-      }
+      const locationPromise = (async () => {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') return null;
+        let loc = await Location.getLastKnownPositionAsync({});
+        if (!loc) {
+          loc = await Promise.race([
+            Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+            new Promise<null>(resolve => setTimeout(() => resolve(null), 4000)),
+          ]);
+        }
+        return loc;
+      })();
 
-      // Fetch existing zone settings
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setLoading(false); return; }
+      const vendorPromise = (async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return null;
+        const { data } = await supabase
+          .from('vendors')
+          .select('auto_accept_zone_lat, auto_accept_zone_lng, auto_accept_zone_radius_km, auto_accept_enabled')
+          .eq('id', user.id)
+          .single();
+        return data;
+      })();
 
-      const { data: vendor } = await supabase
-        .from('vendors')
-        .select(`
-          auto_accept_zone_lat, auto_accept_zone_lng,
-          auto_accept_zone_radius_km, auto_accept_enabled
-        `)
-        .eq('id', user.id)
-        .single();
+      const [loc, vendor] = await Promise.all([locationPromise, vendorPromise]);
 
+      // DB zone centre takes precedence over GPS; only use GPS if no saved pin yet.
       if (vendor?.auto_accept_zone_lat != null) {
         setPinLat(vendor.auto_accept_zone_lat);
         setPinLng(vendor.auto_accept_zone_lng);
+      } else if (loc) {
+        setPinLat(loc.coords.latitude);
+        setPinLng(loc.coords.longitude);
       }
       if (vendor?.auto_accept_zone_radius_km) {
         setRadius(vendor.auto_accept_zone_radius_km as RadiusKm);
@@ -133,24 +142,14 @@ export default function VendorZoneSetup() {
           lng: pinLng,
           radius_km: radius,
           auto_accept_enabled: autoEnabled,
+          // Pass local date so confirmed_date is written atomically in the same
+          // DB update — avoids a race with a separate confirm-zone call.
+          effective_date: autoEnabled ? effectiveDateKey : undefined,
         }),
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Save failed');
-
-      // If auto-accept is on, confirm the zone for the effective day so the
-      // calendar immediately shows ⚡ on available slots for that date.
-      if (autoEnabled) {
-        await fetch(`${SUPABASE_URL}/functions/v1/vendor-confirm-zone`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ date: effectiveDateKey }),
-        });
-      }
 
       router.back();
     } catch (err: any) {
