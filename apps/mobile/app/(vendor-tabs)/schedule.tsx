@@ -1669,9 +1669,10 @@ export default function ScheduleScreen() {
             const maxNavDay = new Date(effectiveToday); maxNavDay.setDate(maxNavDay.getDate() + 13);
             const isFirstDay = selectedDay.toDateString() === effectiveToday.toDateString();
             const isLastDay  = selectedDay.toDateString() === maxNavDay.toDateString();
-            const isToday    = isFirstDay;
-            const dateLabel  = isToday
-              ? 'Today'
+            const realToday  = new Date(); realToday.setHours(0, 0, 0, 0);
+            const effectiveIsTomorrow = effectiveToday.getTime() !== realToday.getTime();
+            const dateLabel  = isFirstDay
+              ? (effectiveIsTomorrow ? 'Tomorrow' : 'Today')
               : `${WEEKDAY_NAMES[selectedDay.getDay()]}, ${selectedDay.getDate()} ${MONTH_SHORT[selectedDay.getMonth()]}`;
             return (
               <View style={s.dayNavRow}>
@@ -1706,6 +1707,8 @@ export default function ScheduleScreen() {
             const effectiveToday = getEffectiveToday();
             const isOnToday = selectedDay.toDateString() === effectiveToday.toDateString();
             const now = new Date();
+            const realToday2 = new Date(); realToday2.setHours(0, 0, 0, 0);
+            const effectiveIsTomorrow2 = effectiveToday.getTime() !== realToday2.getTime();
             const futureNonBooked = generateSlots(selectedDay).filter(s => s > now && !getBookingForSlot(s));
             const allBlocked = futureNonBooked.length > 0 && futureNonBooked.every(s => getBlockForSlot(s)?.block_state === 'unavailable');
             if (futureNonBooked.length === 0 && isOnToday) return null;
@@ -1730,7 +1733,7 @@ export default function ScheduleScreen() {
                     onPress={() => setSelectedDay(effectiveToday)}
                     activeOpacity={0.75}
                   >
-                    <Text style={s.todayBtnText}>Go to today</Text>
+                    <Text style={s.todayBtnText}>{effectiveIsTomorrow2 ? 'Go to tomorrow' : 'Go to today'}</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -1970,29 +1973,60 @@ export default function ScheduleScreen() {
                   maxDate={toDateId(maxNavDay)}
                   markedDates={markedDates}
                   markingType="period"
-                  hideExtraDays={true}
-                  onDayPress={(day: { dateString: string }) => {
-                    const currentRangeStart = rangeStartRef.current;
-                    if (currentRangeStart && !rangeEnd) {
-                      // Setting range end
-                      if (day.dateString <= currentRangeStart) {
-                        rangeStartRef.current = day.dateString;
-                        setRangeEnd(currentRangeStart);
-                        setRangeStart(day.dateString);
-                      } else {
-                        setRangeEnd(day.dateString);
-                      }
-                      return;
-                    }
-                    // Navigate to day
-                    setSelectedDay(fromDateId(day.dateString));
-                    closeCalendar();
-                  }}
-                  onDayLongPress={(day: { dateString: string }) => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    rangeStartRef.current = day.dateString;
-                    setRangeStart(day.dateString);
-                    setRangeEnd(null);
+                  dayComponent={({ date, marking }: any) => {
+                    const ds: string = date.dateString;
+                    const minDs = toDateId(effectiveToday);
+                    const maxDs = toDateId(maxNavDay);
+                    const inWindow = ds >= minDs && ds <= maxDs;
+                    const isToday = ds === minDs;
+                    const hasDot = marking?.marked;
+                    const isStart = !!marking?.startingDay;
+                    const isEnd = !!marking?.endingDay;
+                    const periodColor: string | undefined = marking?.color;
+                    const periodText: string | undefined = marking?.textColor;
+                    const isMiddle = !!periodColor && !isStart && !isEnd;
+                    const textCol = !inWindow
+                      ? Colors.inkFaint
+                      : periodText ?? (isToday ? Colors.ink : Colors.text);
+                    return (
+                      <TouchableOpacity
+                        disabled={!inWindow}
+                        onPress={() => {
+                          const cur = rangeStartRef.current;
+                          if (cur && !rangeEnd) {
+                            if (ds <= cur) { rangeStartRef.current = ds; setRangeEnd(cur); setRangeStart(ds); }
+                            else { setRangeEnd(ds); }
+                            return;
+                          }
+                          setSelectedDay(fromDateId(ds));
+                          closeCalendar();
+                        }}
+                        onLongPress={() => {
+                          if (!inWindow) return;
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                          rangeStartRef.current = ds;
+                          setRangeStart(ds);
+                          setRangeEnd(null);
+                        }}
+                        activeOpacity={0.7}
+                        style={{ flex: 1, alignItems: 'center', paddingVertical: 5,
+                          backgroundColor: isMiddle ? 'rgba(0,0,0,0.07)' : 'transparent' }}
+                      >
+                        <View style={{ width: 34, height: 34, borderRadius: 17,
+                          backgroundColor: (isStart || isEnd) ? Colors.ink : 'transparent',
+                          alignItems: 'center', justifyContent: 'center' }}>
+                          <Text style={{ fontSize: 14,
+                            fontWeight: isToday ? '800' : '600',
+                            color: textCol }}>
+                            {date.day}
+                          </Text>
+                        </View>
+                        {hasDot && inWindow && (
+                          <View style={{ width: 4, height: 4, borderRadius: 2,
+                            backgroundColor: Colors.accentRed, marginTop: 2 }} />
+                        )}
+                      </TouchableOpacity>
+                    );
                   }}
                   theme={{
                     todayTextColor: Colors.ink,
@@ -2001,8 +2035,6 @@ export default function ScheduleScreen() {
                     textMonthFontWeight: '800',
                     textDayFontWeight: '600',
                     textDayHeaderFontWeight: '700',
-                    disabledDotColor: Colors.inkFaint,
-                    textDisabledColor: Colors.inkFaint,
                     backgroundColor: Colors.background,
                     calendarBackground: Colors.background,
                   }}
