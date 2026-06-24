@@ -21,8 +21,7 @@ export default function VendorTabLayout() {
           paddingBottom: Platform.OS === 'ios' ? 28 : 10,
           paddingTop: 8,
         },
-        tabBarActiveLabelStyle:   { fontSize: 11, fontWeight: '700' },
-        tabBarInactiveLabelStyle: { fontSize: 11, fontWeight: '400' },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
       }}
     >
       <Tabs.Screen name="index"    options={{ title: 'Jobs',     tabBarLabel: 'Jobs',     tabBarIcon: ({ color, size }) => <BriefcaseIcon size={size} color={color} /> }} />

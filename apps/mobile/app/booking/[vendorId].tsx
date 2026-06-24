@@ -5,7 +5,7 @@
 // Step 2a: Review + access details
 // Step 2b: Location confirmation + pay
 // ============================================================
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Dimensions,
   ScrollView, StyleSheet, Text, TouchableOpacity,
@@ -231,6 +231,7 @@ function Step1({
         <Text style={[s.stepTitle, { margin: 16 }]}>When works for you?</Text>
 
         <Calendar
+          calendarMonthId={toDateId(new Date(days[0].getFullYear(), days[0].getMonth(), 1))}
           calendarMinDateId={toDateId(days[0])}
           calendarMaxDateId={toDateId(days[days.length - 1])}
           calendarActiveDateRanges={[{

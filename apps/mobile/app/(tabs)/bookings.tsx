@@ -9,7 +9,7 @@ import {
   StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -212,7 +212,7 @@ export default function BookingsScreen() {
                   onPress={() => router.push({
                     pathname: '/booking/gate-checkout/[bookingId]',
                     params: { bookingId: booking.id },
-                  })}
+                  } as unknown as Href)}
                   activeOpacity={0.88}
                 >
                   <Text style={st.paymentNeededBtnText}>

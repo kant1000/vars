@@ -54,7 +54,6 @@ interface VendorBooking {
   phone_revealed: boolean;
   auto_accepted: boolean;
   gate_fired: boolean;
-  scheduled_at: string;
 }
 
 interface ZoneStatus {
@@ -69,6 +68,25 @@ interface ZoneStatus {
 function vendorEarning(priceKobo: number, transportFeeKobo: number, isPioneer: boolean) {
   const total = priceKobo + transportFeeKobo;
   return isPioneer ? total : Math.round(total * 0.8);
+}
+
+function useCountdown(expiresAt: string) {
+  const getSecondsLeft = () => Math.max(
+    0,
+    Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000),
+  );
+  const [secondsLeft, setSecondsLeft] = useState(getSecondsLeft);
+
+  useEffect(() => {
+    const tick = () => setSecondsLeft(getSecondsLeft());
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [expiresAt]);
+
+  const minutes = Math.floor(secondsLeft / 60);
+  const seconds = secondsLeft % 60;
+  return { display: `${minutes}:${String(seconds).padStart(2, '0')}` };
 }
 
 // ── Pending booking card ─────────────────────────────────────
@@ -711,7 +729,7 @@ export default function VendorJobsScreen() {
 
     if (reason) {
       setIsOnline(false);
-      supabase.from('vendors').update({ is_online: false }).eq('id', user.id).catch(() => {});
+      await supabase.from('vendors').update({ is_online: false }).eq('id', user.id);
     }
   }, []);
 

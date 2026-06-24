@@ -21,11 +21,13 @@ import { fmtPrice, fmtDuration, fmtTime, fmtDate } from '@/lib/format';
 import { CheckIcon, CloseIcon, PinIcon, LockIcon, LightningIcon } from '@/components/icons';
 import * as Haptics from 'expo-haptics';
 import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import type { CalendarProps } from '@marceloterreiro/flash-calendar';
 // flash-calendar is lazy-loaded so its top-level require('@shopify/flash-list') does not
 // run during schedule.tsx module initialisation, which crashed the app in release builds.
-const FlashCalendarLazy = React.lazy(() =>
-  import('@marceloterreiro/flash-calendar').then((m) => ({ default: m.Calendar }))
-);
+const FlashCalendarLazy = React.lazy<React.ComponentType<CalendarProps>>(async () => {
+  const module = require('@marceloterreiro/flash-calendar');
+  return { default: module.Calendar };
+});
 const toDateId = (d: Date): string => {
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
@@ -907,12 +909,13 @@ function BlockRangeSheet({
           <View style={{ marginTop: 12 }}>
             <Suspense fallback={null}>
               <FlashCalendarLazy
+                calendarMonthId={toDateId(new Date(tomorrow.getFullYear(), tomorrow.getMonth(), 1))}
                 calendarMinDateId={toDateId(tomorrow)}
                 calendarMaxDateId={toDateId(maxUntil)}
                 calendarActiveDateRanges={
                   untilDate ? [{ startId: toDateId(untilDate), endId: toDateId(untilDate) }] : []
                 }
-                onCalendarDayPress={(dateId) => setUntilDate(fromDateId(dateId))}
+                onCalendarDayPress={(dateId: string) => setUntilDate(fromDateId(dateId))}
                 theme={{
                   itemDay: {
                     active: () => ({
@@ -995,6 +998,7 @@ export default function ScheduleScreen() {
   // Recurring weekly blocks
   const [recurringDays, setRecurringDays] = useState<number[]>([]);
   const [savingRecurring, setSavingRecurring] = useState(false);
+  const loadDataRef = useRef<() => Promise<void>>(async () => {});
   const [zoneInfo, setZoneInfo] = useState<{
     enabled: boolean;
     confirmedDate: string | null;
@@ -1131,7 +1135,7 @@ export default function ScheduleScreen() {
       cur.setDate(cur.getDate() + 1);
     }
 
-    const ops: Promise<any>[] = [];
+    const ops: PromiseLike<unknown>[] = [];
     if (toInsert.length > 0) ops.push(supabase.from('vendor_calendar').insert(toInsert));
     for (const id of toUpdateIds) ops.push(supabase.from('vendor_calendar').update({ block_state: 'unavailable' }).eq('id', id));
     if (ops.length > 0) await Promise.all(ops);
@@ -1145,10 +1149,10 @@ export default function ScheduleScreen() {
     await supabase.from('vendors').update({ recurring_block_weekdays: newDays }).eq('id', vendorId);
     setRecurringDays(newDays);
     await applyRecurringBlocksDirect(vendorId, newDays);
-    await loadData();
+    await loadDataRef.current();
     await loadDayDots();
     setSavingRecurring(false);
-  }, [vendorId, recurringDays, savingRecurring, loadData, loadDayDots]);
+  }, [vendorId, recurringDays, savingRecurring, loadDayDots]);
 
   const handleRemoveRecurringDay = useCallback(async (jsDay: number) => {
     if (!vendorId || savingRecurring) return;
@@ -1180,10 +1184,10 @@ export default function ScheduleScreen() {
       .filter(r => { const t = new Date(r.start_time); return t > now && t.getDay() === jsDay && !bookedSet.has(t.getTime()); })
       .map(r => r.id);
     if (idsToDelete.length > 0) await supabase.from('vendor_calendar').delete().in('id', idsToDelete);
-    await loadData();
+    await loadDataRef.current();
     await loadDayDots();
     setSavingRecurring(false);
-  }, [vendorId, recurringDays, savingRecurring, loadData, loadDayDots]);
+  }, [vendorId, recurringDays, savingRecurring, loadDayDots]);
 
   const parseBooking = (b: any): VendorBooking => ({
     id: b.id,
@@ -1239,6 +1243,7 @@ export default function ScheduleScreen() {
     setBookings((bkData ?? []).map(parseBooking));
     setLoading(false);
   }, [vendorId, selectedDay]);
+  loadDataRef.current = loadData;
 
   useEffect(() => { if (vendorId) loadData(); }, [loadData, vendorId]);
 
@@ -2006,6 +2011,13 @@ const s = StyleSheet.create({
     width: '60%', height: 3, borderRadius: 5,
     backgroundColor: 'rgba(0,0,0,0.15)',
   },
+
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendDot: {
+    width: 18, height: 18, borderRadius: 5,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  legendLabel: { fontSize: 12, color: Colors.textSecondary },
 
   summary: { paddingHorizontal: 16, paddingTop: 12 },
   summaryText: { fontSize: 13, color: Colors.textSecondary, fontWeight: '500' },
