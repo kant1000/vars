@@ -30,7 +30,7 @@ Repository search found no meaningful test/spec files or test scripts for:
 - Customer cancel during vendor accept race.
 - User confirm vs auto-release race.
 - Admin dispute refund vs auto-release race.
-- Paystack transfer failure after booking completion.
+- Subaccount split failure at charge time (payment succeeds but split is not applied).
 - Refund failure after cancellation.
 - Youverify webhook replay and invalid signature.
 - Booking overlap under concurrent customers.

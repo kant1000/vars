@@ -8,7 +8,7 @@
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient, createAuthClient } from '../_shared/supabase.ts';
 import { PaystackClient, generateReference } from '../_shared/paystack.ts';
-import { BOOKING_STATUS, BASE_RADIUS_KM, TRANSPORT_FEE_TIERS } from '../_shared/constants.ts';
+import { BOOKING_STATUS, BASE_RADIUS_KM, TRANSPORT_FEE_TIERS, VARS_COMMISSION_PERCENT, PIONEER_BOOKINGS_THRESHOLD } from '../_shared/constants.ts';
 import { isSlotFree } from '../_shared/slot.ts';
 
 // ── Haversine distance (km) ─────────────────────────────────
@@ -108,7 +108,8 @@ Deno.serve(async (req: Request) => {
           id, full_name, email, is_active, is_suspended, is_online,
           auto_accept_enabled, auto_accept_paused_due_to_drift,
           auto_accept_zone_confirmed_date, auto_accept_zone_lat,
-          auto_accept_zone_lng, auto_accept_zone_radius_km
+          auto_accept_zone_lng, auto_accept_zone_radius_km,
+          paystack_subaccount_code, pioneer, pioneer_bookings_completed
         )
       `)
       .in('id', uniqueServiceIds);
@@ -189,6 +190,36 @@ Deno.serve(async (req: Request) => {
     const reference = generateReference('VARS_BK');
     const paystack = new PaystackClient(Deno.env.get('PAYSTACK_SECRET_KEY')!);
 
+    // Compute the correct split for this transaction.
+    // Pioneer vendors get 100% on their first PIONEER_BOOKINGS_THRESHOLD bookings
+    // (platform takes ₦0). We must check this at initialization time because the
+    // split is fixed when the transaction is created — it cannot be changed at settle time.
+    const subaccountCode = vendor.paystack_subaccount_code as string | null;
+    const isPioneerBooking =
+      vendor.pioneer === true &&
+      (vendor.pioneer_bookings_completed as number) < PIONEER_BOOKINGS_THRESHOLD;
+
+    // transaction_charge: flat kobo amount going to VARS main account.
+    //   Pioneer: 0 → VARS gets ₦0, vendor subaccount gets 100% of the charge.
+    //   Normal:  omit → default percentage_charge (20%) set on subaccount applies.
+    const subaccountParams = subaccountCode
+      ? {
+          subaccount: subaccountCode,
+          bearer: 'account' as const,     // VARS main account bears the Paystack fee
+          ...(isPioneerBooking ? { transaction_charge: 0 } : {}),
+        }
+      : {};
+
+    if (subaccountCode) {
+      console.log(
+        `Transaction split: vendor=${vendorIds[0]} subaccount=${subaccountCode} ` +
+        `pioneer=${isPioneerBooking} ` +
+        `split=${isPioneerBooking ? '100%→subaccount (Pioneer)' : `${100 - VARS_COMMISSION_PERCENT}%→subaccount`}`
+      );
+    } else {
+      console.warn(`Vendor ${vendorIds[0]} has no paystack_subaccount_code — no split applied`);
+    }
+
     const transaction = await paystack.initializeTransaction({
       email: userEmail,
       amount: totalKobo,
@@ -213,9 +244,11 @@ Deno.serve(async (req: Request) => {
           transport_fee_kobo: transportFeeKobo,
           distance_km: distanceKm,
           pre_transport_buffer_slots: preBufferSlots,
+          is_pioneer_booking: isPioneerBooking,
         },
         cancel_action: 'close',
       },
+      ...subaccountParams,
     });
 
     // 7. Check auto-accept likelihood for UX hint

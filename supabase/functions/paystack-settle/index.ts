@@ -2,13 +2,21 @@
 // VARS — paystack-settle
 // Triggered when:
 //   (a) User confirms "Service complete" OR
-//   (b) Auto-release fires 1 hour after the scheduled booking end time OR
+//   (b) Auto-release fires 2 hours after the scheduled booking end time OR
 //   (c) Admin resolves a dispute in the vendor's favour
 //
-// Per spec §8 Step 3:
-//   "Paystack Transfer API executes split. Vendor share goes to their
-//    registered bank account. VARS commission goes to VARS account.
-//    Simultaneous, automatic."
+// Payment architecture (subaccount model):
+//   The vendor's share of each booking (80%, or 100% for Pioneer) is already
+//   in their Paystack subaccount — the split happened at transaction
+//   initialization time. This function marks bookings as COMPLETED and queues
+//   settlement. The actual bank transfer (subaccount → vendor's bank) is
+//   triggered by VARS ops from the Paystack dashboard (settlement_schedule =
+//   manual), gated on zero open disputes for that vendor.
+//
+// Settlement is gated at the VENDOR level, not per-booking:
+//   If a vendor has any open or under-review dispute on any booking,
+//   their entire subaccount balance stays unsettled until it resolves.
+//   Implemented via the settlement_on_hold flag on the vendors row.
 //
 // VARS commission: 20% of service price (spec §8)
 // Vendor receives: 80% of service price
@@ -18,10 +26,9 @@ import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient, createAuthClient } from '../_shared/supabase.ts';
 import {
   PaystackClient,
-  generateReference,
   calculateSettlement,
 } from '../_shared/paystack.ts';
-import { BOOKING_STATUS } from '../_shared/constants.ts';
+import { BOOKING_STATUS, PIONEER_BOOKINGS_THRESHOLD } from '../_shared/constants.ts';
 import {
   sendNotification,
   sendTransactionalEmail,
@@ -52,30 +59,78 @@ Deno.serve(async (req: Request) => {
 
     // --------------------------------------------------------
     // ADMIN MODE: dispute resolved — pay vendor
+    // This releases the vendor's entire pending subaccount balance,
+    // not just this booking's amount. VARS ops must trigger the
+    // subaccount settlement from the Paystack dashboard after this call.
     // --------------------------------------------------------
     if (isAdminCall) {
       const { booking_id } = await req.json();
       if (!booking_id) return errorResponse('Missing booking_id');
+
       await settleBooking(supabase, booking_id, 'admin_dispute');
 
-      // Send dispute-specific notification to vendor (transfer.success webhook
-      // sends the generic payment-released push, but vendor also needs the
-      // dispute resolution context message in their inbox)
+      // Fetch vendor to clear settlement_on_hold if no more open disputes remain
       const { data: booking } = await supabase
         .from('bookings')
         .select('vendor_id, service_price_kobo, transport_fee_kobo')
         .eq('id', booking_id)
         .single();
+
       if (booking) {
+        // Check if vendor still has other open/under_review disputes
+        const { data: vendorBookingRows } = await supabase
+          .from('bookings')
+          .select('id')
+          .eq('vendor_id', booking.vendor_id);
+        const vendorBookingIds = (vendorBookingRows ?? []).map((b: { id: string }) => b.id);
+
+        const { count: totalOpen } = await supabase
+          .from('disputes')
+          .select('id', { count: 'exact', head: true })
+          .in('booking_id', vendorBookingIds)
+          .in('status', ['open', 'under_review']);
+        if (totalOpen === 0) {
+          await supabase
+            .from('vendors')
+            .update({ settlement_on_hold: false })
+            .eq('id', booking.vendor_id);
+          console.log(`Vendor ${booking.vendor_id}: settlement_on_hold cleared — no remaining open disputes`);
+        } else {
+          console.log(`Vendor ${booking.vendor_id}: ${totalOpen} open/under-review dispute(s) remain — settlement_on_hold kept`);
+        }
+
+        // Queue ops alert for subaccount settlement
         const { data: vendor } = await supabase
-          .from('vendors').select('push_token').eq('id', booking.vendor_id).single();
-        const totalKobo = booking.service_price_kobo + (booking.transport_fee_kobo ?? 0);
+          .from('vendors')
+          .select('push_token, paystack_subaccount_code')
+          .eq('id', booking.vendor_id)
+          .single();
+
+        if (vendor?.paystack_subaccount_code) {
+          const paystack = new PaystackClient(Deno.env.get('PAYSTACK_SECRET_KEY')!);
+          const totalKobo = booking.service_price_kobo + ((booking as any).transport_fee_kobo ?? 0);
+          await paystack.triggerSubaccountSettlement({
+            vendor_id: booking.vendor_id,
+            subaccount_code: vendor.paystack_subaccount_code,
+            booking_ids: [booking_id],
+            total_amount_kobo: Math.round(totalKobo * 0.8),
+          });
+        }
+
+        // Dispute-specific notification to vendor
+        const vendorForNotif = await supabase
+          .from('vendors')
+          .select('push_token')
+          .eq('id', booking.vendor_id)
+          .single();
+
+        const totalKobo = booking.service_price_kobo + ((booking as any).transport_fee_kobo ?? 0);
         const vendorShare = Math.round(totalKobo * 0.8);
         const msg = msg_disputeResolved_vendorPaid(formatNaira(vendorShare));
         await sendNotification({
           recipientId: booking.vendor_id, recipientType: 'vendor',
           type: 'dispute_resolved_vendor', title: msg.title, body: msg.body,
-          bookingId: booking_id, pushToken: vendor?.push_token ?? null,
+          bookingId: booking_id, pushToken: vendorForNotif.data?.push_token ?? null,
           data: { bookingId: booking_id },
         });
       }
@@ -84,29 +139,94 @@ Deno.serve(async (req: Request) => {
     }
 
     // --------------------------------------------------------
-    // CRON MODE: auto-release bookings 1hr after scheduled end
-    //            + send one reminder push to vendors still on 'arrived'
+    // CRON MODE: auto-release bookings 2hr after scheduled end
+    //            + send reminder push to vendors still on 'arrived'
+    //            + warn customers 30 min before auto-release
+    //
+    // Settlement is gated at the VENDOR level:
+    //   Bookings are grouped by vendor. If a vendor has settlement_on_hold
+    //   or any open/under-review dispute, all their due bookings are skipped
+    //   this cycle. The booking remains SERVICE_RENDERED until the dispute
+    //   resolves — at which point the admin resolves via the dispute panel
+    //   and triggers pay_vendor, which calls this function's admin path.
     // --------------------------------------------------------
     if (isCronCall) {
       const now = new Date();
       const nowIso = now.toISOString();
 
-      // 1. Settle due bookings
+      // 1. Find all service_rendered bookings past their auto_release_at time
       const { data: dueBookings } = await supabase
         .from('bookings')
-        .select('id, user_id, vendor_id, service_price_kobo, paystack_reference')
+        .select('id, user_id, vendor_id, service_price_kobo, transport_fee_kobo, paystack_reference')
         .eq('status', BOOKING_STATUS.SERVICE_RENDERED)
         .lte('auto_release_at', nowIso);
 
-      let settledCount = 0;
+      // 2. Group by vendor
+      const byVendor = new Map<string, typeof dueBookings>();
       for (const booking of (dueBookings ?? [])) {
-        await settleBooking(supabase, booking.id, 'auto_release');
-        settledCount++;
+        if (!byVendor.has(booking.vendor_id)) byVendor.set(booking.vendor_id, []);
+        byVendor.get(booking.vendor_id)!.push(booking);
       }
 
-      // 2. Remind vendors who are still on 'arrived' past their service end + 15min
-      //    Fetch bookings that started at least 45 min ago (30min min service + 15min buffer)
-      //    then filter precisely using service_duration_blocks.
+      let settledCount = 0;
+      let heldCount = 0;
+
+      for (const [vendorId, vendorBookings] of byVendor) {
+        // Fetch vendor hold flag and subaccount code
+        const { data: vendor } = await supabase
+          .from('vendors')
+          .select('settlement_on_hold, paystack_subaccount_code')
+          .eq('id', vendorId)
+          .single();
+
+        if (vendor?.settlement_on_hold) {
+          console.log(
+            `Vendor ${vendorId}: settlement held (settlement_on_hold=true) — ` +
+            `skipping ${vendorBookings!.length} booking(s) this cycle`
+          );
+          heldCount += vendorBookings!.length;
+          continue;
+        }
+
+        // Check for any open or under-review disputes on this vendor's bookings
+        const bookingIds = vendorBookings!.map((b) => b.id);
+        const { count: openDisputeCount } = await supabase
+          .from('disputes')
+          .select('id', { count: 'exact', head: true })
+          .in('booking_id', bookingIds)
+          .in('status', ['open', 'under_review']);
+
+        if ((openDisputeCount ?? 0) > 0) {
+          console.log(
+            `Vendor ${vendorId}: settlement held — ${openDisputeCount} open dispute(s) ` +
+            `on due bookings — skipping ${vendorBookings!.length} booking(s) this cycle`
+          );
+          heldCount += vendorBookings!.length;
+          continue;
+        }
+
+        // No disputes — settle all due bookings for this vendor
+        let vendorTotal = 0;
+        for (const booking of vendorBookings!) {
+          await settleBooking(supabase, booking.id, 'auto_release');
+          const totalKobo = booking.service_price_kobo + ((booking as any).transport_fee_kobo ?? 0);
+          vendorTotal += Math.round(totalKobo * 0.8);
+          settledCount++;
+        }
+
+        // Queue ops alert for subaccount settlement
+        if (vendor?.paystack_subaccount_code) {
+          const paystack = new PaystackClient(Deno.env.get('PAYSTACK_SECRET_KEY')!);
+          await paystack.triggerSubaccountSettlement({
+            vendor_id: vendorId,
+            subaccount_code: vendor.paystack_subaccount_code,
+            booking_ids: bookingIds,
+            total_amount_kobo: vendorTotal,
+          });
+        }
+      }
+
+      // 3. Remind vendors who are still on 'arrived' past service end + 15min
       const fortyFiveMinsAgo = new Date(now.getTime() - 45 * 60 * 1000).toISOString();
       const { data: arrivedBookings } = await supabase
         .from('bookings')
@@ -120,9 +240,8 @@ Deno.serve(async (req: Request) => {
           new Date(b.scheduled_at).getTime() + (b.service_duration_blocks as number) * 30 * 60 * 1000
         );
         const reminderAt = new Date(scheduledEnd.getTime() + 15 * 60 * 1000);
-        if (now < reminderAt) continue; // too early
+        if (now < reminderAt) continue;
 
-        // Idempotency: only send once per booking
         const { data: existing } = await supabase
           .from('notifications')
           .select('id')
@@ -146,7 +265,7 @@ Deno.serve(async (req: Request) => {
         remindedCount++;
       }
 
-      // 3. Warn customers 30 min before auto-release so they can dispute in time
+      // 4. Warn customers 30 min before auto-release so they can dispute in time
       const warnLo = new Date(now.getTime() + 25 * 60 * 1000).toISOString();
       const warnHi = new Date(now.getTime() + 35 * 60 * 1000).toISOString();
       const { data: warnBookings } = await supabase
@@ -182,8 +301,8 @@ Deno.serve(async (req: Request) => {
         warnedCount++;
       }
 
-      console.log(`paystack-settle cron: settled=${settledCount}, reminded=${remindedCount}, warned=${warnedCount}`);
-      return jsonResponse({ settled: settledCount, reminded: remindedCount, warned: warnedCount });
+      console.log(`paystack-settle cron: settled=${settledCount} held=${heldCount} reminded=${remindedCount} warned=${warnedCount}`);
+      return jsonResponse({ settled: settledCount, held: heldCount, reminded: remindedCount, warned: warnedCount });
     }
 
     // --------------------------------------------------------
@@ -196,10 +315,9 @@ Deno.serve(async (req: Request) => {
     const { booking_id } = await req.json();
     if (!booking_id) return errorResponse('Missing booking_id');
 
-    // Verify booking belongs to this user and is in correct state
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
-      .select('id, status, user_id')
+      .select('id, status, user_id, vendor_id, service_price_kobo, transport_fee_kobo')
       .eq('id', booking_id)
       .eq('user_id', user.id)
       .single();
@@ -210,6 +328,32 @@ Deno.serve(async (req: Request) => {
     }
 
     await settleBooking(supabase, booking_id, 'user_confirmed');
+
+    // Queue ops alert for subaccount settlement if vendor has no open disputes
+    const { data: vendor } = await supabase
+      .from('vendors')
+      .select('settlement_on_hold, paystack_subaccount_code')
+      .eq('id', booking.vendor_id)
+      .single();
+
+    if (!vendor?.settlement_on_hold && vendor?.paystack_subaccount_code) {
+      const { count: openDisputes } = await supabase
+        .from('disputes')
+        .select('id', { count: 'exact', head: true })
+        .eq('booking_id', booking_id)
+        .in('status', ['open', 'under_review']);
+
+      if ((openDisputes ?? 0) === 0) {
+        const paystack = new PaystackClient(Deno.env.get('PAYSTACK_SECRET_KEY')!);
+        const totalKobo = booking.service_price_kobo + ((booking as any).transport_fee_kobo ?? 0);
+        await paystack.triggerSubaccountSettlement({
+          vendor_id: booking.vendor_id,
+          subaccount_code: vendor.paystack_subaccount_code,
+          booking_ids: [booking_id],
+          total_amount_kobo: Math.round(totalKobo * 0.8),
+        });
+      }
+    }
 
     return jsonResponse({ success: true, booking_id, status: 'completed' });
   } catch (err) {
@@ -254,31 +398,24 @@ async function settleBooking(
     return;
   }
 
-  // Fetch vendor recipient code + pioneer fields
+  // Fetch vendor with pioneer fields
   const { data: vendor } = await supabase
     .from('vendors')
-    .select('full_name, email, paystack_recipient_code, push_token, pioneer, pioneer_bookings_completed')
+    .select('full_name, email, push_token, pioneer, pioneer_bookings_completed, paystack_subaccount_code')
     .eq('id', booking.vendor_id)
     .single();
 
-  if (!vendor?.paystack_recipient_code) {
-    console.error(`Vendor ${booking.vendor_id} has no paystack_recipient_code`);
-    throw new Error('Vendor payment details not configured');
-  }
-
-  // Pioneer commission logic: first 3 completed bookings get 100% (no platform cut)
+  // Pioneer commission logic: first PIONEER_BOOKINGS_THRESHOLD completed bookings get 100%
   const isPioneerBooking =
-    vendor.pioneer === true && vendor.pioneer_bookings_completed < 3;
+    vendor?.pioneer === true &&
+    (vendor.pioneer_bookings_completed ?? PIONEER_BOOKINGS_THRESHOLD) < PIONEER_BOOKINGS_THRESHOLD;
 
-  // Settlement operates on the full amount charged to customer (service + transport)
   const totalKobo = booking.service_price_kobo + ((booking as any).transport_fee_kobo ?? 0);
   const settlement = calculateSettlement(totalKobo);
   const vendorAmountKobo = isPioneerBooking ? totalKobo : settlement.vendorAmountKobo;
   const varsNetKobo = isPioneerBooking ? 0 : settlement.varsNetKobo;
 
-  const transferRef = generateReference('VARS_TRF');
-
-  // Mark booking as completed first (optimistic update)
+  // Mark booking as completed
   await supabase
     .from('bookings')
     .update({
@@ -287,7 +424,9 @@ async function settleBooking(
     })
     .eq('id', bookingId);
 
-  // Create payout_history record (pending → updated by transfer webhook)
+  // Create payout_history record with settlement_queued status.
+  // The actual bank transfer (subaccount → vendor's bank) is triggered by
+  // VARS ops from the Paystack dashboard after this record is created.
   const { data: payout } = await supabase
     .from('payout_history')
     .insert({
@@ -295,74 +434,42 @@ async function settleBooking(
       vendor_id: booking.vendor_id,
       vendor_amount_kobo: vendorAmountKobo,
       vars_commission_kobo: varsNetKobo,
-      paystack_transfer_reference: transferRef,
-      status: 'pending',
+      status: 'settlement_queued',
     })
     .select('id')
     .single();
 
-  // Execute Paystack Transfer API — vendor's 80% to their bank account
-  try {
-    const paystack = new PaystackClient(Deno.env.get('PAYSTACK_SECRET_KEY')!);
-    const transfer = await paystack.initiateTransfer({
-      source: 'balance',
-      amount: vendorAmountKobo,
-      recipient: vendor.paystack_recipient_code,
-      reason: `VARS booking ${bookingId} — service payment`,
-      reference: transferRef,
-    });
-
-    // Update payout with transfer code
+  // Increment pioneer counter after booking completes.
+  // The split was already set at transaction initialization; this counter
+  // ensures the next booking at initialization time gets the correct split.
+  if (isPioneerBooking) {
     await supabase
-      .from('payout_history')
-      .update({ paystack_transfer_code: transfer.transfer_code })
-      .eq('id', payout?.id);
-
-    // Increment pioneer counter after successful transfer
-    if (isPioneerBooking) {
-      await supabase
-        .from('vendors')
-        .update({ pioneer_bookings_completed: vendor.pioneer_bookings_completed + 1 })
-        .eq('id', booking.vendor_id);
-      console.log(
-        `Pioneer booking ${bookingId}: 100% to vendor, ` +
-        `pioneer_bookings_completed now ${vendor.pioneer_bookings_completed + 1}/3`
-      );
-    }
-
-    if (!isPioneerBooking) {
-      console.log(
-        `Transfer initiated: ${transfer.transfer_code} — ` +
-        `₦${formatNaira(vendorAmountKobo)} to vendor ${booking.vendor_id} | ` +
-        `VARS gross: ₦${formatNaira(settlement.varsCommissionKobo)}, ` +
-        `Paystack fee: ₦${formatNaira(settlement.paystackFeeKobo)}, ` +
-        `stamp duty: ₦${formatNaira(settlement.stampDutyKobo)}, ` +
-        `VARS net: ₦${formatNaira(varsNetKobo)}`
-      );
-    } else {
-      console.log(
-        `Transfer initiated: ${transfer.transfer_code} — ` +
-        `₦${formatNaira(vendorAmountKobo)} to vendor ${booking.vendor_id} (Pioneer waiver — VARS net: ₦0)`
-      );
-    }
-  } catch (err) {
-    // Transfer failed — update payout to failed, alert ops
-    await supabase
-      .from('payout_history')
-      .update({ status: 'failed' })
-      .eq('id', payout?.id);
-    console.error(`Transfer failed for booking ${bookingId}:`, err);
-    throw err;
+      .from('vendors')
+      .update({ pioneer_bookings_completed: (vendor.pioneer_bookings_completed ?? 0) + 1 })
+      .eq('id', booking.vendor_id);
+    console.log(
+      `Pioneer booking ${bookingId}: 100% to vendor subaccount, ` +
+      `pioneer_bookings_completed now ${(vendor.pioneer_bookings_completed ?? 0) + 1}/${PIONEER_BOOKINGS_THRESHOLD}`
+    );
+  } else {
+    console.log(
+      `Settlement queued: booking=${bookingId} payout=${payout?.id} ` +
+      `₦${formatNaira(vendorAmountKobo)} to vendor ${booking.vendor_id} subaccount | ` +
+      `VARS gross: ₦${formatNaira(settlement.varsCommissionKobo)}, ` +
+      `Paystack fee: ₦${formatNaira(settlement.paystackFeeKobo)}, ` +
+      `stamp duty: ₦${formatNaira(settlement.stampDutyKobo)}, ` +
+      `VARS net: ₦${formatNaira(varsNetKobo)}`
+    );
   }
 
-  // Notify user: payment released
+  // Notify user: payment released (booking is done)
   const { data: profile } = await supabase
     .from('profiles')
     .select('full_name, push_token, email')
     .eq('id', booking.user_id)
     .single();
 
-  const userMsg = msg_paymentReleased(vendor.full_name);
+  const userMsg = msg_paymentReleased(vendor?.full_name ?? 'your vendor');
   await sendNotification({
     recipientId: booking.user_id,
     recipientType: 'user',
@@ -374,6 +481,19 @@ async function settleBooking(
     data: { bookingId, trigger },
   });
 
+  // Notify vendor: their earnings are on the way
+  const vendorMsg = msg_vendor_paymentReleased(formatNaira(vendorAmountKobo));
+  await sendNotification({
+    recipientId: booking.vendor_id,
+    recipientType: 'vendor',
+    type: 'vendor_payment_released',
+    title: vendorMsg.title,
+    body: vendorMsg.body,
+    bookingId,
+    pushToken: vendor?.push_token ?? null,
+    data: { bookingId, amountKobo: vendorAmountKobo },
+  });
+
   // Email: service complete — customer + vendor
   try {
     const customerFirstName = (profile?.full_name ?? '').split(' ')[0] || 'there';
@@ -381,14 +501,14 @@ async function settleBooking(
     if (profile?.email) {
       const { subject, body } = email_serviceComplete_customer({
         customerFirstName,
-        vendorName: vendor.full_name,
+        vendorName: vendor?.full_name ?? 'your vendor',
         service: booking.service_name,
         amount: `₦${formatNaira(totalKobo)}`,
       });
       await sendTransactionalEmail(profile.email, subject, body);
     }
 
-    if (vendor.email) {
+    if (vendor?.email) {
       const { subject, body } = email_serviceComplete_vendor({
         vendorName: vendor.full_name,
         customerFirstName,

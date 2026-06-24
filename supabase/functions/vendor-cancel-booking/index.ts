@@ -76,7 +76,11 @@ Deno.serve(async (req: Request) => {
       })
       .eq('id', booking_id);
 
-    // 3. Full refund to user
+    // 3. Full refund to user.
+    // IMPORTANT — subaccount clawback: if the vendor's share has already settled
+    // from their Paystack subaccount to their bank (payout_history.status = 'success'),
+    // this refund only covers the VARS portion (~20%). Recovering the vendor's share
+    // requires manual reconciliation and is out of scope for automated code.
     if (booking.paystack_reference) {
       try {
         const paystack = new PaystackClient(Deno.env.get('PAYSTACK_SECRET_KEY')!);

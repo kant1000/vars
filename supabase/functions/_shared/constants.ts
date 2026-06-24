@@ -1,5 +1,11 @@
 // Mirror of packages/shared/src/constants.ts — keep in sync manually
 
+/** VARS commission on every completed booking (20%) */
+export const VARS_COMMISSION_PERCENT = 20;
+
+/** Pioneer programme: first N completed bookings get 100% (no platform cut) */
+export const PIONEER_BOOKINGS_THRESHOLD = 3;
+
 /** Taxonomy V2: L1 category values */
 export const CATEGORY_L1 = {
   HAIR:   'hair',

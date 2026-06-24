@@ -2,6 +2,9 @@
 
 Date: 2026-05-25
 
+> **Superseded items (2026-06-24 — subaccount migration):**
+> Items 1, 2, 10 from Top Financial Risks are addressed: payout_history.booking_id is now unique (migration 20260525160000); settlement is now `settlement_queued` status (no Transfer race); Pioneer counter increments at booking completion, not at transfer. The "Escrow Correctness" and "Settlement Correctness" sections describe the old Transfer-based model — replaced by Paystack subaccount split at charge time. Remaining open items (3–9, reconciliation, audit trail) are unchanged.
+
 ## Verdict
 
 Not safe for production real-money flows. The implementation can support demos or controlled pilots, but it does not meet financial infrastructure standards for Lagos marketplace payments, refunds, disputes, and payouts.

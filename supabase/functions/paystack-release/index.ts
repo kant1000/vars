@@ -56,7 +56,13 @@ Deno.serve(async (req: Request) => {
         .update({ status: BOOKING_STATUS.COMPLETED, cancelled_by: 'admin', cancellation_reason: 'Dispute resolved — user refunded' })
         .eq('id', booking_id);
 
-      // Issue full refund via Paystack
+      // Issue full refund via Paystack.
+      // IMPORTANT — subaccount clawback: if this booking has already been settled
+      // (vendor's share moved from subaccount to their bank), Paystack will only
+      // refund the portion in the VARS main account (VARS's ~20%). Recovering the
+      // vendor's 80% requires a manual bank-to-bank request to the vendor and is
+      // out of scope for automated code. Ops must check payout_history.status before
+      // issuing a refund on a settled booking.
       if (booking.paystack_reference) {
         try {
           const paystack = new PaystackClient(Deno.env.get('PAYSTACK_SECRET_KEY')!);
@@ -165,7 +171,12 @@ async function expireBooking(
     })
     .eq('id', booking.id);
 
-  // 2. Refund user via Paystack (full refund — vendor never accepted)
+  // 2. Refund user via Paystack (full refund — vendor never accepted or timed out).
+  // In the subaccount model: if the vendor had NOT yet been settled (their share is
+  // still in the subaccount balance), Paystack should include it in the refund.
+  // If the vendor WAS already settled (rare for decline/timeout since those happen
+  // before service), recovering their share requires manual reconciliation — see
+  // payout_history.status before issuing this refund in production.
   if (booking.paystack_reference) {
     try {
       const paystack = new PaystackClient(Deno.env.get('PAYSTACK_SECRET_KEY')!);

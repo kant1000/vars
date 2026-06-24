@@ -28,10 +28,27 @@ This roadmap tracks the practical path to make the whole app work as intended.
 - Phase 1 SEO implementation. Done — sitemap, robots, manifest, OG image, privacy page, terms page, canonical, JSON-LD schemas, vercel.json redirect.
 - Google Search Console setup. Done — DNS TXT verification, sitemap submitted, 3 pages indexed.
 
+## Phase 2c: Paystack Subaccount Migration
+
+**Status: Complete (June 2026). Pending: sandbox testing + live key swap.**
+
+Split model: vendor's share (80% normal, 100% Pioneer) splits at charge time into their Paystack subaccount. Settlement is manual (VARS ops triggers from Paystack dashboard). Settlement is gated at the vendor level via `settlement_on_hold`.
+
+- Migration `20260624000001_paystack_subaccounts.sql`: adds `paystack_subaccount_code` + `settlement_on_hold` to vendors; adds `paystack_settlement_reference` to payout_history; adds `settlement_queued` enum value. Done.
+- `_shared/paystack.ts`: added `createSubaccount`, `triggerSubaccountSettlement` (ops-alert stub — no public Paystack API), updated `initializeTransaction` signature. Done.
+- `_shared/constants.ts` + `packages/shared/src/constants.ts`: added `VARS_COMMISSION_PERCENT`, `PIONEER_BOOKINGS_THRESHOLD`. Done (both files in sync).
+- `paystack-verify-bank`: save action now creates both Transfer recipient and Paystack subaccount; both codes stored on vendor row. Done.
+- `paystack-initialize`: fetches `paystack_subaccount_code`, `pioneer`, `pioneer_bookings_completed`; computes split at init time; passes `subaccount`, `bearer: 'account'`, `transaction_charge: 0` for Pioneer. Done.
+- `paystack-webhook`: `handleChargeDispute` now sets `settlement_on_hold = true` on vendor (was: pushed `auto_release_at` 90 days forward). Done.
+- `paystack-settle`: full rewrite — sweeps by vendor not booking; gates on `settlement_on_hold` + open disputes; marks COMPLETED + creates `payout_history(settlement_queued)`; Pioneer counter incremented here; calls `triggerSubaccountSettlement` for clear vendors. Done.
+- `paystack-release`, `paystack-cancel`, `vendor-cancel-booking`, `vendor-cancel-grace`: clawback manual reconciliation comments added. Done.
+- Docs updated. Done.
+- **Remaining:** Run full test against Paystack sandbox. Swap `PAYSTACK_SECRET_KEY` to live key once Paystack account activation resolves.
+
 ## Phase 3: Supabase Health
 
 - Review all migrations in order.
-- Confirm generated shared database types are current.
+- Confirm generated shared database types are current (note: `database.types.ts` is auto-generated — never edit manually).
 - Audit Edge Function env requirements.
 - Check booking, payment, cancellation, reschedule, dispute, KYC, and notification functions.
 - Run local Supabase reset if local environment is ready.

@@ -565,7 +565,7 @@ When flipping to live:
 | `phone-reveal` | Every 5 min | Reveal phone numbers 15 min before appointment |
 | `check_cron_health()` | Every 2 hours | Alert on failing cron jobs |
 | `reschedule-expire` | Unknown | Expire unresolved reschedule offers |
-| `paystack-settle` | Cron/webhook | Auto-release escrowed funds |
+| `paystack-settle` | Cron/webhook | Mark bookings complete, queue subaccount settlement (VARS ops triggers bank transfer from Paystack dashboard) |
 
 ### Logging
 

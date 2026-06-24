@@ -67,12 +67,12 @@ The README is the canonical record of what's implemented — screens, edge funct
 
 ### Trust as the product (Phase 2 framing)
 
-In Phase 2, what VARS is selling is trust — not beauty services. Any customer can find a barber or stylist in Lagos. What they cannot find elsewhere is a verified professional, with their identity confirmed, arriving at a home address, with payment held until the job is done.
+In Phase 2, what VARS is selling is trust — not beauty services. Any customer can find a barber or stylist in Lagos. What they cannot find elsewhere is a verified professional, with their identity confirmed, arriving at a home address, with payment secured at booking and settled only when the job is done.
 
-Every copy decision should reflect this. The platform's job is to make the invisible visible: escrow exists, verification happened, the phone number reveal is intentional, the dispute window is real. When in doubt, name the system out loud. "Your payment is held securely" is more powerful than "payment confirmed." "You're now Verified by VARS" is more powerful than "you're live."
+Every copy decision should reflect this. The platform's job is to make the invisible visible: the payment split is real, verification happened, the phone number reveal is intentional, the dispute window is real. When in doubt, name the system out loud. "Your payment is secured with VARS" is more powerful than "payment confirmed." "You're now Verified by VARS" is more powerful than "you're live."
 
 Trust signals to surface at every opportunity:
-- **Escrow** — name it in confirmations, not just in FAQs.
+- **Secure payments** — name how the split works in confirmations: the stylist's share is already secured at payment time, not held back by VARS.
 - **Verified by VARS** — the badge is the proof; use the phrase.
 - **The 2-hour dispute window** — frame it as protection, not a deadline.
 - **Phone reveal at 15 min** — frame it as connection, not exposure.
@@ -129,14 +129,16 @@ These decisions were made deliberately. Flag explicitly before suggesting any re
 
 | Decision | Rule | Reason |
 |---|---|---|
-| Payment: authorisation not capture | Paystack authorises (ringfences) at booking confirmation. Capture only on vendor acceptance. | If vendor declines or times out, authorisation releases silently — no refund needed, no Nigerian banking friction. |
+| Payment: subaccount split at charge time | Vendor's share (80%, or 100% for Pioneer) splits immediately into their Paystack subaccount when the card is charged. VARS's share stays in the VARS main account. Split ratio is fixed at `paystack-initialize` time and cannot change at settle time. | No Transfer API needed for normal settlement — vendor's money is already in their subaccount. Transfer API is still used for cancellation fee shares (paid from VARS balance via `paystack_recipient_code`). |
+| Settlement: manual, vendor-gated | Paystack has no public API endpoint to trigger subaccount settlement. VARS ops must trigger payouts from the Paystack dashboard (settlement_schedule = manual). Settlement is gated at the vendor level — any open or under-review dispute on any of the vendor's bookings freezes their entire subaccount balance until resolved. | Prevents partial settlement of disputed funds and simplifies dispute enforcement to a single `settlement_on_hold` flag on the vendor row. |
+| Payment: authorisation not capture (legacy note) | Transaction is charged immediately at `paystack-initialize` time. `payment_captured` on bookings is now repurposed as the vendor-acceptance flag. | If vendor declines or times out, Paystack refund is issued — the subaccount split is still in the subaccount at this point and Paystack should include it in the refund. |
 | Vendor acceptance window | 1 hour exactly. 30-min reminder at halfway. | Not 2 hours (too slow for customers), not 15 min (too short for vendors). |
 | Auto-release timing | **2 hours** after `service_rendered_at` — set by DB trigger in migration `001`. | Ties release to when service actually finishes. The DB trigger is authoritative: `NEW.auto_release_at := NEW.service_rendered_at + INTERVAL '2 hours'`. |
 | Transport buffer | Two 30-min blocks AFTER the booking only — not before. | Vendor travels from wherever they are, not a fixed location. After-only is correct. |
 | User verification | Customers are NOT KYC'd. Phone number collected as plain text after login — not verified via OTP. | Trust infrastructure is concentrated on the vendor side via Youverify. Behavioural flags in admin handle bad actors. |
 | Auth methods | Google, Facebook, email — three methods only. Phone is collected as a text field after auth, not as an OTP login method. | |
 | Status flow is rigid | Vendors cannot skip On My Way → Arrived → Service Rendered. | Each step triggers phone reveal, location sharing, and escrow release. Skippable steps would break the trust architecture. |
-| Automatic settlement only | Manual admin payment release is rejected. | Operationally impossible at scale and creates terrible vendor experience. |
+| Dispute freezes vendor settlement | Disputes set `settlement_on_hold = true` on the vendor row (not on the booking). The settle cron skips the entire vendor for that cycle. | Paystack controls dispute holds on subaccount funds; VARS mirrors this in the vendor flag. |
 | No customer filter for auto-accept | Users cannot filter vendor feed by auto-accept status in V1. | |
 | ~~One service per booking~~ | **Removed in V2.** Multi-service bookings now supported via `booking_services` join table. Total amount and duration are summed across selected services. | Was: simpler escrow logic, simpler vendor scheduling. Now: free-name taxonomy removes V1 master catalogue dependency. |
 | Cancellation measured from booking time | Tiers measured from time of BOOKING, not time before service. Within 1 hr of service start = non-refundable (30% VARS, 70% vendor). 0–15 min after booking = 15% fee (10% VARS, 5% vendor). 15 min–1 hr after booking = 50% fee (30% VARS, 20% vendor). | |
@@ -253,7 +255,7 @@ Phase 2 entry conditions were met as of May 2026: 100+ verified vendors, 4+ Lago
 ### VARS Pioneers programme
 
 - First 50 vendors to register and verify = VARS Pioneers
-- Zero commission on first 3 completed bookings (100% to vendor) — enforced in `paystack-settle` via `pioneer_bookings_completed < 3`
+- Zero commission on first 3 completed bookings (100% to vendor) — split set at `paystack-initialize` time via `transaction_charge: 0` when `pioneer=true AND pioneer_bookings_completed < PIONEER_BOOKINGS_THRESHOLD`; counter incremented in `paystack-settle` when booking completes
 - Permanent VARS Pioneer badge on profile — never expires
 - **Pioneer cohort is complete** (50 spots filled, May 2026). The landing page registration form (`PioneerSection.tsx`) no longer shows pioneer-specific copy, countdown, or waitlist branching — it presents a single general stylist registration state. Pioneer benefits remain enforced in the backend.
 - Counter reads from `vendor_leads WHERE pioneer = true` — not the full `vendors` table

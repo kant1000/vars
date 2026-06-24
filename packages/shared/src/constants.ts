@@ -5,6 +5,9 @@
 /** VARS commission on every completed booking (20%) */
 export const VARS_COMMISSION_PERCENT = 20;
 
+/** Pioneer programme: first N completed bookings get 100% (no platform cut) */
+export const PIONEER_BOOKINGS_THRESHOLD = 3;
+
 /** Radius in km within which no transport surcharge applies. */
 export const BASE_RADIUS_KM = 5;
 

@@ -17,7 +17,7 @@ export default function TermsPage() {
         <Link href="/" className="legal-back">Back to VARS</Link>
         <p className="legal-kicker">Terms of Use</p>
         <h1>Using VARS</h1>
-        <p className="legal-updated">Last updated: 19 June 2026</p>
+        <p className="legal-updated">Last updated: 24 June 2026</p>
 
         <section>
           <h2>What VARS is</h2>
@@ -82,8 +82,8 @@ export default function TermsPage() {
           <p>
             Once accepted, a booking moves through a fixed sequence: On My
             Way → Arrived → Service Rendered. Each step triggers a specific
-            platform action — phone reveal, live location sharing, escrow
-            release. Steps cannot be skipped.
+            platform action — phone reveal, live location sharing, and payment
+            settlement. Steps cannot be skipped.
           </p>
           <p>
             Fifteen minutes before the appointment, both the customer&apos;s
@@ -125,10 +125,13 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2>Escrow and payment release</h2>
+          <h2>Payments and settlement</h2>
           <p>
-            Payment is held in escrow after the stylist accepts the booking. It
-            releases to the stylist when:
+            When a customer pays, the payment is processed immediately through
+            Paystack. The stylist&apos;s share of the payment is held in a
+            dedicated Paystack account on their behalf. Settlement to the
+            stylist&apos;s bank account is processed by VARS once the service
+            is confirmed complete — either when:
           </p>
           <ul>
             <li>the customer confirms the service is complete, or</li>
@@ -140,8 +143,8 @@ export default function TermsPage() {
           <p>
             Customers receive a push notification 30 minutes before the
             2-hour auto-release fires. That window is the time to raise a
-            dispute. Once the 2 hours pass and payment releases, it cannot be
-            recalled.
+            dispute. Once the 2 hours pass and settlement is processed, it
+            cannot be recalled.
           </p>
         </section>
 
@@ -175,8 +178,9 @@ export default function TermsPage() {
           <p>
             Customers may raise a dispute after a service is marked complete and
             before the 2-hour auto-release window closes. Disputed bookings are
-            fully frozen — no funds move until VARS admin reviews and resolves the
-            matter. There is no time pressure once a dispute is open.
+            fully frozen — settlement to the stylist&apos;s bank is suspended
+            until VARS admin reviews and resolves the matter. There is no time
+            pressure once a dispute is open.
           </p>
         </section>
 

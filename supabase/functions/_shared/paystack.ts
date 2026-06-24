@@ -42,6 +42,14 @@ export interface PaystackRecipient {
   bank_code: string;
 }
 
+export interface PaystackSubaccount {
+  subaccount_code: string;
+  business_name: string;
+  settlement_bank: string;
+  account_number: string;
+  percentage_charge: number;
+}
+
 export class PaystackClient {
   private secretKey: string;
 
@@ -75,7 +83,15 @@ export class PaystackClient {
   /**
    * Step 1 — Initialize a transaction.
    * Returns access_code for Paystack inline popup on mobile.
-   * Funds are captured immediately into VARS Paystack account (escrow).
+   *
+   * With subaccount + bearer: 'account', Paystack splits the charge at
+   * payment time. The vendor's share lands in their subaccount balance;
+   * VARS's share (percentage_charge set on the subaccount) stays in the
+   * VARS main account. VARS bears the Paystack fee.
+   *
+   * transaction_charge (kobo): flat amount to VARS main account, overrides
+   * percentage_charge. Pass 0 for Pioneer bookings so VARS takes ₦0 and
+   * 100% goes to the subaccount.
    */
   async initializeTransaction(params: {
     email: string;
@@ -84,6 +100,9 @@ export class PaystackClient {
     callback_url?: string;
     metadata?: Record<string, unknown>;
     channels?: string[];
+    subaccount?: string;          // vendor's subaccount_code (ACCT_xxx)
+    bearer?: 'account' | 'subaccount'; // who bears Paystack fees; use 'account' so VARS bears
+    transaction_charge?: number;  // flat kobo to main account, overrides percentage_charge
   }): Promise<{ authorization_url: string; access_code: string; reference: string }> {
     return this.request('POST', '/transaction/initialize', {
       ...params,
@@ -137,6 +156,55 @@ export class PaystackClient {
     reference?: string;
   }): Promise<PaystackTransfer> {
     return this.request('POST', '/transfer', params);
+  }
+
+  /**
+   * Create a Paystack subaccount for a vendor.
+   * Called once during onboarding (§6.1 Step 4) alongside createTransferRecipient.
+   *
+   * percentage_charge is the PLATFORM's fee percentage — how much goes to the
+   * VARS main account. e.g. 20 → VARS gets 20%, vendor subaccount gets 80%.
+   * settlement_schedule: 'manual' means funds accumulate in the subaccount
+   * balance until VARS triggers settlement from the Paystack dashboard.
+   * There is no public Paystack API to trigger this programmatically.
+   */
+  async createSubaccount(params: {
+    business_name: string;
+    settlement_bank: string;   // bank code, e.g. '044' for GTBank
+    account_number: string;
+    percentage_charge: number; // VARS's fee %, e.g. 20 → vendor gets 80%
+    settlement_schedule?: 'auto' | 'weekly' | 'monthly' | 'manual';
+    primary_contact_name?: string;
+    primary_contact_email?: string;
+  }): Promise<PaystackSubaccount> {
+    return this.request('POST', '/subaccount', params);
+  }
+
+  /**
+   * Queue subaccount settlement for a vendor.
+   *
+   * Paystack does NOT expose a public API to programmatically trigger settlement
+   * of a subaccount's accumulated balance to the vendor's bank account.
+   * settlement_schedule: 'manual' means VARS must trigger this from the
+   * Paystack dashboard (Settings → Subaccounts → Settle).
+   *
+   * This method handles the VARS-side gating (dispute check, booking completion)
+   * and emits a prominent ops log. The actual bank transfer is a dashboard action.
+   */
+  async triggerSubaccountSettlement(params: {
+    vendor_id: string;
+    subaccount_code: string;
+    booking_ids: string[];
+    total_amount_kobo: number;
+  }): Promise<{ status: 'settlement_queued'; vendor_id: string }> {
+    console.log(
+      `SETTLEMENT QUEUED — vendor_id=${params.vendor_id} ` +
+      `subaccount=${params.subaccount_code} ` +
+      `bookings=[${params.booking_ids.join(',')}] ` +
+      `total=₦${(params.total_amount_kobo / 100).toLocaleString()} — ` +
+      `VARS OPS: trigger settlement from Paystack dashboard → Subaccounts → Settle`
+    );
+    return { status: 'settlement_queued', vendor_id: params.vendor_id };
   }
 
   /**

@@ -1,8 +1,9 @@
 // ============================================================
 // VARS — paystack-verify-bank
 // Called during vendor onboarding Step 4 (§6.1).
-// Verifies bank account via Paystack, creates a Transfer recipient,
-// and saves the recipient_code to the vendor record.
+// Verifies bank account via Paystack, creates a Transfer recipient
+// (for cancellation fee Transfers) AND a Subaccount (for per-transaction
+// splits at booking time), and saves both codes to the vendor record.
 // ============================================================
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
@@ -46,7 +47,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // ---- Save verified bank account and create Paystack recipient ----
+    // ---- Save verified bank account, create Paystack recipient + subaccount ----
     if (action === 'save') {
       const { account_number, bank_code, bank_name, account_name } = body;
       if (!account_number || !bank_code || !bank_name || !account_name) {
@@ -64,7 +65,7 @@ Deno.serve(async (req: Request) => {
 
       if (vendorError || !vendor) return errorResponse('Vendor not found', 404);
 
-      // Create Paystack Transfer recipient for this bank account
+      // Create Paystack Transfer recipient — used for cancellation fee Transfers
       const recipient = await paystack.createTransferRecipient({
         type: 'nuban',
         name: account_name,
@@ -73,7 +74,24 @@ Deno.serve(async (req: Request) => {
         currency: 'NGN',
       });
 
-      // Save to vendor record
+      // Create Paystack subaccount — used for per-transaction splits at booking time.
+      // percentage_charge: 20 means VARS keeps 20% of every transaction; vendor's
+      // subaccount receives 80% (or 100% for Pioneer — overridden at init time via
+      // transaction_charge: 0).
+      // settlement_schedule: 'manual' — funds accumulate in the subaccount balance
+      // and are released to the vendor's bank when VARS triggers from the dashboard.
+      const subaccount = await paystack.createSubaccount({
+        business_name: account_name,
+        settlement_bank: bank_code,
+        account_number,
+        percentage_charge: 20,
+        settlement_schedule: 'manual',
+        primary_contact_name: vendor.full_name,
+      });
+
+      // Save both identifiers to vendor record.
+      // paystack_recipient_code stays for cancellation fee Transfers.
+      // paystack_subaccount_code is used for all booking splits going forward.
       await supabase
         .from('vendors')
         .update({
@@ -81,14 +99,19 @@ Deno.serve(async (req: Request) => {
           bank_name,
           bank_account_name: account_name,
           paystack_recipient_code: recipient.recipient_code,
+          paystack_subaccount_code: subaccount.subaccount_code,
         })
         .eq('id', user.id);
 
-      console.log(`Bank account saved for vendor ${user.id}: ${recipient.recipient_code}`);
+      console.log(
+        `Bank account saved for vendor ${user.id}: ` +
+        `recipient=${recipient.recipient_code} subaccount=${subaccount.subaccount_code}`
+      );
 
       return jsonResponse({
         success: true,
         recipient_code: recipient.recipient_code,
+        subaccount_code: subaccount.subaccount_code,
         account_name,
       });
     }

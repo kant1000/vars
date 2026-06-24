@@ -107,7 +107,7 @@ The `Vars` category is the platform's editorial voice. It is not a press release
 Content pillars for the `Vars` category:
 
 - **Verification** — why identity checks matter when someone is coming to your home. What it means to be Verified by VARS vs. a random DM.
-- **Escrow and fair pay** — why stylists deserve to be paid without chasing, and why customers deserve to pay only when the job is done. The escrow model as a reframe of how beauty transactions currently work.
+- **Secure payments and fair pay** — why stylists deserve to be paid without chasing, and why customers deserve to know exactly where their money goes. The Paystack split model as a reframe of how beauty transactions currently work: the stylist's share is secured at payment time, not promised later.
 - **Safety at home** — what it actually takes to let someone into your space. The structural protections VARS has built (rigid status flow, phone reveal timing, dispute window) and why they exist.
 - **Professional credibility** — what "Top Rated" and "VARS' Choice" mean. How the platform turns a stylist's skill into something a stranger can trust.
 

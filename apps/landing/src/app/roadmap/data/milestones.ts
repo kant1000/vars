@@ -28,11 +28,11 @@ export const phases: Phase[] = [
         state: 'completed',
       },
       {
-        id: 'payments-escrow',
-        title: 'Payments in Escrow',
+        id: 'payments-subaccount',
+        title: 'Secure Payments via Paystack',
         period: '2026',
         description:
-          'Customer pays upfront. Money sits in escrow. Vendor gets paid automatically once the service is done. Powered by Paystack — no manual release, no admin intervention.',
+          'Customer pays upfront. The stylist\'s share is split directly into their Paystack account at charge time — VARS never holds the full amount. Settlement to their bank is processed once the service is confirmed complete.',
         state: 'completed',
       },
       {

@@ -122,7 +122,7 @@ NOTE: a duplicate `reschedule-expire` job (no suffix) was confirmed present and 
 - Standard split: 80% of totalKobo to vendor / 20% VARS
 - Stamp duty: ₦50 on transfers ≥ ₦10,000
 - Paystack fee: 1.5% + ₦100, capped at ₦2,000
-- Settle cron queries only `service_rendered` — `disputed` bookings must be excluded (escrow stays frozen)
+- Settle cron queries only `service_rendered` — `disputed` bookings must be excluded (settlement suspended pending admin review); vendors with `settlement_on_hold = true` or open disputes are also skipped entirely
 - Auto-release fires 2 hours after `service_rendered_at` — set by DB trigger in migration 001; customer receives a 30-minute warning notification before it fires
 - **Known deferred issue — stamp duty threshold:** stamp duty should apply to the vendor transfer amount (80% of totalKobo), not the gross total. Services where vendor net < ₦10,000 may trigger ₦50 stamp duty incorrectly. WARN; not a launch blocker. Flag if seen.
 

@@ -4,11 +4,12 @@
 // MUST verify HMAC-SHA512 signature before processing.
 //
 // Handled events:
-//   charge.success        → create booking, notify vendor
-//   transfer.success      → update payout_history to success
+//   charge.success        → create booking, notify vendor; vendor's share
+//                           splits into their Paystack subaccount at charge time
+//   transfer.success      → update payout_history to success (cancellation fee Transfers)
 //   transfer.failed       → update payout_history to failed, alert admin
 //   transfer.reversed     → update payout_history to failed, alert admin
-//   charge.dispute.create → freeze auto_release, alert admin (bank chargeback)
+//   charge.dispute.create → set settlement_on_hold=true on vendor (bank chargeback)
 //   refund.processed      → log success for audit trail
 //   refund.failed         → log failure for manual ops review
 // ============================================================
@@ -205,6 +206,10 @@ async function handleChargeSuccess(
   );
 
   // ── Create the booking record ──────────────────────────────
+  // Note: at this point the vendor's share is already in their Paystack
+  // subaccount (split happened at initializeTransaction time). VARS's share
+  // is in the VARS main account. Settlement to the vendor's bank account
+  // requires VARS ops to trigger from the Paystack dashboard.
   const now = new Date();
   const graceExpiry = new Date(now.getTime() + 5 * 60 * 1000);
 
@@ -547,7 +552,8 @@ async function handleTransferFailed(
 
 // ── Bank chargeback from Paystack ────────────────────────────
 // Distinct from in-app disputes. Fires when a customer's bank reverses
-// a charge. Freeze auto_release so funds aren't paid out mid-dispute.
+// a charge. Sets settlement_on_hold on the vendor so the paystack-settle
+// cron skips their subaccount settlement until the dispute resolves.
 async function handleChargeDispute(
   supabase: ReturnType<typeof createAdminClient>,
   data: Record<string, unknown>
@@ -564,7 +570,7 @@ async function handleChargeDispute(
 
   const { data: booking } = await supabase
     .from('bookings')
-    .select('id, status')
+    .select('id, vendor_id, status')
     .eq('paystack_reference', reference)
     .maybeSingle();
 
@@ -573,18 +579,17 @@ async function handleChargeDispute(
     return;
   }
 
-  // Push auto_release_at 90 days out — prevents the settle cron from firing
-  // while the chargeback is open. Admin must manually resolve.
-  const frozenUntil = new Date();
-  frozenUntil.setDate(frozenUntil.getDate() + 90);
-
+  // Set settlement_on_hold on the vendor — the paystack-settle cron skips any
+  // vendor with this flag set, preventing subaccount settlement while the
+  // chargeback is open. Admin clears the flag when the dispute is resolved.
   await supabase
-    .from('bookings')
-    .update({ auto_release_at: frozenUntil.toISOString() })
-    .eq('id', booking.id);
+    .from('vendors')
+    .update({ settlement_on_hold: true })
+    .eq('id', booking.vendor_id);
 
   console.error(
-    `CHARGEBACK RAISED — booking=${booking.id} ref=${reference} status=${booking.status} auto_release frozen until ${frozenUntil.toISOString()} — REQUIRES MANUAL ADMIN REVIEW`
+    `CHARGEBACK RAISED — booking=${booking.id} ref=${reference} vendor=${booking.vendor_id} ` +
+    `status=${booking.status} settlement_on_hold=true — REQUIRES MANUAL ADMIN REVIEW`
   );
 }
 

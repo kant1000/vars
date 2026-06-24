@@ -119,6 +119,12 @@ Deno.serve(async (req: Request) => {
   // Note: we do NOT call paystack-release because that function
   // only handles 'pending' bookings (vendor decline / expiry).
   // Auto-accepted bookings are 'accepted', so we refund directly.
+  //
+  // IMPORTANT — subaccount clawback: grace cancels happen within 5 minutes of
+  // booking creation, before any settlement can occur. The vendor's share is
+  // still in their Paystack subaccount at this point. If the Paystack refund
+  // does not automatically claw back the subaccount portion, ops must verify
+  // that the full amount is returned to the customer from the Paystack dashboard.
   if (booking.paystack_reference) {
     try {
       const paystack = new PaystackClient(Deno.env.get('PAYSTACK_SECRET_KEY')!);

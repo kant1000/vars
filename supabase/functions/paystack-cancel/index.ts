@@ -87,7 +87,12 @@ Deno.serve(async (req: Request) => {
 
     const paystack = new PaystackClient(Deno.env.get('PAYSTACK_SECRET_KEY')!);
 
-    // 2. Process Paystack refund (partial or none depending on tier)
+    // 2. Process Paystack refund (partial or none depending on tier).
+    // IMPORTANT — subaccount clawback: if the vendor's share has already settled
+    // from their Paystack subaccount to their bank account (payout_history.status =
+    // 'success'), a refund here only covers the VARS portion (~20%). Recovering the
+    // vendor's share from their bank is a manual reconciliation step and is out of
+    // scope for automated code. Ops must check payout_history before refunding.
     if (refundAmountKobo > 0 && booking.paystack_reference) {
       try {
         await paystack.refundTransaction({

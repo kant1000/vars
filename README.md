@@ -29,7 +29,7 @@ VARS is a mobile marketplace that connects customers in Lagos with verified beau
 |---|---|
 | Market | Lagos, Nigeria |
 | Services | Hair, Barber, Face, Nails (free-name taxonomy V2) |
-| Payment | Paystack (escrow model) |
+| Payment | Paystack (subaccount split model, test mode) |
 | Backend | Supabase (Postgres + Auth + Realtime + Edge Functions) |
 | Mobile | Expo / React Native (iOS & Android) |
 | Admin | Next.js dashboard |
@@ -105,11 +105,11 @@ vars/
   - Review step: customer enters building name, floor, flat number, gate code; all inputs are silently filtered (no `@` signs, no sequences of 7+ digits)
   - Pay step: MapView thumbnail confirms customer location before the pay button activates; Paystack checkout opens in-app WebView
 - **Booking detail screen** — unified screen for all booking states; status timeline with timestamps; live vendor tracking map while `on_way`; action buttons change per status (cancel, confirm service, dispute)
-- **Paystack checkout** — card charged immediately; funds held in VARS Paystack balance (escrow) until vendor is paid
+- **Paystack checkout** — card charged immediately; vendor's share (80%) splits at charge time into their Paystack subaccount; VARS's 20% goes to the VARS main account
 - **Live tracking** — map polls vendor GPS every 30 seconds while en route; phone number and full access details revealed 15 minutes before appointment
-- **Confirm & settle** — customer taps "Confirm service done" to release escrow; auto-releases 2 hours after the vendor marks service rendered if the customer takes no action
+- **Confirm & settle** — customer taps "Confirm service done" to mark the booking complete; VARS ops then triggers subaccount settlement from the Paystack dashboard; auto-releases 2 hours after the vendor marks service rendered if the customer takes no action
 - **Reviews** — 1–5 star rating + comment after completion
-- **Disputes** — raise an issue from the live or booking detail screen; choose a structured category (Vendor didn't show up / Arrived very late / Service not completed / Poor quality / Wrong service / Other) before adding optional free-text detail; escrow freezes immediately pending admin review
+- **Disputes** — raise an issue from the live or booking detail screen; choose a structured category (Vendor didn't show up / Arrived very late / Service not completed / Poor quality / Wrong service / Other) before adding optional free-text detail; vendor settlement is held pending admin review
 
 ### For Vendors
 
@@ -195,7 +195,7 @@ Twenty migration files build up the schema incrementally:
 | ~~`services`~~ | Dropped in V2 (taxonomy migration). Services are now free-name entries defined by vendors. |
 | `vendor_services` | A vendor's offered services — free-name with L1/L2 taxonomy, `price_kobo`, `duration_blocks`, `sort_order`; max 10 per vendor; INSERT/DELETE managed by vendor via RLS |
 | `booking_services` | Join table: one row per service per booking — snapshots `service_name` and `price_kobo` at booking time; INSERT restricted to service role (webhook only) |
-| `bookings` | All bookings; holds Paystack reference, escrow state, access details (`access_building/floor/flat/code`), customer location (`user_location_lat/lng`), `service_summary` (comma-joined names), `total_amount` (sum of service prices in kobo) |
+| `bookings` | All bookings; holds Paystack reference, payment_captured (vendor accepted flag), access details (`access_building/floor/flat/code`), customer location (`user_location_lat/lng`), `service_summary` (comma-joined names), `total_amount` (sum of service prices in kobo) |
 | `vendor_calendar` | Blocked slot records — state: `unavailable` / `transport_buffer`. No row = slot is open. |
 | `reviews` | Star ratings + comments |
 | `disputes` | Customer-raised issues; includes `category` enum for instant triage |
@@ -247,13 +247,13 @@ All functions live in `supabase/functions/` and run on Deno.
 
 | Function | Method | Purpose |
 |---|---|---|
-| `paystack-initialize` | POST | Validates booking request, calculates distance-based transport surcharge (Haversine vs vendor zone centre), charges total to Paystack, passes surcharge through metadata for webhook to store |
-| `paystack-webhook` | POST | Handles Paystack events: creates booking on `charge.success` (reads transport surcharge from metadata), auto-accepts if conditions met, creates post + pre transport buffers for auto-accepted bookings |
+| `paystack-initialize` | POST | Validates booking request, calculates distance-based transport surcharge, checks Pioneer status to set the correct split (100/0 for Pioneer, 80/20 otherwise), initialises Paystack transaction with vendor subaccount split |
+| `paystack-webhook` | POST | Handles Paystack events: creates booking on `charge.success` (vendor's share already in their subaccount at this point), auto-accepts if conditions met, sets `settlement_on_hold` on vendor for `charge.dispute.create` |
 | `paystack-capture` | POST | Vendor accepts a pending booking — updates status to `accepted`, creates post + pre transport buffer blocks |
 | `paystack-release` | POST | Vendor declines or booking expires — issues a full Paystack refund to the customer |
-| `paystack-settle` | POST | Customer confirms service done, or 2-hr auto-release fires after service_rendered — initiates Paystack transfer to vendor (80/20 split; Pioneer vendors: 100%); also sends customer a warning notification 30 min before auto-release |
-| `paystack-cancel` | POST | Customer cancels — tiered refund (0–15 min: 15% fee; 15 min–1 hr: 50% fee; within 1 hr of service: non-refundable); releases transport buffers |
-| `paystack-verify-bank` | POST | Verifies vendor bank account via Paystack during onboarding |
+| `paystack-settle` | POST | Customer confirms service done or 2-hr auto-release fires — marks booking COMPLETED and creates `payout_history` (settlement_queued); cron sweeps by vendor, skips vendors with `settlement_on_hold` or open disputes, then logs an ops alert for VARS to trigger subaccount settlement from the Paystack dashboard |
+| `paystack-cancel` | POST | Customer cancels — tiered refund (0–15 min: 15% fee; 15 min–1 hr: 50% fee; within 1 hr of service: non-refundable); vendor's cancellation share sent via Transfer API; releases transport buffers |
+| `paystack-verify-bank` | POST | Verifies vendor bank account via Paystack during onboarding; creates both a Transfer recipient (for cancellation Transfers) and a Subaccount (for per-transaction splits) |
 | `vendor-cancel-booking` | POST | Vendor cancels an accepted/in-progress booking — full refund to customer, transport buffers released, rolling 30-day cancellation count incremented, flags vendor at 3+ |
 | `vendor-cancel-grace` | POST | Vendor cancels an auto-accepted booking within the 5-minute grace period (penalty-free, full refund) |
 | `dispute-raise` | POST | User raises a dispute — requires a structured `category`; free-text `reason` optional unless category is `other`; booking status set to `disputed` (freezes auto-release), inserts into `disputes`, notifies both parties |
@@ -491,7 +491,8 @@ Customer taps "Pay"
 paystack-initialize
   • Validates slot availability
   • Checks vendor calendar for conflicts
-  • Initialises Paystack transaction
+  • Checks Pioneer status → computes split (100/0 Pioneer, 80/20 normal)
+  • Initialises Paystack transaction with vendor subaccount + bearer: account
   • Returns access_code + auto_accept_likely hint
         │
         ▼
@@ -501,8 +502,10 @@ Paystack Checkout (WebView)
         │
         ▼
 paystack-webhook
-  • Card is charged at this point — funds move to VARS Paystack balance (escrow)
-  • Creates booking record (sets auto_release_at = scheduled_end + 2hrs; DB trigger overrides to service_rendered_at + 2hrs when vendor marks service complete)
+  • Card is charged — vendor's share (80% or 100% Pioneer) splits immediately
+    into their Paystack subaccount; VARS's share lands in the VARS main account
+  • Creates booking record (sets auto_release_at = scheduled_end + 2hrs; DB
+    trigger overrides to service_rendered_at + 2hrs when vendor marks service done)
   • If auto-accept conditions met → status = accepted, 5-min grace window opens,
     2× transport buffer blocks inserted after booking end
   • Otherwise → status = pending, vendor has 1 hour to accept
@@ -520,6 +523,7 @@ capture    release
    ├── User cancels (paystack-cancel)
    │     • Tiered fee: within 1hr of service = non-refundable (100%),
    │       within 15min of booking = 15%, all other cases = 50%
+   │     • Vendor's cancellation share sent via Transfer API (paystack_recipient_code)
    │     • Transport buffers deleted
    │
    ├── Vendor cancels (vendor-cancel-booking)
@@ -528,20 +532,30 @@ capture    release
    │     • Cancellation count incremented (flagged at 3+ in 30 days)
    │
    ├── User disputes (dispute-raise)
-   │     • Booking → 'disputed' (escrow frozen; auto-release will NOT fire)
+   │     • Booking → 'disputed'
    │     • Admin resolves: pay vendor OR refund user
+   │
+   ├── Bank chargeback (paystack-webhook: charge.dispute.create)
+   │     • settlement_on_hold = true on vendor
+   │     • Cron skips this vendor for settlement until hold is cleared
    │
 Service completed → status = service_rendered
    │
    ├── User confirms (paystack-settle / user_confirmed)
    │
    └── Auto-release fires at auto_release_at (paystack-settle / auto_release)
-         • 2 hours after vendor marks service_rendered (DB trigger sets auto_release_at = service_rendered_at + 2 hrs)
+         • 2 hours after vendor marks service_rendered
          • Same 80/20 split as manual confirm
 
 paystack-settle
-  • Initiates Paystack transfer (80% to vendor, 20% VARS commission)
-  • Pioneer vendors: 100% for first 3 completed bookings
+  • Marks booking COMPLETED, creates payout_history (status: settlement_queued)
+  • Pioneer vendors: 100% for first PIONEER_BOOKINGS_THRESHOLD completed bookings
+    (split set at init time; counter incremented here)
+  • Cron sweeps by VENDOR — if vendor has settlement_on_hold or any open/under-review
+    disputes, their bookings are skipped this cycle
+  • For clear vendors: logs SETTLEMENT QUEUED ops alert with subaccount code
+  • VARS ops triggers settlement to vendor's bank from the Paystack dashboard
+    (Paystack does not expose a public API for this — settlement_schedule: manual)
 ```
 
 ---
