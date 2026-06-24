@@ -73,7 +73,6 @@ export interface VendorBooking {
   access_flat: string | null;
   access_code: string | null;
   auto_accepted: boolean;
-  auto_accept_grace_expires_at: string | null;
   suggested_scheduled_at: string | null;
 }
 
@@ -228,7 +227,6 @@ function BookingBottomSheet({
 
   const [acting, setActing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [graceSecondsLeft, setGraceSecondsLeft] = useState<number>(0);
 
   // ── Reschedule state ────────────────────────────────────────
   const [showReschedulePicker, setShowReschedulePicker] = useState(false);
@@ -236,32 +234,6 @@ function BookingBottomSheet({
   const [loadingRescheduleSlots, setLoadingRescheduleSlots] = useState(false);
   const [suggestedSlot, setSuggestedSlot] = useState<Date | null>(null);
   const [submittingReschedule, setSubmittingReschedule] = useState(false);
-
-  useEffect(() => {
-    if (!booking.auto_accepted || !booking.auto_accept_grace_expires_at) return;
-    const expiry = new Date(booking.auto_accept_grace_expires_at).getTime();
-    const tick = () => {
-      const left = Math.max(0, Math.floor((expiry - Date.now()) / 1000));
-      setGraceSecondsLeft(left);
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [booking.auto_accepted, booking.auto_accept_grace_expires_at]);
-
-  const handleGraceCancel = async () => {
-    setActing(true);
-    setActionError(null);
-    try {
-      await callEdgeFn('vendor-cancel-grace', { booking_id: booking.id });
-      onAction();
-      handleClose();
-    } catch (err: any) {
-      setActionError(err.message);
-    } finally {
-      setActing(false);
-    }
-  };
 
   const loadRescheduleSlots = async () => {
     setLoadingRescheduleSlots(true);
@@ -471,27 +443,6 @@ function BookingBottomSheet({
                 </View>
               )}
             </View>
-
-            {/* Auto-accept grace window banner */}
-            {booking.auto_accepted && booking.status === BOOKING_STATUS.ACCEPTED && graceSecondsLeft > 0 && (
-              <View style={bs.graceBanner}>
-                <View style={{ flex: 1 }}>
-                  <Text style={bs.graceTitle}>Auto-accepted booking</Text>
-                  <Text style={bs.graceTimer}>
-                    {`${Math.floor(graceSecondsLeft / 60)}:${String(graceSecondsLeft % 60).padStart(2, '0')} to cancel penalty-free`}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  style={[bs.graceBtn, acting && bs.actionBtnDisabled]}
-                  onPress={handleGraceCancel}
-                  disabled={acting}
-                >
-                  {acting
-                    ? <ScissorsLoader size="small" color="dark" />
-                    : <Text style={bs.graceBtnText}>Cancel penalty-free</Text>}
-                </TouchableOpacity>
-              </View>
-            )}
 
             {actionError && (
               <View style={bs.errorBox}>
@@ -1252,7 +1203,6 @@ export default function ScheduleScreen() {
     access_flat: b.access_flat ?? null,
     access_code: b.access_code ?? null,
     auto_accepted: b.auto_accepted ?? false,
-    auto_accept_grace_expires_at: b.auto_accept_grace_expires_at ?? null,
     suggested_scheduled_at: b.suggested_scheduled_at ?? null,
   });
 
@@ -1276,7 +1226,7 @@ export default function ScheduleScreen() {
           id, status, service_name, service_duration_blocks, service_price_kobo,
           scheduled_at, suggested_scheduled_at, phone_revealed, user_location_lat, user_location_lng,
           user_location_address, access_building, access_floor, access_flat, access_code,
-          auto_accepted, auto_accept_grace_expires_at,
+          auto_accepted,
           profiles:user_id(full_name, phone_number)
         `)
         .eq('vendor_id', vendorId)
@@ -2121,20 +2071,6 @@ const bs = StyleSheet.create({
   lockedRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
   lockedText: { fontSize: 13, color: Colors.textMuted, fontStyle: 'italic', flex: 1 },
   mutedText: { fontSize: 13, color: Colors.textMuted },
-
-  graceBanner: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: 'transparent', borderRadius: 5, padding: 14,
-    borderWidth: 1, borderColor: Colors.ink, marginBottom: 12,
-  },
-  graceTitle: { fontSize: 12, fontWeight: '700', color: Colors.ink, marginBottom: 2 },
-  graceTimer: { fontSize: 13, color: Colors.inkMuted },
-  graceBtn: {
-    borderWidth: 1.5, borderColor: Colors.ink, borderRadius: 5,
-    paddingHorizontal: 12, minHeight: 40,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  graceBtnText: { fontSize: 13, fontWeight: '700', color: Colors.ink },
 
   errorBox: { backgroundColor: Colors.error + '15', borderRadius: 5, padding: 12, marginBottom: 12 },
   errorText: { fontSize: 13, color: Colors.error, fontWeight: '500' },

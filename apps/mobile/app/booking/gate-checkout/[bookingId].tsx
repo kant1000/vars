@@ -267,6 +267,15 @@ export default function GateCheckoutScreen() {
         <WebView
           source={{ uri: `https://checkout.paystack.com/${accessCode}` }}
           onShouldStartLoadWithRequest={(req) => handleWebViewNav(req.url)}
+          onError={() => {
+            setErrorMsg('Could not load payment page — check your connection and try again.');
+            setPhase('error');
+          }}
+          onHttpError={(syntheticEvent) => {
+            const { statusCode } = syntheticEvent.nativeEvent;
+            setErrorMsg(`Payment page returned an error (${statusCode}). Please try again.`);
+            setPhase('error');
+          }}
           startInLoadingState
           renderLoading={() => (
             <View style={[s.container, s.centered]}>

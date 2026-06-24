@@ -168,7 +168,7 @@ Deno.serve(async (req: Request) => {
         duration_blocks,
         is_active,
         vendor:vendors(
-          id, full_name, email, push_token, is_active, is_suspended, is_online,
+          id, full_name, email, push_token, is_active, is_suspended, is_online, is_restricted,
           auto_accept_enabled, auto_accept_paused_due_to_drift,
           auto_accept_zone_confirmed_date, auto_accept_zone_lat,
           auto_accept_zone_lng, auto_accept_zone_radius_km,

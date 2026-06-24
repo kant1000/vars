@@ -39,7 +39,7 @@ import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient, createAuthClient } from '../_shared/supabase.ts';
 import { PaystackClient, generateReference } from '../_shared/paystack.ts';
 import { advanceGateToOnWay } from '../_shared/gate.ts';
-import { BOOKING_STATUS, GATE_PAYMENT_RETRY_WINDOW_MINUTES } from '../_shared/constants.ts';
+import { BOOKING_STATUS, GATE_PAYMENT_RETRY_WINDOW_MINUTES, PIONEER_BOOKINGS_THRESHOLD } from '../_shared/constants.ts';
 
 Deno.serve(async (req: Request) => {
   const cors = handleCors(req);
@@ -161,7 +161,7 @@ Deno.serve(async (req: Request) => {
 
     const isPioneer =
       vendor?.pioneer === true &&
-      ((vendor?.pioneer_bookings_completed as number) ?? 0) < 3;
+      ((vendor?.pioneer_bookings_completed as number) ?? 0) < PIONEER_BOOKINGS_THRESHOLD;
 
     const subaccountCode = vendor?.paystack_subaccount_code as string | null;
     const subaccountParams = subaccountCode

@@ -103,7 +103,40 @@ Deno.serve(async (req: Request) => {
         })
         .eq('id', booking_id);
 
-      // Full refund to customer
+      // If the gate fired but the customer never completed payment (gate_charged_at=null),
+      // no charge occurred. Cancel cleanly — no refund needed, no vendor debt, no restriction.
+      if (!booking.gate_charged_at) {
+        const userMsg = msg_cancelFree();
+        await sendNotification({
+          recipientId: booking.user_id,
+          recipientType: 'user',
+          type: 'vendor_cancelled_free',
+          title: userMsg.title,
+          body: userMsg.body,
+          bookingId: booking_id,
+          pushToken: userProfile?.push_token ?? null,
+          data: { bookingId: booking_id, screen: '/vendor-feed' },
+        });
+        const vendorMsg = msg_vendor_selfCancelled(clientFirstName, booking.service_name ?? 'service');
+        await sendNotification({
+          recipientId: user.id,
+          recipientType: 'vendor',
+          type: 'vendor_self_cancelled',
+          title: vendorMsg.title,
+          body: vendorMsg.body,
+          bookingId: booking_id,
+          pushToken: vendorProfile?.push_token ?? null,
+          data: { bookingId: booking_id },
+        });
+        console.log(`Booking ${booking_id} cancelled by vendor post-gate-fire but pre-charge — no refund needed`);
+        return jsonResponse({
+          success: true, booking_id, status: 'cancelled',
+          gate_fired: true, vendor_restricted: false, cancellation_count_30d: cancelCount,
+        });
+      }
+
+      // gate_charged_at is set — customer WAS charged. Issue a full refund.
+      let refundIssued = false;
       if (booking.paystack_reference) {
         try {
           const paystack = new PaystackClient(Deno.env.get('PAYSTACK_SECRET_KEY')!);
@@ -111,20 +144,29 @@ Deno.serve(async (req: Request) => {
             transaction: booking.paystack_reference,
             merchant_note: `Booking ${booking_id} cancelled by vendor post-gate — full refund`,
           });
+          refundIssued = true;
           console.log(`Post-gate refund issued: booking=${booking_id} amount=₦${formatNaira(totalKobo)}`);
         } catch (err) {
-          console.error(`Post-gate refund failed for booking ${booking_id}:`, err);
+          // Vendor is still restricted even if the refund fails — ops must issue manually.
+          console.error(
+            `CRITICAL: Post-gate refund FAILED — booking=${booking_id} amount=₦${formatNaira(totalKobo)} — ` +
+            `CUSTOMER NOT REFUNDED — MANUAL ACTION REQUIRED:`,
+            err
+          );
         }
       }
 
-      // Restrict vendor — owes VARS the refunded amount
+      // Restrict vendor — owes VARS the refunded amount (or amount that should have been refunded)
+      const restrictionReason = refundIssued
+        ? `Cancelled booking ${booking_id} after travel began. Customer was refunded ₦${formatNaira(totalKobo)}.`
+        : `Cancelled booking ${booking_id} after travel began. Automatic refund FAILED — ops must issue manually. Amount: ₦${formatNaira(totalKobo)}.`;
       await supabase
         .from('vendors')
         .update({
           is_restricted: true,
           is_online: false,
           restriction_amount_owed_kobo: totalKobo,
-          restriction_reason: `Cancelled booking ${booking_id} after travel began. Customer was refunded ₦${formatNaira(totalKobo)}.`,
+          restriction_reason: restrictionReason,
           restriction_repayment_claimed_at: null,
         })
         .eq('id', user.id);
@@ -133,18 +175,21 @@ Deno.serve(async (req: Request) => {
         await supabase.from('vendors').update({ cancellation_flagged: true }).eq('id', user.id);
       }
 
-      // Notify customer — full refund
-      const userMsg = msg_bookingCancelledFullRefund(serviceDate, serviceTime);
-      await sendNotification({
-        recipientId: booking.user_id,
-        recipientType: 'user',
-        type: 'vendor_cancelled_post_gate',
-        title: userMsg.title,
-        body: userMsg.body,
-        bookingId: booking_id,
-        pushToken: userProfile?.push_token ?? null,
-        data: { bookingId: booking_id, screen: '/vendor-feed' },
-      });
+      // Only tell the customer they were refunded if the refund actually succeeded.
+      // If it failed, ops must contact the customer manually (vendor restriction_reason records this).
+      if (refundIssued) {
+        const userMsg = msg_bookingCancelledFullRefund(serviceDate, serviceTime);
+        await sendNotification({
+          recipientId: booking.user_id,
+          recipientType: 'user',
+          type: 'vendor_cancelled_post_gate',
+          title: userMsg.title,
+          body: userMsg.body,
+          bookingId: booking_id,
+          pushToken: userProfile?.push_token ?? null,
+          data: { bookingId: booking_id, screen: '/vendor-feed' },
+        });
+      }
 
       // Notify vendor — account restricted
       const restrictMsg = msg_vendor_restricted(formatNaira(totalKobo));
@@ -161,7 +206,7 @@ Deno.serve(async (req: Request) => {
 
       console.log(
         `Booking ${booking_id} cancelled by vendor post-gate — ` +
-        `full refund ₦${formatNaira(totalKobo)}, vendor ${user.id} restricted`
+        `refund_issued=${refundIssued} amount=₦${formatNaira(totalKobo)}, vendor ${user.id} restricted`
       );
 
       return jsonResponse({

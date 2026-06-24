@@ -58,7 +58,6 @@ Deno.serve(async (req: Request) => {
       .from('bookings')
       .update({
         status: BOOKING_STATUS.ACCEPTED,
-        payment_captured: true,
         auto_accepted: false,
         accepted_at: new Date().toISOString(),
         scheduled_at: booking.suggested_scheduled_at,

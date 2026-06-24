@@ -19,7 +19,7 @@
 
 import { createAdminClient } from '../_shared/supabase.ts';
 import { BOOKING_STATUS } from '../_shared/constants.ts';
-import { verifyWebhookSignature } from '../_shared/paystack.ts';
+import { PaystackClient, verifyWebhookSignature } from '../_shared/paystack.ts';
 import { advanceGateToOnWay } from '../_shared/gate.ts';
 
 Deno.serve(async (req: Request) => {
@@ -67,7 +67,9 @@ Deno.serve(async (req: Request) => {
     }
   } catch (err) {
     console.error(`Webhook handler error for ${event.event}:`, err);
-    return new Response('Handled with error', { status: 200 });
+    // Return 500 so Paystack retries delivery. advanceGateToOnWay uses
+    // WHERE gate_charged_at IS NULL so retries are safely idempotent.
+    return new Response('Internal error', { status: 500 });
   }
 
   return new Response('OK', { status: 200 });
@@ -118,9 +120,32 @@ async function handleChargeSuccess(
   }
 
   if (booking.status !== BOOKING_STATUS.ACCEPTED) {
+    // If the booking was cancelled (likely by the expiry sweep) while the customer
+    // was completing checkout, the charge landed but the booking is gone.
+    // Issue an emergency refund — the customer paid but receives no service.
+    if (booking.status === BOOKING_STATUS.CANCELLED && !booking.gate_charged_at) {
+      console.error(
+        `charge.success: booking ${booking.id} CANCELLED with gate_charged_at=null — ` +
+        `payment landed after expiry cancellation — issuing emergency refund ref=${reference}`
+      );
+      const paystack = new PaystackClient(Deno.env.get('PAYSTACK_SECRET_KEY')!);
+      try {
+        await paystack.refundTransaction({
+          transaction: reference,
+          merchant_note: `Emergency refund: booking ${booking.id} expired while payment was in flight`,
+        });
+        console.log(`Emergency refund issued: booking=${booking.id} ref=${reference}`);
+      } catch (refundErr) {
+        console.error(
+          `CRITICAL: Emergency refund FAILED — booking=${booking.id} ref=${reference} — ` +
+          `CUSTOMER NOT REFUNDED — MANUAL ACTION REQUIRED:`,
+          refundErr
+        );
+      }
+      return;
+    }
     console.warn(
-      `charge.success: booking ${booking.id} status=${booking.status} expected accepted — ` +
-      `may have been cancelled during payment window`
+      `charge.success: booking ${booking.id} status=${booking.status} — no action`
     );
     return;
   }

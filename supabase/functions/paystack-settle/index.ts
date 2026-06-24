@@ -338,14 +338,19 @@ Deno.serve(async (req: Request) => {
       return errorResponse(`Cannot confirm booking with status: ${booking.status}`);
     }
 
-    await settleBooking(supabase, booking_id, 'user_confirmed');
-
-    // Queue ops alert for subaccount settlement if vendor has no open disputes
+    // Consistent with the cron path: don't settle for restricted vendors.
+    // Settlement resumes automatically on the next cron run after admin lifts the restriction.
     const { data: vendor } = await supabase
       .from('vendors')
-      .select('settlement_on_hold, paystack_subaccount_code')
+      .select('settlement_on_hold, is_restricted, paystack_subaccount_code')
       .eq('id', booking.vendor_id)
       .single();
+
+    if (vendor?.is_restricted) {
+      return errorResponse('Vendor settlement is on hold pending restriction review', 409);
+    }
+
+    await settleBooking(supabase, booking_id, 'user_confirmed');
 
     if (!vendor?.settlement_on_hold && vendor?.paystack_subaccount_code) {
       const { count: openDisputes } = await supabase
