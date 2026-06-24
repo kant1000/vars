@@ -9,11 +9,11 @@ import {
   StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import { Colors } from '@/constants/colors';
+import { Colors, BORDER_RADIUS } from '@/constants/colors';
 import { fmtPrice, fmtDateTime } from '@/lib/format';
 import { BookingStatus, BOOKING_STATUS } from '@vars/shared';
 
@@ -24,6 +24,9 @@ interface BookingSummary {
   service_price_kobo: number;
   scheduled_at: string;
   vendor_name: string;
+  // Gate payment fields — only set for accepted bookings awaiting first-time payment
+  gate_fired: boolean;
+  gate_charged_at: string | null;
 }
 
 const STATUS_LABEL: Record<BookingStatus, { text: string; color: string }> = {
@@ -52,6 +55,9 @@ type ListItem =
 export default function BookingsScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  // Set by gate-checkout when poll times out — keeps us from showing "Complete payment"
+  // to a customer who just paid while we wait for the webhook to flip status to on_way.
+  const { confirming_booking_id } = useLocalSearchParams<{ confirming_booking_id?: string }>();
   const [bookings, setBookings] = useState<BookingSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -60,7 +66,7 @@ export default function BookingsScreen() {
     if (!user) { setLoading(false); return; }
     const { data } = await supabase
       .from('bookings')
-      .select('id, status, service_name, service_price_kobo, scheduled_at, vendors:vendor_id(full_name)')
+      .select('id, status, service_name, service_price_kobo, scheduled_at, gate_fired, gate_charged_at, vendors:vendor_id(full_name)')
       .eq('user_id', user.id)
       .order('scheduled_at', { ascending: false })
       .limit(50);
@@ -72,6 +78,8 @@ export default function BookingsScreen() {
       service_price_kobo: b.service_price_kobo,
       scheduled_at: b.scheduled_at,
       vendor_name: b.vendors?.full_name ?? 'Vendor',
+      gate_fired: b.gate_fired ?? false,
+      gate_charged_at: b.gate_charged_at ?? null,
     })));
     setLoading(false);
     setRefreshing(false);
@@ -158,9 +166,24 @@ export default function BookingsScreen() {
 
           const booking = item as BookingSummary;
           const sl = STATUS_LABEL[booking.status] ?? { text: booking.status, color: Colors.textMuted };
+
+          // Gate has fired but charge hasn't completed yet.
+          const gateAwaitingPayment =
+            booking.status === BOOKING_STATUS.ACCEPTED &&
+            booking.gate_fired &&
+            !booking.gate_charged_at;
+
+          // We just navigated here from a poll-timeout in the confirming phase — the
+          // customer DID attempt payment but the webhook hasn't landed yet. Show
+          // "Confirming" rather than "Complete payment" for this specific booking.
+          const isBeingConfirmed = gateAwaitingPayment && booking.id === confirming_booking_id;
+
+          // The customer genuinely hasn't paid yet for all other gate-awaiting cases.
+          const needsPayment = gateAwaitingPayment && !isBeingConfirmed;
+
           return (
             <TouchableOpacity
-              style={st.card}
+              style={[st.card, gateAwaitingPayment && st.cardPaymentNeeded]}
               onPress={() => router.push({
                 pathname: '/booking/detail/[bookingId]',
                 params: { bookingId: booking.id },
@@ -178,6 +201,25 @@ export default function BookingsScreen() {
                 <Text style={st.dateTime}>{fmtDateTime(booking.scheduled_at)}</Text>
                 <Text style={st.price}>{fmtPrice(booking.service_price_kobo)}</Text>
               </View>
+              {isBeingConfirmed && (
+                <View style={st.confirmingBanner}>
+                  <Text style={st.confirmingBannerText}>Confirming your payment…</Text>
+                </View>
+              )}
+              {needsPayment && (
+                <TouchableOpacity
+                  style={st.paymentNeededBtn}
+                  onPress={() => router.push({
+                    pathname: '/booking/gate-checkout/[bookingId]',
+                    params: { bookingId: booking.id },
+                  })}
+                  activeOpacity={0.88}
+                >
+                  <Text style={st.paymentNeededBtnText}>
+                    Your vendor is on their way — complete payment →
+                  </Text>
+                </TouchableOpacity>
+              )}
             </TouchableOpacity>
           );
         }}
@@ -204,8 +246,24 @@ const st = StyleSheet.create({
   },
   card: {
     marginHorizontal: 16, marginBottom: 10,
-    backgroundColor: Colors.surface, borderRadius: 5,
+    backgroundColor: Colors.surface, borderRadius: BORDER_RADIUS,
     padding: 16, borderWidth: 1, borderColor: Colors.border, gap: 4,
+  },
+  cardPaymentNeeded: {
+    borderColor: Colors.warning, borderWidth: 2,
+  },
+  confirmingBanner: {
+    marginTop: 8, backgroundColor: Colors.warning + '18',
+    borderRadius: BORDER_RADIUS, paddingVertical: 8, paddingHorizontal: 12,
+  },
+  confirmingBannerText: { fontSize: 13, fontWeight: '600', color: Colors.warning },
+  paymentNeededBtn: {
+    marginTop: 8, backgroundColor: Colors.warning,
+    borderRadius: BORDER_RADIUS, paddingVertical: 10, paddingHorizontal: 14,
+    alignItems: 'center',
+  },
+  paymentNeededBtnText: {
+    color: '#FFF', fontSize: 13, fontWeight: '700',
   },
   cardTop: {
     flexDirection: 'row', justifyContent: 'space-between',

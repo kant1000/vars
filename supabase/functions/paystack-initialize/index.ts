@@ -1,15 +1,27 @@
 // ============================================================
 // VARS — paystack-initialize
-// Called when user taps "Book for NGN X,XXX" on the booking schedule screen.
-// Accepts an array of service_ids (multi-service V2).
-// Validates services, calculates total, initializes Paystack transaction.
+// Creates a booking record. No Paystack call happens here.
+// Payment is charged at gate time when the vendor commits to travel.
 // ============================================================
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient, createAuthClient } from '../_shared/supabase.ts';
-import { PaystackClient, generateReference } from '../_shared/paystack.ts';
-import { BOOKING_STATUS, BASE_RADIUS_KM, TRANSPORT_FEE_TIERS, VARS_COMMISSION_PERCENT, PIONEER_BOOKINGS_THRESHOLD } from '../_shared/constants.ts';
+import { BOOKING_STATUS, BASE_RADIUS_KM, TRANSPORT_FEE_TIERS } from '../_shared/constants.ts';
 import { isSlotFree } from '../_shared/slot.ts';
+import { createTransportBuffers, createPreTransportBuffers } from '../_shared/calendar.ts';
+import {
+  sendNotification,
+  sendTransactionalEmail,
+  msg_paymentAuthorized,
+  msg_autoAccepted,
+  msg_vendor_newBooking,
+  msg_vendor_autoAccepted,
+  email_bookingConfirmed_customer,
+  email_bookingConfirmed_vendor,
+  formatDate,
+  formatTime,
+  formatNaira,
+} from '../_shared/notifications.ts';
 
 // ── Haversine distance (km) ─────────────────────────────────
 function haversineKm(
@@ -56,6 +68,59 @@ function buildServiceSummary(names: string[]): string {
   return `${names[0]} + ${names.length - 1} more`;
 }
 
+// ── Auto-accept condition checker ───────────────────────────
+async function checkAutoAccept(
+  supabase: ReturnType<typeof createAdminClient>,
+  vendorId: string,
+  scheduledAt: string,
+  durationBlocks: number,
+  userLat: number,
+  userLng: number
+): Promise<{ shouldAutoAccept: boolean }> {
+  const { data: vendor } = await supabase
+    .from('vendors')
+    .select(`
+      auto_accept_enabled,
+      auto_accept_paused_due_to_drift,
+      auto_accept_zone_confirmed_date,
+      auto_accept_zone_lat,
+      auto_accept_zone_lng,
+      auto_accept_zone_radius_km
+    `)
+    .eq('id', vendorId)
+    .single();
+
+  if (!vendor?.auto_accept_enabled) return { shouldAutoAccept: false };
+  if (vendor.auto_accept_paused_due_to_drift) return { shouldAutoAccept: false };
+
+  const today = new Date().toISOString().slice(0, 10);
+  const bookingDate = new Date(scheduledAt).toISOString().slice(0, 10);
+  const confirmedDate = vendor.auto_accept_zone_confirmed_date;
+  if (confirmedDate !== today && confirmedDate !== bookingDate) return { shouldAutoAccept: false };
+
+  if (
+    vendor.auto_accept_zone_lat == null ||
+    vendor.auto_accept_zone_lng == null ||
+    vendor.auto_accept_zone_radius_km == null
+  ) return { shouldAutoAccept: false };
+
+  const userDistanceKm = haversineKm(
+    userLat, userLng,
+    vendor.auto_accept_zone_lat,
+    vendor.auto_accept_zone_lng
+  );
+  if (userDistanceKm > vendor.auto_accept_zone_radius_km) return { shouldAutoAccept: false };
+
+  const slotStart = new Date(scheduledAt);
+  const slotEnd = new Date(slotStart.getTime() + durationBlocks * 30 * 60 * 1000);
+  if (!await isSlotFree(supabase, vendorId, slotStart, slotEnd, durationBlocks * 30 * 60 * 1000)) {
+    return { shouldAutoAccept: false };
+  }
+
+  console.log(`Auto-accept: all conditions met for vendor ${vendorId}, slot ${scheduledAt}`);
+  return { shouldAutoAccept: true };
+}
+
 Deno.serve(async (req: Request) => {
   const cors = handleCors(req);
   if (cors) return cors;
@@ -89,12 +154,10 @@ Deno.serve(async (req: Request) => {
       return errorResponse('Missing required fields: service_ids[], scheduled_at, user_location_lat, user_location_lng');
     }
 
-    // Deduplicate service IDs
     const uniqueServiceIds: string[] = [...new Set(service_ids as string[])];
-
     const supabase = createAdminClient();
 
-    // 1. Fetch all requested services with vendor details
+    // 1. Fetch services with vendor details
     const { data: services, error: svError } = await supabase
       .from('vendor_services')
       .select(`
@@ -105,7 +168,7 @@ Deno.serve(async (req: Request) => {
         duration_blocks,
         is_active,
         vendor:vendors(
-          id, full_name, email, is_active, is_suspended, is_online,
+          id, full_name, email, push_token, is_active, is_suspended, is_online,
           auto_accept_enabled, auto_accept_paused_due_to_drift,
           auto_accept_zone_confirmed_date, auto_accept_zone_lat,
           auto_accept_zone_lng, auto_accept_zone_radius_km,
@@ -117,18 +180,15 @@ Deno.serve(async (req: Request) => {
     if (svError || !services || services.length === 0) {
       return errorResponse('Services not found');
     }
-
     if (services.length !== uniqueServiceIds.length) {
       return errorResponse('One or more services not found');
     }
 
-    // Validate all services belong to the same vendor
     const vendorIds = [...new Set(services.map((s) => s.vendor_id))];
     if (vendorIds.length !== 1) {
       return errorResponse('All services must belong to the same vendor');
     }
 
-    // Validate all services are active
     const inactiveService = services.find((s) => !s.is_active);
     if (inactiveService) {
       return errorResponse(`Service "${inactiveService.service_name}" is no longer available`);
@@ -138,6 +198,9 @@ Deno.serve(async (req: Request) => {
     if (!vendor) return errorResponse('Vendor not found');
     if (!vendor.is_active) return errorResponse('Vendor is not active');
     if (vendor.is_suspended) return errorResponse('Vendor is suspended');
+    if ((vendor as { is_restricted?: boolean }).is_restricted) {
+      return errorResponse('This vendor is temporarily unavailable');
+    }
 
     // 2. Calculate totals
     const totalServiceKobo = services.reduce((sum, s) => sum + s.price_kobo, 0);
@@ -145,17 +208,14 @@ Deno.serve(async (req: Request) => {
     const serviceNames = services.map((s) => s.service_name);
     const serviceSummary = buildServiceSummary(serviceNames);
 
-    // 3. Fetch user profile for email
+    // 3. Fetch customer profile
     const { data: profile } = await supabase
       .from('profiles')
-      .select('full_name, email, phone_number')
+      .select('full_name, email, push_token')
       .eq('id', user.id)
       .single();
 
-    const userEmail = profile?.email ?? user.email ?? '';
-    if (!userEmail) return errorResponse('User email not found');
-
-    // 4. Check slot availability using total duration
+    // 4. Slot availability check
     const scheduledDate = new Date(scheduled_at);
     const durationMs = totalDurationBlocks * 30 * 60 * 1000;
     const slotEnd = new Date(scheduledDate.getTime() + durationMs);
@@ -170,7 +230,7 @@ Deno.serve(async (req: Request) => {
       return errorResponse('This time slot is no longer available');
     }
 
-    // 5. Calculate transport surcharge
+    // 5. Transport surcharge
     const { transportFeeKobo, distanceKm, preBufferSlots } = calcTransportSurcharge(
       user_location_lat as number,
       user_location_lng as number,
@@ -186,93 +246,172 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // 6. Initialize Paystack transaction
-    const reference = generateReference('VARS_BK');
-    const paystack = new PaystackClient(Deno.env.get('PAYSTACK_SECRET_KEY')!);
+    // 6. Auto-accept check
+    const autoAcceptResult = await checkAutoAccept(
+      supabase,
+      vendorIds[0],
+      scheduled_at,
+      totalDurationBlocks,
+      user_location_lat as number,
+      user_location_lng as number
+    );
 
-    // Compute the correct split for this transaction.
-    // Pioneer vendors get 100% on their first PIONEER_BOOKINGS_THRESHOLD bookings
-    // (platform takes ₦0). We must check this at initialization time because the
-    // split is fixed when the transaction is created — it cannot be changed at settle time.
-    const subaccountCode = vendor.paystack_subaccount_code as string | null;
-    const isPioneerBooking =
-      vendor.pioneer === true &&
-      (vendor.pioneer_bookings_completed as number) < PIONEER_BOOKINGS_THRESHOLD;
+    // 7. Create booking
+    const now = new Date();
+    const scheduledEnd = new Date(scheduledDate.getTime() + durationMs);
+    const autoReleaseAt = new Date(scheduledEnd.getTime() + 2 * 60 * 60 * 1000);
+    const userLocationPoint = `POINT(${user_location_lng} ${user_location_lat})`;
 
-    // transaction_charge: flat kobo amount going to VARS main account.
-    //   Pioneer: 0 → VARS gets ₦0, vendor subaccount gets 100% of the charge.
-    //   Normal:  omit → default percentage_charge (20%) set on subaccount applies.
-    const subaccountParams = subaccountCode
-      ? {
-          subaccount: subaccountCode,
-          bearer: 'account' as const,     // VARS main account bears the Paystack fee
-          ...(isPioneerBooking ? { transaction_charge: 0 } : {}),
-        }
-      : {};
+    const { data: booking, error: bookingError } = await supabase
+      .from('bookings')
+      .insert({
+        user_id: user.id,
+        vendor_id: vendorIds[0],
+        service_summary: serviceSummary,
+        total_amount: totalServiceKobo,
+        service_name: serviceSummary,
+        service_price_kobo: totalServiceKobo,
+        service_duration_blocks: totalDurationBlocks,
+        scheduled_at,
+        user_location: userLocationPoint,
+        user_location_address: user_location_address ?? null,
+        user_location_lat: user_location_lat,
+        user_location_lng: user_location_lng,
+        access_building: access_building ?? null,
+        access_floor: access_floor ?? null,
+        access_flat: access_flat ?? null,
+        access_code: access_code ?? null,
+        transport_fee_kobo: transportFeeKobo,
+        distance_km: distanceKm,
+        pre_transport_buffer_slots: preBufferSlots,
+        status: autoAcceptResult.shouldAutoAccept ? BOOKING_STATUS.ACCEPTED : BOOKING_STATUS.PENDING,
+        auto_release_at: autoReleaseAt.toISOString(),
+        auto_accepted: autoAcceptResult.shouldAutoAccept,
+        accepted_at: autoAcceptResult.shouldAutoAccept ? now.toISOString() : null,
+      })
+      .select('id, vendor_id, user_id')
+      .single();
 
-    if (subaccountCode) {
-      console.log(
-        `Transaction split: vendor=${vendorIds[0]} subaccount=${subaccountCode} ` +
-        `pioneer=${isPioneerBooking} ` +
-        `split=${isPioneerBooking ? '100%→subaccount (Pioneer)' : `${100 - VARS_COMMISSION_PERCENT}%→subaccount`}`
-      );
-    } else {
-      console.warn(`Vendor ${vendorIds[0]} has no paystack_subaccount_code — no split applied`);
+    if (bookingError || !booking) {
+      console.error('Failed to create booking:', bookingError);
+      return errorResponse('Booking creation failed', 500);
     }
 
-    const transaction = await paystack.initializeTransaction({
-      email: userEmail,
-      amount: totalKobo,
-      reference,
-      callback_url: 'vars://payment/callback',
-      metadata: {
-        vars_booking: {
-          user_id: user.id,
-          vendor_id: vendorIds[0],
-          service_ids: uniqueServiceIds,
-          service_summary: serviceSummary,
-          total_service_kobo: totalServiceKobo,
-          total_duration_blocks: totalDurationBlocks,
-          scheduled_at,
-          user_location_lat,
-          user_location_lng,
-          user_location_address: user_location_address ?? null,
-          access_building: access_building ?? null,
-          access_floor: access_floor ?? null,
-          access_flat: access_flat ?? null,
-          access_code: access_code ?? null,
-          transport_fee_kobo: transportFeeKobo,
-          distance_km: distanceKm,
-          pre_transport_buffer_slots: preBufferSlots,
-          is_pioneer_booking: isPioneerBooking,
-        },
-        cancel_action: 'close',
-      },
-      ...subaccountParams,
-    });
+    // 8. Create booking_services rows
+    const bookingServiceRows = services.map((sv) => ({
+      booking_id: booking.id,
+      vendor_service_id: sv.id,
+      service_name: sv.service_name,
+      price_kobo: sv.price_kobo,
+    }));
+    const { error: bsError } = await supabase.from('booking_services').insert(bookingServiceRows);
+    if (bsError) {
+      console.error('Failed to create booking_services (non-fatal):', bsError);
+    }
 
-    // 7. Check auto-accept likelihood for UX hint
-    const today = new Date().toISOString().slice(0, 10);
-    const bookingDateUTC = scheduledDate.toISOString().slice(0, 10);
-    const confirmedDate = vendor.auto_accept_zone_confirmed_date;
-    const zoneConfirmedToday = confirmedDate === today || confirmedDate === bookingDateUTC;
-    const vendorSettingsOk =
-      vendor.auto_accept_enabled &&
-      !vendor.auto_accept_paused_due_to_drift &&
-      zoneConfirmedToday;
+    console.log(`Booking created: ${booking.id} (auto_accept=${autoAcceptResult.shouldAutoAccept})`);
 
-    // Auto-accept is likely when vendor settings are valid and the slot is free.
-    // No per-slot auto_accept calendar rows exist; day-level zone confirmation is sufficient.
-    let autoAcceptLikely = false;
-    if (vendorSettingsOk) {
-      autoAcceptLikely = await isSlotFree(supabase, vendorIds[0], scheduledDate, slotEnd, durationMs);
+    // 9. Transport buffers if auto-accepted
+    if (autoAcceptResult.shouldAutoAccept) {
+      await createTransportBuffers(supabase, vendorIds[0], booking.id, scheduled_at, totalDurationBlocks);
+      if (preBufferSlots > 0) {
+        await createPreTransportBuffers(supabase, vendorIds[0], booking.id, scheduled_at, preBufferSlots);
+      }
+    }
+
+    // 10. Notifications
+    const vendorName = (vendor.full_name as string) ?? 'Your vendor';
+    const clientFirstName = (profile?.full_name ?? 'Client').split(' ')[0];
+
+    if (autoAcceptResult.shouldAutoAccept) {
+      if (profile?.push_token) {
+        const msg = msg_autoAccepted(vendorName, formatDate(scheduled_at), formatTime(scheduled_at));
+        await sendNotification({
+          recipientId: user.id,
+          recipientType: 'user',
+          type: 'booking_auto_accepted',
+          title: msg.title,
+          body: msg.body,
+          bookingId: booking.id,
+          pushToken: profile.push_token,
+          data: { bookingId: booking.id, autoAccepted: true },
+        });
+      }
+      const vendorPushToken = vendor.push_token as string | null;
+      if (vendorPushToken) {
+        const msg = msg_vendor_autoAccepted(clientFirstName, serviceSummary, formatDate(scheduled_at), formatTime(scheduled_at));
+        await sendNotification({
+          recipientId: vendorIds[0],
+          recipientType: 'vendor',
+          type: 'booking_auto_accepted',
+          title: msg.title,
+          body: msg.body,
+          bookingId: booking.id,
+          pushToken: vendorPushToken,
+          data: { bookingId: booking.id, autoAccepted: true },
+        });
+      }
+
+      try {
+        const isPioneer = vendor.pioneer === true && (vendor.pioneer_bookings_completed as number) < 3;
+        const vendorAmountKobo = isPioneer ? totalKobo : Math.round(totalKobo * 0.8);
+        if (profile?.email) {
+          const { subject, body: emailBody } = email_bookingConfirmed_customer({
+            customerFirstName: clientFirstName,
+            vendorName,
+            service: serviceSummary,
+            date: formatDate(scheduled_at),
+            time: formatTime(scheduled_at),
+            amount: `₦${formatNaira(totalKobo)}`,
+          });
+          await sendTransactionalEmail(profile.email, subject, emailBody);
+        }
+        if (vendor.email) {
+          const { subject, body: emailBody } = email_bookingConfirmed_vendor({
+            vendorName,
+            customerFirstName: clientFirstName,
+            service: serviceSummary,
+            date: formatDate(scheduled_at),
+            time: formatTime(scheduled_at),
+            amount: `₦${formatNaira(vendorAmountKobo)}`,
+          });
+          await sendTransactionalEmail(vendor.email as string, subject, emailBody);
+        }
+      } catch (err) {
+        console.error('Booking-confirmed email failed (non-fatal):', err);
+      }
+    } else {
+      if (profile?.push_token) {
+        const msg = msg_paymentAuthorized(vendorName);
+        await sendNotification({
+          recipientId: user.id,
+          recipientType: 'user',
+          type: 'booking_requested',
+          title: msg.title,
+          body: msg.body,
+          bookingId: booking.id,
+          pushToken: profile.push_token,
+          data: { bookingId: booking.id },
+        });
+      }
+      const vendorPushToken = vendor.push_token as string | null;
+      const isPioneer = vendor.pioneer === true && (vendor.pioneer_bookings_completed as number) < 3;
+      const vendorAmountKobo = isPioneer ? totalKobo : Math.round(totalKobo * 0.8);
+      await sendNotification({
+        recipientId: vendorIds[0],
+        recipientType: 'vendor',
+        type: 'new_booking_request',
+        title: msg_vendor_newBooking(clientFirstName, serviceSummary, formatDate(scheduled_at), formatTime(scheduled_at), formatNaira(vendorAmountKobo)).title,
+        body: msg_vendor_newBooking(clientFirstName, serviceSummary, formatDate(scheduled_at), formatTime(scheduled_at), formatNaira(vendorAmountKobo)).body,
+        bookingId: booking.id,
+        pushToken: vendorPushToken,
+        data: { bookingId: booking.id },
+      });
     }
 
     return jsonResponse({
-      access_code: transaction.access_code,
-      reference: transaction.reference,
-      amount_kobo: totalKobo,
-      auto_accept_likely: autoAcceptLikely,
+      booking_id: booking.id,
+      auto_accepted: autoAcceptResult.shouldAutoAccept,
       booking_preview: {
         vendor_name: vendor.full_name,
         service_summary: serviceSummary,

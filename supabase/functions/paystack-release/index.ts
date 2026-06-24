@@ -1,11 +1,14 @@
 // ============================================================
 // VARS — paystack-release
-// Called when vendor declines a booking OR when the 2-hour
+// Called when vendor declines a booking OR when the 1-hour
 // response window expires (via cron job).
-// Per spec §8: "Vendor decline/timeout → Paystack releases authorization
-// silently. No money ever moved. No refund required."
-// In practice with Paystack escrow: funds are refunded to user.
-// Also handles the cron expiry case for all timed-out pending bookings.
+//
+// In the gate model, no money is charged until the vendor taps
+// "On My Way". Pending/accepted bookings that expire or are
+// declined require NO Paystack call — nothing to refund.
+//
+// Also handles the admin path: dispute resolved in user's favour,
+// which DOES issue a full refund (money moved at gate).
 // ============================================================
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
@@ -16,6 +19,8 @@ import {
   sendNotification,
   msg_vendorDeclines,
   msg_vendor_bookingExpired,
+  msg_vendor_gatePaymentExpired,
+  msg_gatePaymentExpired,
   msg_disputeResolved_userRefunded,
   formatNaira,
 } from '../_shared/notifications.ts';
@@ -27,10 +32,8 @@ Deno.serve(async (req: Request) => {
   try {
     const supabase = createAdminClient();
 
-    // Check if this is a cron/system call (no auth header) or vendor decline (with auth)
     const authHeader = req.headers.get('Authorization');
     const isCronCall = req.headers.get('x-vars-cron-secret') === Deno.env.get('CRON_SECRET');
-    // Admin dashboard uses service role key for dispute refund resolution
     const isAdminCall = authHeader === `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`;
 
     if (!authHeader && !isCronCall) {
@@ -39,30 +42,34 @@ Deno.serve(async (req: Request) => {
 
     // --------------------------------------------------------
     // ADMIN MODE: dispute resolved in user's favour — refund customer
+    // This booking has been charged (gate fired before dispute), so
+    // a real Paystack refund is required.
     // --------------------------------------------------------
     if (isAdminCall) {
       const { booking_id } = await req.json();
       if (!booking_id) return errorResponse('Missing booking_id');
+
       const { data: booking } = await supabase
         .from('bookings')
         .select('id, user_id, vendor_id, paystack_reference, service_price_kobo, transport_fee_kobo')
         .eq('id', booking_id)
         .single();
+
       if (!booking) return errorResponse('Booking not found', 404);
 
-      // Mark as completed (dispute closed)
       await supabase
         .from('bookings')
-        .update({ status: BOOKING_STATUS.COMPLETED, cancelled_by: 'admin', cancellation_reason: 'Dispute resolved — user refunded' })
+        .update({
+          status: BOOKING_STATUS.COMPLETED,
+          cancelled_by: 'admin',
+          cancellation_reason: 'Dispute resolved — user refunded',
+        })
         .eq('id', booking_id);
 
-      // Issue full refund via Paystack.
-      // IMPORTANT — subaccount clawback: if this booking has already been settled
-      // (vendor's share moved from subaccount to their bank), Paystack will only
-      // refund the portion in the VARS main account (VARS's ~20%). Recovering the
-      // vendor's 80% requires a manual bank-to-bank request to the vendor and is
-      // out of scope for automated code. Ops must check payout_history.status before
-      // issuing a refund on a settled booking.
+      // Full refund from VARS main account.
+      // NOTE: if booking is already settled (vendor's subaccount share moved to their
+      // bank), Paystack only refunds the VARS portion. Recovering the vendor's share
+      // requires manual reconciliation. Ops must check payout_history before issuing.
       if (booking.paystack_reference) {
         try {
           const paystack = new PaystackClient(Deno.env.get('PAYSTACK_SECRET_KEY')!);
@@ -75,15 +82,18 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      // Notify user with dispute-specific message (not the generic vendor-decline copy)
       const { data: profile } = await supabase
         .from('profiles').select('push_token').eq('id', booking.user_id).single();
-      const totalKobo = booking.service_price_kobo + ((booking as any).transport_fee_kobo ?? 0);
+      const totalKobo = (booking.service_price_kobo ?? 0) + ((booking as unknown as Record<string, number>).transport_fee_kobo ?? 0);
       const msg = msg_disputeResolved_userRefunded(formatNaira(totalKobo));
       await sendNotification({
-        recipientId: booking.user_id, recipientType: 'user',
-        type: 'dispute_resolved_user', title: msg.title, body: msg.body,
-        bookingId: booking_id, pushToken: profile?.push_token ?? null,
+        recipientId: booking.user_id,
+        recipientType: 'user',
+        type: 'dispute_resolved_user',
+        title: msg.title,
+        body: msg.body,
+        bookingId: booking_id,
+        pushToken: profile?.push_token ?? null,
         data: { bookingId: booking_id },
       });
 
@@ -92,32 +102,52 @@ Deno.serve(async (req: Request) => {
     }
 
     // --------------------------------------------------------
-    // CRON MODE: expire all pending bookings past 1-hour window
+    // CRON MODE: two sweeps —
+    //   (1) pending bookings past the 1-hour vendor-response window (pre-gate, no refund)
+    //   (2) gate-fired accepted bookings where the customer's payment window has expired
+    //       (gate fired but charge never succeeded — no Paystack call needed)
     // --------------------------------------------------------
     if (isCronCall) {
+      const now = new Date().toISOString();
       const oneHourAgo = new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString();
 
-      const { data: expiredBookings } = await supabase
+      // ── Sweep 1: pending timeout (vendor didn't respond) ────
+      const { data: expiredPending } = await supabase
         .from('bookings')
-        .select('id, user_id, vendor_id, paystack_reference, service_price_kobo')
+        .select('id, user_id, vendor_id')
         .eq('status', BOOKING_STATUS.PENDING)
         .lt('created_at', oneHourAgo);
 
-      if (!expiredBookings || expiredBookings.length === 0) {
-        return jsonResponse({ expired: 0 });
-      }
-
       let expiredCount = 0;
-      for (const booking of expiredBookings) {
+      for (const booking of expiredPending ?? []) {
         await expireBooking(supabase, booking, 'timeout');
         expiredCount++;
       }
 
-      return jsonResponse({ expired: expiredCount });
+      // ── Sweep 2: gate-fired bookings where payment window expired ──
+      // gate_fired=true means the vendor committed to travel, but the customer
+      // never completed the checkout. gate_charged_at=null confirms no charge.
+      // gate_retry_expires_at < now means the window has closed.
+      const { data: expiredGate } = await supabase
+        .from('bookings')
+        .select('id, user_id, vendor_id')
+        .eq('status', BOOKING_STATUS.ACCEPTED)
+        .eq('gate_fired', true)
+        .is('gate_charged_at', null)
+        .lt('gate_retry_expires_at', now);
+
+      let gateExpiredCount = 0;
+      for (const booking of expiredGate ?? []) {
+        await expireGateBooking(supabase, booking);
+        gateExpiredCount++;
+      }
+
+      return jsonResponse({ expired: expiredCount, gate_expired: gateExpiredCount });
     }
 
     // --------------------------------------------------------
     // VENDOR DECLINE MODE: vendor taps "Decline"
+    // No Paystack call — gate has never fired on pending bookings.
     // --------------------------------------------------------
     const authClient = createAuthClient(authHeader!);
     const { data: { user }, error: authError } = await authClient.auth.getUser();
@@ -128,7 +158,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
-      .select('id, status, vendor_id, user_id, paystack_reference, service_price_kobo')
+      .select('id, status, vendor_id, user_id')
       .eq('id', booking_id)
       .eq('vendor_id', user.id)
       .single();
@@ -139,7 +169,6 @@ Deno.serve(async (req: Request) => {
     }
 
     await expireBooking(supabase, booking, 'decline');
-
     return jsonResponse({ success: true, booking_id, status: 'expired' });
   } catch (err) {
     console.error('paystack-release error:', err);
@@ -148,20 +177,66 @@ Deno.serve(async (req: Request) => {
 });
 
 // ============================================================
-// SHARED: expire/release a single booking
+// Gate-payment expiry: cancel an accepted gate-fired booking where
+// the customer's payment window has passed without a completed charge.
+// No Paystack refund — no money was ever moved.
+// ============================================================
+async function expireGateBooking(
+  supabase: ReturnType<typeof createAdminClient>,
+  booking: { id: string; user_id: string; vendor_id: string }
+) {
+  await supabase
+    .from('bookings')
+    .update({
+      status: BOOKING_STATUS.CANCELLED,
+      cancelled_by: 'system',
+      cancellation_reason: 'Gate payment window expired — charge never completed',
+    })
+    .eq('id', booking.id);
+
+  const [{ data: profile }, { data: vendor }] = await Promise.all([
+    supabase.from('profiles').select('push_token, full_name').eq('id', booking.user_id).single(),
+    supabase.from('vendors').select('push_token').eq('id', booking.vendor_id).single(),
+  ]);
+
+  // Customer notification
+  const userMsg = msg_gatePaymentExpired();
+  await sendNotification({
+    recipientId: booking.user_id,
+    recipientType: 'user',
+    type: 'gate_payment_expired',
+    title: userMsg.title,
+    body: userMsg.body,
+    bookingId: booking.id,
+    pushToken: profile?.push_token ?? null,
+    data: { bookingId: booking.id },
+  });
+
+  // Vendor notification
+  const clientFirstName = (profile?.full_name ?? 'Your client').split(' ')[0];
+  const vendorMsg = msg_vendor_gatePaymentExpired(clientFirstName);
+  await sendNotification({
+    recipientId: booking.vendor_id,
+    recipientType: 'vendor',
+    type: 'vendor_gate_payment_expired',
+    title: vendorMsg.title,
+    body: vendorMsg.body,
+    bookingId: booking.id,
+    pushToken: vendor?.push_token ?? null,
+    data: { bookingId: booking.id },
+  });
+
+  console.log(`Gate-expiry: booking ${booking.id} cancelled (customer payment window closed)`);
+}
+
+// ============================================================
+// SHARED: expire a single pending booking (pre-gate, no refund)
 // ============================================================
 async function expireBooking(
   supabase: ReturnType<typeof createAdminClient>,
-  booking: {
-    id: string;
-    user_id: string;
-    vendor_id: string;
-    paystack_reference: string | null;
-    service_price_kobo: number;
-  },
+  booking: { id: string; user_id: string; vendor_id: string },
   reason: 'decline' | 'timeout'
 ) {
-  // 1. Mark booking as expired
   await supabase
     .from('bookings')
     .update({
@@ -171,33 +246,11 @@ async function expireBooking(
     })
     .eq('id', booking.id);
 
-  // 2. Refund user via Paystack (full refund — vendor never accepted or timed out).
-  // In the subaccount model: if the vendor had NOT yet been settled (their share is
-  // still in the subaccount balance), Paystack should include it in the refund.
-  // If the vendor WAS already settled (rare for decline/timeout since those happen
-  // before service), recovering their share requires manual reconciliation — see
-  // payout_history.status before issuing this refund in production.
-  if (booking.paystack_reference) {
-    try {
-      const paystack = new PaystackClient(Deno.env.get('PAYSTACK_SECRET_KEY')!);
-      await paystack.refundTransaction({
-        transaction: booking.paystack_reference,
-        merchant_note: `Booking ${booking.id} ${reason} — full refund`,
-      });
-      console.log(`Refund issued for booking ${booking.id} (${reason})`);
-    } catch (err) {
-      console.error(`Refund failed for booking ${booking.id}:`, err);
-      // Don't throw — booking is already marked expired, refund can be retried manually
-    }
-  }
-
-  // 3. Fetch push tokens for notifications
   const [{ data: profile }, { data: vendor }] = await Promise.all([
     supabase.from('profiles').select('push_token').eq('id', booking.user_id).single(),
     supabase.from('vendors').select('full_name, push_token').eq('id', booking.vendor_id).single(),
   ]);
 
-  // 4. Notify user: "Let's find you another one"
   const userMsg = msg_vendorDeclines(vendor?.full_name ?? 'Your vendor');
   await sendNotification({
     recipientId: booking.user_id,
@@ -210,7 +263,6 @@ async function expireBooking(
     data: { bookingId: booking.id },
   });
 
-  // 5. Notify vendor: booking expired (only for timeout, not manual decline)
   if (reason === 'timeout' && vendor) {
     const vendorMsg = msg_vendor_bookingExpired();
     await sendNotification({

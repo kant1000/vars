@@ -5,23 +5,21 @@
 // Step 2a: Review + access details
 // Step 2b: Location confirmation + pay
 // ============================================================
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Dimensions, Modal,
+  Dimensions,
   ScrollView, StyleSheet, Text, TouchableOpacity,
   View, TextInput, Platform,
 } from 'react-native';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router, useLocalSearchParams } from 'expo-router';
-import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
 import { fmtPrice, fmtDuration, fmtTime, fmtDate } from '@/lib/format';
-import { LightningIcon, CheckIcon, CloseIcon, PinIcon } from '@/components/icons';
-import { ConfirmModal } from '@/components/ConfirmModal';
+import { LightningIcon, CheckIcon, PinIcon } from '@/components/icons';
 import { Calendar, toDateId, fromDateId } from '@marceloterreiro/flash-calendar';
 import { BottomSheetModal, BottomSheetFlatList } from '@gorhom/bottom-sheet';
 import { BOOKING_STATUS, TRANSPORT_FEE_TIERS, BASE_RADIUS_KM } from '@vars/shared';
@@ -558,8 +556,8 @@ function Step2Location({
           <View style={[s.infoBox, isAutoAccept && s.infoBoxAutoAccept]}>
             <Text style={[s.infoText, isAutoAccept && s.infoTextAutoAccept]}>
               {isAutoAccept
-                ? '⚡ Instant confirm — your booking is confirmed immediately after payment.'
-                : 'Payment is held securely by VARS until your service is complete. Your vendor has 1 hour to accept.'}
+                ? '⚡ Instant confirm — your booking is confirmed right away.'
+                : 'Your payment will be taken when your vendor sets off to you, not before.'}
             </Text>
           </View>
         </View>
@@ -574,7 +572,7 @@ function Step2Location({
         >
           {paying
             ? <ScissorsLoader size="small" color="light" />
-            : <Text style={s.payBtnText}>Pay {fmtPrice(totalKobo)} securely</Text>
+            : <Text style={s.payBtnText}>Confirm booking — {fmtPrice(totalKobo)}</Text>
           }
         </TouchableOpacity>
       </View>
@@ -658,10 +656,7 @@ export default function BookingFlow() {
   const [locAddress, setLocAddress] = useState('');
 
   const [paying, setPaying] = useState(false);
-  const [paystackUrl, setPaystackUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [showCancellationNotice, setShowCancellationNotice] = useState(false);
-  const [hasAcknowledgedCancellation, setHasAcknowledgedCancellation] = useState(false);
 
   useEffect(() => {
     if (!vendorId) return;
@@ -730,11 +725,6 @@ export default function BookingFlow() {
     }
   };
 
-  const handlePayGate = () => {
-    if (hasAcknowledgedCancellation) { handlePay(); return; }
-    setShowCancellationNotice(true);
-  };
-
   const handlePay = async () => {
     if (!slot || !coords) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -769,52 +759,17 @@ export default function BookingFlow() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Payment initialisation failed');
+      if (!res.ok) throw new Error(data.error ?? 'Booking failed');
 
-      paystackRefRef.current = data.reference ?? null;
-      setPaystackUrl(`https://checkout.paystack.com/${data.access_code}`);
+      posthog?.capture(EVENTS.PAYMENT_COMPLETED, {
+        vendor_id: vendorId,
+        booking_id: data.booking_id,
+      });
+      router.replace('/(tabs)/bookings');
     } catch (err: any) {
       setError(err.message);
-    } finally {
       setPaying(false);
     }
-  };
-
-  const paystackRefRef = useRef<string | null>(null);
-
-  const handleWebViewNav = (url: string) => {
-    if (url.startsWith('https://checkout.paystack.com/')) return true;
-    if (url.includes('cancel') || url.includes('declined') || url.includes('close')) {
-      setPaystackUrl(null);
-      setError('Payment was cancelled.');
-      return false;
-    }
-    setPaystackUrl(null);
-    pollForBooking(paystackRefRef.current);
-    return false;
-  };
-
-  const pollForBooking = async (reference: string | null) => {
-    if (!reference) { router.replace('/(tabs)/bookings'); return; }
-    const MAX_ATTEMPTS = 10;
-    const INTERVAL_MS  = 1500;
-    for (let i = 0; i < MAX_ATTEMPTS; i++) {
-      const { data } = await supabase
-        .from('bookings')
-        .select('id')
-        .eq('paystack_reference', reference)
-        .maybeSingle();
-      if (data?.id) {
-        posthog?.capture(EVENTS.PAYMENT_COMPLETED, {
-          vendor_id: vendorId,
-          booking_id: data.id,
-        });
-        router.replace('/(tabs)/bookings');
-        return;
-      }
-      await new Promise((res) => setTimeout(res, INTERVAL_MS));
-    }
-    router.replace('/(tabs)/bookings');
   };
 
   if (loadingServices) {
@@ -875,48 +830,11 @@ export default function BookingFlow() {
           locAddress={locAddress}
           access={access}
           vendorZone={vendorZone}
-          onPay={handlePayGate}
+          onPay={handlePay}
           paying={paying}
         />
       )}
 
-      <ConfirmModal
-        visible={showCancellationNotice}
-        title="One thing before you pay"
-        body={
-          `If you cancel, a fee may apply. Cancel sooner and you get more back.\n\nYour payment is held securely until your service is complete.`
-        }
-        confirmLabel={`Pay ${fmtPrice(totalServiceKobo + (coords && vendorZone ? calcPreviewSurcharge(coords.lat, coords.lng, vendorZone.lat, vendorZone.lng) : 0))} — let's go`}
-        dismissLabel="Go back"
-        onConfirm={() => {
-          setShowCancellationNotice(false);
-          setHasAcknowledgedCancellation(true);
-          handlePay();
-        }}
-        onDismiss={() => setShowCancellationNotice(false)}
-      />
-
-      <Modal visible={!!paystackUrl} animationType="slide">
-        <View style={{ flex: 1, paddingTop: insets.top }}>
-          <View style={s.webviewHeader}>
-            <TouchableOpacity onPress={() => setPaystackUrl(null)} style={s.webviewClose}>
-              <CloseIcon size={18} color={Colors.text} />
-            </TouchableOpacity>
-            <Text style={s.webviewTitle}>Secure payment</Text>
-            <View style={{ width: 36 }} />
-          </View>
-          {paystackUrl && (
-            <WebView
-              source={{ uri: paystackUrl }}
-              onShouldStartLoadWithRequest={(req) => handleWebViewNav(req.url)}
-              startInLoadingState
-              renderLoading={() => (
-                <View style={s.centered}><ScissorsLoader size="large" color="dark" /></View>
-              )}
-            />
-          )}
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -1045,12 +963,4 @@ const s = StyleSheet.create({
   payBtnDisabled: { backgroundColor: Colors.textMuted },
   payBtnText: { color: '#FFF', fontSize: 17, fontWeight: '800' },
 
-  // Paystack WebView
-  webviewHeader: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  webviewClose: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  webviewTitle: { fontSize: 16, fontWeight: '700', color: Colors.text },
 });

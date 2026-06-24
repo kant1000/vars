@@ -153,24 +153,10 @@ export function msg_paymentReleased(vendorName: string) {
   };
 }
 
-export function msg_cancelTier1(amount: string) {
+export function msg_cancelFree() {
   return {
     title: 'Booking cancelled',
-    body: `Booking cancelled. A small fee covers the time your stylist set aside for you. ₦${amount} is on its way back to you.`,
-  };
-}
-
-export function msg_cancelTier2(amount: string) {
-  return {
-    title: 'Booking cancelled',
-    body: `Booking cancelled. A 50% fee applies at this stage — it covers the time your stylist had reserved. ₦${amount} will be returned to you.`,
-  };
-}
-
-export function msg_cancelNonRefundable() {
-  return {
-    title: 'Booking cancelled',
-    body: `This booking is non-refundable. Your stylist had this time set aside for you. If something urgent came up, we understand — we hope to see you back soon.`,
+    body: `Your booking has been cancelled. No charge was made — you're all set.`,
   };
 }
 
@@ -230,10 +216,85 @@ export function msg_vendor_paymentReleased(amount: string) {
   };
 }
 
-export function msg_vendor_userCancelledWithFee(clientFirstName: string, amount: string) {
+export function msg_vendor_customerCancelledFree(clientFirstName: string) {
   return {
     title: 'Booking cancelled',
-    body: `${clientFirstName} cancelled. Your ₦${amount} share is on its way.`,
+    body: `${clientFirstName} cancelled before travel began. No charge was applied.`,
+  };
+}
+
+// ── Gate payment messages ─────────────────────────────────────
+
+/** Customer push when they need to complete a first-time checkout at gate time. */
+export function msg_gatePaymentNeeded(vendorName: string) {
+  return {
+    title: 'Complete your payment',
+    body: `${vendorName} is heading your way — tap to confirm your payment and secure the booking.`,
+  };
+}
+
+/** Customer push when charge-authorization failed; they need to try a new card. */
+export function msg_gatePaymentFailed() {
+  return {
+    title: 'Payment needs attention',
+    body: `Your payment didn't go through. Open the app to try a different card — your booking is held for a few minutes.`,
+  };
+}
+
+/** Customer push when the retry window expired and the booking was cancelled. */
+export function msg_gatePaymentExpired() {
+  return {
+    title: 'Booking cancelled',
+    body: `The payment window closed before the charge completed. No money was taken. Let's find you another vendor.`,
+  };
+}
+
+/** Vendor push when they tapped On My Way but the customer needs to complete payment first. */
+export function msg_vendor_gatePaymentPending() {
+  return {
+    title: 'Payment confirming',
+    body: `Your customer is completing payment now. We'll notify you the moment it's confirmed.`,
+  };
+}
+
+/** Vendor push when charge succeeded and they're officially on their way. */
+export function msg_vendor_gateCharged() {
+  return {
+    title: 'Payment confirmed — you\'re on your way',
+    body: `Payment secured. Your customer is expecting you.`,
+  };
+}
+
+/** Vendor push when a gate-fired booking is cancelled because the customer's
+ *  payment window expired before they completed checkout. */
+export function msg_vendor_gatePaymentExpired(clientFirstName: string) {
+  return {
+    title: 'Payment window closed',
+    body: `${clientFirstName}'s payment window closed — that slot is yours again.`,
+  };
+}
+
+/** Vendor push when they are restricted after a post-gate cancellation. */
+export function msg_vendor_restricted(amountFormatted: string) {
+  return {
+    title: 'Account restricted',
+    body: `You cancelled after travel began and the customer was refunded. ₦${amountFormatted} is owed to VARS. Open the app for repayment details.`,
+  };
+}
+
+/** Vendor push when their restriction is lifted by admin. */
+export function msg_vendor_restrictionLifted() {
+  return {
+    title: 'Account restored',
+    body: `Your repayment has been confirmed. Your account is active again — you're good to go.`,
+  };
+}
+
+/** Vendor nudge pushed when the 2-hour gate window opens for an accepted booking. */
+export function msg_vendor_onWayNudge(clientFirstName: string) {
+  return {
+    title: 'Time to head out',
+    body: `Tap On My Way to secure your payment for ${clientFirstName}'s booking. The window is open for 2 hours.`,
   };
 }
 
@@ -276,7 +337,7 @@ export function msg_bookingCancelledByVendor(date: string, time: string) {
 export function msg_vendor_autoAccepted(clientFirstName: string, service: string, date: string, time: string) {
   return {
     title: 'Auto-accepted booking',
-    body: `Auto-accepted: ${service} for ${clientFirstName} on ${date} at ${time}. Cancel penalty-free in the next 5 minutes.`,
+    body: `Auto-accepted: ${service} for ${clientFirstName} on ${date} at ${time}.`,
   };
 }
 
@@ -509,7 +570,7 @@ ${params.service}
 ${params.date} at ${params.time}
 ${params.amount}
 
-Your payment is held securely by VARS until your session is complete. You'll get ${params.vendorName}'s number 15 minutes before they arrive.
+Your payment will be taken when your vendor sets off to you, not before. You'll get ${params.vendorName}'s number 15 minutes before they arrive.
 
 VARS`,
   };

@@ -45,6 +45,34 @@ Split model: vendor's share (80% normal, 100% Pioneer) splits at charge time int
 - Docs updated. Done.
 - **Remaining:** Run full test against Paystack sandbox. Swap `PAYSTACK_SECRET_KEY` to live key once Paystack account activation resolves.
 
+## Phase 2d: Gate-at-Departure Payment Model
+
+**Status: Complete (June 2026). Pending: sandbox testing + live key swap.**
+
+No Paystack charge at booking creation. The charge fires when the vendor commits to travel via "On My Way" (manual) or proximity trigger (automatic). Binary cancellation model: pre-gate cancel is free (no money was ever moved); post-gate cancel locks the customer out and triggers full refund + vendor restriction.
+
+**Important — GATE_PAYMENT_RETRY_WINDOW_MINUTES is a PENDING FOUNDER DECISION.** The constant is currently a placeholder value. It drives a visible countdown shown to customers in the gate-checkout screen. No real number has been chosen. Do not document or assume a specific value until the founder confirms.
+
+`GATE_PROXIMITY_KM = 3` — also a placeholder. Needs product sign-off.
+
+- Migration `20260624000002_gate_payment_model.sql`: adds gate fields to bookings (`gate_fired`, `gate_trigger_type`, `gate_triggered_at`, `gate_charged_at`, `gate_retry_expires_at`); adds `paystack_authorization_code` to profiles; adds restriction fields to vendors (`is_restricted`, `restriction_amount_owed_kobo`, `restriction_reason`, `restriction_repayment_claimed_at`); drops legacy pre-charge fields (`payment_captured`, `paystack_access_code`, tiered-fee columns, `auto_accept_grace_expires_at`). Done.
+- `paystack-gate`: new edge function. Manual/proximity trigger, atomic gate claim (`UPDATE WHERE gate_fired=FALSE RETURNING id`). Returning customers → `chargeAuthorization`; first-time → `initializeTransaction` + push. `openRetryWindow` handles failed charges. Done. **Do not modify.**
+- `paystack-gate-checkout`: new endpoint. Customer calls for a fresh `access_code` when opening app after gate push. Returns 409 if already charged, 410 if expired. Done.
+- `vendor-claim-repayment`: new endpoint. Restricted vendor taps "I've paid". Sets `restriction_repayment_claimed_at`. Idempotent. Admin confirms and lifts restriction. Done.
+- `paystack-release`: cron now runs two sweeps — (1) pending timeout (pre-existing), (2) gate-fired accepted bookings where `gate_retry_expires_at` has passed and `gate_charged_at` is null. Sweep 2 cancels the booking (no Paystack call), notifies both parties. Done.
+- `paystack-cancel`: rewritten. Binary model — pre-gate = free cancel; post-gate = 409 lock. Done.
+- `vendor-cancel-booking`: rewritten. Post-gate vendor cancel triggers full Paystack refund + sets vendor restricted with amount owed. Done.
+- `paystack-settle`: cron skips `is_restricted = true` vendors (alongside `settlement_on_hold`). Done.
+- `paystack-initialize`: no longer initialises a Paystack transaction. Creates booking only, returns `booking_id`. Split ratio computed at gate time. Done.
+- `paystack-webhook`: `charge.success` finds booking by `paystack_reference` (set at gate time), advances to `on_way`, sets `gate_charged_at`. Stores `paystack_authorization_code` on profile for returning customers. Done.
+- `send-reminders`: added gate nudge (5 min before gate window closes) + proximity trigger (calls `paystack-gate` if vendor within `GATE_PROXIMITY_KM` of customer). Done.
+- `_shared/notifications.ts`: gate messages added (`msg_gatePaymentNeeded`, `msg_gatePaymentFailed`, `msg_gatePaymentExpired`, `msg_vendor_gatePaymentPending`, `msg_vendor_gateCharged`, `msg_vendor_gatePaymentExpired`, `msg_vendor_restricted`, `msg_vendor_restrictionLifted`, `msg_vendor_onWayNudge`). Tiered-fee messages removed. Done.
+- Mobile gate-checkout screen (`/booking/gate-checkout/[bookingId]`): new screen for first-time customer checkout at gate time. Phases: loading → checkout (WebView) → confirming → cancelled/expired/error. Done.
+- Mobile bookings screen: gate payment banner ("Complete payment") + "Confirming payment" state for poll-timeout case. Done.
+- Mobile vendor jobs screen: "On My Way" button (gate-window gated), "Confirming payment" banner, vendor restriction wall with repayment CTA. Done.
+- Admin restrictions page (`/restrictions`): lists restricted vendors, shows "Awaiting review" (claimed repayment) vs "Not yet claimed" queues. Admin lifts via `liftRestriction` server action. Done.
+- **Remaining:** Run full end-to-end test against Paystack sandbox (including `chargeAuthorization` for returning customers, `initializeTransaction` WebView for first-timers, webhook handling, `paystack-release` gate-expiry sweep). Swap `PAYSTACK_SECRET_KEY` to live key once Paystack account activation resolves.
+
 ## Phase 3: Supabase Health
 
 - Review all migrations in order.

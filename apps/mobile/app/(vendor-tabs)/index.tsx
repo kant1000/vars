@@ -21,7 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import { Colors } from '@/constants/colors';
+import { Colors, BORDER_RADIUS } from '@/constants/colors';
 import { uploadSinglePortfolioPhoto } from '@/lib/storage';
 import { fmtPrice, fmtDuration, fmtDateTime } from '@/lib/format';
 import { fetchWithRetry } from '@/lib/fetchWithRetry';
@@ -53,8 +53,8 @@ interface VendorBooking {
   customer_phone: string | null;
   phone_revealed: boolean;
   auto_accepted: boolean;
-  auto_accept_grace_expires_at: string | null;
-  grace_cancelled: boolean;
+  gate_fired: boolean;
+  scheduled_at: string;
 }
 
 interface ZoneStatus {
@@ -69,121 +69,6 @@ interface ZoneStatus {
 function vendorEarning(priceKobo: number, transportFeeKobo: number, isPioneer: boolean) {
   const total = priceKobo + transportFeeKobo;
   return isPioneer ? total : Math.round(total * 0.8);
-}
-
-// ── Countdown hook ───────────────────────────────────────────
-function useCountdown(expiryIso: string | null) {
-  const [secs, setSecs] = useState(() =>
-    expiryIso ? Math.max(0, Math.round((new Date(expiryIso).getTime() - Date.now()) / 1000)) : 0
-  );
-  useEffect(() => {
-    if (!expiryIso) return;
-    const id = setInterval(() => {
-      setSecs(Math.max(0, Math.round((new Date(expiryIso).getTime() - Date.now()) / 1000)));
-    }, 1000);
-    return () => clearInterval(id);
-  }, [expiryIso]);
-  const h = Math.floor(secs / 3600);
-  const m = Math.floor((secs % 3600) / 60);
-  const s = secs % 60;
-  return { display: secs <= 0 ? 'Expired' : `${h > 0 ? `${h}h ` : ''}${m}m ${String(s).padStart(2, '0')}s`, expired: secs <= 0 };
-}
-
-// ── Grace period card (auto-accepted, 5-min cancel window) ──
-function GraceCard({
-  booking, onUpdated, isPioneer,
-}: {
-  booking: VendorBooking;
-  onUpdated: () => void;
-  isPioneer: boolean;
-}) {
-  const [cancelling, setCancelling] = useState(false);
-  const [cancelError, setCancelError] = useState<string | null>(null);
-  const { display, expired } = useCountdown(booking.auto_accept_grace_expires_at);
-
-  // Auto-refresh when grace period expires so the card is removed
-  useEffect(() => {
-    if (expired) onUpdated();
-  }, [expired]);
-
-  const handleGraceCancel = async () => {
-    Alert.alert(
-      'Cancel this booking?',
-      'This will cancel the booking and refund the customer in full. You won\'t be penalised.',
-      [
-        { text: 'Keep booking', style: 'cancel' },
-        {
-          text: 'Cancel booking',
-          style: 'destructive',
-          onPress: async () => {
-            setCancelling(true);
-            setCancelError(null);
-            try {
-              const { data: { session: s } } = await supabase.auth.getSession();
-              const res = await fetchWithRetry(`${SUPABASE_URL}/functions/v1/vendor-cancel-grace`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  Authorization: `Bearer ${s?.access_token ?? ''}`,
-                },
-                body: JSON.stringify({ booking_id: booking.id }),
-              });
-              if (!res.ok) {
-                const d = await res.json();
-                setCancelError(d.error ?? "Couldn't cancel — tap to retry");
-              } else {
-                onUpdated();
-              }
-            } catch {
-              setCancelError("Couldn't reach server — tap to retry");
-            } finally {
-              setCancelling(false);
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  return (
-    <View style={[c.card, c.graceCard]}>
-      <View style={c.cardHeader}>
-        <Text style={c.graceBadge}>⚡ Auto-accepted</Text>
-        {!expired && (
-          <Text style={c.graceCountdown}>{display} to cancel</Text>
-        )}
-      </View>
-      <Text style={c.customerName}>{booking.customer_name}</Text>
-      <Text style={c.serviceName}>{booking.service_name}</Text>
-      <Text style={c.meta}>{fmtDateTime(booking.scheduled_at)} · {fmtDuration(booking.service_duration_blocks)}</Text>
-      {booking.user_location_address && (
-        <Text style={c.meta} numberOfLines={1}>📍 {booking.user_location_address}</Text>
-      )}
-      {booking.distance_km > 0 && (
-        <Text style={c.meta}>{Number(booking.distance_km).toFixed(1)}km away</Text>
-      )}
-      <View style={c.earningsBox}>
-        <Text style={c.earningsLabel}>YOUR EARNINGS FOR THIS JOB</Text>
-        <Text style={c.earningsAmount}>{fmtPrice(vendorEarning(booking.service_price_kobo, booking.transport_fee_kobo, isPioneer))}</Text>
-        {booking.transport_fee_kobo > 0 && (
-          <Text style={c.transportNote}>Includes a contribution for the distance to your client</Text>
-        )}
-      </View>
-      {!expired && (
-        <TouchableOpacity
-          style={[c.graceCancelBtn, cancelling && c.btnDisabled]}
-          onPress={handleGraceCancel}
-          disabled={cancelling}
-        >
-          {cancelling
-            ? <ScissorsLoader size="small" color="dark" />
-            : <Text style={c.graceCancelText}>Cancel (no penalty)</Text>
-          }
-        </TouchableOpacity>
-      )}
-      {cancelError && <Text style={c.inlineError}>{cancelError}</Text>}
-    </View>
-  );
 }
 
 // ── Pending booking card ─────────────────────────────────────
@@ -269,8 +154,9 @@ function PendingCard({
 }
 
 // ── Active job card ──────────────────────────────────────────
+// "On My Way" calls paystack-gate (gate fires + charge). Other transitions
+// call vendor-update-job-status as before.
 const FLOW_ACTIONS: Partial<Record<BookingStatus, { label: string; next: BookingStatus; color: string }>> = {
-  accepted:  { label: "I'm on my way",    next: BOOKING_STATUS.ON_WAY,           color: Colors.statusOnWay },
   on_way:    { label: "I've arrived",     next: BOOKING_STATUS.ARRIVED,          color: Colors.statusArrived },
   arrived:   { label: 'Service rendered', next: BOOKING_STATUS.SERVICE_RENDERED, color: Colors.primary },
 };
@@ -286,6 +172,10 @@ function ActiveCard({
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
   const action = FLOW_ACTIONS[booking.status];
+
+  // "On My Way" gate window: opens GATE_WINDOW_MINUTES (120) before scheduled_at
+  const gateWindowOpen = new Date(new Date(booking.scheduled_at).getTime() - 120 * 60 * 1000);
+  const isInGateWindow = booking.status === BOOKING_STATUS.ACCEPTED && new Date() >= gateWindowOpen;
 
   // Show "time's up" banner when arrived and past scheduled end
   const scheduledEnd = new Date(
@@ -389,6 +279,54 @@ function ActiveCard({
             💰 Service time has passed — mark it done to release your payment.
           </Text>
         </View>
+      )}
+      {/* Gate fired but customer hasn't completed checkout yet */}
+      {booking.status === BOOKING_STATUS.ACCEPTED && booking.gate_fired && (
+        <View style={c.gateConfirmingBanner}>
+          <Text style={c.gateConfirmingTitle}>Confirming payment</Text>
+          <Text style={c.gateConfirmingBody}>
+            Your client is completing their payment. You'll get a notification as soon as it's confirmed — then you're good to go.
+          </Text>
+        </View>
+      )}
+      {/* "On My Way" fires the gate — only visible within the 2-hour window */}
+      {booking.status === BOOKING_STATUS.ACCEPTED && !booking.gate_fired && (
+        isInGateWindow ? (
+          <TouchableOpacity
+            style={[c.flowBtn, { backgroundColor: Colors.statusOnWay }, acting && c.btnDisabled]}
+            onPress={async () => {
+              setActing(true);
+              setAdvanceError(null);
+              try {
+                const { data: { session: s } } = await supabase.auth.getSession();
+                const res = await fetchWithRetry(`${SUPABASE_URL}/functions/v1/paystack-gate`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s?.access_token ?? ''}` },
+                  body: JSON.stringify({ booking_id: booking.id, trigger_type: 'manual' }),
+                });
+                if (!res.ok) {
+                  const d = await res.json();
+                  setAdvanceError(d.error ?? "Couldn't save — tap to retry");
+                } else {
+                  onUpdated();
+                }
+              } catch {
+                setAdvanceError("Couldn't reach server — tap to retry");
+              }
+              setActing(false);
+            }}
+            disabled={acting}
+          >
+            {acting ? <ScissorsLoader size="small" color="light" />
+              : <Text style={c.flowBtnText}>I'm on my way</Text>}
+          </TouchableOpacity>
+        ) : (
+          <View style={c.gateWindowBanner}>
+            <Text style={c.gateWindowText}>
+              "On My Way" opens 2 hours before your appointment.
+            </Text>
+          </View>
+        )
       )}
       {action && (
         <TouchableOpacity
@@ -593,6 +531,10 @@ export default function VendorJobsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [isOnline, setIsOnline] = useState(false);
   const [isPioneer, setIsPioneer] = useState(false);
+  const [isRestricted, setIsRestricted] = useState(false);
+  const [restrictionAmountKobo, setRestrictionAmountKobo] = useState(0);
+  const [repaymentClaiming, setRepaymentClaiming] = useState(false);
+  const [repaymentClaimed, setRepaymentClaimed] = useState(false);
   const [togglingOnline, setTogglingOnline] = useState(false);
   const [toggleError, setToggleError] = useState<string | null>(null);
   const [blockReason, setBlockReason] = useState<'kyc' | 'no_services' | 'no_notifications' | null>(null);
@@ -620,7 +562,7 @@ export default function VendorJobsScreen() {
       .select(`
         id, status, service_name, service_price_kobo, transport_fee_kobo, distance_km,
         service_duration_blocks, scheduled_at, user_location_address, created_at, phone_revealed,
-        auto_accepted, auto_accept_grace_expires_at, grace_cancelled,
+        auto_accepted, gate_fired,
         profiles(full_name, phone_number)
       `)
       .order('scheduled_at', { ascending: true })
@@ -633,7 +575,7 @@ export default function VendorJobsScreen() {
       .select(`
         id, status, service_name, service_price_kobo, transport_fee_kobo, distance_km,
         service_duration_blocks, scheduled_at, user_location_address, created_at, phone_revealed,
-        auto_accepted, auto_accept_grace_expires_at, grace_cancelled,
+        auto_accepted, gate_fired,
         profiles(full_name, phone_number)
       `)
       .in('status', [BOOKING_STATUS.COMPLETED, BOOKING_STATUS.CANCELLED, BOOKING_STATUS.EXPIRED])
@@ -655,8 +597,7 @@ export default function VendorJobsScreen() {
       customer_phone: b.profiles?.phone_number ?? null,
       phone_revealed: b.phone_revealed,
       auto_accepted: b.auto_accepted ?? false,
-      auto_accept_grace_expires_at: b.auto_accept_grace_expires_at ?? null,
-      grace_cancelled: b.grace_cancelled ?? false,
+      gate_fired: b.gate_fired ?? false,
     });
 
     const allBookings = [...(data ?? []).map(toBooking), ...(history ?? []).map(toBooking)];
@@ -694,7 +635,7 @@ export default function VendorJobsScreen() {
     const [vendorRes, svcRes, notifPerms] = await Promise.all([
       supabase
         .from('vendors')
-        .select('is_online, kyc_status, pioneer, pioneer_bookings_completed, auto_accept_enabled, auto_accept_zone_confirmed_date, auto_accept_zone_lat, auto_accept_zone_lng, auto_accept_zone_radius_km, auto_accept_paused_due_to_drift')
+        .select('is_online, kyc_status, pioneer, pioneer_bookings_completed, auto_accept_enabled, auto_accept_zone_confirmed_date, auto_accept_zone_lat, auto_accept_zone_lng, auto_accept_zone_radius_km, auto_accept_paused_due_to_drift, is_restricted, restriction_amount_owed_kobo, restriction_repayment_claimed_at')
         .eq('id', user.id)
         .single(),
       supabase
@@ -710,6 +651,9 @@ export default function VendorJobsScreen() {
 
     setIsOnline(data.is_online);
     setIsPioneer(data.pioneer === true && (data.pioneer_bookings_completed ?? 3) < 3);
+    setIsRestricted(data.is_restricted === true);
+    setRestrictionAmountKobo(data.restriction_amount_owed_kobo ?? 0);
+    setRepaymentClaimed(data.restriction_repayment_claimed_at != null);
 
     // Derive the single most relevant blocking reason
     if (data.kyc_status !== 'verified') {
@@ -852,22 +796,11 @@ export default function VendorJobsScreen() {
   }, [isOnline, session]);
 
   const pending  = bookings.filter((b) => b.status === BOOKING_STATUS.PENDING);
-  // Grace bookings: auto-accepted, still within 5-min grace, not yet cancelled
-  const graceBookings = bookings.filter((b) =>
-    b.status === 'accepted' &&
-    b.auto_accepted &&
-    !b.grace_cancelled &&
-    b.auto_accept_grace_expires_at != null &&
-    new Date(b.auto_accept_grace_expires_at) > new Date()
-  );
   const ACTIVE_STATUSES  = [BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ON_WAY, BOOKING_STATUS.ARRIVED, BOOKING_STATUS.SERVICE_RENDERED] as BookingStatus[];
   const HISTORY_STATUSES = [BOOKING_STATUS.COMPLETED, BOOKING_STATUS.CANCELLED, BOOKING_STATUS.EXPIRED] as BookingStatus[];
-  const active   = bookings.filter((b) =>
-    ACTIVE_STATUSES.includes(b.status) &&
-    !graceBookings.some((g) => g.id === b.id)
-  );
-  const upcoming = bookings.filter((b) => b.status === BOOKING_STATUS.ACCEPTED && new Date(b.scheduled_at) > new Date() && !graceBookings.some((g) => g.id === b.id));
-  // Remove from active if scheduled far in future (show only today's jobs)
+  const active   = bookings.filter((b) => ACTIVE_STATUSES.includes(b.status));
+  const upcoming = bookings.filter((b) => b.status === BOOKING_STATUS.ACCEPTED && new Date(b.scheduled_at) > new Date());
+  // Show only today's accepted jobs in the active section; future ones go to Upcoming
   const todayActive = active.filter((b) => {
     const d = new Date(b.scheduled_at);
     const now = new Date();
@@ -877,6 +810,57 @@ export default function VendorJobsScreen() {
 
   // Show spinner only when there's genuinely nothing to display yet (cache not yet seeded)
   if (loading && bookings.length === 0) return <View style={c.centered}><ScissorsLoader size="large" color="dark" /></View>;
+
+  // Restriction blocking wall — full-screen, no navigation out until admin lifts restriction
+  if (isRestricted) {
+    return (
+      <View style={[c.container, c.centered, { paddingTop: insets.top, paddingHorizontal: 24 }]}>
+        <Text style={c.restrictTitle}>Account restricted</Text>
+        <Text style={c.restrictBody}>
+          You cancelled a booking after travel began and the customer was refunded.{'\n\n'}
+          To restore your account, transfer{' '}
+          <Text style={{ fontWeight: '800' }}>₦{Math.round(restrictionAmountKobo / 100).toLocaleString()}</Text>
+          {' '}to VARS:{'\n\n'}
+          Bank: Wema Bank{'\n'}
+          Account: 0123456789{'\n'}
+          Name: VARS Technology Limited{'\n\n'}
+          Include your registered phone number as reference.
+        </Text>
+        {!repaymentClaimed ? (
+          <TouchableOpacity
+            style={[c.restrictClaimBtn, repaymentClaiming && c.btnDisabled]}
+            disabled={repaymentClaiming}
+            onPress={async () => {
+              setRepaymentClaiming(true);
+              try {
+                const { data: { session: s } } = await supabase.auth.getSession();
+                const res = await fetch(`${SUPABASE_URL}/functions/v1/vendor-claim-repayment`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s?.access_token ?? ''}` },
+                });
+                if (res.ok) setRepaymentClaimed(true);
+                else Alert.alert('Error', "Couldn't reach server — try again.");
+              } catch {
+                Alert.alert('Error', "Couldn't reach server — try again.");
+              } finally {
+                setRepaymentClaiming(false);
+              }
+            }}
+          >
+            {repaymentClaiming
+              ? <ScissorsLoader size="small" color="light" />
+              : <Text style={c.restrictClaimBtnText}>I've paid</Text>}
+          </TouchableOpacity>
+        ) : (
+          <View style={c.restrictClaimedBox}>
+            <Text style={c.restrictClaimedText}>
+              Received. Our team will verify your payment and restore your account shortly.
+            </Text>
+          </View>
+        )}
+      </View>
+    );
+  }
 
   return (
     <View style={[c.container, { paddingTop: insets.top }]}>
@@ -944,20 +928,6 @@ export default function VendorJobsScreen() {
             <ScissorsLoader size="small" color="dark" />
           </View>
         )}
-        {/* Auto-accepted — grace period */}
-        {graceBookings.length > 0 && (
-          <Section title={`Auto-accepted (${graceBookings.length})`} urgent>
-            {graceBookings.map((b) => (
-              <GraceCard
-                key={b.id}
-                booking={b}
-                isPioneer={isPioneer}
-                onUpdated={load}
-              />
-            ))}
-          </Section>
-        )}
-
         {/* Incoming requests */}
         {pending.length > 0 && (
           <Section title={`Incoming requests (${pending.length})`} urgent>
@@ -1120,16 +1090,35 @@ const c = StyleSheet.create({
   },
   vendorCancelText: { fontSize: 13, fontWeight: '600', color: Colors.error },
 
-  // Grace period card
-  graceCard: { borderColor: Colors.ink, borderWidth: 1.5 },
-  graceBadge: { fontSize: 12, fontWeight: '700', color: Colors.ink, flex: 1 },
-  graceCountdown: { fontSize: 12, fontWeight: '700', color: Colors.accentRed, fontVariant: ['tabular-nums'] },
-  graceCancelBtn: {
-    marginTop: 8, height: 42, borderRadius: 5,
-    borderWidth: 1.5, borderColor: Colors.ink,
-    alignItems: 'center', justifyContent: 'center',
+  // Gate fired — customer is completing checkout
+  gateConfirmingBanner: {
+    backgroundColor: Colors.warning + '15', borderRadius: BORDER_RADIUS,
+    borderWidth: 1, borderColor: Colors.warning + '40',
+    padding: 12, marginTop: 8, gap: 4,
   },
-  graceCancelText: { fontSize: 14, fontWeight: '700', color: Colors.error },
+  gateConfirmingTitle: { fontSize: 13, fontWeight: '700', color: Colors.warning },
+  gateConfirmingBody: { fontSize: 12, color: Colors.textSecondary, lineHeight: 17 },
+
+  // Gate window banner (shown when booking is accepted but gate window not yet open)
+  gateWindowBanner: {
+    backgroundColor: Colors.primaryLight, borderRadius: BORDER_RADIUS,
+    padding: 10, marginTop: 8,
+  },
+  gateWindowText: { fontSize: 12, color: Colors.primary, lineHeight: 17 },
+
+  // Restriction wall
+  restrictTitle: { fontSize: 22, fontWeight: '800', color: Colors.error, marginBottom: 16, textAlign: 'center' },
+  restrictBody: { fontSize: 14, color: Colors.textSecondary, lineHeight: 22, textAlign: 'center', marginBottom: 28 },
+  restrictClaimBtn: {
+    width: '100%', height: 52, backgroundColor: Colors.primary,
+    borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center',
+  },
+  restrictClaimBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
+  restrictClaimedBox: {
+    backgroundColor: Colors.primaryLight, borderRadius: BORDER_RADIUS,
+    padding: 16, marginTop: 8,
+  },
+  restrictClaimedText: { fontSize: 14, color: Colors.primary, textAlign: 'center', lineHeight: 20 },
 
   // Rows
   row: {

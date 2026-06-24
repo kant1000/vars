@@ -129,9 +129,10 @@ These decisions were made deliberately. Flag explicitly before suggesting any re
 
 | Decision | Rule | Reason |
 |---|---|---|
-| Payment: subaccount split at charge time | Vendor's share (80%, or 100% for Pioneer) splits immediately into their Paystack subaccount when the card is charged. VARS's share stays in the VARS main account. Split ratio is fixed at `paystack-initialize` time and cannot change at settle time. | No Transfer API needed for normal settlement — vendor's money is already in their subaccount. Transfer API is still used for cancellation fee shares (paid from VARS balance via `paystack_recipient_code`). |
-| Settlement: manual, vendor-gated | Paystack has no public API endpoint to trigger subaccount settlement. VARS ops must trigger payouts from the Paystack dashboard (settlement_schedule = manual). Settlement is gated at the vendor level — any open or under-review dispute on any of the vendor's bookings freezes their entire subaccount balance until resolved. | Prevents partial settlement of disputed funds and simplifies dispute enforcement to a single `settlement_on_hold` flag on the vendor row. |
-| Payment: authorisation not capture (legacy note) | Transaction is charged immediately at `paystack-initialize` time. `payment_captured` on bookings is now repurposed as the vendor-acceptance flag. | If vendor declines or times out, Paystack refund is issued — the subaccount split is still in the subaccount at this point and Paystack should include it in the refund. |
+| Payment: gate-at-departure model | No Paystack charge at booking creation. The charge fires when the vendor commits to travel — via "On My Way" (manual trigger, available within 2 hours of `scheduled_at`) or a proximity trigger in the `send-reminders` cron. Atomic gate claim (`UPDATE WHERE gate_fired=FALSE`) prevents double-fire. Returning customers (stored card): silent `chargeAuthorization`. First-time customers: `initializeTransaction` → WebView checkout. Both paths converge at `charge.success` webhook, which advances status to `on_way` and sets `gate_charged_at`. | Paystack confirmed that authorisation-not-capture is not supported for NGN transactions. Charging at departure is the correct model: vendor commits first, customer is charged at that moment, no refund is needed for vendor no-shows because nothing was charged. |
+| Payment: subaccount split at gate time | Vendor's share (80%, or 100% for Pioneer) splits immediately into their Paystack subaccount when the charge fires at gate time. VARS's share stays in the VARS main account. Split ratio is computed at gate time and cannot change at settle time. No Transfer API — settlement is fully subaccount-based. | No Transfer API needed for any payment path. Normal settlement: vendor's money is already in their subaccount. Vendor restriction (post-gate vendor cancel): tracked via DB flag; ops recovers funds out-of-band. |
+| Settlement: manual, vendor-gated | Paystack has no public API endpoint to trigger subaccount settlement. VARS ops must trigger payouts from the Paystack dashboard (settlement_schedule = manual). Settlement is gated at the vendor level — any open or under-review dispute on any of the vendor's bookings, or `is_restricted = true`, freezes their subaccount balance for that cycle. | Prevents partial settlement of disputed funds. Restriction enforcement is a single `is_restricted` flag on the vendor row, checked by the settle cron. |
+| Cancellation: binary pre/post-gate rule | Pre-gate cancel (customer): free — no Paystack call, nothing was charged. Post-gate cancel (customer): 409 locked — vendor has committed to travel. Post-gate cancel (vendor): full Paystack refund to customer + vendor restricted. | Tiered-fee cancellation model was removed with the gate model. No charge exists before the gate fires, so there is nothing to partially refund. Post-gate cancellation by vendor is penalised precisely because the charge has succeeded and VARS has already refunded the customer. |
 | Vendor acceptance window | 1 hour exactly. 30-min reminder at halfway. | Not 2 hours (too slow for customers), not 15 min (too short for vendors). |
 | Auto-release timing | **2 hours** after `service_rendered_at` — set by DB trigger in migration `001`. | Ties release to when service actually finishes. The DB trigger is authoritative: `NEW.auto_release_at := NEW.service_rendered_at + INTERVAL '2 hours'`. |
 | Transport buffer | Two 30-min blocks AFTER the booking only — not before. | Vendor travels from wherever they are, not a fixed location. After-only is correct. |
@@ -141,7 +142,6 @@ These decisions were made deliberately. Flag explicitly before suggesting any re
 | Dispute freezes vendor settlement | Disputes set `settlement_on_hold = true` on the vendor row (not on the booking). The settle cron skips the entire vendor for that cycle. | Paystack controls dispute holds on subaccount funds; VARS mirrors this in the vendor flag. |
 | No customer filter for auto-accept | Users cannot filter vendor feed by auto-accept status in V1. | |
 | ~~One service per booking~~ | **Removed in V2.** Multi-service bookings now supported via `booking_services` join table. Total amount and duration are summed across selected services. | Was: simpler escrow logic, simpler vendor scheduling. Now: free-name taxonomy removes V1 master catalogue dependency. |
-| Cancellation measured from booking time | Tiers measured from time of BOOKING, not time before service. Within 1 hr of service start = non-refundable (30% VARS, 70% vendor). 0–15 min after booking = 15% fee (10% VARS, 5% vendor). 15 min–1 hr after booking = 50% fee (30% VARS, 20% vendor). | |
 | Dispute freezes auto-release | Disputed bookings are completely exempt from auto-release. | Escrow stays frozen until admin resolves manually. |
 | Youverify is final | Clean KYC pass = vendor goes live instantly. Only rejected/flagged cases reach admin queue. | |
 | Pidgin on socials only | App and landing page stay in English for trust and clarity. Social is Pidgin-forward. | Same brand personality, different register. |
@@ -159,36 +159,43 @@ All push and in-app notification copy lives here as exported functions. Never wr
 
 | Function | Recipient | Trigger |
 |---|---|---|
-| `msg_paymentAuthorized(vendorName)` | Customer | Payment taken, pending vendor confirm |
+| `msg_paymentAuthorized(vendorName)` | Customer | Booking submitted — vendor has 1 hour to confirm |
 | `msg_vendorAccepts(vendorName, date, time)` | Customer | Vendor accepts |
 | `msg_vendorDeclines(vendorName)` | Customer | Vendor declines |
 | `msg_reminder24h(vendorName, time)` | Customer | 24h before appointment |
 | `msg_reminder1h(vendorName)` | Customer | 1h before appointment |
 | `msg_reminder15min(vendorName)` | Customer | Phone revealed, vendor on way |
-| `msg_vendorOnWay(vendorName)` | Customer | Vendor taps "On my way" |
+| `msg_vendorOnWay(vendorName)` | Customer | Vendor status → on_way confirmed |
 | `msg_vendorArrived(vendorName)` | Customer | Vendor taps "Arrived" |
 | `msg_serviceRendered(vendorName)` | Customer | Vendor marks service done |
 | `msg_autoReleaseWarning(vendorName)` | Customer | 30 min before auto-release |
 | `msg_paymentReleased(vendorName)` | Customer | Escrow settled |
-| `msg_cancelTier1(amount)` | Customer | Cancelled within 15 min of booking (15% fee) |
-| `msg_cancelTier2(amount)` | Customer | Cancelled 15 min–1 hr after booking (50% fee) |
-| `msg_cancelNonRefundable()` | Customer | Cancelled within 1h of service start |
+| `msg_cancelFree()` | Customer | Cancelled pre-gate — no charge was made |
+| `msg_gatePaymentNeeded(vendorName)` | Customer | Gate fired — first-time customer must complete checkout |
+| `msg_gatePaymentFailed()` | Customer | `chargeAuthorization` failed — retry window opened |
+| `msg_gatePaymentExpired()` | Customer | Payment window expired — booking cancelled |
 | `msg_autoAccepted(vendorName, date, time)` | Customer | Auto-accept fired |
-| `msg_bookingCancelledByVendor(date, time)` | Customer | Vendor cancelled |
-| `msg_bookingCancelledFullRefund(date, time)` | Customer | Vendor cancelled — full refund |
+| `msg_bookingCancelledByVendor(date, time)` | Customer | Vendor cancelled (pre-gate) |
+| `msg_bookingCancelledFullRefund(date, time)` | Customer | Vendor cancelled post-gate — full refund issued |
 | `msg_disputeRaised_user()` | Customer | Dispute submitted |
 | `msg_disputeResolved_userRefunded(amount)` | Customer | Admin resolves in customer's favour |
 | `msg_disputeResolved_vendorPaid(amount)` | Customer | Admin resolves in vendor's favour |
 | `msg_consentRequest(vendorName)` | Customer | Vendor requests portfolio photo consent |
 | `msg_reschedule_suggested_customer(vendorName, day, time)` | Customer | Vendor suggests new time |
-| `msg_vendor_newBooking(clientFirstName, service, date, time)` | Vendor | New booking arrives |
+| `msg_vendor_newBooking(clientFirstName, service, date, time, earningsFormatted)` | Vendor | New booking arrives |
 | `msg_vendor_reminder30min(clientFirstName)` | Vendor | 30 min left to accept pending booking |
-| `msg_vendor_bookingExpired()` | Vendor | Booking expired without acceptance |
+| `msg_vendor_bookingExpired()` | Vendor | Pending booking expired without acceptance |
 | `msg_vendor_reminder24h(time, service, clientFirstName)` | Vendor | 24h before appointment |
 | `msg_vendor_reminder1h(clientFirstName)` | Vendor | 1h before appointment |
 | `msg_vendor_reminder15min(clientFirstName)` | Vendor | 15 min mark — head out |
 | `msg_vendor_paymentReleased(amount)` | Vendor | Escrow settled to vendor |
-| `msg_vendor_userCancelledWithFee(clientFirstName, amount)` | Vendor | Customer cancelled with fee share |
+| `msg_vendor_customerCancelledFree(clientFirstName)` | Vendor | Customer cancelled pre-gate — no charge applied |
+| `msg_vendor_gatePaymentPending()` | Vendor | Gate fired, waiting for first-time customer checkout |
+| `msg_vendor_gateCharged()` | Vendor | Charge succeeded — officially on their way |
+| `msg_vendor_gatePaymentExpired(clientFirstName)` | Vendor | Customer payment window expired — slot is free |
+| `msg_vendor_restricted(amountFormatted)` | Vendor | Vendor cancelled post-gate — account restricted |
+| `msg_vendor_restrictionLifted()` | Vendor | Admin lifted vendor restriction |
+| `msg_vendor_onWayNudge(clientFirstName)` | Vendor | Reminder to tap "On My Way" before gate window closes |
 | `msg_vendor_newReview(clientFirstName)` | Vendor | Customer leaves a review |
 | `msg_vendor_verificationApproved()` | Vendor | KYC passed — now live |
 | `msg_vendor_verificationFailed(reason)` | Vendor | KYC rejected |

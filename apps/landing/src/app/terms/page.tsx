@@ -127,49 +127,67 @@ export default function TermsPage() {
         <section>
           <h2>Payments and settlement</h2>
           <p>
-            When a customer pays, the payment is processed immediately through
-            Paystack. The stylist&apos;s share of the payment is held in a
-            dedicated Paystack account on their behalf. Settlement to the
-            stylist&apos;s bank account is processed by VARS once the service
-            is confirmed complete — either when:
+            Your payment is <strong>not taken when you book</strong>. It is taken
+            at the moment your stylist confirms they are on their way to you —
+            not before.
+          </p>
+          <p>
+            When your stylist taps &ldquo;On My Way,&rdquo; VARS charges the
+            payment method you have on file. If you are booking for the first
+            time and have no saved card, you will receive a notification with a
+            link to complete a secure Paystack checkout — you have a set window
+            to do so before the booking is cancelled. The stylist&apos;s share
+            of the payment is held in a dedicated Paystack account on their
+            behalf. VARS does not store raw card details; all payment processing
+            is handled by Paystack.
+          </p>
+          <p>
+            Settlement to the stylist&apos;s bank account is processed by VARS
+            once the service is confirmed complete — either when:
           </p>
           <ul>
-            <li>the customer confirms the service is complete, or</li>
+            <li>you confirm the service is complete, or</li>
             <li>
               2 hours pass after the stylist marks &ldquo;Service Rendered&rdquo;
               without a dispute being raised.
             </li>
           </ul>
           <p>
-            Customers receive a push notification 30 minutes before the
-            2-hour auto-release fires. That window is the time to raise a
-            dispute. Once the 2 hours pass and settlement is processed, it
-            cannot be recalled.
+            You will receive a push notification 30 minutes before the 2-hour
+            auto-release fires. That window is the time to raise a dispute. Once
+            the 2 hours pass and settlement is processed, it cannot be recalled.
           </p>
         </section>
 
         <section>
           <h2>Cancellation policy</h2>
-          <p>Cancellation fees are calculated from the time the booking was made:</p>
+          <p>
+            Your right to cancel depends on whether your stylist has already
+            committed to travel:
+          </p>
           <ul>
             <li>
-              <strong>0–15 minutes after booking:</strong> 15% fee. VARS retains
-              10%, the stylist retains 5%. The remaining 85% is refunded.
+              <strong>Before the stylist sets off:</strong> You may cancel at any
+              time with no charge. Nothing has been taken from your payment method
+              and nothing will be. Both you and the stylist are notified
+              immediately.
             </li>
             <li>
-              <strong>15 minutes–1 hour after booking:</strong> 50% fee. VARS
-              retains 30%, the stylist retains 20%. The remaining 50% is refunded.
-            </li>
-            <li>
-              <strong>Within 1 hour of the service start time:</strong>{' '}
-              Non-refundable. VARS retains 30%, the stylist retains 70%.
+              <strong>After the stylist sets off:</strong> Cancellation is not
+              available. Your payment has been processed and your stylist is on
+              their way. If something goes wrong, use the{' '}
+              <strong>Raise a dispute</strong> option in the app — disputes are
+              reviewed by VARS admin and a full refund is issued if warranted.
             </li>
           </ul>
           <p>
-            If a stylist cancels a confirmed booking, the customer receives a full
-            refund with no fee applied. The stylist&apos;s cancellation record is
-            tracked. Stylists who cancel 3 times within any 30-day rolling window
-            are flagged for review.
+            If a stylist cancels after setting off, you receive a full refund.
+            VARS treats post-departure cancellations by stylists as a serious
+            breach of the platform commitment — the stylist&apos;s account is
+            temporarily restricted until the matter is resolved with VARS. If a
+            stylist cancels before setting off, you receive a full refund and no
+            fee is applied; the stylist&apos;s cancellation record is tracked and
+            repeated cancellations trigger a review.
           </p>
         </section>
 

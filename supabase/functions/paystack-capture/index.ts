@@ -76,7 +76,6 @@ Deno.serve(async (req: Request) => {
       .from('bookings')
       .update({
         status: BOOKING_STATUS.ACCEPTED,
-        payment_captured: true,
         accepted_at: new Date().toISOString(),
       })
       .eq('id', booking_id)

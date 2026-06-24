@@ -45,7 +45,7 @@ export default function Step4Kyc() {
   const [accountName, setAccountName] = useState('');
   const [isVerifyingBank, setIsVerifyingBank] = useState(false);
   const [bankVerified, setBankVerified] = useState(false);
-  // True when bank was already saved in a prior session (paystack_recipient_code exists).
+  // True when bank was already saved in a prior session (paystack_subaccount_code exists).
   // In that case we skip the paystack save call on submit since bank_code is not stored in DB.
   const [bankAlreadySaved, setBankAlreadySaved] = useState(false);
   const [banks, setBanks] = useState<{ name: string; code: string }[]>([]);
@@ -59,7 +59,7 @@ export default function Step4Kyc() {
     (async () => {
       const { data } = await supabase
         .from('vendors')
-        .select('kyc_status, kyc_rejection_reason, bank_account_number, bank_name, bank_account_name, paystack_recipient_code')
+        .select('kyc_status, kyc_rejection_reason, bank_account_number, bank_name, bank_account_name, paystack_subaccount_code')
         .eq('id', user.id)
         .single();
       if (!data) return;
@@ -76,7 +76,7 @@ export default function Step4Kyc() {
         setAccountNumber(data.bank_account_number);
         setBankName(data.bank_name);
         setAccountName(data.bank_account_name);
-        if (data.paystack_recipient_code) {
+        if (data.paystack_subaccount_code) {
           setBankVerified(true);
           setBankAlreadySaved(true);
         }

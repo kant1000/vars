@@ -79,6 +79,24 @@ export const MAX_VENDOR_SERVICES    = 10;
 export const SERVICE_NAME_MAX_CHARS = 20;
 export const SERVICE_DESC_MAX_CHARS = 60;
 
+// ── Gate payment constants (mirror of _shared/constants.ts) ──
+
+/**
+ * How long (minutes) the customer has to complete payment after a failed
+ * charge-auth or a first-time checkout at gate time.
+ * TODO: VALUE NOT DECIDED — confirm with product before launch.
+ */
+export const GATE_PAYMENT_RETRY_WINDOW_MINUTES = 10; // placeholder — needs product sign-off
+
+/**
+ * Vendor-to-customer distance (km) at which the proximity cron fires the gate.
+ * TODO: VALUE NOT DECIDED — confirm with product before launch.
+ */
+export const GATE_PROXIMITY_KM = 3; // placeholder — needs product sign-off
+
+/** How many minutes before scheduled_at the "On My Way" gate window opens. */
+export const GATE_WINDOW_MINUTES = 120;
+
 /** Booking status values (mirrors DB enum) */
 export const BOOKING_STATUS = {
   PENDING: 'pending',

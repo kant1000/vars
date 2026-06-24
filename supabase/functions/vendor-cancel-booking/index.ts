@@ -1,10 +1,19 @@
 // ============================================================
 // VARS — vendor-cancel-booking
-// Called when vendor taps "Cancel" on an accepted/in-progress booking.
-// Per spec §5:
-//   "Vendor cancel: full refund, no fee, transport buffers released,
-//    calendar reverts, increment vendor_cancellation_count,
-//    flag vendor at 3 cancellations in 30-day rolling window."
+// Called when vendor taps "Cancel" on an accepted booking.
+//
+// Binary model based on gate state:
+//
+// Pre-gate (gate_fired = false):
+//   Free cancel. No Paystack call. Transport buffers released.
+//   Vendor cancellation count still tracked for rolling 30-day window.
+//
+// Post-gate (gate_fired = true):
+//   Full refund to customer from VARS main balance.
+//   Vendor account restricted (is_restricted = true) — owes VARS
+//   the amount refunded. All vendor app functionality blocked until
+//   restriction is lifted by admin after confirming repayment.
+//   Vendor is taken offline immediately.
 // ============================================================
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
@@ -14,9 +23,12 @@ import { BOOKING_STATUS } from '../_shared/constants.ts';
 import {
   sendNotification,
   msg_vendor_selfCancelled,
+  msg_cancelFree,
   msg_bookingCancelledFullRefund,
+  msg_vendor_restricted,
   formatDate,
   formatTime,
+  formatNaira,
 } from '../_shared/notifications.ts';
 
 Deno.serve(async (req: Request) => {
@@ -36,11 +48,10 @@ Deno.serve(async (req: Request) => {
 
     const supabase = createAdminClient();
 
-    // Fetch booking — must belong to this vendor
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
       .select(`
-        id, status, user_id, vendor_id,
+        id, status, user_id, vendor_id, gate_fired, gate_charged_at,
         service_price_kobo, transport_fee_kobo, service_name, scheduled_at,
         paystack_reference
       `)
@@ -50,51 +61,21 @@ Deno.serve(async (req: Request) => {
 
     if (bookingError || !booking) return errorResponse('Booking not found', 404);
 
-    // Vendor can only cancel pending or accepted bookings
     if (![BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED].includes(booking.status)) {
       return errorResponse(`Cannot cancel booking with status: ${booking.status}`);
     }
 
-    // 1. Release transport buffer blocks (before status update so calendar is
-    //    freed atomically with the cancellation)
+    const serviceDate = formatDate(booking.scheduled_at);
+    const serviceTime = formatTime(booking.scheduled_at);
+    const totalKobo: number = (booking.service_price_kobo ?? 0) + ((booking as unknown as Record<string, number>).transport_fee_kobo ?? 0);
+
+    // Release transport buffer blocks
     await supabase
       .from('vendor_calendar')
       .delete()
       .eq('transport_buffer_source_booking_id', booking_id);
 
-    // 2. Mark booking cancelled by vendor
-    await supabase
-      .from('bookings')
-      .update({
-        status: BOOKING_STATUS.CANCELLED,
-        cancelled_by: 'vendor',
-        cancellation_reason: reason ?? 'Vendor cancelled',
-        cancellation_fee_percent: 0,
-        cancellation_vars_amount_kobo: 0,
-        cancellation_vendor_amount_kobo: 0,
-        cancellation_refund_amount_kobo: booking.service_price_kobo + ((booking as any).transport_fee_kobo ?? 0),
-      })
-      .eq('id', booking_id);
-
-    // 3. Full refund to user.
-    // IMPORTANT — subaccount clawback: if the vendor's share has already settled
-    // from their Paystack subaccount to their bank (payout_history.status = 'success'),
-    // this refund only covers the VARS portion (~20%). Recovering the vendor's share
-    // requires manual reconciliation and is out of scope for automated code.
-    if (booking.paystack_reference) {
-      try {
-        const paystack = new PaystackClient(Deno.env.get('PAYSTACK_SECRET_KEY')!);
-        await paystack.refundTransaction({
-          transaction: booking.paystack_reference,
-          merchant_note: `VARS booking ${booking_id} cancelled by vendor — full refund`,
-        });
-      } catch (err) {
-        console.error(`Full refund failed for booking ${booking_id}:`, err);
-        // Don't throw — booking is cancelled, ops team handles manually
-      }
-    }
-
-    // 4. Rolling 30-day cancellation count for this vendor
+    // Rolling 30-day cancellation count (tracked on both paths)
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
     const { count: recentCancellations } = await supabase
       .from('bookings')
@@ -102,35 +83,118 @@ Deno.serve(async (req: Request) => {
       .eq('vendor_id', user.id)
       .eq('cancelled_by', 'vendor')
       .gte('updated_at', thirtyDaysAgo);
+    const cancelCount = recentCancellations ?? 0;
 
-    const cancelCount = recentCancellations ?? 0; // already includes the booking we just cancelled
-
-    // Flag vendor if they hit 3 cancellations in 30 days
-    if (cancelCount >= 3) {
-      await supabase
-        .from('vendors')
-        .update({ cancellation_flagged: true })
-        .eq('id', user.id);
-
-      console.log(`Vendor ${user.id} flagged: ${cancelCount} cancellations in 30 days`);
-    }
-
-    // 5. Fetch names for notifications
+    // Fetch names for notifications
     const [{ data: vendorProfile }, { data: userProfile }] = await Promise.all([
       supabase.from('vendors').select('full_name, push_token').eq('id', user.id).single(),
       supabase.from('profiles').select('full_name, push_token').eq('id', booking.user_id).single(),
     ]);
+    const clientFirstName = (userProfile?.full_name ?? 'Client').split(' ')[0];
 
-    const serviceDate = formatDate(booking.scheduled_at);
-    const serviceTime = formatTime(booking.scheduled_at);
-    const clientFirstName = (userProfile?.full_name ?? 'Your client').split(' ')[0];
+    // ── POST-GATE PATH ──────────────────────────────────────────
+    if (booking.gate_fired) {
+      await supabase
+        .from('bookings')
+        .update({
+          status: BOOKING_STATUS.CANCELLED,
+          cancelled_by: 'vendor',
+          cancellation_reason: reason ?? 'Vendor cancelled after gate',
+        })
+        .eq('id', booking_id);
 
-    // 6. Notify user — full refund, vendor cancelled
-    const userMsg = msg_bookingCancelledFullRefund(serviceDate, serviceTime);
+      // Full refund to customer
+      if (booking.paystack_reference) {
+        try {
+          const paystack = new PaystackClient(Deno.env.get('PAYSTACK_SECRET_KEY')!);
+          await paystack.refundTransaction({
+            transaction: booking.paystack_reference,
+            merchant_note: `Booking ${booking_id} cancelled by vendor post-gate — full refund`,
+          });
+          console.log(`Post-gate refund issued: booking=${booking_id} amount=₦${formatNaira(totalKobo)}`);
+        } catch (err) {
+          console.error(`Post-gate refund failed for booking ${booking_id}:`, err);
+        }
+      }
+
+      // Restrict vendor — owes VARS the refunded amount
+      await supabase
+        .from('vendors')
+        .update({
+          is_restricted: true,
+          is_online: false,
+          restriction_amount_owed_kobo: totalKobo,
+          restriction_reason: `Cancelled booking ${booking_id} after travel began. Customer was refunded ₦${formatNaira(totalKobo)}.`,
+          restriction_repayment_claimed_at: null,
+        })
+        .eq('id', user.id);
+
+      if (cancelCount >= 3) {
+        await supabase.from('vendors').update({ cancellation_flagged: true }).eq('id', user.id);
+      }
+
+      // Notify customer — full refund
+      const userMsg = msg_bookingCancelledFullRefund(serviceDate, serviceTime);
+      await sendNotification({
+        recipientId: booking.user_id,
+        recipientType: 'user',
+        type: 'vendor_cancelled_post_gate',
+        title: userMsg.title,
+        body: userMsg.body,
+        bookingId: booking_id,
+        pushToken: userProfile?.push_token ?? null,
+        data: { bookingId: booking_id, screen: '/vendor-feed' },
+      });
+
+      // Notify vendor — account restricted
+      const restrictMsg = msg_vendor_restricted(formatNaira(totalKobo));
+      await sendNotification({
+        recipientId: user.id,
+        recipientType: 'vendor',
+        type: 'account_restricted',
+        title: restrictMsg.title,
+        body: restrictMsg.body,
+        bookingId: booking_id,
+        pushToken: vendorProfile?.push_token ?? null,
+        data: { bookingId: booking_id, amountKobo: totalKobo },
+      });
+
+      console.log(
+        `Booking ${booking_id} cancelled by vendor post-gate — ` +
+        `full refund ₦${formatNaira(totalKobo)}, vendor ${user.id} restricted`
+      );
+
+      return jsonResponse({
+        success: true,
+        booking_id,
+        status: 'cancelled',
+        gate_fired: true,
+        vendor_restricted: true,
+        cancellation_count_30d: cancelCount,
+      });
+    }
+
+    // ── PRE-GATE PATH ───────────────────────────────────────────
+    await supabase
+      .from('bookings')
+      .update({
+        status: BOOKING_STATUS.CANCELLED,
+        cancelled_by: 'vendor',
+        cancellation_reason: reason ?? 'Vendor cancelled',
+      })
+      .eq('id', booking_id);
+
+    if (cancelCount >= 3) {
+      await supabase.from('vendors').update({ cancellation_flagged: true }).eq('id', user.id);
+      console.log(`Vendor ${user.id} flagged: ${cancelCount} cancellations in 30 days`);
+    }
+
+    // Notify customer — free cancel, no charge
+    const userMsg = msg_cancelFree();
     await sendNotification({
       recipientId: booking.user_id,
       recipientType: 'user',
-      type: 'vendor_cancelled',
+      type: 'vendor_cancelled_free',
       title: userMsg.title,
       body: userMsg.body,
       bookingId: booking_id,
@@ -138,7 +202,7 @@ Deno.serve(async (req: Request) => {
       data: { bookingId: booking_id, screen: '/vendor-feed' },
     });
 
-    // 7. Notify vendor — confirmation of their own cancellation
+    // Notify vendor — confirmation
     const vendorMsg = msg_vendor_selfCancelled(clientFirstName, booking.service_name ?? 'service');
     await sendNotification({
       recipientId: user.id,
@@ -152,16 +216,17 @@ Deno.serve(async (req: Request) => {
     });
 
     console.log(
-      `Booking ${booking_id} cancelled by vendor ${user.id} — ` +
-      `full refund issued, 30-day cancel count: ${cancelCount}${cancelCount >= 3 ? ' [FLAGGED]' : ''}`
+      `Booking ${booking_id} cancelled by vendor pre-gate (no charge) — ` +
+      `30-day cancel count: ${cancelCount}${cancelCount >= 3 ? ' [FLAGGED]' : ''}`
     );
 
     return jsonResponse({
       success: true,
       booking_id,
       status: 'cancelled',
+      gate_fired: false,
+      vendor_restricted: false,
       cancellation_count_30d: cancelCount,
-      flagged: cancelCount >= 3,
     });
   } catch (err) {
     console.error('vendor-cancel-booking error:', err);

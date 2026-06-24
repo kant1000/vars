@@ -172,16 +172,27 @@ Deno.serve(async (req: Request) => {
       let heldCount = 0;
 
       for (const [vendorId, vendorBookings] of byVendor) {
-        // Fetch vendor hold flag and subaccount code
+        // Fetch vendor hold + restriction flags and subaccount code
         const { data: vendor } = await supabase
           .from('vendors')
-          .select('settlement_on_hold, paystack_subaccount_code')
+          .select('settlement_on_hold, is_restricted, paystack_subaccount_code')
           .eq('id', vendorId)
           .single();
 
         if (vendor?.settlement_on_hold) {
           console.log(
             `Vendor ${vendorId}: settlement held (settlement_on_hold=true) — ` +
+            `skipping ${vendorBookings!.length} booking(s) this cycle`
+          );
+          heldCount += vendorBookings!.length;
+          continue;
+        }
+
+        // Restricted vendors owe VARS money from a post-gate cancellation.
+        // Skip settlement until admin confirms their repayment and lifts the restriction.
+        if (vendor?.is_restricted) {
+          console.log(
+            `Vendor ${vendorId}: settlement held (is_restricted=true) — ` +
             `skipping ${vendorBookings!.length} booking(s) this cycle`
           );
           heldCount += vendorBookings!.length;

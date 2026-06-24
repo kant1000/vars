@@ -56,3 +56,23 @@ export const TRANSPORT_FEE_TIERS = [
   { minKmOver: 6,  maxKmOver: 10,       feeKobo:   750_000, preBufferSlots: 2 },
   { minKmOver: 10, maxKmOver: Infinity, feeKobo: 1_000_000, preBufferSlots: 2 },
 ] as const;
+
+// ── Gate payment constants ─────────────────────────────────────
+
+/**
+ * How long (minutes) the customer has to complete payment after a failed
+ * charge-auth or a first-time checkout at gate time.
+ * TODO: VALUE NOT DECIDED — confirm with product before launch.
+ */
+export const GATE_PAYMENT_RETRY_WINDOW_MINUTES = 10; // placeholder — needs product sign-off
+
+/**
+ * Vendor-to-customer distance (km) at which the proximity cron fires the gate
+ * automatically, as if the vendor tapped "On My Way".
+ * Applied only to the vendor's chronologically-next upcoming accepted booking.
+ * TODO: VALUE NOT DECIDED — confirm with product before launch.
+ */
+export const GATE_PROXIMITY_KM = 3; // placeholder — needs product sign-off
+
+/** How many minutes before scheduled_at the "On My Way" gate window opens. */
+export const GATE_WINDOW_MINUTES = 120;

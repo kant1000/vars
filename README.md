@@ -484,75 +484,119 @@ All `RefreshControl` instances suppress the native OS spinner (`tintColor="trans
 
 ## Payment Flow
 
+No Paystack charge at booking creation. The charge fires when the vendor commits to travel ("On My Way" or proximity trigger) — not before.
+
 ```
-Customer taps "Pay"
+Customer taps "Confirm booking"
         │
         ▼
 paystack-initialize
   • Validates slot availability
   • Checks vendor calendar for conflicts
-  • Checks Pioneer status → computes split (100/0 Pioneer, 80/20 normal)
-  • Initialises Paystack transaction with vendor subaccount + bearer: account
-  • Returns access_code + auto_accept_likely hint
+  • Creates booking record (status = pending, or accepted if auto-accept fires)
+  • Returns booking_id — NO Paystack charge, no access_code, no WebView
+  • Customer notified: "Your payment will be taken when your vendor sets off to
+    you, not before."
+        │
+   ┌────┴──────────────────────────┐
+   │                               │
+Vendor accepts                 Expires (1 hr)
+(or auto-accepted)             paystack-release cron
+status = accepted              Booking → expired
+   │                           No Paystack call — nothing to refund
+   │
+   │── Customer cancels BEFORE gate fires (paystack-cancel)
+   │     • Free — no charge was ever made
+   │     • Transport buffers deleted; both parties notified
+   │
+   ▼
+Gate fires when vendor commits to travel:
+  • Manual trigger: vendor taps "On My Way" (available within GATE_WINDOW_MINUTES
+    of scheduled_at; currently 2 hours)
+  • Automatic trigger: send-reminders proximity cron detects vendor within
+    GATE_PROXIMITY_KM of customer's location (placeholder — needs product sign-off)
+  Atomic: UPDATE SET gate_fired=true WHERE gate_fired=false RETURNING id
+  (prevents double-fire if proximity and manual race)
+        │
+        │── Customer cancels AFTER gate fires
+        │     → 409: booking is locked — vendor is already on their way
+        │     → Customer's recourse is a dispute (from booking detail screen)
         │
         ▼
-Paystack Checkout (WebView)
+   ┌─────────────────────────────────────────────────────────────────────┐
+   │                                                                     │
+Returning customer                                         First-time customer
+(profile has paystack_authorization_code)                  (no stored card)
+        │                                                          │
+chargeAuthorization (silent)                         initializeTransaction
+        │                                            • Generates access_code
+   ┌────┴─────┐                                      • gate_retry_expires_at set
+   │          │                                        NOTE: GATE_PAYMENT_RETRY_
+   │       Failure                                     WINDOW_MINUTES is a PENDING
+   │          │                                        FOUNDER DECISION — placeholder
+   │       openRetryWindow                             value in constants; no real
+   │       • New reference + access_code              number chosen yet
+   │       • Customer push: "payment needs            • Customer push + deep-link
+   │         attention — open app"                      to /booking/gate-checkout
+   │       • Vendor push: "payment confirming"        • gate-checkout screen fetches
+   │                                                    access_code and presents WebView
+   │                                               Paystack Checkout (WebView)
+   │                                                          │
+   └──────────────────────────────────────────────────────────┘
+                                │
+                          charge.success
+                                │
+                                ▼
+                      paystack-webhook
+                        • Finds booking by paystack_reference
+                        • Updates: status → on_way, gate_charged_at = now
+                        • Stores authorization_code on profile (first-time customers)
+                        • Subaccount split applied at this point:
+                          Pioneer: 100% to vendor's subaccount
+                          Normal: 80% vendor / 20% VARS main account
+                        • Notifies customer and vendor
+
+   ─── Gate-payment window expires (paystack-release cron sweep 2) ───
+   Condition: gate_fired=true, gate_charged_at=null, gate_retry_expires_at < now
+   • Booking → cancelled — no Paystack call (charge never completed)
+   • Customer: "payment window closed, no charge made"
+   • Vendor: "that slot is yours again"
+
         │
-   charge.success
-        │
-        ▼
-paystack-webhook
-  • Card is charged — vendor's share (80% or 100% Pioneer) splits immediately
-    into their Paystack subaccount; VARS's share lands in the VARS main account
-  • Creates booking record (sets auto_release_at = scheduled_end + 2hrs; DB
-    trigger overrides to service_rendered_at + 2hrs when vendor marks service done)
-  • If auto-accept conditions met → status = accepted, 5-min grace window opens,
-    2× transport buffer blocks inserted after booking end
-  • Otherwise → status = pending, vendor has 1 hour to accept
-        │
-   ┌────┴──────┐
-   │           │
-Vendor       Expires
-accepts     (1 hr)
-   │           │
-paystack-  paystack-
-capture    release
-(status →  (full refund
- accepted)  to customer)
-   │
-   ├── User cancels (paystack-cancel)
-   │     • Tiered fee: within 1hr of service = non-refundable (100%),
-   │       within 15min of booking = 15%, all other cases = 50%
-   │     • Vendor's cancellation share sent via Transfer API (paystack_recipient_code)
-   │     • Transport buffers deleted
-   │
-   ├── Vendor cancels (vendor-cancel-booking)
-   │     • Full refund, no fee
-   │     • Transport buffers deleted
-   │     • Cancellation count incremented (flagged at 3+ in 30 days)
+   ┌────┴────────────────────────────────────┐
+   │                                         │
+on_way                              Vendor cancels after gate fires
+   │                                (vendor-cancel-booking)
+   │                                • Full Paystack refund to customer
+   │                                • Vendor: is_restricted = true,
+   │                                  restriction_amount_owed_kobo set
+   │                                • All vendor app functionality blocked
+   │                                • Vendor repays VARS out-of-band;
+   │                                  admin lifts restriction via /restrictions
    │
    ├── User disputes (dispute-raise)
    │     • Booking → 'disputed'
-   │     • Admin resolves: pay vendor OR refund user
+   │     • Admin resolves: settle vendor OR refund customer
    │
    ├── Bank chargeback (paystack-webhook: charge.dispute.create)
    │     • settlement_on_hold = true on vendor
-   │     • Cron skips this vendor for settlement until hold is cleared
+   │     • Settle cron skips this vendor until hold is cleared
    │
-Service completed → status = service_rendered
+arrived
+   │
+service_rendered
    │
    ├── User confirms (paystack-settle / user_confirmed)
    │
    └── Auto-release fires at auto_release_at (paystack-settle / auto_release)
          • 2 hours after vendor marks service_rendered
-         • Same 80/20 split as manual confirm
+         • No redistribution — split was locked at charge time
 
 paystack-settle
   • Marks booking COMPLETED, creates payout_history (status: settlement_queued)
-  • Pioneer vendors: 100% for first PIONEER_BOOKINGS_THRESHOLD completed bookings
-    (split set at init time; counter incremented here)
-  • Cron sweeps by VENDOR — if vendor has settlement_on_hold or any open/under-review
-    disputes, their bookings are skipped this cycle
+  • Pioneer counter incremented per completed booking
+  • Cron sweeps by VENDOR — skips if settlement_on_hold = true OR
+    is_restricted = true OR any open/under-review disputes
   • For clear vendors: logs SETTLEMENT QUEUED ops alert with subaccount code
   • VARS ops triggers settlement to vendor's bank from the Paystack dashboard
     (Paystack does not expose a public API for this — settlement_schedule: manual)
@@ -677,26 +721,16 @@ The admin panel never needs to action a clean pass. The queue stays focused on p
 
 ### User-Initiated Cancellation (`paystack-cancel`)
 
-The cancel button is available on the live booking screen while the booking is `pending` or `accepted`. **Once the vendor marks "I'm on my way" (`on_way`), cancellation is locked out** — the customer's only recourse from that point is a dispute.
+The gate model imposes a **binary rule** based on whether the gate has fired:
 
-Rules are evaluated in priority order (top wins):
+**Pre-gate cancel** (`gate_fired = false`): Free. No Paystack call — nothing was ever charged. Transport buffer blocks deleted. Both parties notified. Available from `pending` or `accepted` status.
 
-| Condition | Fee | Vendor share |
-|---|---|---|
-| Within 1 hr of service start | Non-refundable (100%) | 70% vendor / 30% VARS |
-| Within 15 min of booking | 15% of price | 5% vendor / 10% VARS |
-| All other cases | 50% of price | 20% vendor / 30% VARS |
-
-Example: cancel 20 min after booking but 3 hours before service → 50% fee (not within 1hr of service, not within 15min of booking).
-
-Transport buffer blocks are deleted on cancellation, freeing the vendor's calendar.
+**Post-gate cancel** (`gate_fired = true`): Returns **409 — booking is locked**. The vendor has already committed to travel. The customer's only recourse at this point is a dispute.
 
 ### Vendor-Initiated Cancellation (`vendor-cancel-booking`)
 
-- Full refund to customer — no fee applied
-- Transport buffer blocks deleted
-- Rolling 30-day cancellation count queried; if ≥ 3, `cancellation_flagged = true` on vendor record
-- Admin reviews flagged vendors and can clear the flag after investigation
+- **Before gate fires:** Full refund to customer — no Paystack call (no charge was made). Transport buffers deleted. Cancellation count incremented (flagged at 3+ in 30 days).
+- **After gate fires:** Full Paystack refund to customer. Vendor is immediately **restricted** (`is_restricted = true`, `restriction_amount_owed_kobo` set to the refunded amount). Restriction blocks all vendor app functionality until VARS ops confirms out-of-band repayment and lifts it via `/restrictions` in admin.
 
 ### Disputes (`dispute-raise`)
 
@@ -711,11 +745,18 @@ Transport buffer blocks are deleted on cancellation, freeing the vendor's calend
 
 ### Vendor No-Response Expiry (`paystack-release` cron)
 
-A scheduled cron runs every hour. Any `pending` booking older than **1 hour** is expired:
-- Booking marked `expired`
-- Full Paystack refund issued to user
-- User notified and pointed back to vendor feed for the same category
-- Vendor notified (timeout only, not manual decline)
+A scheduled cron runs every hour. **Two sweeps per run:**
+
+**Sweep 1 — vendor didn't respond in time:** Any `pending` booking older than 1 hour is expired:
+- Booking marked `expired` — no Paystack call (gate never fired, nothing charged)
+- Customer notified; vendor notified (timeout only, not manual decline)
+
+**Sweep 2 — gate-payment window expired:** Any `accepted` booking where `gate_fired=true`, `gate_charged_at=null`, and `gate_retry_expires_at < now`:
+- Booking → `cancelled` — no Paystack call (charge never completed)
+- Customer notified: "payment window closed, no charge made"
+- Vendor notified: "that slot is yours again"
+
+**Note on timing:** The duration of the gate payment retry window (`GATE_PAYMENT_RETRY_WINDOW_MINUTES`) is a named constant currently set to a placeholder. It drives a visible countdown shown to customers during checkout. **The actual number is a pending founder decision — no value has been confirmed.**
 
 ### Auto-Release (`paystack-settle` cron)
 
