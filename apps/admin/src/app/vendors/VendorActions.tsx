@@ -43,6 +43,16 @@ export default function VendorActions({ vendor }: { vendor: any }) {
           </button>
         </>
       )}
+      {vendor.settlement_on_hold && (
+        <button
+          className="btn btn-danger"
+          disabled={loading}
+          onClick={() => act({ settlement_on_hold: false })}
+          title="Clear settlement hold after chargeback review is complete"
+        >
+          Clear settlement hold
+        </button>
+      )}
       {vendor.cancellation_flagged && (
         <button
           className="btn btn-ghost"

@@ -197,6 +197,7 @@ Deno.serve(async (req: Request) => {
       email: userEmail,
       amount: totalKobo,
       reference: gateReference,
+      callback_url: 'vars://gate-payment-complete',
       metadata: chargeMeta,
       ...subaccountParams,
     });
@@ -406,6 +407,7 @@ async function openRetryWindow(
     email: profile?.email ?? '',
     amount: totalKobo,
     reference: retryReference,
+    callback_url: 'vars://gate-payment-complete',
     metadata,
     ...(subaccountParams as { subaccount?: string; bearer?: 'account'; transaction_charge?: number }),
   });

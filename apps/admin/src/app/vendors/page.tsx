@@ -20,7 +20,7 @@ async function getVendors(status: string, page: number, q: string) {
   const db = adminClient();
   let query = db
     .from('vendors')
-    .select('id, full_name, phone_number, kyc_status, avg_rating, total_reviews, badge_vars_choice, badge_top_rated, created_at, is_online, cancellation_flagged, profile_image_url, profile_image_raw_url')
+    .select('id, full_name, phone_number, kyc_status, avg_rating, total_reviews, badge_vars_choice, badge_top_rated, created_at, is_online, cancellation_flagged, settlement_on_hold, profile_image_url, profile_image_raw_url')
     .order('created_at', { ascending: false })
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
 

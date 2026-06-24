@@ -101,6 +101,14 @@ export default function BookingsScreen() {
     return () => { supabase.removeChannel(channel); };
   }, [user, load]);
 
+  useEffect(() => {
+    if (!confirming_booking_id) return;
+    const booking = bookings.find((b) => b.id === confirming_booking_id);
+    if (booking?.status === BOOKING_STATUS.ON_WAY) {
+      router.setParams({ confirming_booking_id: undefined });
+    }
+  }, [bookings, confirming_booking_id]);
+
   if (loading) {
     return <View style={st.centered}><ScissorsLoader size="large" color="dark" /></View>;
   }
