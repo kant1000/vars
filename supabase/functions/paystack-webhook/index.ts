@@ -59,7 +59,7 @@ Deno.serve(async (req: Request) => {
 
       case 'refund.processed':
       case 'refund.failed':
-        await handleRefundUpdate(event.event, event.data);
+        await handleRefundUpdate(supabase, event.event, event.data);
         break;
 
       default:
@@ -141,6 +141,10 @@ async function handleChargeSuccess(
           `CUSTOMER NOT REFUNDED — MANUAL ACTION REQUIRED:`,
           refundErr
         );
+        // Throw so the outer handler returns 500 and Paystack retries delivery.
+        // advanceGateToOnWay's idempotency guard makes retries safe; the emergency
+        // refund path above also re-enters safely if Paystack already accepted the refund.
+        throw refundErr;
       }
       return;
     }
@@ -211,19 +215,54 @@ async function handleChargeDispute(
 // Refunds are not instant. Paystack fires these after processing.
 // refund.failed means the customer will NOT receive their money.
 async function handleRefundUpdate(
+  supabase: ReturnType<typeof createAdminClient>,
   event: string,
   data: Record<string, unknown>
 ) {
   const transaction = data.transaction as Record<string, unknown> | undefined;
   const reference = transaction?.reference as string | undefined;
   const amountKobo = data.amount as number | undefined;
+  const now = new Date().toISOString();
+
+  // Look up the booking so we can notify the customer and have an audit trail.
+  const { data: booking } = reference
+    ? await supabase
+        .from('bookings')
+        .select('id, user_id')
+        .eq('paystack_reference', reference)
+        .maybeSingle()
+    : { data: null };
 
   if (event === 'refund.failed') {
     console.error(
-      `REFUND FAILED — ref=${reference ?? 'unknown'} amount=${amountKobo ?? 'unknown'} kobo — CUSTOMER NOT REFUNDED — MANUAL ACTION REQUIRED`
+      `REFUND FAILED — ref=${reference ?? 'unknown'} amount=${amountKobo ?? 'unknown'} kobo ` +
+      `booking=${booking?.id ?? 'unknown'} customer=${booking?.user_id ?? 'unknown'} — CUSTOMER NOT REFUNDED — MANUAL ACTION REQUIRED`
     );
+
+    // Notify the customer that a manual refund is in progress so they aren't left in the dark.
+    if (booking?.user_id) {
+      await supabase.from('notifications').insert({
+        recipient_id: booking.user_id,
+        recipient_type: 'user',
+        type: 'refund_failed',
+        title: 'Refund update',
+        body: "We had a hiccup processing your refund — our team will reach out to make it right.",
+        created_at: now,
+      });
+    }
     return;
   }
 
-  console.log(`Refund processed — ref=${reference} amount=${amountKobo} kobo`);
+  // refund.processed — let the customer know their money is on its way.
+  console.log(`Refund processed — ref=${reference} amount=${amountKobo} kobo booking=${booking?.id ?? 'unknown'}`);
+  if (booking?.user_id) {
+    await supabase.from('notifications').insert({
+      recipient_id: booking.user_id,
+      recipient_type: 'user',
+      type: 'refund_processed',
+      title: 'Refund on its way',
+      body: 'Your refund has been processed and is heading to your account.',
+      created_at: now,
+    });
+  }
 }

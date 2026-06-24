@@ -61,7 +61,9 @@ Deno.serve(async (req: Request) => {
 
     if (bookingError || !booking) return errorResponse('Booking not found', 404);
 
-    if (![BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED].includes(booking.status)) {
+    // ON_WAY is allowed: charge has succeeded (gate_charged_at set) and the
+    // post-gate path below handles refund + vendor restriction for that case.
+    if (![BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ON_WAY].includes(booking.status)) {
       return errorResponse(`Cannot cancel booking with status: ${booking.status}`);
     }
 
