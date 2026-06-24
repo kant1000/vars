@@ -241,7 +241,7 @@ async function handleRefundUpdate(
 
     // Notify the customer that a manual refund is in progress so they aren't left in the dark.
     if (booking?.user_id) {
-      await supabase.from('notifications').insert({
+      const { error: notifErr } = await supabase.from('notifications').insert({
         recipient_id: booking.user_id,
         recipient_type: 'user',
         type: 'refund_failed',
@@ -249,6 +249,9 @@ async function handleRefundUpdate(
         body: "We had a hiccup processing your refund — our team will reach out to make it right.",
         created_at: now,
       });
+      if (notifErr) {
+        console.error(`refund.failed: notification insert failed — booking=${booking.id}:`, notifErr);
+      }
     }
     return;
   }
@@ -256,7 +259,7 @@ async function handleRefundUpdate(
   // refund.processed — let the customer know their money is on its way.
   console.log(`Refund processed — ref=${reference} amount=${amountKobo} kobo booking=${booking?.id ?? 'unknown'}`);
   if (booking?.user_id) {
-    await supabase.from('notifications').insert({
+    const { error: notifErr } = await supabase.from('notifications').insert({
       recipient_id: booking.user_id,
       recipient_type: 'user',
       type: 'refund_processed',
@@ -264,5 +267,8 @@ async function handleRefundUpdate(
       body: 'Your refund has been processed and is heading to your account.',
       created_at: now,
     });
+    if (notifErr) {
+      console.error(`refund.processed: notification insert failed — booking=${booking?.id}:`, notifErr);
+    }
   }
 }
