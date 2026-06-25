@@ -17,13 +17,6 @@
 //        → push customer to open app and complete checkout
 //        → status stays 'accepted' until charge.success webhook fires
 //
-// ── PENDING OTP ──────────────────────────────────────────────────
-// chargeAuthorization can return statuses other than 'success'/'failed'
-// when the card issuer requires additional authentication.
-// This path is NOT implemented — Paystack has not provided full spec.
-// See the placeholder block in handleChargeAuth below.
-// ────────────────────────────────────────────────────────────────
-//
 // Called by:
 //   vendor app (manual trigger) — authenticated as vendor
 //   send-reminders cron (proximity trigger) — service role key
@@ -293,21 +286,6 @@ async function handleChargeAuth(
     console.error(`chargeAuthorization threw for booking ${booking.id}:`, err);
     return await openRetryWindow(supabase, paystack, booking, profile, vendor, reference, totalKobo, subaccountParams, metadata, vendorName);
   }
-
-  // ── PENDING OTP ───────────────────────────────────────────────
-  // chargeAuthorization can return status values other than 'success'/'failed'
-  // when the card issuer requires additional authentication steps.
-  // We have NOT received full spec from Paystack on how to handle these.
-  // Do NOT add speculative handling here.
-  // When Paystack provides the complete flow, implement it in this block.
-  if (chargeResult.status !== 'success' && chargeResult.status !== 'failed') {
-    console.warn(
-      `chargeAuthorization returned status="${chargeResult.status}" for booking ${booking.id} — ` +
-      `OTP or other auth step required. PENDING PAYSTACK SPEC — treating as failure for now.`
-    );
-    return await openRetryWindow(supabase, paystack, booking, profile, vendor, reference, totalKobo, subaccountParams, metadata, vendorName);
-  }
-  // ─────────────────────────────────────────────────────────────
 
   if (chargeResult.status === 'failed') {
     console.log(`chargeAuthorization failed for booking ${booking.id} — opening retry window`);

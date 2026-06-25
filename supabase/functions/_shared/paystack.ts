@@ -111,18 +111,9 @@ export class PaystackClient {
    * Called at gate time for returning customers who have a reusable
    * authorization_code stored on their profile.
    *
-   * The `data.status` field of the response indicates the outcome:
-   *   'success'    — charge completed; advance booking to on_way
-   *   'failed'     — charge declined; open retry window
-   *
-   * ── PENDING OTP ──────────────────────────────────────────────
-   * Paystack may return other status values when the card issuer requires
-   * additional authentication (e.g. 'send_otp', 'send_phone'). We have
-   * confirmed with Paystack that NGN charge_authorization can require an OTP
-   * step, but have not yet received full documentation on the exact status
-   * values and follow-up API calls. Do NOT implement OTP handling speculatively.
-   * Add a handler here once Paystack provides the complete flow spec.
-   * ─────────────────────────────────────────────────────────────
+   * Paystack confirmed: for NGN chargeAuthorization on stored cards, the
+   * response status is always 'success' or 'failed' — no OTP or other
+   * intermediate step. Any other value is treated as failure.
    */
   async chargeAuthorization(params: {
     authorization_code: string;

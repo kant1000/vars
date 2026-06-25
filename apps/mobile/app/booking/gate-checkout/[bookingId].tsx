@@ -13,10 +13,8 @@
 //   3. On checkout exit: poll booking status for on_way
 //   4. On expiry or error: show appropriate state
 //
-// OTP note: this screen handles a live Paystack checkout — the
-// checkout UI handles any bank verification the card issuer needs.
-// The OTP-pending question is only relevant for chargeAuthorization
-// (returning customers), not this first-timer path.
+// This screen handles a live Paystack checkout — the checkout UI manages
+// any bank verification the card issuer requires (3DS, OTP, etc.).
 // ============================================================
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -150,10 +148,14 @@ export default function GateCheckoutScreen() {
       setPhase('cancelled');
       return false;
     }
-    // Any other navigation = payment was attempted — close and poll
-    setPhase('confirming');
-    pollForOnWay();
-    return false;
+    // Paystack's callback after successful payment — trigger polling
+    if (url === 'vars://gate-payment-complete') {
+      setPhase('confirming');
+      pollForOnWay();
+      return false;
+    }
+    // Any other URL (3DS bank page, issuer OTP page, etc.) — allow navigation through
+    return true;
   };
 
   // ── Confirming ──────────────────────────────────────────────

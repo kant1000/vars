@@ -4,14 +4,17 @@
 // MUST verify HMAC-SHA512 signature before processing.
 //
 // In the gate model, bookings are created at request time (paystack-initialize).
-// charge.success fires only when a first-time customer completes a WebView
-// checkout at gate time. It advances the booking to on_way.
+// charge.success fires in two contexts:
+//   1. Card verification (metadata.vars_card_verify=true): stores auth_code on
+//      the customer's profile. No booking transition.
+//   2. Gate checkout (first-time customer): advances booking to on_way.
 //
 // Returning customers are charged silently in paystack-gate via
 // chargeAuthorization — on_way transition is handled there, not here.
 //
 // Handled events:
-//   charge.success        → gate checkout complete: store auth_code, advance to on_way
+//   charge.success        → card verify: store auth_code on profile; OR
+//                           gate checkout complete: store auth_code, advance to on_way
 //   charge.dispute.create → set settlement_on_hold=true on vendor (bank chargeback)
 //   refund.processed      → log success for audit trail
 //   refund.failed         → log failure for manual ops review
@@ -80,23 +83,36 @@ Deno.serve(async (req: Request) => {
 // ============================================================
 
 /**
- * Gate checkout complete (first-time customer via WebView).
+ * charge.success — two distinct paths:
  *
- * paystack-gate already set gate_fired=true and paystack_reference on the
- * booking when it generated the access_code. This webhook fires when the
- * customer actually completes the Paystack inline checkout.
+ * 1. Card verification (metadata.vars_card_verify=true):
+ *    A ₦50 one-time charge to confirm the customer's card is active.
+ *    Stores the reusable authorization_code on the customer's profile
+ *    so future gate charges can use chargeAuthorization (silent).
  *
- * Returning customers (chargeAuthorization) are handled synchronously inside
- * paystack-gate — they never reach this handler.
+ * 2. Gate checkout (first-time customer WebView):
+ *    paystack-gate already set gate_fired=true and paystack_reference on the
+ *    booking when it generated the access_code. This fires when the customer
+ *    completes the Paystack WebView checkout at gate time.
  *
- * Reconciliation is delegated to advanceGateToOnWay (_shared/gate.ts) so
- * this path and the verify-before-issue path in paystack-gate-checkout can
- * never drift apart.
+ *    Returning customers (chargeAuthorization) are handled synchronously inside
+ *    paystack-gate — they never reach this handler.
+ *
+ *    Reconciliation is delegated to advanceGateToOnWay (_shared/gate.ts) so
+ *    this path and the verify-before-issue path in paystack-gate-checkout can
+ *    never drift apart.
  */
 async function handleChargeSuccess(
   supabase: ReturnType<typeof createAdminClient>,
   data: Record<string, unknown>
 ) {
+  // Card verification path — store auth code on profile, no booking to advance
+  const metadata = (data.metadata as Record<string, unknown>) ?? {};
+  if (metadata.vars_card_verify === true) {
+    await handleCardVerifySuccess(supabase, data, metadata);
+    return;
+  }
+
   const reference = data.reference as string;
   const authorization = (data.authorization as Record<string, unknown>) ?? {};
   const authorizationCode = authorization.authorization_code as string | null;
@@ -171,6 +187,42 @@ async function handleChargeSuccess(
   });
 
   console.log(`Gate charge reconciled (webhook): booking=${booking.id} ref=${reference} → on_way`);
+}
+
+// ── Card verification charge complete ────────────────────────
+async function handleCardVerifySuccess(
+  supabase: ReturnType<typeof createAdminClient>,
+  data: Record<string, unknown>,
+  metadata: Record<string, unknown>
+) {
+  const userId = metadata.user_id as string | undefined;
+  const authorization = (data.authorization as Record<string, unknown>) ?? {};
+  const authorizationCode = authorization.authorization_code as string | null;
+  const isReusable = authorization.reusable as boolean | undefined;
+
+  if (!userId || !authorizationCode || !isReusable) {
+    console.warn('card-verify charge.success: missing user_id, auth_code, or card not reusable — skipping');
+    return;
+  }
+
+  // Idempotent: skip if already stored (webhook retry)
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('paystack_authorization_code')
+    .eq('id', userId)
+    .single();
+
+  if (profile?.paystack_authorization_code) {
+    console.log(`card-verify: auth code already stored for user ${userId} — idempotent skip`);
+    return;
+  }
+
+  await supabase
+    .from('profiles')
+    .update({ paystack_authorization_code: authorizationCode })
+    .eq('id', userId);
+
+  console.log(`Card verification complete: user=${userId} auth_code stored`);
 }
 
 // ── Bank chargeback from Paystack ────────────────────────────

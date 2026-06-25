@@ -100,12 +100,12 @@ vars/
 
 - **Discovery** — single `get_nearby_vendors` RPC call fetches all vendors within 30 km on screen mount; results sorted by `is_online DESC, distance_km ASC`; list rendered progressively from the in-memory pool (20 initially, +10 on each scroll-to-bottom); L1 category tabs and name search both filter in-memory — instant with no re-fetch; only online vendors are returned via server-side `is_online = TRUE` filter in the RPC
 - **Vendor profile** — compact side-by-side header (72px avatar + name / rating / badges / bio / "Typically accepts in X"); portfolio photo carousel underneath (approved photos only, tap to expand via lightbox); sticky Services | Reviews tab row; Services visible by default; swipe left/right on content to switch tabs; sticky "Book for ₦X,XXX" CTA once at least one service is selected
-- **Booking flow** — 2-step: schedule (date & time) → review access details + pay
+- **Booking flow** — 2-step: schedule (date & time) → review access details + confirm
   - Service selection happens on the vendor profile screen before entering the booking flow
   - Review step: customer enters building name, floor, flat number, gate code; all inputs are silently filtered (no `@` signs, no sequences of 7+ digits)
-  - Pay step: MapView thumbnail confirms customer location before the pay button activates; Paystack checkout opens in-app WebView
+  - Confirm step: MapView thumbnail confirms customer location before the confirm button activates; tapping "Confirm booking" triggers the card verification check and then creates the booking — no Paystack charge at this point
+  - **Card verification (first-time only):** customers with no stored `paystack_authorization_code` are shown a one-time, non-refundable ₦50 verification step before their first booking. The ₦50 Paystack checkout opens in-app WebView; on success the `authorization_code` is stored on the profile. Subsequent bookings skip this entirely.
 - **Booking detail screen** — unified screen for all booking states; status timeline with timestamps; live vendor tracking map while `on_way`; action buttons change per status (cancel, confirm service, dispute)
-- **Paystack checkout** — card charged immediately; vendor's share (80%) splits at charge time into their Paystack subaccount; VARS's 20% goes to the VARS main account
 - **Live tracking** — map polls vendor GPS every 30 seconds while en route; phone number and full access details revealed 15 minutes before appointment
 - **Confirm & settle** — customer taps "Confirm service done" to mark the booking complete; VARS ops then triggers subaccount settlement from the Paystack dashboard; auto-releases 2 hours after the vendor marks service rendered if the customer takes no action
 - **Reviews** — 1–5 star rating + comment after completion
@@ -247,7 +247,8 @@ All functions live in `supabase/functions/` and run on Deno.
 
 | Function | Method | Purpose |
 |---|---|---|
-| `paystack-initialize` | POST | Validates booking request, calculates distance-based transport surcharge, checks Pioneer status to set the correct split (100/0 for Pioneer, 80/20 otherwise), initialises Paystack transaction with vendor subaccount split |
+| `paystack-verify-card` | POST | One-time ₦50 non-refundable card verification for customers with no stored authorization_code. Returns an `access_code` for a Paystack WebView checkout. On success, `paystack-webhook` stores the `authorization_code` on the customer's profile so future gate charges can be silent. Returning customers skip this step entirely. |
+| `paystack-initialize` | POST | Validates booking request, calculates distance-based transport surcharge, checks Pioneer status to set the correct split (100/0 for Pioneer, 80/20 otherwise), creates booking record — no Paystack charge at this point. |
 | `paystack-webhook` | POST | Handles Paystack events: creates booking on `charge.success` (vendor's share already in their subaccount at this point), auto-accepts if conditions met, sets `settlement_on_hold` on vendor for `charge.dispute.create` |
 | `paystack-capture` | POST | Vendor accepts a pending booking — updates status to `accepted`, creates post + pre transport buffer blocks |
 | `paystack-release` | POST | Vendor declines or booking expires — issues a full Paystack refund to the customer |
@@ -490,6 +491,16 @@ No Paystack charge at booking creation. The charge fires when the vendor commits
 Customer taps "Confirm booking"
         │
         ▼
+Card verification check (first-time customers only)
+  • Checks profiles.paystack_authorization_code
+  • If set: skip — proceed directly to paystack-initialize
+  • If not set: paystack-verify-card → ₦50 WebView checkout
+      - Non-refundable, one-time, applies once per account
+      - Customer sees disclosure ("one-time, non-refundable ₦50") before checkout
+      - On success: charge.success webhook → auth_code stored on profile
+      - paystack-initialize is called immediately after
+        │
+        ▼
 paystack-initialize
   • Validates slot availability
   • Checks vendor calendar for conflicts
@@ -526,21 +537,20 @@ Gate fires when vendor commits to travel:
    ┌─────────────────────────────────────────────────────────────────────┐
    │                                                                     │
 Returning customer                                         First-time customer
-(profile has paystack_authorization_code)                  (no stored card)
+(profile has paystack_authorization_code)                  (authorization_code stored
+        │                                                   by card-verification step)
         │                                                          │
 chargeAuthorization (silent)                         initializeTransaction
         │                                            • Generates access_code
    ┌────┴─────┐                                      • gate_retry_expires_at set
-   │          │                                        NOTE: GATE_PAYMENT_RETRY_
-   │       Failure                                     WINDOW_MINUTES is a PENDING
-   │          │                                        FOUNDER DECISION — placeholder
-   │       openRetryWindow                             value in constants; no real
-   │       • New reference + access_code              number chosen yet
-   │       • Customer push: "payment needs            • Customer push + deep-link
-   │         attention — open app"                      to /booking/gate-checkout
-   │       • Vendor push: "payment confirming"        • gate-checkout screen fetches
-   │                                                    access_code and presents WebView
-   │                                               Paystack Checkout (WebView)
+   │          │                                        (GATE_PAYMENT_RETRY_WINDOW_
+   │       Failure                                     MINUTES = 10)
+   │          │                                      • Customer push + deep-link
+   │       openRetryWindow                             to /booking/gate-checkout
+   │       • New reference + access_code            • gate-checkout screen fetches
+   │       • Customer push: "payment needs            access_code and presents WebView
+   │         attention — open app"
+   │       • Vendor push: "payment confirming"     Paystack Checkout (WebView)
    │                                                          │
    └──────────────────────────────────────────────────────────┘
                                 │

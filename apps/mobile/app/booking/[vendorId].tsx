@@ -4,6 +4,10 @@
 // Step 1: Pick date + time slot
 // Step 2a: Review + access details
 // Step 2b: Location confirmation + pay
+//
+// Card verification: first-time customers (no stored paystack_authorization_code)
+// are shown a one-time, non-refundable ₦50 card verification step before the
+// booking is created. Returning customers skip this entirely.
 // ============================================================
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -11,6 +15,7 @@ import {
   ScrollView, StyleSheet, Text, TouchableOpacity,
   View, TextInput, Platform,
 } from 'react-native';
+import { WebView } from 'react-native-webview';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -581,6 +586,95 @@ function Step2Location({
   );
 }
 
+// ── Card Verification (one-time, ₦50, non-refundable) ────────
+type CardVerifyPhase = 'disclosure' | 'webview' | 'polling' | 'failed';
+
+function CardVerifyView({
+  accessCode,
+  amountKobo,
+  phase,
+  onStart,
+  onNavRequest,
+  onCancel,
+  onRetry,
+}: {
+  accessCode: string;
+  amountKobo: number;
+  phase: CardVerifyPhase;
+  onStart: () => void;
+  onNavRequest: (url: string) => boolean;
+  onCancel: () => void;
+  onRetry: () => void;
+}) {
+  if (phase === 'disclosure') {
+    return (
+      <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 24, gap: 20, justifyContent: 'center' }}>
+        <Text style={[s.stepTitle, { textAlign: 'center' }]}>Card verification</Text>
+        <Text style={{ fontSize: 15, color: Colors.textSecondary, lineHeight: 23, textAlign: 'center' }}>
+          To protect you and your vendor, VARS requires a one-time, non-refundable{' '}
+          <Text style={{ fontWeight: '800', color: Colors.text }}>{fmtPrice(amountKobo)}</Text>{' '}
+          card verification. This confirms your card is active before your vendor travels to you.
+        </Text>
+        <Text style={{ fontSize: 13, color: Colors.textMuted, textAlign: 'center', lineHeight: 19 }}>
+          This is charged once per account, not per booking. It is not refundable.
+        </Text>
+        <TouchableOpacity style={[s.payBtn, { marginTop: 8 }]} onPress={onStart} activeOpacity={0.88}>
+          <Text style={s.payBtnText}>Verify card — {fmtPrice(amountKobo)}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={onCancel} style={{ alignItems: 'center', paddingVertical: 12 }} activeOpacity={0.7}>
+          <Text style={{ fontSize: 14, color: Colors.textSecondary }}>Cancel</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    );
+  }
+
+  if (phase === 'webview') {
+    return (
+      <View style={{ flex: 1 }}>
+        <WebView
+          source={{ uri: `https://checkout.paystack.com/${accessCode}` }}
+          onShouldStartLoadWithRequest={(req) => onNavRequest(req.url)}
+          startInLoadingState
+          renderLoading={() => (
+            <View style={[{ flex: 1 }, s.centered]}>
+              <ScissorsLoader size="large" color="dark" />
+            </View>
+          )}
+        />
+      </View>
+    );
+  }
+
+  if (phase === 'polling') {
+    return (
+      <View style={[{ flex: 1 }, s.centered]}>
+        <ScissorsLoader size="large" color="dark" />
+        <Text style={{ fontSize: 14, color: Colors.textSecondary, marginTop: 20, textAlign: 'center', paddingHorizontal: 32 }}>
+          Verifying your card — this only takes a moment.
+        </Text>
+      </View>
+    );
+  }
+
+  // failed
+  return (
+    <View style={[{ flex: 1, padding: 32 }, s.centered, { gap: 16 }]}>
+      <Text style={{ fontSize: 20, fontWeight: '800', color: Colors.text, textAlign: 'center' }}>
+        Verification timed out
+      </Text>
+      <Text style={{ fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 21 }}>
+        If you completed the payment, your verification should land shortly. Tap below to check.
+      </Text>
+      <TouchableOpacity style={s.payBtn} onPress={onRetry} activeOpacity={0.88}>
+        <Text style={s.payBtnText}>Check again</Text>
+      </TouchableOpacity>
+      <TouchableOpacity onPress={onCancel} style={{ alignItems: 'center', paddingVertical: 12 }} activeOpacity={0.7}>
+        <Text style={{ fontSize: 14, color: Colors.textSecondary }}>Cancel</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
   return (
     <View style={s.summaryRow}>
@@ -659,6 +753,13 @@ export default function BookingFlow() {
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [cardVerify, setCardVerify] = useState<{
+    accessCode: string;
+    amountKobo: number;
+    phase: CardVerifyPhase;
+  } | null>(null);
+  const cardVerifyPollingRef = useRef(false);
+
   useEffect(() => {
     if (!vendorId) return;
     supabase
@@ -726,26 +827,17 @@ export default function BookingFlow() {
     }
   };
 
-  const handlePay = async () => {
+  const submitBooking = useCallback(async () => {
     if (!slot || !coords) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    posthog?.capture(EVENTS.PAYMENT_INITIATED, {
-      vendor_id: vendorId,
-      total_kobo: totalServiceKobo,
-    });
     setPaying(true);
     setError(null);
-
     try {
       const { data: { session: sess } } = await supabase.auth.getSession();
       if (!sess) { setError('Session expired. Please sign in again.'); setPaying(false); return; }
 
       const res = await fetch(`${SUPABASE_URL}/functions/v1/paystack-initialize`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${sess.access_token}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sess.access_token}` },
         body: JSON.stringify({
           service_ids: serviceIds,
           scheduled_at: slot.toISOString(),
@@ -762,11 +854,94 @@ export default function BookingFlow() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Booking failed');
 
-      posthog?.capture(EVENTS.PAYMENT_COMPLETED, {
-        vendor_id: vendorId,
-        booking_id: data.booking_id,
-      });
+      posthog?.capture(EVENTS.PAYMENT_COMPLETED, { vendor_id: vendorId, booking_id: data.booking_id });
       router.replace('/(tabs)/bookings');
+    } catch (err: any) {
+      setError(err.message);
+      setPaying(false);
+    }
+  }, [slot, coords, serviceIds, locAddress, access, vendorId]);
+
+  const pollForCardVerify = useCallback(async () => {
+    if (cardVerifyPollingRef.current) return;
+    cardVerifyPollingRef.current = true;
+    const { data: { session: sess } } = await supabase.auth.getSession();
+    if (!sess) {
+      cardVerifyPollingRef.current = false;
+      setCardVerify(null);
+      setError('Session expired. Please sign in again.');
+      return;
+    }
+    for (let i = 0; i < 15; i++) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('paystack_authorization_code')
+        .eq('id', sess.user.id)
+        .single();
+      if (data?.paystack_authorization_code) {
+        cardVerifyPollingRef.current = false;
+        setCardVerify(null);
+        await submitBooking();
+        return;
+      }
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+    cardVerifyPollingRef.current = false;
+    setCardVerify((cv) => cv ? { ...cv, phase: 'failed' } : null);
+  }, [submitBooking]);
+
+  const handleCardVerifyNav = useCallback((url: string): boolean => {
+    if (url.startsWith('https://checkout.paystack.com/')) return true;
+    if (url.includes('cancel') || url.includes('declined') || url.includes('close')) {
+      setCardVerify((cv) => cv ? { ...cv, phase: 'disclosure' } : null);
+      return false;
+    }
+    if (url === 'vars://card-verify-complete') {
+      setCardVerify((cv) => cv ? { ...cv, phase: 'polling' } : null);
+      pollForCardVerify();
+      return false;
+    }
+    // Any other URL (3DS, bank OTP page, etc.) — allow through
+    return true;
+  }, [pollForCardVerify]);
+
+  const handlePay = async () => {
+    if (!slot || !coords) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    posthog?.capture(EVENTS.PAYMENT_INITIATED, { vendor_id: vendorId, total_kobo: totalServiceKobo });
+    setPaying(true);
+    setError(null);
+
+    try {
+      const { data: { session: sess } } = await supabase.auth.getSession();
+      if (!sess) { setError('Session expired. Please sign in again.'); setPaying(false); return; }
+
+      // Check for stored card authorization
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('paystack_authorization_code')
+        .eq('id', sess.user.id)
+        .single();
+
+      if (!profile?.paystack_authorization_code) {
+        // First-time customer — initiate ₦50 card verification before booking
+        const verifyRes = await fetch(`${SUPABASE_URL}/functions/v1/paystack-verify-card`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sess.access_token}` },
+        });
+        const verifyData = await verifyRes.json();
+        if (!verifyRes.ok) throw new Error(verifyData.error ?? 'Could not start card verification');
+
+        if (!verifyData.already_verified) {
+          setPaying(false);
+          setCardVerify({ accessCode: verifyData.access_code, amountKobo: verifyData.amount_kobo, phase: 'disclosure' });
+          return;
+        }
+        // already_verified returned (race between check and verify call) — fall through
+      }
+
+      setPaying(false);
+      await submitBooking();
     } catch (err: any) {
       setError(err.message);
       setPaying(false);
@@ -799,41 +974,58 @@ export default function BookingFlow() {
         </View>
       )}
 
-      {step === 1 && (
-        <Step1
-          vendorId={vendorId!}
-          totalDurationBlocks={totalDurationBlocks}
-          onConfirm={handleSelectSlot}
+      {cardVerify ? (
+        <CardVerifyView
+          accessCode={cardVerify.accessCode}
+          amountKobo={cardVerify.amountKobo}
+          phase={cardVerify.phase}
+          onStart={() => setCardVerify((cv) => cv ? { ...cv, phase: 'webview' } : null)}
+          onNavRequest={handleCardVerifyNav}
+          onCancel={() => setCardVerify(null)}
+          onRetry={() => {
+            setCardVerify((cv) => cv ? { ...cv, phase: 'polling' } : null);
+            pollForCardVerify();
+          }}
         />
-      )}
-      {step === 2 && slot && step2View === 'review' && (
-        <Step2Review
-          serviceSummary={serviceSummary}
-          totalDurationBlocks={totalDurationBlocks}
-          totalServiceKobo={totalServiceKobo}
-          slot={slot}
-          isAutoAccept={slotIsAutoAccept}
-          access={access}
-          setAccess={setAccess}
-          onConfirmLocation={handleConfirmLocation}
-          locating={locating}
-          locError={locError}
-        />
-      )}
-      {step === 2 && slot && step2View === 'location' && coords && (
-        <Step2Location
-          serviceSummary={serviceSummary}
-          totalDurationBlocks={totalDurationBlocks}
-          totalServiceKobo={totalServiceKobo}
-          slot={slot}
-          isAutoAccept={slotIsAutoAccept}
-          coords={coords}
-          locAddress={locAddress}
-          access={access}
-          vendorZone={vendorZone}
-          onPay={handlePay}
-          paying={paying}
-        />
+      ) : (
+        <>
+          {step === 1 && (
+            <Step1
+              vendorId={vendorId!}
+              totalDurationBlocks={totalDurationBlocks}
+              onConfirm={handleSelectSlot}
+            />
+          )}
+          {step === 2 && slot && step2View === 'review' && (
+            <Step2Review
+              serviceSummary={serviceSummary}
+              totalDurationBlocks={totalDurationBlocks}
+              totalServiceKobo={totalServiceKobo}
+              slot={slot}
+              isAutoAccept={slotIsAutoAccept}
+              access={access}
+              setAccess={setAccess}
+              onConfirmLocation={handleConfirmLocation}
+              locating={locating}
+              locError={locError}
+            />
+          )}
+          {step === 2 && slot && step2View === 'location' && coords && (
+            <Step2Location
+              serviceSummary={serviceSummary}
+              totalDurationBlocks={totalDurationBlocks}
+              totalServiceKobo={totalServiceKobo}
+              slot={slot}
+              isAutoAccept={slotIsAutoAccept}
+              coords={coords}
+              locAddress={locAddress}
+              access={access}
+              vendorZone={vendorZone}
+              onPay={handlePay}
+              paying={paying}
+            />
+          )}
+        </>
       )}
 
     </View>
