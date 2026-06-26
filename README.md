@@ -125,7 +125,7 @@ vars/
   - **Block a range** — long-press any day in the monthly calendar to start range selection; tap a second day to extend the range; Block/Unblock button appears immediately at the bottom of the modal. Detects automatically whether to block or unblock based on current state.
   - **Recurring weekly blocks** — "BLOCK EVERY" Mon–Sun chip row in the calendar modal. Tap a chip to block that weekday every week indefinitely; new days entering the 14-day window are blocked automatically on each schedule focus. Tap again to remove the rule and clear future blocks. Multiple weekdays supported; no end date. Stored in `recurring_block_weekdays integer[]` on the `vendors` row.
 - **Auto-Accept** — geographic zone system for instant booking confirmation (see below)
-- **Earnings (Stage 1)** — period-filtered earnings hero (Today / This week / This month / All time) with hide-balance toggle; booking-level list showing client, service, date, amount, and payment status (Paid / Confirming); data sourced from completed and service_rendered bookings
+- **Earnings (Stage 1)** — period-filtered earnings hero (Today / This week / This month / All time) with hide-balance toggle; booking-level list with three distinct status buckets: **Cleared** (completed, vendor_amount_kobo from payout_history), **Confirming** (service_rendered, estimated 80%), **Under review** (disputed, estimated 80%); hero chip shows each bucket's subtotal; disputed bookings are visible and counted in the total
 - **Pioneer programme** — lead capture and conversion flow (cohort complete as of May 2026; landing form now presents general stylist registration for all new vendors)
 
 ### Landing Page & Blog

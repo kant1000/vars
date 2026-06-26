@@ -1,8 +1,10 @@
 // ============================================================
 // VARS — Vendor Earnings Screen (Stage 1)
 // Period earnings hero + booking-level list
-// Amounts shown are gross booking price (service_price_kobo).
-// Status: service_rendered = "Confirming", completed = "Paid"
+// Three buckets:
+//   Cleared     (completed)       — vendor_amount_kobo from payout_history
+//   Under review (disputed)       — estimated 80% (no payout row yet)
+//   Confirming  (service_rendered) — estimated 80% (no payout row yet)
 // ============================================================
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -25,7 +27,7 @@ interface EarningRow {
   service_name: string;
   scheduled_at: string;
   amount_kobo: number;
-  status: 'service_rendered' | 'completed';
+  status: 'service_rendered' | 'completed' | 'disputed';
 }
 
 const PERIODS: { key: Period; label: string }[] = [
@@ -80,9 +82,13 @@ export default function EarningsScreen() {
 
     let query = supabase
       .from('bookings')
-      .select('id, service_name, service_price_kobo, scheduled_at, status, profiles:user_id(full_name)')
+      .select(`
+        id, service_name, service_price_kobo, scheduled_at, status,
+        profiles:user_id(full_name),
+        payout_history(vendor_amount_kobo)
+      `)
       .eq('vendor_id', vendorId)
-      .in('status', ['service_rendered', 'completed'])
+      .in('status', ['service_rendered', 'completed', 'disputed'])
       .order('scheduled_at', { ascending: false });
 
     if (range) {
@@ -90,29 +96,36 @@ export default function EarningsScreen() {
     }
 
     const { data } = await query;
-    setRows((data ?? []).map((b: any) => ({
-      id: b.id,
-      client_name: b.profiles?.full_name ?? 'Client',
-      service_name: b.service_name,
-      scheduled_at: b.scheduled_at,
-      amount_kobo: b.service_price_kobo,
-      status: b.status as 'service_rendered' | 'completed',
-    })));
+    setRows((data ?? []).map((b: any) => {
+      const payoutRow = Array.isArray(b.payout_history) ? b.payout_history[0] : null;
+      const vendorAmount = payoutRow?.vendor_amount_kobo ?? Math.round(b.service_price_kobo * 0.8);
+      return {
+        id: b.id,
+        client_name: b.profiles?.full_name ?? 'Client',
+        service_name: b.service_name,
+        scheduled_at: b.scheduled_at,
+        amount_kobo: vendorAmount,
+        status: b.status as 'service_rendered' | 'completed' | 'disputed',
+      };
+    }));
     setLoading(false);
     setRefreshing(false);
   }, [vendorId, period]);
 
   useEffect(() => { if (vendorId) load(); }, [load, vendorId]);
 
-  const totalKobo      = rows.reduce((s, r) => s + r.amount_kobo, 0);
-  const paidKobo       = rows.filter((r) => r.status === 'completed').reduce((s, r) => s + r.amount_kobo, 0);
+  const clearedKobo    = rows.filter((r) => r.status === 'completed').reduce((s, r) => s + r.amount_kobo, 0);
   const confirmingKobo = rows.filter((r) => r.status === 'service_rendered').reduce((s, r) => s + r.amount_kobo, 0);
+  const reviewKobo     = rows.filter((r) => r.status === 'disputed').reduce((s, r) => s + r.amount_kobo, 0);
+  const totalKobo      = clearedKobo + confirmingKobo + reviewKobo;
 
   const fmt = (k: number) => hidden ? '₦ · · ·' : fmtPrice(k);
 
   if (loading) {
     return <View style={s.centered}><ScissorsLoader size="small" color="dark" /></View>;
   }
+
+  const hasBreakdown = clearedKobo > 0 || confirmingKobo > 0 || reviewKobo > 0;
 
   const ListHeader = (
     <>
@@ -148,18 +161,24 @@ export default function EarningsScreen() {
         <Text style={s.heroAmount} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
           {fmt(totalKobo)}
         </Text>
-        {(paidKobo > 0 || confirmingKobo > 0) ? (
+        {hasBreakdown ? (
           <View style={s.heroSplit}>
-            {paidKobo > 0 && (
+            {clearedKobo > 0 && (
               <View style={s.heroChip}>
                 <View style={[s.heroDot, { backgroundColor: Colors.success }]} />
-                <Text style={s.heroChipText}>Paid {hidden ? '···' : fmtPrice(paidKobo)}</Text>
+                <Text style={s.heroChipText}>Cleared {hidden ? '···' : fmtPrice(clearedKobo)}</Text>
               </View>
             )}
             {confirmingKobo > 0 && (
               <View style={s.heroChip}>
                 <View style={[s.heroDot, { backgroundColor: Colors.warning }]} />
                 <Text style={s.heroChipText}>Confirming {hidden ? '···' : fmtPrice(confirmingKobo)}</Text>
+              </View>
+            )}
+            {reviewKobo > 0 && (
+              <View style={s.heroChip}>
+                <View style={[s.heroDot, { backgroundColor: Colors.error }]} />
+                <Text style={s.heroChipText}>Under review {hidden ? '···' : fmtPrice(reviewKobo)}</Text>
               </View>
             )}
           </View>
@@ -206,7 +225,14 @@ export default function EarningsScreen() {
           </View>
         }
         renderItem={({ item: r }) => {
-          const isPaid = r.status === 'completed';
+          const pillColor =
+            r.status === 'completed' ? Colors.success :
+            r.status === 'disputed'  ? Colors.error   :
+            Colors.warning;
+          const pillLabel =
+            r.status === 'completed' ? 'Cleared'      :
+            r.status === 'disputed'  ? 'Under review' :
+            'Confirming';
           return (
             <View style={s.row}>
               <View style={s.rowLeft}>
@@ -218,9 +244,9 @@ export default function EarningsScreen() {
               </View>
               <View style={s.rowRight}>
                 <Text style={s.rowAmount}>{fmt(r.amount_kobo)}</Text>
-                <View style={[s.statusPill, { borderColor: isPaid ? Colors.success : Colors.warning }]}>
-                  <Text style={[s.statusText, { color: isPaid ? Colors.success : Colors.warning }]}>
-                    {isPaid ? 'Paid' : 'Confirming'}
+                <View style={[s.statusPill, { borderColor: pillColor }]}>
+                  <Text style={[s.statusText, { color: pillColor }]}>
+                    {pillLabel}
                   </Text>
                 </View>
               </View>
