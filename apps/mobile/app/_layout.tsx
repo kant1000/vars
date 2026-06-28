@@ -189,6 +189,7 @@ function RootLayout() {
     <PostHogProvider
       apiKey={process.env.EXPO_PUBLIC_POSTHOG_KEY ?? ''}
       options={{ host: 'https://eu.i.posthog.com' }}
+      autocapture={false}
     >
     <GestureHandlerRootView style={{ flex: 1 }}>
       <BottomSheetModalProvider>
