@@ -16,16 +16,16 @@ import {
   msg_serviceRendered,
 } from '../_shared/notifications.ts';
 
-type JobStatus = 'on_way' | 'arrived' | 'service_rendered';
+// on_way is intentionally excluded — that transition is owned by paystack-gate,
+// which fires the charge atomically. Allowing it here would bypass payment.
+type JobStatus = 'arrived' | 'service_rendered';
 
 const VALID_FROM: Record<JobStatus, string> = {
-  on_way:           BOOKING_STATUS.ACCEPTED,
   arrived:          BOOKING_STATUS.ON_WAY,
   service_rendered: BOOKING_STATUS.ARRIVED,
 };
 
 const TIMESTAMP_FIELD: Record<JobStatus, string> = {
-  on_way:           'on_way_at',
   arrived:          'arrived_at',
   service_rendered: 'service_rendered_at',
 };
@@ -47,8 +47,8 @@ Deno.serve(async (req: Request) => {
 
   const { booking_id, new_status } = body;
   if (!booking_id) return errorResponse('booking_id is required');
-  if (!new_status || !['on_way', 'arrived', 'service_rendered'].includes(new_status)) {
-    return errorResponse('new_status must be on_way, arrived, or service_rendered');
+  if (!new_status || !['arrived', 'service_rendered'].includes(new_status)) {
+    return errorResponse('new_status must be arrived or service_rendered — use paystack-gate for on_way');
   }
 
   const status = new_status as JobStatus;
