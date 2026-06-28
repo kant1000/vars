@@ -67,20 +67,6 @@ function sanitize(text: string, maxLen: number) {
   return text.replace(/@/g, '').replace(/\d{7,}/g, '').slice(0, maxLen);
 }
 
-// ── Cancellation fee preview ──────────────────────────────────
-// Mirrors calculateCancellationFee() in _shared/paystack.ts
-function getCancellationTier(
-  createdAt: string,
-  scheduledAt: string,
-): { feePercent: number; refundPercent: number } {
-  const now = Date.now();
-  const minsSinceBooking = (now - new Date(createdAt).getTime()) / 60_000;
-  const minsToService    = (new Date(scheduledAt).getTime() - now) / 60_000;
-
-  if (minsToService    <= 60) return { feePercent: 100, refundPercent: 0  };
-  if (minsSinceBooking <= 15) return { feePercent: 15,  refundPercent: 85 };
-  return                             { feePercent: 50,  refundPercent: 50 };
-}
 
 // ── Dispute categories ────────────────────────────────────────
 type DisputeCategory =
@@ -503,7 +489,7 @@ export default function BookingDetailScreen() {
           <Text style={s.statusDescription}>{cfg.description}</Text>
           {(booking.status === BOOKING_STATUS.PENDING || booking.status === BOOKING_STATUS.ACCEPTED) && (
             <Text style={s.escrowNote}>
-              Your {fmtPrice(booking.service_price_kobo)} is held securely by VARS until you confirm the service.
+              Payment is only taken when your stylist sets off — not before.
             </Text>
           )}
         </View>
@@ -635,33 +621,9 @@ export default function BookingDetailScreen() {
           <Pressable style={s.modalOverlay} onPress={() => setShowCancelModal(false)}>
             <Pressable style={s.modalSheet} onPress={() => {}}>
               <Text style={s.modalTitle}>Cancel booking?</Text>
-              {(() => {
-                const tier = getCancellationTier(booking.created_at, booking.scheduled_at);
-                const refundKobo = Math.round(booking.service_price_kobo * tier.refundPercent / 100);
-                if (tier.feePercent === 100) {
-                  return (
-                    <Text style={s.modalBody}>
-                      Your service starts within 1 hour — this booking is{' '}
-                      <Text style={s.modalBold}>non-refundable</Text>.
-                      No refund will be issued.
-                    </Text>
-                  );
-                }
-                if (tier.feePercent === 15) {
-                  return (
-                    <Text style={s.modalBody}>
-                      Cancelled within 15 minutes of booking — a 15% cancellation fee applies.{' '}
-                      <Text style={s.modalBold}>{fmtPrice(refundKobo)}</Text> will be returned to you.
-                    </Text>
-                  );
-                }
-                return (
-                  <Text style={s.modalBody}>
-                    Cancelled more than 15 minutes after booking and more than 1 hour before service time — a 50% cancellation fee applies.{' '}
-                    <Text style={s.modalBold}>{fmtPrice(refundKobo)}</Text> will be returned to you.
-                  </Text>
-                );
-              })()}
+              <Text style={s.modalBody}>
+                Your stylist hasn&apos;t set off yet — cancellation is free. No payment has been taken.
+              </Text>
               <View style={s.modalActions}>
                 <TouchableOpacity style={s.modalKeepBtn} onPress={() => setShowCancelModal(false)}>
                   <Text style={s.modalKeepText}>Keep booking</Text>

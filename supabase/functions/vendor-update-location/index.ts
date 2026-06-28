@@ -11,6 +11,7 @@
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient, createAuthClient } from '../_shared/supabase.ts';
+import { BOOKING_STATUS } from '../_shared/constants.ts';
 
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371;
@@ -64,13 +65,26 @@ Deno.serve(async (req: Request) => {
       // hysteresis band (zoneRadius < dist <= zoneRadius+3): leave drifted unchanged
     }
 
+    // Only write live-tracking coordinates when vendor has an active on_way booking.
+    // Drift detection (auto_accept_paused_due_to_drift) always updates regardless.
+    const { data: onWayBooking } = await supabase
+      .from('bookings')
+      .select('id')
+      .eq('vendor_id', user.id)
+      .eq('status', BOOKING_STATUS.ON_WAY)
+      .maybeSingle();
+
+    const updatePayload: Record<string, unknown> = {
+      auto_accept_paused_due_to_drift: drifted,
+    };
+    if (onWayBooking) {
+      updatePayload.vendor_current_lat = lat;
+      updatePayload.vendor_current_lng = lng;
+    }
+
     const { error: updateError } = await supabase
       .from('vendors')
-      .update({
-        vendor_current_lat: lat,
-        vendor_current_lng: lng,
-        auto_accept_paused_due_to_drift: drifted,
-      })
+      .update(updatePayload)
       .eq('id', user.id);
 
     if (updateError) return errorResponse(updateError.message, 500);

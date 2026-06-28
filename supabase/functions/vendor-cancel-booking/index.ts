@@ -53,7 +53,7 @@ Deno.serve(async (req: Request) => {
       .select(`
         id, status, user_id, vendor_id, gate_fired, gate_charged_at,
         service_price_kobo, transport_fee_kobo, service_name, scheduled_at,
-        paystack_reference
+        paystack_reference, auto_accepted, auto_accept_grace_expires_at
       `)
       .eq('id', booking_id)
       .eq('vendor_id', user.id)
@@ -222,16 +222,22 @@ Deno.serve(async (req: Request) => {
     }
 
     // ── PRE-GATE PATH ───────────────────────────────────────────
+    const graceExpiresAt = (booking as unknown as Record<string, unknown>).auto_accept_grace_expires_at as string | null;
+    const isInGracePeriod =
+      !!(booking as unknown as Record<string, unknown>).auto_accepted &&
+      graceExpiresAt != null &&
+      new Date() < new Date(graceExpiresAt);
+
     await supabase
       .from('bookings')
       .update({
         status: BOOKING_STATUS.CANCELLED,
         cancelled_by: 'vendor',
-        cancellation_reason: reason ?? 'Vendor cancelled',
+        cancellation_reason: reason ?? (isInGracePeriod ? 'Vendor cancelled in grace period' : 'Vendor cancelled'),
       })
       .eq('id', booking_id);
 
-    if (cancelCount >= 3) {
+    if (!isInGracePeriod && cancelCount >= 3) {
       await supabase.from('vendors').update({ cancellation_flagged: true }).eq('id', user.id);
       console.log(`Vendor ${user.id} flagged: ${cancelCount} cancellations in 30 days`);
     }
@@ -263,8 +269,9 @@ Deno.serve(async (req: Request) => {
     });
 
     console.log(
-      `Booking ${booking_id} cancelled by vendor pre-gate (no charge) — ` +
-      `30-day cancel count: ${cancelCount}${cancelCount >= 3 ? ' [FLAGGED]' : ''}`
+      `Booking ${booking_id} cancelled by vendor pre-gate ` +
+      `${isInGracePeriod ? '(grace period — penalty-free)' : '(no charge)'} — ` +
+      `30-day cancel count: ${cancelCount}${!isInGracePeriod && cancelCount >= 3 ? ' [FLAGGED]' : ''}`
     );
 
     return jsonResponse({
@@ -273,7 +280,8 @@ Deno.serve(async (req: Request) => {
       status: 'cancelled',
       gate_fired: false,
       vendor_restricted: false,
-      cancellation_count_30d: cancelCount,
+      grace_cancel: isInGracePeriod,
+      cancellation_count_30d: isInGracePeriod ? 0 : cancelCount,
     });
   } catch (err) {
     console.error('vendor-cancel-booking error:', err);

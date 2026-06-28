@@ -159,13 +159,16 @@ Deno.serve(async (req: Request) => {
       ((vendor?.pioneer_bookings_completed as number) ?? 0) < PIONEER_BOOKINGS_THRESHOLD;
 
     const subaccountCode = vendor?.paystack_subaccount_code as string | null;
-    const subaccountParams = subaccountCode
-      ? {
-          subaccount: subaccountCode,
-          bearer: 'account' as const,
-          ...(isPioneer ? { transaction_charge: 0 } : {}),
-        }
-      : {};
+    if (!subaccountCode) {
+      console.error(`Gate: vendor ${booking.vendor_id} has no paystack_subaccount_code — blocking gate to prevent splitless charge`);
+      return errorResponse('Vendor payment account not configured. Please contact support.', 422);
+    }
+
+    const subaccountParams = {
+      subaccount: subaccountCode,
+      bearer: 'account' as const,
+      ...(isPioneer ? { transaction_charge: 0 } : {}),
+    };
 
     const paystack = new PaystackClient(Deno.env.get('PAYSTACK_SECRET_KEY')!);
     const chargeMeta = {

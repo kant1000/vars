@@ -51,13 +51,11 @@ const TYPE_ICON: Record<string, IconComp> = {
   dispute_raised:         WarningIcon,
   dispute_resolved:       CheckCircleIcon,
   booking_cancelled:      XCircleIcon,
+  booking_cancelled_free: XCircleIcon,
+  customer_cancelled_free:XCircleIcon,
   vendor_cancelled:       XCircleIcon,
   vendor_self_cancelled:  XCircleIcon,
   vendor_declines:        XCircleIcon,
-  cancel_0_15:            ArrowUpIcon,
-  cancel_15_60:           ArrowUpIcon,
-  cancel_non_refundable:  ArrowUpIcon,
-  user_cancelled_with_fee:ArrowUpIcon,
 };
 
 function typeIcon(type: string): React.ReactElement {

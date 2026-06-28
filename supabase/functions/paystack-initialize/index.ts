@@ -288,6 +288,9 @@ Deno.serve(async (req: Request) => {
         auto_release_at: autoReleaseAt.toISOString(),
         auto_accepted: autoAcceptResult.shouldAutoAccept,
         accepted_at: autoAcceptResult.shouldAutoAccept ? now.toISOString() : null,
+        auto_accept_grace_expires_at: autoAcceptResult.shouldAutoAccept
+          ? new Date(now.getTime() + 5 * 60 * 1000).toISOString()
+          : null,
       })
       .select('id, vendor_id, user_id')
       .single();

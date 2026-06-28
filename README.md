@@ -117,7 +117,7 @@ vars/
 - **Jobs dashboard** — incoming requests with 1-hour accept window; active jobs with flow buttons (On My Way → Arrived → Service Rendered); cancel button for accepted/in-progress bookings; history
 - **Online / offline toggle** — going online makes the vendor visible in the customer discovery feed; offline means invisible. Three prerequisites must all be met before a vendor can go online: KYC verified, at least one active service, and device notifications granted. The most relevant unmet condition is shown as a banner. If any condition fails while the vendor is online (checked every 2 minutes and on every screen focus return), the vendor is automatically taken offline and the DB is updated. Customers never see online/offline status — only "Typically accepts in X" on the vendor profile.
 - **Schedule management** — calendar shows 14-day slot grid with booked slot overlays (client name, service); tapping any booking opens a detail bottom sheet
-  - Bottom sheet: customer location map thumbnail, access details (revealed 15 min before appointment), accept/decline/on-way/arrived/service-rendered action buttons
+  - Bottom sheet: customer location map thumbnail, access details (revealed 15 min before appointment), accept/decline/on-way/arrived/service-rendered action buttons; auto-accepted bookings within the 5-minute grace window show an amber countdown + "Cancel penalty-free" button
   - Auto-accept grace banner: amber countdown + "Cancel penalty-free" button for auto-accepted bookings within the 5-minute window
   - Slot states: green ✓ (available), red ✕ (blocked), green ⚡ (auto-accept active), thick black fill (booked)
   - **Day navigation** — ◀ date label ▶ arrow header. Fixed-width label shows "Today" on effective today, "Tomorrow" when it's past 22:00 (effective day has advanced to the next calendar day), otherwise "Weekday, DD Mon" (e.g. "Wednesday, 21 Jun"). Tapping the label opens a monthly `react-native-calendars` grid modal; days within the 14-day window are always shown in full colour and tappable — including next-month overflow days that appear in the current month's grid; fully-blocked days show a red dot. Non-first-day view shows a "Go to today" (or "Go to tomorrow" after 22:00) button alongside the block controls.
@@ -249,14 +249,17 @@ All functions live in `supabase/functions/` and run on Deno.
 |---|---|---|
 | `paystack-verify-card` | POST | One-time ₦50 non-refundable card verification for customers with no stored authorization_code. Returns an `access_code` for a Paystack WebView checkout. On success, `paystack-webhook` stores the `authorization_code` on the customer's profile so future gate charges can be silent. Returning customers skip this step entirely. |
 | `paystack-initialize` | POST | Validates booking request, calculates distance-based transport surcharge, checks Pioneer status to set the correct split (100/0 for Pioneer, 80/20 otherwise), creates booking record — no Paystack charge at this point. |
+| `paystack-gate` | POST | Fires when vendor commits to travel (manual "On My Way" tap or proximity cron trigger). Atomic gate_fired guard prevents double-fire. Returning customers (stored auth_code): silent `chargeAuthorization` with subaccount split; on success advances booking to `on_way`. First-time customers: `initializeTransaction` generates an access_code; status stays `accepted` until `charge.success` webhook fires. |
+| `paystack-gate-checkout` | POST | Generates a fresh Paystack access_code for first-time customers who need to complete payment after the gate fires (initial code may have expired or customer tapped push late). Verifies the existing `paystack_reference` with Paystack before issuing a new one — returns 409 if already charged (reconciles booking in place), 503 if verification itself fails. |
 | `paystack-webhook` | POST | Handles Paystack events: creates booking on `charge.success` (vendor's share already in their subaccount at this point), auto-accepts if conditions met, sets `settlement_on_hold` on vendor for `charge.dispute.create` |
 | `paystack-capture` | POST | Vendor accepts a pending booking — updates status to `accepted`, creates post + pre transport buffer blocks |
 | `paystack-release` | POST | Vendor declines or booking expires — issues a full Paystack refund to the customer |
 | `paystack-settle` | POST | Customer confirms service done or 2-hr auto-release fires — marks booking COMPLETED and creates `payout_history` (settlement_queued); cron sweeps by vendor, skips vendors with `settlement_on_hold` or open disputes, then logs an ops alert for VARS to trigger subaccount settlement from the Paystack dashboard |
-| `paystack-cancel` | POST | Customer cancels — tiered refund (0–15 min: 15% fee; 15 min–1 hr: 50% fee; within 1 hr of service: non-refundable); vendor's cancellation share sent via Transfer API; releases transport buffers |
+| `paystack-cancel` | POST | Customer cancels before the gate fires — free, no Paystack call. Post-gate customers cannot cancel (returns 409 — booking is locked once the vendor has committed to travel). Transport buffers released on pre-gate cancels. |
 | `paystack-verify-bank` | POST | Verifies vendor bank account via Paystack during onboarding; creates both a Transfer recipient (for cancellation Transfers) and a Subaccount (for per-transaction splits) |
 | `vendor-cancel-booking` | POST | Vendor cancels an accepted/in-progress booking — full refund to customer, transport buffers released, rolling 30-day cancellation count incremented, flags vendor at 3+ |
 | `vendor-cancel-grace` | POST | Vendor cancels an auto-accepted booking within the 5-minute grace period (penalty-free, full refund) |
+| `vendor-claim-repayment` | POST | Restricted vendor taps "I've paid" on the restriction wall — records `restriction_repayment_claimed_at` timestamp on the vendor row. Does not verify payment; admin confirms or rejects in the restrictions queue and manually lifts `is_restricted`. Idempotent: returns the existing timestamp if already claimed. |
 | `dispute-raise` | POST | User raises a dispute — requires a structured `category`; free-text `reason` optional unless category is `other`; booking status set to `disputed` (freezes auto-release), inserts into `disputes`, notifies both parties |
 | `phone-reveal` | POST (cron, every 5 min) | Finds accepted bookings within 15 min of `scheduled_at`, sets `phone_revealed = true`, notifies vendor ("Head out now") and customer ("They're on their way") |
 | `vendor-update-job-status` | POST | Vendor advances a booking through `on_way → arrived → service_rendered`; validates the transition, stamps the timestamp, notifies the customer |
@@ -270,7 +273,7 @@ All functions live in `supabase/functions/` and run on Deno.
 | `send-marketing-email` | POST | Sends a bulk HTML campaign email to a segment of vendor leads. Segmentation via Supabase (`service_type`, `pioneer`, `lead_state`, `converted`). Renders per-lead HTML with unsubscribe URL. Delivers via Resend Batch API (100/request). Called by admin marketing panel |
 | `vendor-set-zone` | POST | Saves vendor's auto-accept geographic zone; when `auto_accept_enabled = true`, also writes `auto_accept_zone_confirmed_date` atomically so no separate confirm-zone call is needed from zone setup |
 | `vendor-confirm-zone` | GET/POST | GET: returns zone status; POST: marks zone confirmed for today (called from the home-screen daily confirmation prompt) |
-| `vendor-update-location` | POST | Called every 60s by vendor app while `on_way`; writes `vendor_current_lat/lng` to vendors table for customer live tracking map; also detects zone drift |
+| `vendor-update-location` | POST | Called by vendor app in two contexts: every 60s while `on_way` (live tracking) and every 5 min while online (drift detection). Only writes `vendor_current_lat/lng` when the vendor has an active `on_way` booking; always writes `auto_accept_paused_due_to_drift`. |
 | `photo-consent-request` | POST | Vendor requests permission to use a booking photo in their portfolio — creates a consent record with 72-hour expiry, notifies customer |
 | `photo-consent-respond` | POST | Customer approves or declines a photo consent request |
 | `photo-consent-expire` | POST (cron) | Cancels any pending photo consent requests older than 72 hours; notifies vendor |
@@ -620,7 +623,7 @@ Vendors can opt into **Auto-Accept**: bookings that fall within their configured
 
 ### How It Works
 
-Four conditions must all be true at the moment of payment for auto-accept to fire:
+Four conditions must all be true at the moment of booking creation (`paystack-initialize`) for auto-accept to fire:
 
 1. **Vendor settings active** — `auto_accept_enabled = true`, `auto_accept_paused_due_to_drift = false`
 2. **Zone confirmed for the booking day** — `auto_accept_zone_confirmed_date` matches either the UTC calendar date of the booking or the UTC calendar date of payment
@@ -645,13 +648,14 @@ While a vendor is online, the app pings their GPS location every 5 minutes (`ven
 
 After an auto-accepted booking is created, the vendor has a **5-minute grace window** to cancel penalty-free. During this window:
 - The booking status is already `accepted` (customer sees instant confirmation)
-- A "Cancel (no penalty)" button appears on the vendor's jobs screen with a countdown
-- Cancelling in this window triggers a full Paystack refund with no cancellation fee
-- The `auto_accept_grace_expires_at` timestamp controls the window
+- An amber countdown banner + "Cancel penalty-free" button appears on the vendor's jobs screen
+- Cancelling in this window calls `vendor-cancel-booking` as normal; the function detects the grace window via `auto_accept_grace_expires_at` and skips the cancellation count and flag check
+- After the 5 minutes expire, the regular "Cancel booking" button returns and the standard cancellation rules apply
+- The `auto_accept_grace_expires_at` timestamp (set at booking creation) controls the window
 
 ### Transport Surcharge (Distance-Based)
 
-When a customer's location exceeds the **base operating radius of 5 km** from the vendor's zone centre, a distance-based surcharge is added to the Paystack charge. The surcharge is calculated server-side in `paystack-initialize` using the Haversine formula and stored on the booking row (`transport_fee_kobo`, `distance_km`). The client never sends the surcharge — the server derives and stores it, then the webhook reads it back from Paystack metadata.
+When a customer's location exceeds the **base operating radius of 5 km** from the vendor's zone centre, a distance-based surcharge is added to the Paystack charge. The surcharge is calculated server-side in `paystack-initialize` using the Haversine formula and stored on the booking row (`transport_fee_kobo`, `distance_km`). The client never sends the surcharge — the server derives and stores it, and `paystack-webhook` reads it back from the booking row in the database.
 
 | Distance over 5 km | Surcharge | Pre-buffer slots |
 |---|---|---|

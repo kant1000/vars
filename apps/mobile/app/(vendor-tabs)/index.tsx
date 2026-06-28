@@ -54,6 +54,7 @@ interface VendorBooking {
   phone_revealed: boolean;
   auto_accepted: boolean;
   gate_fired: boolean;
+  auto_accept_grace_expires_at: string | null;
 }
 
 interface ZoneStatus {
@@ -201,6 +202,14 @@ function ActiveCard({
   );
   const isPastEnd = booking.status === 'arrived' && new Date() > scheduledEnd;
 
+  // Grace period — penalty-free cancel window for auto-accepted bookings
+  const graceExpiry = booking.auto_accept_grace_expires_at ?? new Date(0).toISOString();
+  const { display: graceCountdown } = useCountdown(graceExpiry);
+  const isInGracePeriod =
+    booking.auto_accepted &&
+    booking.auto_accept_grace_expires_at != null &&
+    new Date() < new Date(booking.auto_accept_grace_expires_at);
+
   const advance = async () => {
     if (!action) return;
     setActing(true);
@@ -228,9 +237,13 @@ function ActiveCard({
   };
 
   const handleCancel = () => {
+    const alertTitle = isInGracePeriod ? 'Cancel penalty-free?' : 'Cancel this booking?';
+    const alertMessage = isInGracePeriod
+      ? 'This booking was auto-accepted. Cancelling now is penalty-free — the customer gets a full refund with no impact on your record.'
+      : 'The customer will receive a full refund. Your cancellation count will be tracked.';
     Alert.alert(
-      'Cancel this booking?',
-      'The customer will receive a full refund. Your cancellation count will be tracked.',
+      alertTitle,
+      alertMessage,
       [
         { text: 'Keep booking', style: 'cancel' },
         {
@@ -362,6 +375,12 @@ function ActiveCard({
           <Text style={c.waitingText}>Waiting for customer to confirm. Payment auto-releases 1 hour after the scheduled end time.</Text>
         </View>
       )}
+      {isInGracePeriod && booking.status === BOOKING_STATUS.ACCEPTED && (
+        <View style={c.graceBanner}>
+          <Text style={c.graceText}>Auto-accepted — cancel penalty-free in</Text>
+          <Text style={c.graceCountdown}>{graceCountdown}</Text>
+        </View>
+      )}
       {([BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ON_WAY, BOOKING_STATUS.ARRIVED] as BookingStatus[]).includes(booking.status) && (
         <TouchableOpacity
           style={[c.vendorCancelBtn, cancelling && c.btnDisabled]}
@@ -370,7 +389,9 @@ function ActiveCard({
         >
           {cancelling
             ? <ScissorsLoader size="small" color="dark" />
-            : <Text style={c.vendorCancelText}>Cancel booking</Text>
+            : <Text style={[c.vendorCancelText, isInGracePeriod && c.vendorCancelTextGrace]}>
+                {isInGracePeriod ? 'Cancel penalty-free' : 'Cancel booking'}
+              </Text>
           }
         </TouchableOpacity>
       )}
@@ -580,7 +601,7 @@ export default function VendorJobsScreen() {
       .select(`
         id, status, service_name, service_price_kobo, transport_fee_kobo, distance_km,
         service_duration_blocks, scheduled_at, user_location_address, created_at, phone_revealed,
-        auto_accepted, gate_fired,
+        auto_accepted, gate_fired, auto_accept_grace_expires_at,
         profiles(full_name, phone_number)
       `)
       .order('scheduled_at', { ascending: true })
@@ -593,7 +614,7 @@ export default function VendorJobsScreen() {
       .select(`
         id, status, service_name, service_price_kobo, transport_fee_kobo, distance_km,
         service_duration_blocks, scheduled_at, user_location_address, created_at, phone_revealed,
-        auto_accepted, gate_fired,
+        auto_accepted, gate_fired, auto_accept_grace_expires_at,
         profiles(full_name, phone_number)
       `)
       .in('status', [BOOKING_STATUS.COMPLETED, BOOKING_STATUS.CANCELLED, BOOKING_STATUS.EXPIRED])
@@ -616,6 +637,7 @@ export default function VendorJobsScreen() {
       phone_revealed: b.phone_revealed,
       auto_accepted: b.auto_accepted ?? false,
       gate_fired: b.gate_fired ?? false,
+      auto_accept_grace_expires_at: b.auto_accept_grace_expires_at ?? null,
     });
 
     const allBookings = [...(data ?? []).map(toBooking), ...(history ?? []).map(toBooking)];
@@ -1107,6 +1129,17 @@ const c = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   vendorCancelText: { fontSize: 13, fontWeight: '600', color: Colors.error },
+  vendorCancelTextGrace: { color: Colors.ink },
+
+  // Auto-accept grace period banner
+  graceBanner: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: Colors.offlineText, borderRadius: BORDER_RADIUS,
+    borderWidth: 1, borderColor: Colors.amberBorder,
+    paddingHorizontal: 12, paddingVertical: 8, marginTop: 8,
+  },
+  graceText: { fontSize: 12, fontWeight: '600', color: Colors.offlineBg, flex: 1 },
+  graceCountdown: { fontSize: 13, fontWeight: '800', color: Colors.offlineBg, fontVariant: ['tabular-nums'] },
 
   // Gate fired — customer is completing checkout
   gateConfirmingBanner: {

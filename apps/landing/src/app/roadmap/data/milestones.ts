@@ -50,7 +50,7 @@ export const phases: Phase[] = [
         description: 'The features that make both sides feel safe:',
         bulletPoints: [
           'Phone numbers only shared 15 minutes before the appointment',
-          'Tiered cancellation fees — vendor-initiated cancellations are always a full refund',
+          'Binary cancel model — free before the stylist sets off, locked post-gate; stylist-initiated cancellations are always a full refund',
           'Dispute system: payment freezes immediately, VARS resolves',
           'Vendor portfolio photos require customer approval before publishing',
         ],
