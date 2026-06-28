@@ -36,7 +36,7 @@ async function verifyYouverifySignature(req: Request, body: string): Promise<boo
   const computed = Array.from(new Uint8Array(signatureBuffer))
     .map((b) => b.toString(16).padStart(2, '0')).join('');
 
-  return computed === sig;
+  return computed.toLowerCase() === sig.toLowerCase();
 }
 
 // Tries known field paths in priority order; logs which one succeeds.

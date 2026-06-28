@@ -102,18 +102,22 @@ Deno.serve(async (req: Request) => {
         // Queue ops alert for subaccount settlement
         const { data: vendor } = await supabase
           .from('vendors')
-          .select('push_token, paystack_subaccount_code')
+          .select('push_token, paystack_subaccount_code, pioneer, pioneer_bookings_completed')
           .eq('id', booking.vendor_id)
           .single();
 
         if (vendor?.paystack_subaccount_code) {
           const paystack = new PaystackClient(Deno.env.get('PAYSTACK_SECRET_KEY')!);
           const totalKobo = booking.service_price_kobo + ((booking as any).transport_fee_kobo ?? 0);
+          const isPioneer =
+            vendor?.pioneer === true &&
+            (vendor.pioneer_bookings_completed ?? PIONEER_BOOKINGS_THRESHOLD) < PIONEER_BOOKINGS_THRESHOLD;
+          const vendorShareKobo = isPioneer ? totalKobo : Math.round(totalKobo * 0.8);
           await paystack.triggerSubaccountSettlement({
             vendor_id: booking.vendor_id,
             subaccount_code: vendor.paystack_subaccount_code,
             booking_ids: [booking_id],
-            total_amount_kobo: Math.round(totalKobo * 0.8),
+            total_amount_kobo: vendorShareKobo,
           });
         }
 
@@ -125,7 +129,10 @@ Deno.serve(async (req: Request) => {
           .single();
 
         const totalKobo = booking.service_price_kobo + ((booking as any).transport_fee_kobo ?? 0);
-        const vendorShare = Math.round(totalKobo * 0.8);
+        const isPioneerForNotif =
+          vendor?.pioneer === true &&
+          (vendor.pioneer_bookings_completed ?? PIONEER_BOOKINGS_THRESHOLD) < PIONEER_BOOKINGS_THRESHOLD;
+        const vendorShare = isPioneerForNotif ? totalKobo : Math.round(totalKobo * 0.8);
         const msg = msg_disputeResolved_vendorPaid(formatNaira(vendorShare));
         await sendNotification({
           recipientId: booking.vendor_id, recipientType: 'vendor',
@@ -443,7 +450,7 @@ async function settleBooking(
   // Create payout_history record with settlement_queued status.
   // The actual bank transfer (subaccount → vendor's bank) is triggered by
   // VARS ops from the Paystack dashboard after this record is created.
-  const { data: payout } = await supabase
+  const { data: payout, error: payoutError } = await supabase
     .from('payout_history')
     .insert({
       booking_id: bookingId,
@@ -455,17 +462,24 @@ async function settleBooking(
     .select('id')
     .single();
 
+  // 23505 = unique_violation: payout already exists (race between cron + user confirm).
+  // Treat as idempotent success — money is not double-moved.
+  if (payoutError) {
+    if ((payoutError as unknown as { code?: string }).code === '23505') {
+      console.log(`Payout already exists for booking ${bookingId} (constraint race) — skipping`);
+      return;
+    }
+    throw payoutError;
+  }
+
   // Increment pioneer counter after booking completes.
   // The split was already set at transaction initialization; this counter
   // ensures the next booking at initialization time gets the correct split.
   if (isPioneerBooking) {
-    await supabase
-      .from('vendors')
-      .update({ pioneer_bookings_completed: (vendor.pioneer_bookings_completed ?? 0) + 1 })
-      .eq('id', booking.vendor_id);
+    await supabase.rpc('increment_pioneer_bookings_completed', { vendor_id_arg: booking.vendor_id });
     console.log(
       `Pioneer booking ${bookingId}: 100% to vendor subaccount, ` +
-      `pioneer_bookings_completed now ${(vendor.pioneer_bookings_completed ?? 0) + 1}/${PIONEER_BOOKINGS_THRESHOLD}`
+      `pioneer_bookings_completed incremented (was ${vendor.pioneer_bookings_completed ?? 0})/${PIONEER_BOOKINGS_THRESHOLD}`
     );
   } else {
     console.log(

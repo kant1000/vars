@@ -20,7 +20,7 @@ import {
   formatTime,
   formatNaira,
 } from '../_shared/notifications.ts';
-import { BOOKING_STATUS } from '../_shared/constants.ts';
+import { BOOKING_STATUS, PIONEER_BOOKINGS_THRESHOLD } from '../_shared/constants.ts';
 
 Deno.serve(async (req: Request) => {
   const cors = handleCors(req);
@@ -141,7 +141,7 @@ Deno.serve(async (req: Request) => {
     // Email: booking confirmed — customer + vendor (manual accept path)
     try {
       const customerFirstName = (profile?.full_name ?? '').split(' ')[0] || 'there';
-      const isPioneer = vendor?.pioneer === true && (vendor?.pioneer_bookings_completed ?? 3) < 3;
+      const isPioneer = vendor?.pioneer === true && (vendor?.pioneer_bookings_completed ?? PIONEER_BOOKINGS_THRESHOLD) < PIONEER_BOOKINGS_THRESHOLD;
       const totalKobo = booking.service_price_kobo + (booking.transport_fee_kobo ?? 0);
       const vendorAmountKobo = isPioneer ? totalKobo : Math.round(totalKobo * 0.8);
 

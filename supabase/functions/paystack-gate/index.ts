@@ -290,8 +290,8 @@ async function handleChargeAuth(
     return await openRetryWindow(supabase, paystack, booking, profile, vendor, reference, totalKobo, subaccountParams, metadata, vendorName);
   }
 
-  if (chargeResult.status === 'failed') {
-    console.log(`chargeAuthorization failed for booking ${booking.id} — opening retry window`);
+  if (chargeResult.status !== 'success') {
+    console.log(`chargeAuthorization status=${chargeResult.status} for booking ${booking.id} — opening retry window`);
     return await openRetryWindow(supabase, paystack, booking, profile, vendor, reference, totalKobo, subaccountParams, metadata, vendorName);
   }
 

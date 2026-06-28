@@ -60,7 +60,7 @@ Deno.serve(async (req: Request) => {
       await supabase
         .from('bookings')
         .update({
-          status: BOOKING_STATUS.COMPLETED,
+          status: BOOKING_STATUS.CANCELLED,
           cancelled_by: 'admin',
           cancellation_reason: 'Dispute resolved — user refunded',
         })
@@ -112,33 +112,41 @@ Deno.serve(async (req: Request) => {
       const oneHourAgo = new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString();
 
       // ── Sweep 1: pending timeout (vendor didn't respond) ────
+      // UPDATE...RETURNING is atomic — concurrent cron runs can't both claim the same row.
       const { data: expiredPending } = await supabase
         .from('bookings')
-        .select('id, user_id, vendor_id')
+        .update({
+          status: BOOKING_STATUS.EXPIRED,
+          cancelled_by: 'system',
+          cancellation_reason: 'Vendor did not respond',
+        })
         .eq('status', BOOKING_STATUS.PENDING)
-        .lt('created_at', oneHourAgo);
+        .lt('created_at', oneHourAgo)
+        .select('id, user_id, vendor_id');
 
       let expiredCount = 0;
       for (const booking of expiredPending ?? []) {
-        await expireBooking(supabase, booking, 'timeout');
+        await notifyExpired(supabase, booking);
         expiredCount++;
       }
 
       // ── Sweep 2: gate-fired bookings where payment window expired ──
-      // gate_fired=true means the vendor committed to travel, but the customer
-      // never completed the checkout. gate_charged_at=null confirms no charge.
-      // gate_retry_expires_at < now means the window has closed.
       const { data: expiredGate } = await supabase
         .from('bookings')
-        .select('id, user_id, vendor_id')
+        .update({
+          status: BOOKING_STATUS.CANCELLED,
+          cancelled_by: 'system',
+          cancellation_reason: 'Gate payment window expired — charge never completed',
+        })
         .eq('status', BOOKING_STATUS.ACCEPTED)
         .eq('gate_fired', true)
         .is('gate_charged_at', null)
-        .lt('gate_retry_expires_at', now);
+        .lt('gate_retry_expires_at', now)
+        .select('id, user_id, vendor_id');
 
       let gateExpiredCount = 0;
       for (const booking of expiredGate ?? []) {
-        await expireGateBooking(supabase, booking);
+        await notifyGateExpired(supabase, booking);
         gateExpiredCount++;
       }
 
@@ -168,7 +176,16 @@ Deno.serve(async (req: Request) => {
       return errorResponse(`Cannot decline booking with status: ${booking.status}`);
     }
 
-    await expireBooking(supabase, booking, 'decline');
+    await supabase
+      .from('bookings')
+      .update({
+        status: BOOKING_STATUS.EXPIRED,
+        cancelled_by: 'system',
+        cancellation_reason: 'Vendor declined',
+      })
+      .eq('id', booking_id);
+
+    await notifyExpired(supabase, booking, 'decline');
     return jsonResponse({ success: true, booking_id, status: 'expired' });
   } catch (err) {
     console.error('paystack-release error:', err);
@@ -177,23 +194,13 @@ Deno.serve(async (req: Request) => {
 });
 
 // ============================================================
-// Gate-payment expiry: cancel an accepted gate-fired booking where
-// the customer's payment window has passed without a completed charge.
-// No Paystack refund — no money was ever moved.
+// Gate-payment expiry: send notifications after the atomic UPDATE
+// already cancelled the booking. No Paystack refund — no money moved.
 // ============================================================
-async function expireGateBooking(
+async function notifyGateExpired(
   supabase: ReturnType<typeof createAdminClient>,
   booking: { id: string; user_id: string; vendor_id: string }
 ) {
-  await supabase
-    .from('bookings')
-    .update({
-      status: BOOKING_STATUS.CANCELLED,
-      cancelled_by: 'system',
-      cancellation_reason: 'Gate payment window expired — charge never completed',
-    })
-    .eq('id', booking.id);
-
   const [{ data: profile }, { data: vendor }] = await Promise.all([
     supabase.from('profiles').select('push_token, full_name').eq('id', booking.user_id).single(),
     supabase.from('vendors').select('push_token').eq('id', booking.vendor_id).single(),
@@ -230,22 +237,14 @@ async function expireGateBooking(
 }
 
 // ============================================================
-// SHARED: expire a single pending booking (pre-gate, no refund)
+// Notify parties after a pending booking has timed out (cron) or
+// been declined (vendor tap). DB update is done by the caller.
 // ============================================================
-async function expireBooking(
+async function notifyExpired(
   supabase: ReturnType<typeof createAdminClient>,
   booking: { id: string; user_id: string; vendor_id: string },
-  reason: 'decline' | 'timeout'
+  reason: 'decline' | 'timeout' = 'timeout'
 ) {
-  await supabase
-    .from('bookings')
-    .update({
-      status: BOOKING_STATUS.EXPIRED,
-      cancelled_by: 'system',
-      cancellation_reason: reason === 'decline' ? 'Vendor declined' : 'Vendor did not respond',
-    })
-    .eq('id', booking.id);
-
   const [{ data: profile }, { data: vendor }] = await Promise.all([
     supabase.from('profiles').select('push_token').eq('id', booking.user_id).single(),
     supabase.from('vendors').select('full_name, push_token').eq('id', booking.vendor_id).single(),

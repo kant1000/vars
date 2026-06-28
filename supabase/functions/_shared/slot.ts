@@ -38,7 +38,7 @@ export async function isSlotFree(
   end: Date,
   lookbackMs = MAX_SERVICE_MS,
 ): Promise<boolean> {
-  const [calResult, bookingResult] = await Promise.all([
+  const [calResult, bookingResult, vendorResult] = await Promise.all([
     supabase
       .from('vendor_calendar')
       .select('id')
@@ -56,9 +56,23 @@ export async function isSlotFree(
       .lt('scheduled_at', end.toISOString())
       .gt('scheduled_at', new Date(start.getTime() - lookbackMs).toISOString())
       .limit(1),
+
+    supabase
+      .from('vendors')
+      .select('recurring_block_weekdays')
+      .eq('id', vendorId)
+      .single(),
   ]);
 
   if ((calResult.data?.length ?? 0) > 0) return false;
   if ((bookingResult.data?.length ?? 0) > 0) return false;
+
+  // Check recurring weekday blocks (0=Sun … 6=Sat, in WAT = UTC+1)
+  const blockedDays = (vendorResult.data?.recurring_block_weekdays as number[] | null) ?? [];
+  if (blockedDays.length > 0) {
+    const watDay = new Date(start.getTime() + 60 * 60 * 1000).getUTCDay();
+    if (blockedDays.includes(watDay)) return false;
+  }
+
   return true;
 }

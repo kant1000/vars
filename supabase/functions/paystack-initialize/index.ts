@@ -6,7 +6,7 @@
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient, createAuthClient } from '../_shared/supabase.ts';
-import { BOOKING_STATUS, BASE_RADIUS_KM, TRANSPORT_FEE_TIERS } from '../_shared/constants.ts';
+import { BOOKING_STATUS, BASE_RADIUS_KM, TRANSPORT_FEE_TIERS, PIONEER_BOOKINGS_THRESHOLD } from '../_shared/constants.ts';
 import { isSlotFree } from '../_shared/slot.ts';
 import { createTransportBuffers, createPreTransportBuffers } from '../_shared/calendar.ts';
 import {
@@ -296,6 +296,10 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (bookingError || !booking) {
+      // 23P01 = exclusion_violation: concurrent booking claimed this slot first
+      if ((bookingError as unknown as { code?: string })?.code === '23P01') {
+        return errorResponse('This time slot is no longer available', 409);
+      }
       console.error('Failed to create booking:', bookingError);
       return errorResponse('Booking creation failed', 500);
     }
@@ -356,7 +360,7 @@ Deno.serve(async (req: Request) => {
       }
 
       try {
-        const isPioneer = vendor.pioneer === true && (vendor.pioneer_bookings_completed as number) < 3;
+        const isPioneer = vendor.pioneer === true && (vendor.pioneer_bookings_completed as number) < PIONEER_BOOKINGS_THRESHOLD;
         const vendorAmountKobo = isPioneer ? totalKobo : Math.round(totalKobo * 0.8);
         if (profile?.email) {
           const { subject, body: emailBody } = email_bookingConfirmed_customer({
@@ -398,7 +402,7 @@ Deno.serve(async (req: Request) => {
         });
       }
       const vendorPushToken = vendor.push_token as string | null;
-      const isPioneer = vendor.pioneer === true && (vendor.pioneer_bookings_completed as number) < 3;
+      const isPioneer = vendor.pioneer === true && (vendor.pioneer_bookings_completed as number) < PIONEER_BOOKINGS_THRESHOLD;
       const vendorAmountKobo = isPioneer ? totalKobo : Math.round(totalKobo * 0.8);
       await sendNotification({
         recipientId: vendorIds[0],

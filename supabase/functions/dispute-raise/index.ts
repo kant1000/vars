@@ -32,6 +32,11 @@ Deno.serve(async (req: Request) => {
     const { booking_id, reason, category } = await req.json();
     if (!booking_id) return errorResponse('Missing booking_id');
     if (!category) return errorResponse('Dispute category required');
+
+    const VALID_CATEGORIES = ['vendor_no_show', 'vendor_very_late', 'service_not_completed', 'service_quality_poor', 'wrong_service', 'other'];
+    if (!VALID_CATEGORIES.includes(category)) {
+      return errorResponse(`Invalid dispute category: ${category}`, 400);
+    }
     // Reason is required only when category is 'other'
     if (category === 'other' && (!reason || !reason.trim())) {
       return errorResponse('Reason is required when category is "Other"');
