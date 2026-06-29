@@ -125,8 +125,6 @@ export default function EarningsScreen() {
     return <View style={s.centered}><ScissorsLoader size="small" color="dark" /></View>;
   }
 
-  const hasBreakdown = clearedKobo > 0 || confirmingKobo > 0 || reviewKobo > 0;
-
   const ListHeader = (
     <>
       {/* Period filter */}
@@ -161,30 +159,20 @@ export default function EarningsScreen() {
         <Text style={s.heroAmount} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
           {fmt(totalKobo)}
         </Text>
-        {hasBreakdown ? (
-          <View style={s.heroSplit}>
-            {clearedKobo > 0 && (
-              <View style={s.heroChip}>
-                <View style={[s.heroDot, { backgroundColor: Colors.success }]} />
-                <Text style={s.heroChipText}>Cleared {hidden ? '···' : fmtPrice(clearedKobo)}</Text>
-              </View>
-            )}
-            {confirmingKobo > 0 && (
-              <View style={s.heroChip}>
-                <View style={[s.heroDot, { backgroundColor: Colors.warning }]} />
-                <Text style={s.heroChipText}>Confirming {hidden ? '···' : fmtPrice(confirmingKobo)}</Text>
-              </View>
-            )}
-            {reviewKobo > 0 && (
-              <View style={s.heroChip}>
-                <View style={[s.heroDot, { backgroundColor: Colors.error }]} />
-                <Text style={s.heroChipText}>Under review {hidden ? '···' : fmtPrice(reviewKobo)}</Text>
-              </View>
-            )}
+        <View style={s.heroSplit}>
+          <View style={s.heroChip}>
+            <View style={[s.heroDot, { backgroundColor: Colors.success }]} />
+            <Text style={s.heroChipText}>Cleared {hidden ? '···' : fmtPrice(clearedKobo)}</Text>
           </View>
-        ) : (
-          <Text style={s.heroEmpty}>No earnings yet for this period</Text>
-        )}
+          <View style={s.heroChip}>
+            <View style={[s.heroDot, { backgroundColor: Colors.warning }]} />
+            <Text style={s.heroChipText}>Confirming {hidden ? '···' : fmtPrice(confirmingKobo)}</Text>
+          </View>
+          <View style={s.heroChip}>
+            <View style={[s.heroDot, { backgroundColor: Colors.error }]} />
+            <Text style={s.heroChipText}>Under review {hidden ? '···' : fmtPrice(reviewKobo)}</Text>
+          </View>
+        </View>
       </View>
 
       {rows.length > 0 && (

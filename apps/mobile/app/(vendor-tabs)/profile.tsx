@@ -2,7 +2,7 @@
 // VARS — Vendor Profile / Settings
 // Sections: My Services, Portfolio, Account
 // ============================================================
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   Alert, Dimensions, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
@@ -15,12 +15,6 @@ import { signOut } from '@/lib/auth';
 import { uploadSinglePortfolioPhoto, deletePortfolioPhoto } from '@/lib/storage';
 import { Colors } from '@/constants/colors';
 import { CheckIcon, CloseIcon, EditIcon, PenLineIcon } from '@/components/icons';
-import {
-  NestableScrollContainer,
-  NestableDraggableFlatList,
-  ScaleDecorator,
-  RenderItemParams,
-} from 'react-native-draggable-flatlist';
 import { CATEGORY_L2_LABELS, MAX_VENDOR_SERVICES } from '@vars/shared';
 
 const PHOTO_SIZE = (Dimensions.get('window').width - 48 - 16) / 3;
@@ -126,10 +120,14 @@ export default function VendorProfileScreen() {
     );
   };
 
-  const handleDragEnd = async (data: VendorServiceItem[]) => {
-    setServices(data);
+  const handleMove = async (index: number, direction: 'up' | 'down') => {
+    const swapIndex = direction === 'up' ? index - 1 : index + 1;
+    if (swapIndex < 0 || swapIndex >= services.length) return;
+    const next = [...services];
+    [next[index], next[swapIndex]] = [next[swapIndex], next[index]];
+    setServices(next);
     await Promise.all(
-      data.map((s, i) =>
+      next.map((s, i) =>
         supabase.from('vendor_services').update({ sort_order: i }).eq('id', s.id)
       )
     );
@@ -151,25 +149,28 @@ export default function VendorProfileScreen() {
     setIsSavingName(false);
   };
 
-  const renderServiceItem = ({ item, drag, isActive }: RenderItemParams<VendorServiceItem>) => (
-    <ScaleDecorator>
-      <View style={[s.svcRow, isActive && s.svcRowDragging]}>
-        <View style={s.svcInfo}>
-          <Text style={s.svcMeta}>{CATEGORY_L2_LABELS[item.category_l2] ?? item.category_l2}</Text>
-          <Text style={s.svcName}>{item.service_name}</Text>
-          <Text style={s.svcPrice}>₦{(item.price_kobo / 100).toLocaleString('en-NG')}</Text>
-        </View>
-        <TouchableOpacity onPress={() => router.push(`/vendor-services/edit?id=${item.id}` as any)} style={s.svcActionBtn} hitSlop={8}>
-          <EditIcon size={14} color={Colors.textMuted} />
+  const renderServiceItem = (item: VendorServiceItem, index: number) => (
+    <View key={item.id} style={s.svcRow}>
+      <View style={s.svcInfo}>
+        <Text style={s.svcMeta}>{CATEGORY_L2_LABELS[item.category_l2] ?? item.category_l2}</Text>
+        <Text style={s.svcName}>{item.service_name}</Text>
+        <Text style={s.svcPrice}>₦{(item.price_kobo / 100).toLocaleString('en-NG')}</Text>
+      </View>
+      <TouchableOpacity onPress={() => router.push(`/vendor-services/edit?id=${item.id}` as any)} style={s.svcActionBtn} hitSlop={8}>
+        <EditIcon size={14} color={Colors.textMuted} />
+      </TouchableOpacity>
+      <TouchableOpacity onPress={() => handleDeleteService(item.id)} style={s.svcActionBtn} hitSlop={8}>
+        <CloseIcon size={11} color={Colors.textMuted} />
+      </TouchableOpacity>
+      <View style={s.orderBtns}>
+        <TouchableOpacity onPress={() => handleMove(index, 'up')} disabled={index === 0} hitSlop={6} style={s.orderBtn}>
+          <Text style={[s.orderBtnText, index === 0 && s.orderBtnDisabled]}>↑</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => handleDeleteService(item.id)} style={s.svcActionBtn} hitSlop={8}>
-          <CloseIcon size={11} color={Colors.textMuted} />
-        </TouchableOpacity>
-        <TouchableOpacity onLongPress={drag} hitSlop={8} style={s.dragHandle} activeOpacity={0.6}>
-          <Text style={s.dragHandleIcon}>⠿</Text>
+        <TouchableOpacity onPress={() => handleMove(index, 'down')} disabled={index === services.length - 1} hitSlop={6} style={s.orderBtn}>
+          <Text style={[s.orderBtnText, index === services.length - 1 && s.orderBtnDisabled]}>↓</Text>
         </TouchableOpacity>
       </View>
-    </ScaleDecorator>
+    </View>
   );
 
   const totalPhotoCount = photos.length;
@@ -231,7 +232,7 @@ export default function VendorProfileScreen() {
         <Text style={s.headerTitle}>Profile</Text>
       </View>
 
-      <NestableScrollContainer contentContainerStyle={{ paddingBottom: 60 }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 60 }}>
         {/* Hero */}
         <View style={s.heroRow}>
           <View style={s.heroAvatarWrap}>
@@ -363,12 +364,7 @@ export default function VendorProfileScreen() {
             <View style={{ margin: 16, alignItems: 'center' }}><ScissorsLoader size="small" color="dark" /></View>
           ) : (
             <>
-              <NestableDraggableFlatList
-                data={services}
-                keyExtractor={(item) => item.id}
-                renderItem={renderServiceItem}
-                onDragEnd={({ data }) => handleDragEnd(data)}
-              />
+              {services.map((item, i) => renderServiceItem(item, i))}
               {services.length < MAX_VENDOR_SERVICES && (
                 <TouchableOpacity
                   style={s.addSvcBtn}
@@ -392,7 +388,7 @@ export default function VendorProfileScreen() {
             <Text style={s.settingLabel}>Sign out</Text>
           </TouchableOpacity>
         </View>
-      </NestableScrollContainer>
+      </ScrollView>
     </View>
   );
 }
@@ -450,9 +446,6 @@ const s = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: Colors.border,
     backgroundColor: Colors.background,
   },
-  svcRowDragging: { backgroundColor: Colors.surface, borderRadius: 5 },
-  dragHandle: { paddingLeft: 12, paddingVertical: 4 },
-  dragHandleIcon: { fontSize: 18, color: Colors.textMuted, lineHeight: 20 },
   svcInfo: { flex: 1 },
   svcMeta: {
     fontSize: 11, color: Colors.textMuted, fontWeight: '600',
@@ -461,6 +454,10 @@ const s = StyleSheet.create({
   svcName: { fontSize: 15, fontWeight: '600', color: Colors.text },
   svcPrice: { fontSize: 13, color: Colors.textSecondary, marginTop: 1 },
   svcActionBtn: { padding: 8 },
+  orderBtns: { flexDirection: 'column', paddingLeft: 4 },
+  orderBtn: { padding: 5 },
+  orderBtnText: { fontSize: 14, color: Colors.textMuted, lineHeight: 16 },
+  orderBtnDisabled: { opacity: 0.2 },
   addSvcBtn: {
     marginTop: 12, height: 42,
     borderRadius: 5, borderWidth: 1.5, borderColor: Colors.border,
