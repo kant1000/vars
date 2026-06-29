@@ -48,7 +48,6 @@ Deno.serve(async (req: Request) => {
   }
 
   const supabase = createAdminClient();
-  console.log(`Paystack webhook: ${event.event}`);
 
   try {
     switch (event.event) {
@@ -108,7 +107,8 @@ async function handleChargeSuccess(
 ) {
   // Card verification path — store auth code on profile, no booking to advance
   const metadata = (data.metadata as Record<string, unknown>) ?? {};
-  if (metadata.vars_card_verify === true) {
+  // Guard handles both boolean true and string "true" (Paystack JSON serialisation)
+  if (metadata.vars_card_verify === true || metadata.vars_card_verify === 'true') {
     await handleCardVerifySuccess(supabase, data, metadata);
     return;
   }
@@ -200,9 +200,12 @@ async function handleCardVerifySuccess(
   const authorizationCode = authorization.authorization_code as string | null;
   const isReusable = authorization.reusable as boolean | undefined;
 
-  if (!userId || !authorizationCode || !isReusable) {
-    console.warn('card-verify charge.success: missing user_id, auth_code, or card not reusable — skipping');
+  if (!userId || !authorizationCode) {
+    console.warn('card-verify charge.success: missing user_id or auth_code', { userId, hasAuthCode: !!authorizationCode, isReusable });
     return;
+  }
+  if (!isReusable) {
+    console.warn('card-verify: authorization not marked reusable — storing anyway for sandbox compatibility', { userId, isReusable });
   }
 
   // Idempotent: skip if already stored (webhook retry)
