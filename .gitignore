@@ -5,6 +5,11 @@ Thumbs.db
 # Supabase CLI temp files
 supabase/.temp/
 
+# Local scratch / build logs
+.tmp/
+docs/*.png
+docs/*.jpg
+
 # Expo local state
 .expo/
 
