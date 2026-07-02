@@ -224,7 +224,7 @@ export default function EditServiceScreen() {
       />
 
       {/* Price */}
-      <Text style={styles.fieldLabel}>Price <Text style={styles.required}>*</Text></Text>
+      <Text style={styles.fieldLabel}>Display price <Text style={styles.required}>*</Text></Text>
       <VendorPriceInput
         value={formPrice}
         onChangeText={setFormPrice}
@@ -232,7 +232,7 @@ export default function EditServiceScreen() {
         pioneerBookingsCompleted={vendorPioneer?.pioneer_bookings_completed}
       />
       <Text style={styles.priceHint}>
-        Min ₦{(MIN_SERVICE_PRICE_KOBO / 100).toLocaleString('en-NG')} · Travel cost added automatically for clients over 5km away
+        Travel cost added automatically for clients over 5km away
       </Text>
 
       {/* Duration */}
@@ -263,6 +263,9 @@ export default function EditServiceScreen() {
         {isSaving
           ? <ScissorsLoader size="small" color="light" />
           : <Text style={styles.saveBtnText}>Save changes</Text>}
+      </TouchableOpacity>
+      <TouchableOpacity onPress={() => router.back()} style={styles.cancelBtn} activeOpacity={0.7}>
+        <Text style={styles.cancelBtnText}>Cancel</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -315,4 +318,7 @@ const styles = StyleSheet.create({
   },
   saveBtnDisabled: { opacity: 0.6 },
   saveBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+
+  cancelBtn: { alignItems: 'center', paddingVertical: 16 },
+  cancelBtnText: { fontSize: 15, color: Colors.textMuted, fontWeight: '500' },
 });

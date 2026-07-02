@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
   },
   tabs: { flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 12, gap: 8 },
   tab: {
-    paddingVertical: 8, paddingHorizontal: 16, alignItems: 'center',
+    flex: 1, paddingVertical: 8, alignItems: 'center',
     borderRadius: 5, borderWidth: 1.5, borderColor: Colors.border,
     backgroundColor: Colors.background,
   },

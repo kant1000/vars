@@ -154,7 +154,7 @@ export default function VendorProfileScreen() {
       <View style={s.svcInfo}>
         <Text style={s.svcMeta}>{CATEGORY_L2_LABELS[item.category_l2] ?? item.category_l2}</Text>
         <Text style={s.svcName}>{item.service_name}</Text>
-        <Text style={s.svcPrice}>₦{(item.price_kobo / 100).toLocaleString('en-NG')}</Text>
+        <Text style={s.svcPrice}>₦{(Math.round(item.price_kobo * 0.8) / 100).toLocaleString('en-NG')}</Text>
       </View>
       <TouchableOpacity onPress={() => router.push(`/vendor-services/edit?id=${item.id}` as any)} style={s.svcActionBtn} hitSlop={8}>
         <EditIcon size={14} color={Colors.textMuted} />

@@ -83,7 +83,7 @@ export default function EarningsScreen() {
     let query = supabase
       .from('bookings')
       .select(`
-        id, service_name, service_price_kobo, scheduled_at, status,
+        id, service_name, service_price_kobo, transport_fee_kobo, scheduled_at, status,
         profiles:user_id(full_name),
         payout_history(vendor_amount_kobo)
       `)
@@ -98,7 +98,8 @@ export default function EarningsScreen() {
     const { data } = await query;
     setRows((data ?? []).map((b: any) => {
       const payoutRow = Array.isArray(b.payout_history) ? b.payout_history[0] : null;
-      const vendorAmount = payoutRow?.vendor_amount_kobo ?? Math.round(b.service_price_kobo * 0.8);
+      const totalKobo = b.service_price_kobo + (b.transport_fee_kobo ?? 0);
+      const vendorAmount = payoutRow?.vendor_amount_kobo ?? Math.round(totalKobo * 0.8);
       return {
         id: b.id,
         client_name: b.profiles?.full_name ?? 'Client',
@@ -128,11 +129,7 @@ export default function EarningsScreen() {
   const ListHeader = (
     <>
       {/* Period filter */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={s.filterRow}
-      >
+      <View style={s.filterRow}>
         {PERIODS.map(({ key, label }) => (
           <TouchableOpacity
             key={key}
@@ -144,7 +141,7 @@ export default function EarningsScreen() {
             </Text>
           </TouchableOpacity>
         ))}
-      </ScrollView>
+      </View>
 
       {/* Hero card */}
       <View style={s.hero}>
@@ -161,12 +158,8 @@ export default function EarningsScreen() {
         </Text>
         <View style={s.heroSplit}>
           <View style={s.heroChip}>
-            <View style={[s.heroDot, { backgroundColor: Colors.success }]} />
-            <Text style={s.heroChipText}>Cleared {hidden ? '···' : fmtPrice(clearedKobo)}</Text>
-          </View>
-          <View style={s.heroChip}>
             <View style={[s.heroDot, { backgroundColor: Colors.warning }]} />
-            <Text style={s.heroChipText}>Confirming {hidden ? '···' : fmtPrice(confirmingKobo)}</Text>
+            <Text style={s.heroChipText}>Pending {hidden ? '···' : fmtPrice(confirmingKobo)}</Text>
           </View>
           <View style={s.heroChip}>
             <View style={[s.heroDot, { backgroundColor: Colors.error }]} />
@@ -220,7 +213,7 @@ export default function EarningsScreen() {
           const pillLabel =
             r.status === 'completed' ? 'Cleared'      :
             r.status === 'disputed'  ? 'Under review' :
-            'Confirming';
+            'Pending';
           return (
             <View style={s.row}>
               <View style={s.rowLeft}>
@@ -257,10 +250,12 @@ const s = StyleSheet.create({
   headerTitle: { fontSize: 24, fontWeight: '800', color: Colors.text },
 
   filterRow: {
+    flexDirection: 'row',
     paddingHorizontal: 16, paddingTop: 14, paddingBottom: 4, gap: 8,
   },
   filterPill: {
-    paddingHorizontal: 14, paddingVertical: 7,
+    flex: 1, alignItems: 'center',
+    paddingVertical: 7,
     borderRadius: BORDER_RADIUS, borderWidth: 1.5, borderColor: Colors.inkFaint,
   },
   filterPillActive: {
@@ -283,10 +278,10 @@ const s = StyleSheet.create({
     letterSpacing: 0.8,
   },
   heroAmount: {
-    fontSize: 40, fontWeight: '800', color: Colors.ink,
+    fontSize: 40, fontWeight: '400', color: Colors.ink,
     letterSpacing: -1, marginBottom: 12,
   },
-  heroSplit: { flexDirection: 'row', gap: 16, flexWrap: 'wrap' },
+  heroSplit: { flexDirection: 'column', gap: 6 },
   heroChip:  { flexDirection: 'row', alignItems: 'center', gap: 6 },
   heroDot:   { width: 8, height: 8, borderRadius: 4 },
   heroChipText: { fontSize: 13, fontWeight: '600', color: Colors.inkMuted },
