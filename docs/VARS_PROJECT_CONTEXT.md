@@ -32,7 +32,7 @@ The README is the canonical record of what's implemented — screens, edge funct
 
 | Item | Status |
 |---|---|
-| Paystack live mode | In progress — CAC registration complete, business bank account open. Ticket Vars 1850306 actively worked and resolved by Paystack support (confirmed via email thread, 25 June 2026). Architecture reviewed and confirmed compliant by Paystack: gate model, one-time non-refundable card verification, per-vendor subaccounts with Split Payments, manual dashboard settlement, binary pre/post-gate cancellation. Remaining steps: complete sandbox verification (subaccount split test + manual settlement test), submit screenshots to Paystack, then awaiting final activation confirmation and live key issuance. Once keys received: swap `PAYSTACK_SECRET_KEY` in Supabase secrets (test → live) and register webhooks against production URLs. |
+| Paystack live mode | **Live — fully verified, July 2026.** CAC-backed verification complete. Live keys issued and active: `PAYSTACK_SECRET_KEY` swapped to live in Supabase edge function secrets (3 July 2026). Architecture confirmed compliant: gate model, one-time non-refundable card verification, per-vendor subaccounts with Split Payments, manual dashboard settlement. Remaining step: register production webhook URL in the Paystack live dashboard (Settings → Webhooks → point at the Supabase `paystack-webhook` function URL). |
 | Youverify credentials | Done — all three secrets set in Supabase (`YOUVERIFY_API_KEY`, `YOUVERIFY_BASE_URL`, `YOUVERIFY_WEBHOOK_SECRET`), production values, webhook URL pointed at `vendor-kyc-webhook`. KYC is live-ready. |
 | Google Maps API key | Set in `apps/mobile/.env` and Supabase secrets. No code changes needed — activate billing in Google Cloud Console. |
 | Android APK | Use EAS Cloud Build (`eas build --platform android --profile preview`) — avoids Windows PATH/JDK friction, produces a shareable `.apk` without local Android Studio. |
@@ -290,7 +290,7 @@ No formal drop-off data across the 5-step onboarding flow yet. Once vendors onbo
 
 | Item | Detail |
 |---|---|
-| Business registration | Nigerian CAC registration in progress — required for Paystack live mode. |
+| Business registration | Nigerian CAC registration complete — Paystack verification passed July 2026. |
 | UK entity | Seyi is based in Maidenhead, UK. A UK limited company can be registered quickly if needed for Stripe or other global payment rails. |
 | Domain | bookwithvars.com — registered via Google/Squarespace. DNS pointed at Vercel for landing page. |
 | GitHub | github.com/kant1000/vars — private. |
