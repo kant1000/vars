@@ -1,8 +1,9 @@
 // ============================================================
-// VARS — Vendor Onboarding Step 1: Basic Registration (§6.1)
-// Full name, phone, email, profile photo, bio (150 char), base location
+// VARS — Vendor Onboarding Step 1: Profile (§6.1)
+// Display name, phone, base location, bio (optional, 150 char).
+// Field order: name → phone → location → bio (required before optional).
 // ============================================================
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
   ScrollView, Alert, KeyboardAvoidingView, Platform,
@@ -12,17 +13,31 @@ import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import { Colors } from '@/constants/colors';
+import { Colors, BORDER_RADIUS } from '@/constants/colors';
 
 export default function Step1Profile() {
-  const { user, profile: authProfile, refreshProfile } = useAuth();
-  const [fullName, setFullName] = useState(authProfile?.full_name ?? '');
+  const { user } = useAuth();
+  const [displayName, setDisplayName] = useState('');
   const [phone, setPhone] = useState('');
   const [bio, setBio] = useState('');
   const [locationLabel, setLocationLabel] = useState('');
   const [locationCoords, setLocationCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+
+  // Pre-fill from vendor row — trigger may have copied data from vendor_leads
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('vendors')
+      .select('full_name, phone_number')
+      .eq('id', user.id)
+      .single()
+      .then(({ data }) => {
+        if (data?.full_name) setDisplayName(data.full_name);
+        if (data?.phone_number) setPhone(data.phone_number);
+      });
+  }, [user]);
 
   const handleDetectLocation = async () => {
     setIsLocating(true);
@@ -38,7 +53,7 @@ export default function Step1Profile() {
         .filter(Boolean).join(', ');
       setLocationLabel(label || 'Current location');
       setLocationCoords({ lat: loc.coords.latitude, lng: loc.coords.longitude });
-    } catch (err: any) {
+    } catch {
       Alert.alert('Error', 'Could not detect location.');
     } finally {
       setIsLocating(false);
@@ -46,7 +61,7 @@ export default function Step1Profile() {
   };
 
   const handleNext = async () => {
-    if (!fullName.trim()) return Alert.alert('Required', 'Please enter your full name.');
+    if (!displayName.trim()) return Alert.alert('Required', 'Please enter your display name.');
     if (!phone.trim()) return Alert.alert('Required', 'Please enter your phone number.');
     if (!locationCoords) return Alert.alert('Required', 'Please set your base location.');
     if (!user) return;
@@ -56,7 +71,7 @@ export default function Step1Profile() {
       const { error } = await supabase
         .from('vendors')
         .update({
-          full_name: fullName.trim(),
+          full_name: displayName.trim(),
           phone_number: phone.trim(),
           bio: bio.trim() || null,
           base_location: `POINT(${locationCoords.lng} ${locationCoords.lat})`,
@@ -82,14 +97,22 @@ export default function Step1Profile() {
         <Text style={styles.sub}>This is what clients will see on your profile.</Text>
 
         <View style={styles.form}>
-          <TextInput
-            style={styles.input}
-            placeholder="Full name"
-            placeholderTextColor={Colors.textMuted}
-            value={fullName}
-            onChangeText={setFullName}
-            autoCapitalize="words"
-          />
+          {/* Display name */}
+          <View>
+            <TextInput
+              style={styles.input}
+              placeholder="Display name"
+              placeholderTextColor={Colors.textMuted}
+              value={displayName}
+              onChangeText={setDisplayName}
+              autoCapitalize="words"
+            />
+            <Text style={styles.fieldCaption}>
+              This is how you'll appear to customers. Your legal name is confirmed during identity verification.
+            </Text>
+          </View>
+
+          {/* Phone */}
           <TextInput
             style={styles.input}
             placeholder="Phone number"
@@ -98,20 +121,6 @@ export default function Step1Profile() {
             onChangeText={setPhone}
             keyboardType="phone-pad"
           />
-
-          {/* Bio — 150 char max per spec §4.3 */}
-          <View>
-            <TextInput
-              style={[styles.input, styles.bioInput]}
-              placeholder="Short bio — what makes you great? (optional)"
-              placeholderTextColor={Colors.textMuted}
-              value={bio}
-              onChangeText={(t) => setBio(t.slice(0, 150))}
-              multiline
-              maxLength={150}
-            />
-            <Text style={styles.charCount}>{bio.length}/150</Text>
-          </View>
 
           {/* Base location */}
           <TouchableOpacity style={styles.locationButton} onPress={handleDetectLocation}>
@@ -126,6 +135,23 @@ export default function Step1Profile() {
           <Text style={styles.locationHelper}>
             Your primary operating area. Clients nearby will discover you.
           </Text>
+
+          {/* Bio — optional, 150 char max per spec §4.3 */}
+          <View>
+            <Text style={styles.fieldLabel}>
+              Bio <Text style={styles.optional}>(optional)</Text>
+            </Text>
+            <TextInput
+              style={[styles.input, styles.bioInput]}
+              placeholder="What makes you great?"
+              placeholderTextColor={Colors.textMuted}
+              value={bio}
+              onChangeText={(t) => setBio(t.slice(0, 150))}
+              multiline
+              maxLength={150}
+            />
+            <Text style={styles.charCount}>{bio.length}/150</Text>
+          </View>
         </View>
 
         <TouchableOpacity
@@ -136,7 +162,7 @@ export default function Step1Profile() {
         >
           {isLoading
             ? <ScissorsLoader size="small" color="light" />
-            : <Text style={styles.buttonText}>Next — Choose your services</Text>}
+            : <Text style={styles.buttonText}>Continue</Text>}
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -149,21 +175,24 @@ const styles = StyleSheet.create({
   title: { fontSize: 26, fontWeight: '700', color: Colors.text, marginBottom: 6 },
   sub: { fontSize: 15, color: Colors.textSecondary, marginBottom: 28 },
   form: { gap: 12, marginBottom: 28 },
+  fieldLabel: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary, marginBottom: 6 },
+  optional: { fontWeight: '400', color: Colors.textMuted },
   input: {
     height: 54, borderWidth: 1.5, borderColor: Colors.border,
-    borderRadius: 5, paddingHorizontal: 16, fontSize: 16, color: Colors.text,
+    borderRadius: BORDER_RADIUS, paddingHorizontal: 16, fontSize: 16, color: Colors.text,
   },
+  fieldCaption: { fontSize: 12, color: Colors.textMuted, marginTop: 6, lineHeight: 16 },
   bioInput: { height: 90, paddingTop: 14, textAlignVertical: 'top' },
   charCount: { fontSize: 12, color: Colors.textMuted, textAlign: 'right', marginTop: 4 },
   locationButton: {
     height: 54, borderWidth: 1.5, borderColor: Colors.border,
-    borderRadius: 5, paddingHorizontal: 16, justifyContent: 'center',
+    borderRadius: BORDER_RADIUS, paddingHorizontal: 16, justifyContent: 'center',
   },
   locationSet: { fontSize: 16, color: Colors.text, fontWeight: '500' },
   locationUnset: { fontSize: 16, color: Colors.primary, fontWeight: '500' },
   locationHelper: { fontSize: 13, color: Colors.textSecondary, marginTop: -4, marginLeft: 4 },
   button: {
-    height: 56, backgroundColor: Colors.primary, borderRadius: 5,
+    height: 56, backgroundColor: Colors.primary, borderRadius: BORDER_RADIUS,
     alignItems: 'center', justifyContent: 'center',
   },
   buttonDisabled: { opacity: 0.6 },

@@ -1,11 +1,13 @@
 // ============================================================
 // VARS — Vendor Onboarding Layout
-// Shows progress bar across all 5 steps
+// Shows progress bar across all 5 steps.
+// Shows Pioneer banner when vendor.pioneer = TRUE.
 // ============================================================
 import { Stack } from 'expo-router';
 import { View, Text, StyleSheet } from 'react-native';
 import { useSegments } from 'expo-router';
-import { Colors } from '@/constants/colors';
+import { Colors, BORDER_RADIUS } from '@/constants/colors';
+import { VendorOnboardingProvider, useVendorOnboarding } from '@/contexts/VendorOnboardingContext';
 
 const STEPS = [
   'Profile',
@@ -25,75 +27,90 @@ function getStepIndex(segments: string[]): number {
   return 0;
 }
 
-function ProgressBar() {
+function OnboardingHeader() {
   const segments = useSegments();
+  const { isPioneer } = useVendorOnboarding();
   const current = getStepIndex(segments);
-  const total = STEPS.length - 1; // step-5 is not a real progress step
-
-  if (current >= 4) return null; // hide on pending screen
+  const total = STEPS.length - 1;
+  const showProgress = current < 4;
 
   return (
-    <View style={styles.progressContainer}>
-      <Text style={styles.progressLabel}>
-        Step {current + 1} of {total} — {STEPS[current]}
-      </Text>
-      <View style={styles.track}>
-        {STEPS.slice(0, total).map((_, i) => (
-          <View
-            key={i}
-            style={[
-              styles.segment,
-              i <= current ? styles.segmentFilled : styles.segmentEmpty,
-            ]}
-          />
-        ))}
-      </View>
+    <View style={styles.headerContainer}>
+      {isPioneer && (
+        <View style={styles.pioneerBanner}>
+          <Text style={styles.pioneerText}>VARS Pioneer — 0% commission on your first 3 bookings</Text>
+        </View>
+      )}
+      {showProgress && (
+        <View style={styles.progressContainer}>
+          <Text style={styles.progressLabel}>
+            Step {current + 1} of {total} — {STEPS[current]}
+          </Text>
+          <View style={styles.track}>
+            {STEPS.slice(0, total).map((_, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.segment,
+                  i <= current ? styles.segmentFilled : styles.segmentEmpty,
+                ]}
+              />
+            ))}
+          </View>
+        </View>
+      )}
     </View>
   );
 }
 
 export default function VendorOnboardingLayout() {
   return (
-    <Stack
-      screenOptions={{
-        headerShown: true,
-        headerTitle: () => <ProgressBar />,
-        headerLeft: () => null,
-        headerStyle: { backgroundColor: Colors.background },
-        headerShadowVisible: false,
-        gestureEnabled: false, // prevent accidental back swipe mid-onboarding
-      }}
-    >
-      <Stack.Screen name="step-1-profile" options={{ title: '' }} />
-      <Stack.Screen name="step-2-services" options={{ title: '' }} />
-      <Stack.Screen name="step-3-portfolio" options={{ title: '' }} />
-      <Stack.Screen name="step-4-kyc" options={{ title: '' }} />
-      <Stack.Screen name="step-5-pending" options={{ title: '', gestureEnabled: false }} />
-    </Stack>
+    <VendorOnboardingProvider>
+      <Stack
+        screenOptions={{
+          headerShown: true,
+          headerTitle: () => <OnboardingHeader />,
+          headerLeft: () => null,
+          headerStyle: { backgroundColor: Colors.background },
+          headerShadowVisible: false,
+          gestureEnabled: false,
+        }}
+      >
+        <Stack.Screen name="step-1-profile" options={{ title: '' }} />
+        <Stack.Screen name="step-2-services" options={{ title: '' }} />
+        <Stack.Screen name="step-3-portfolio" options={{ title: '' }} />
+        <Stack.Screen name="step-4-kyc" options={{ title: '' }} />
+        <Stack.Screen name="step-5-pending" options={{ title: '', gestureEnabled: false }} />
+      </Stack>
+    </VendorOnboardingProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  progressContainer: {
-    alignItems: 'center',
+  headerContainer: { alignItems: 'center', gap: 6 },
+
+  pioneerBanner: {
+    backgroundColor: Colors.ink,
+    borderRadius: BORDER_RADIUS,
+    paddingHorizontal: 10,
     paddingVertical: 4,
   },
+  pioneerText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '500',
+    letterSpacing: 0.1,
+  },
+
+  progressContainer: { alignItems: 'center', paddingVertical: 2 },
   progressLabel: {
     fontSize: 12,
     color: Colors.textSecondary,
     marginBottom: 6,
     fontWeight: '500',
   },
-  track: {
-    flexDirection: 'row',
-    gap: 4,
-    width: 200,
-  },
-  segment: {
-    flex: 1,
-    height: 3,
-    borderRadius: 5,
-  },
+  track: { flexDirection: 'row', gap: 4, width: 200 },
+  segment: { flex: 1, height: 3, borderRadius: 5 },
   segmentFilled: { backgroundColor: Colors.primary },
   segmentEmpty: { backgroundColor: Colors.border },
 });

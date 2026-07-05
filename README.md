@@ -51,7 +51,7 @@ The platform operates a **two-sided marketplace**:
 | Mobile app | Expo SDK 52, React Native 0.76, Expo Router 4 |
 | Maps | react-native-maps |
 | Animations | React Native `Animated` API, react-native-svg 15.8.0 |
-| Auth | Supabase Auth (email + phone OTP) |
+| Auth | Supabase Auth — customers: email/password + Google/Facebook OAuth; vendors: email OTP (phone OTP coming when Termii is wired) |
 | Database | Supabase Postgres (PostGIS enabled) |
 | Realtime | Supabase Realtime (booking status + vendor location) |
 | Edge functions | Deno (Supabase Edge Functions) |
@@ -113,7 +113,8 @@ vars/
 
 ### For Vendors
 
-- **Onboarding** — multi-step: profile → services (free-name, L1/L2 taxonomy, price + duration) → portfolio → KYC (Youverify) → instant activation on clean pass
+- **Auth** — OTP-based sign-in. Landing page leads enter their email; `vendor-check-identity` resolves whether they have an existing account (→ password form), are a pre-registered lead (→ OTP → create password → onboarding), or are unknown (→ link to bookwithvars.com). Phone OTP supported once Termii is configured. Sessions persist in SecureStore — vendors stay logged in until they sign out. `vars_onboarding_done` is set automatically for any authenticated vendor on cold launch so customer onboarding is never shown.
+- **Onboarding** — multi-step: profile → services (free-name, L1/L2 taxonomy, price + duration) → portfolio → KYC (Youverify) → instant activation on clean pass. Profile and category fields pre-filled from `vendor_leads` match (by email or normalised phone). Pioneer Programme banner shown throughout for eligible vendors.
 - **Jobs dashboard** — incoming requests with 1-hour accept window; active jobs with flow buttons (On My Way → Arrived → Service Rendered); cancel button for accepted/in-progress bookings; history
 - **Online / offline toggle** — going online makes the vendor visible in the customer discovery feed; offline means invisible. Three prerequisites must all be met before a vendor can go online: KYC verified, at least one active service, and device notifications granted. The most relevant unmet condition is shown as a banner. If any condition fails while the vendor is online (checked every 2 minutes and on every screen focus return), the vendor is automatically taken offline and the DB is updated. Customers never see online/offline status — only "Typically accepts in X" on the vendor profile.
 - **Schedule management** — calendar shows 14-day slot grid with booked slot overlays (client name, service); tapping any booking opens a detail bottom sheet
@@ -185,6 +186,8 @@ Twenty migration files build up the schema incrementally:
 | `20260531000002_transport_surcharge` | Adds `transport_fee_kobo`, `distance_km`, `pre_transport_buffer_slots` to `bookings`; recreates `bookings_user_update` and `bookings_vendor_update` RLS policies with correlated-subquery guards to block client JWT writes on those three columns |
 | `20260603000001_service_taxonomy_v2` | Drops `service_categories`, `services`, and old `vendor_services`; creates `category_l1_enum` (hair/barber/face/nails) and `category_l2_enum` (16 subcategories); recreates `vendor_services` as free-name (name, description, `price_kobo`, `duration_blocks`, `category_l1`, `category_l2`, `sort_order`, max 10 per vendor enforced by trigger); creates `booking_services` join table (snapshots service name + price per service; INSERT restricted to service role); adds `service_summary TEXT` and `total_amount INTEGER` to bookings; compat mirrors (`service_name`, `service_price_kobo`, `service_duration_blocks`) retained on bookings for untouched paystack functions; fixes `profiles.last_tab` CHECK constraint to new L1 values; rewrites `get_nearby_vendors` to aggregate L1 names, keeps `category_slug` param (ignored) for safe rollout |
 | `20260603000002_online_visibility_and_response_time` | Adds `avg_response_minutes INT` to `vendors` — exponential moving average (80/20) of manual booking acceptance time, updated by trigger on `pending → accepted` (auto-accepted bookings excluded); adds `trg_vendor_response_time` trigger; updates `get_nearby_vendors` to filter `is_online = TRUE` so offline vendors never appear in customer discovery, and sorts by distance only |
+| `20260705000002_trigger_prefill_vendor_from_lead` | Adds `lead_service_type TEXT` to `vendors`; replaces `transfer_pioneer_from_lead()` to copy `full_name`, `phone_number`, and `service_type` from matched `vendor_leads` row on vendor INSERT (not just pioneer leads); matches by email first, then phone; marks lead as `converted = TRUE` with timestamp |
+| `20260705000003_fn_check_vendor_identity` | Creates `normalise_nigerian_phone(TEXT)` SQL helper (mirrors JS in `vendor-register-lead`); creates `check_vendor_identity(p_email, p_phone)` SECURITY DEFINER function returning `has_account \| lead_only \| not_found`; patches `transfer_pioneer_from_lead` to normalise phone before comparison |
 
 ### Key Tables
 
@@ -268,6 +271,7 @@ All functions live in `supabase/functions/` and run on Deno.
 | `vendor-kyc-init` | POST | Initiates Youverify KYC session |
 | `vendor-kyc-webhook` | POST | Receives Youverify result — clean pass: `kyc_status = verified` + `is_active = true` (instant activation); also extracts the liveness face image from the payload, uploads raw and passport-cropped versions to `vendor-identity-images` storage, and sets `profile_image_url` / `profile_image_raw_url` / `profile_image_locked = true` on the vendor row. Image failure is non-blocking — KYC pass completes regardless. Failure: `kyc_status = rejected`, appears in admin queue |
 | `vendor-register-lead` | POST/GET | Captures a vendor lead; GET returns current pioneer spot count. On successful POST: normalises phone to E.164, inserts into `vendor_leads`, creates an auto-approved `welcome_email` outreach record ready for delivery |
+| `vendor-check-identity` | POST | Public endpoint (no auth required). Accepts `{ identifier, type: 'email' \| 'phone' }`. Returns `{ status: 'has_account' \| 'lead_only' \| 'not_found' }`. Called by the vendor login screen before sending OTP — determines whether to show the password form, send an OTP for first-time setup, or show the "register your interest" error |
 | `deliver-outreach` | POST | Picks up approved `vendor_lead_outreach` records and delivers via the appropriate channel (WhatsApp/SMS via Termii, email via Resend). Controlled by `DELIVERY_LIVE` secret — logs only when unset. Accepts optional `{ record_id }` or `{ lead_id }` to scope delivery |
 | `unsubscribe-lead` | GET | One-click email unsubscribe — verifies HMAC-SHA256 token, sets `email_unsubscribed = true` on `vendor_leads`. Linked from every outreach and marketing email footer |
 | `send-marketing-email` | POST | Sends a bulk HTML campaign email to a segment of vendor leads. Segmentation via Supabase (`service_type`, `pioneer`, `lead_state`, `converted`). Renders per-lead HTML with unsubscribe URL. Delivers via Resend Batch API (100/request). Called by admin marketing panel |

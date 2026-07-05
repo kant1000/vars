@@ -68,6 +68,32 @@ Sentry.init({
 
 SplashScreen.preventAutoHideAsync();
 
+// Returns the correct onboarding route to resume at, or null if onboarding is complete.
+// Uses DB state so it never drifts from reality (unlike AsyncStorage which can be cleared).
+function getVendorOnboardingStep(vendor: {
+  phone_number: string | null;
+  paystack_subaccount_code: string | null;
+  kyc_status: string | null;
+}, hasServices: boolean): string | null {
+  // Step 1 incomplete — no phone number yet
+  if (!vendor.phone_number) return '/vendor-onboarding/step-1-profile';
+  // Step 2 incomplete — no services added yet
+  if (!hasServices) return '/vendor-onboarding/step-2-services';
+  // Steps 2+3 may or may not be done but KYC is already pending/needs_review —
+  // route to polling screen (vendor already submitted, can't go back to add services)
+  if (vendor.kyc_status === 'pending' || vendor.kyc_status === 'needs_review') {
+    return '/vendor-onboarding/step-5-pending';
+  }
+  // Step 4 incomplete — bank not done, or KYC not started / was rejected
+  if (!vendor.paystack_subaccount_code || !vendor.kyc_status || vendor.kyc_status === 'rejected') {
+    return '/vendor-onboarding/step-4-kyc';
+  }
+  // KYC submitted but not yet verified
+  if (vendor.kyc_status !== 'verified') return '/vendor-onboarding/step-5-pending';
+  // All steps complete
+  return null;
+}
+
 function RootNavigator() {
   const { isLoading, isAuthenticated, needsPhone } = useAuth();
   const segments = useSegments();
@@ -96,30 +122,49 @@ function RootNavigator() {
       router.replace('/auth/phone');
       return;
     }
-    if (!onboardingDone) {
-      router.replace('/onboarding');
-      return;
-    }
     const route = segments.join('/');
     if (!route || route === 'index') {
-      // Check if the logged-in user is a vendor; if so, send to vendor tabs
       if (isAuthenticated) {
+        // Always check vendor state first — vendors must never hit customer onboarding.
+        // Sets vars_onboarding_done as a side-effect so future cold starts are instant.
         (async () => {
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
-            const { data: vendor } = await supabase
-              .from('vendors')
-              .select('id')
-              .eq('id', user.id)
-              .maybeSingle();
+            const [{ data: vendor }, { count: serviceCount }] = await Promise.all([
+              supabase
+                .from('vendors')
+                .select('phone_number, paystack_subaccount_code, kyc_status')
+                .eq('id', user.id)
+                .maybeSingle(),
+              supabase
+                .from('vendor_services')
+                .select('*', { count: 'exact', head: true })
+                .eq('vendor_id', user.id),
+            ]);
+
             if (vendor) {
-              router.replace('/(vendor-tabs)');
+              await AsyncStorage.setItem('vars_onboarding_done', 'true');
+              const onboardingStep = getVendorOnboardingStep(vendor, (serviceCount ?? 0) > 0);
+              if (onboardingStep) {
+                router.replace(onboardingStep as any);
+                return;
+              }
+              router.replace('/(vendor-tabs)/profile');
               return;
             }
+          }
+          // Not a vendor — customer onboarding gate
+          if (!onboardingDone) {
+            router.replace('/onboarding');
+            return;
           }
           router.replace('/(tabs)');
         })();
       } else {
+        if (!onboardingDone) {
+          router.replace('/onboarding');
+          return;
+        }
         router.replace('/(tabs)');
       }
     }

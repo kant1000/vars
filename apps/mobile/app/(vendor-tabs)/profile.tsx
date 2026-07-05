@@ -6,6 +6,7 @@ import React, { useCallback, useState } from 'react';
 import {
   Alert, Dimensions, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router, useFocusEffect } from 'expo-router';
@@ -13,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { signOut } from '@/lib/auth';
 import { uploadSinglePortfolioPhoto, deletePortfolioPhoto } from '@/lib/storage';
-import { Colors } from '@/constants/colors';
+import { Colors, BORDER_RADIUS } from '@/constants/colors';
 import { CheckIcon, CloseIcon, EditIcon, PenLineIcon } from '@/components/icons';
 import { CATEGORY_L2_LABELS, MAX_VENDOR_SERVICES } from '@vars/shared';
 
@@ -58,9 +59,13 @@ export default function VendorProfileScreen() {
   const [photos, setPhotos] = useState<PortfolioPhoto[]>([]);
   const [photosLoading, setPhotosLoading] = useState(true);
   const [addingPhoto, setAddingPhoto] = useState(false);
+  const [scheduleNudgeDismissed, setScheduleNudgeDismissed] = useState(true);
 
   useFocusEffect(useCallback(() => {
     loadAll();
+    AsyncStorage.getItem('vars_schedule_nudge_done').then((v) => {
+      setScheduleNudgeDismissed(!!v);
+    });
   }, []));
 
   const loadAll = async () => {
@@ -233,6 +238,38 @@ export default function VendorProfileScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 60 }}>
+        {/* Schedule nudge — shown until dismissed */}
+        {!scheduleNudgeDismissed && (
+          <View style={s.nudgeCard}>
+            <Text style={s.nudgeTitle}>Set your availability</Text>
+            <Text style={s.nudgeBody}>
+              Customers can only book slots you've opened. Add your working hours so bookings can come in.
+            </Text>
+            <View style={s.nudgeActions}>
+              <TouchableOpacity
+                style={s.nudgeCta}
+                onPress={() => {
+                  AsyncStorage.setItem('vars_schedule_nudge_done', 'true');
+                  setScheduleNudgeDismissed(true);
+                  router.push('/(vendor-tabs)/schedule' as any);
+                }}
+                activeOpacity={0.85}
+              >
+                <Text style={s.nudgeCtaText}>Set your schedule →</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  AsyncStorage.setItem('vars_schedule_nudge_done', 'true');
+                  setScheduleNudgeDismissed(true);
+                }}
+                hitSlop={8}
+              >
+                <Text style={s.nudgeDismiss}>Later</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* Hero */}
         <View style={s.heroRow}>
           <View style={s.heroAvatarWrap}>
@@ -395,6 +432,21 @@ export default function VendorProfileScreen() {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
+
+  nudgeCard: {
+    marginHorizontal: 20, marginTop: 16, marginBottom: 4,
+    backgroundColor: Colors.ink, borderRadius: BORDER_RADIUS, padding: 16,
+  },
+  nudgeTitle: { fontSize: 15, fontWeight: '700', color: '#FFF', marginBottom: 4 },
+  nudgeBody: { fontSize: 13, color: 'rgba(255,255,255,0.75)', lineHeight: 19, marginBottom: 14 },
+  nudgeActions: { flexDirection: 'row', alignItems: 'center', gap: 20 },
+  nudgeCta: {
+    backgroundColor: '#FFF', borderRadius: BORDER_RADIUS,
+    paddingHorizontal: 14, paddingVertical: 8,
+  },
+  nudgeCtaText: { fontSize: 13, fontWeight: '700', color: Colors.ink },
+  nudgeDismiss: { fontSize: 13, color: 'rgba(255,255,255,0.6)', fontWeight: '500' },
+
   header: {
     paddingHorizontal: 20, paddingVertical: 14,
     borderBottomWidth: 1, borderBottomColor: Colors.border,

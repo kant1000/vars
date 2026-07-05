@@ -1,8 +1,7 @@
 // ============================================================
 // VARS — Vendor Onboarding Step 5: Pending Review (§6.1)
-// Shown after KYC + bank submission. Vendor waits for VARS approval.
-// kyc_status: 'pending' → 'verified' or 'rejected' via Youverify webhook.
-// Polls every 8 seconds and navigates once a terminal status is reached.
+// Shown after KYC + bank submission. Polls kyc_status on mount
+// and every 8s. Copy is split by status: pending / needs_review / verified.
 // ============================================================
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -12,15 +11,17 @@ import {
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import { Colors } from '@/constants/colors';
+import { Colors, BORDER_RADIUS } from '@/constants/colors';
 
 const POLL_INTERVAL_MS = 8000;
+
+type KycStatus = 'pending' | 'needs_review' | 'verified' | 'rejected';
 
 export default function Step5Pending() {
   const { user } = useAuth();
   const pulse = useRef(new Animated.Value(1)).current;
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const [isLive, setIsLive] = useState(false);
+  const [status, setStatus] = useState<KycStatus>('pending');
 
   useEffect(() => {
     Animated.loop(
@@ -41,47 +42,68 @@ export default function Step5Pending() {
         .eq('id', user.id)
         .single();
 
-      if (data?.kyc_status === 'verified') {
+      const s = data?.kyc_status as KycStatus | undefined;
+      if (!s) return;
+
+      if (s === 'verified') {
         if (intervalRef.current) clearInterval(intervalRef.current);
-        setIsLive(true);
-      } else if (data?.kyc_status === 'rejected') {
+        setStatus('verified');
+      } else if (s === 'rejected') {
+        if (intervalRef.current) clearInterval(intervalRef.current);
         router.replace('/vendor-onboarding/step-4-kyc');
+      } else if (s === 'needs_review') {
+        setStatus('needs_review');
       }
     };
 
+    // Check immediately on mount — don't wait for the first interval tick
+    poll();
     const interval = setInterval(poll, POLL_INTERVAL_MS);
     intervalRef.current = interval;
     return () => clearInterval(interval);
   }, [user]);
 
+  const isLive = status === 'verified';
+  const isReview = status === 'needs_review';
+
+  const title = isLive ? 'You\'re live on VARS.' : isReview ? 'Confirming your details.' : 'Checking your identity...';
+
+  const body = isLive
+    ? 'Your profile and portfolio are now visible to customers. Time to get your first booking.'
+    : isReview
+    ? 'Our team is reviewing your details. Most vendors are confirmed within 24 hours. We\'ll notify you the moment you\'re approved.'
+    : 'This usually takes under a minute. Stay on this screen.';
+
   return (
     <View style={styles.container}>
       <Animated.View style={[styles.orb, { transform: [{ scale: pulse }] }]} />
 
-      <Text style={styles.title}>{isLive ? 'You\'re live.' : 'You\'re in the queue.'}</Text>
-      <Text style={styles.body}>
-        {isLive
-          ? 'Your profile and portfolio are now visible to customers. Time to get your first booking.'
-          : 'We\'re reviewing your profile and verification. Most vendors go live within 24 hours. We\'ll send you a notification the moment you\'re approved.'}
-      </Text>
+      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.body}>{body}</Text>
 
-      <View style={styles.steps}>
-        <Row icon="✓" text="Profile submitted" done />
-        <Row icon="✓" text="Services set" done />
-        <Row icon="✓" text="Portfolio uploaded" done />
-        <Row icon="✓" text="Identity & bank verified" done />
-        <Row icon={isLive ? '✓' : '⏳'} text={isLive ? 'VARS review — approved' : 'VARS review — in progress'} done={isLive} />
+      <View style={styles.checklist}>
+        <CheckRow label="Profile submitted" done />
+        <CheckRow label="Services set" done />
+        <CheckRow label="Portfolio uploaded" done />
+        <CheckRow label="Identity & bank verified" done />
+        <CheckRow label={isLive ? 'You\'re live on VARS' : 'Going live on VARS...'} done={isLive} pulse={!isLive} />
       </View>
 
-      <Text style={styles.note}>
-        {isLive
-          ? 'Your first client could find you today. Make sure notifications are on.'
-          : 'While you wait, make sure your phone is on and notifications are enabled. Your first client could be right around the corner.'}
-      </Text>
+      {!isReview && !isLive && (
+        <Text style={styles.note}>
+          Make sure notifications are on — we'll let you know the moment you're approved.
+        </Text>
+      )}
+
+      {isLive && (
+        <Text style={styles.note}>
+          Your first client could find you today. Make sure notifications are on.
+        </Text>
+      )}
 
       <TouchableOpacity
         style={styles.button}
-        onPress={() => isLive ? router.replace('/(vendor-tabs)') : router.replace('/')}
+        onPress={() => isLive ? router.replace('/(vendor-tabs)/profile') : router.replace('/')}
         activeOpacity={0.85}
       >
         <Text style={styles.buttonText}>{isLive ? 'Let\'s go' : 'Back to home'}</Text>
@@ -90,11 +112,31 @@ export default function Step5Pending() {
   );
 }
 
-function Row({ icon, text, done }: { icon: string; text: string; done?: boolean }) {
+function CheckRow({ label, done, pulse: shouldPulse }: { label: string; done?: boolean; pulse?: boolean }) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (!shouldPulse) return;
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(scale, { toValue: 1.25, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(scale, { toValue: 1, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ])
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [shouldPulse]);
+
   return (
-    <View style={styles.row}>
-      <Text style={[styles.rowIcon, done && styles.rowIconDone]}>{icon}</Text>
-      <Text style={[styles.rowText, done && styles.rowTextDone]}>{text}</Text>
+    <View style={rowStyles.row}>
+      <Animated.View
+        style={[
+          rowStyles.dot,
+          done ? rowStyles.dotDone : rowStyles.dotPending,
+          { transform: [{ scale }] },
+        ]}
+      />
+      <Text style={[rowStyles.label, done && rowStyles.labelDone]}>{label}</Text>
     </View>
   );
 }
@@ -112,23 +154,27 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 28, fontWeight: '800', color: Colors.text, marginBottom: 12, textAlign: 'center' },
   body: { fontSize: 15, color: Colors.textSecondary, textAlign: 'center', lineHeight: 22, marginBottom: 32 },
-  steps: {
+  checklist: {
     width: '100%', backgroundColor: Colors.surface,
-    borderRadius: 5, padding: 20, gap: 14, marginBottom: 24,
+    borderRadius: BORDER_RADIUS, padding: 20, gap: 16, marginBottom: 24,
   },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  rowIcon: { fontSize: 16, width: 24, textAlign: 'center' },
-  rowIconDone: { color: Colors.success },
-  rowText: { fontSize: 15, color: Colors.textMuted, fontWeight: '500' },
-  rowTextDone: { color: Colors.text },
   note: {
     fontSize: 13, color: Colors.textSecondary,
     textAlign: 'center', lineHeight: 19, marginBottom: 32,
   },
   button: {
-    height: 56, backgroundColor: Colors.primary, borderRadius: 5,
+    height: 56, backgroundColor: Colors.primary, borderRadius: BORDER_RADIUS,
     alignItems: 'center', justifyContent: 'center',
     paddingHorizontal: 40, width: '100%',
   },
   buttonText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+});
+
+const rowStyles = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  dot: { width: 14, height: 14, borderRadius: 7 },
+  dotDone: { backgroundColor: Colors.success },
+  dotPending: { borderWidth: 2, borderColor: Colors.border, backgroundColor: 'transparent' },
+  label: { fontSize: 15, color: Colors.textMuted, fontWeight: '500', flex: 1 },
+  labelDone: { color: Colors.text },
 });

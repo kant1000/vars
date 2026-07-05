@@ -1,7 +1,8 @@
 // ============================================================
-// VARS — Vendor Onboarding Step 4: KYC + Bank Account (§6.1)
-// KYC handled entirely by Youverify SDK — VARS never stores raw ID data.
-// Bank account verified via Paystack (uses paystack-verify-bank edge fn).
+// VARS — Vendor Onboarding Step 4: Bank Account + KYC (§6.1)
+// Sub-step A (bank first): quick win via Paystack account verify.
+// Sub-step B (KYC second): Youverify hosted WebView.
+// VARS never stores raw ID data — Youverify handles it.
 // ============================================================
 import React, { useState, useEffect } from 'react';
 import {
@@ -13,26 +14,21 @@ import { WebView } from 'react-native-webview';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import { Colors } from '@/constants/colors';
-import { ConfirmModal } from '@/components/ConfirmModal';
+import { Colors, BORDER_RADIUS } from '@/constants/colors';
+// 'failed' covers in-session WebView failures and returning after a webhook rejection.
+// 'review' covers needs_review — KYC passed but data capture failed; admin resolves.
+type KycState = 'idle' | 'loading' | 'prep' | 'webview' | 'failed' | 'review' | 'done';
 
-// 'failed' covers both in-session WebView failures and returning after a webhook rejection
-// 'review' covers needs_review — KYC passed but data capture failed; admin resolves
-type KycState = 'idle' | 'loading' | 'webview' | 'failed' | 'review' | 'done';
-
-interface BankInfo {
-  accountNumber: string;
-  bankCode: string;
-  bankName: string;
-  accountName: string;
-  recipientCode: string;
-}
+// Which sub-step the vendor is on: A = bank, B = KYC
+type SubStep = 'bank' | 'kyc';
 
 export default function Step4Kyc() {
-  const { user, session } = useAuth();
+  const { user } = useAuth();
+
+  // Sub-step navigation
+  const [subStep, setSubStep] = useState<SubStep>('bank');
 
   // KYC state
-  const [showKycModal, setShowKycModal] = useState(false);
   const [kycState, setKycState] = useState<KycState>('idle');
   const [kycUrl, setKycUrl] = useState('');
   const [kycVerified, setKycVerified] = useState(false);
@@ -45,15 +41,12 @@ export default function Step4Kyc() {
   const [accountName, setAccountName] = useState('');
   const [isVerifyingBank, setIsVerifyingBank] = useState(false);
   const [bankVerified, setBankVerified] = useState(false);
-  // True when bank was already saved in a prior session (paystack_subaccount_code exists).
-  // In that case we skip the paystack save call on submit since bank_code is not stored in DB.
   const [bankAlreadySaved, setBankAlreadySaved] = useState(false);
   const [banks, setBanks] = useState<{ name: string; code: string }[]>([]);
   const [showBankPicker, setShowBankPicker] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // On mount: if this vendor was previously rejected, show the reason and
-  // pre-load their existing bank details so they don't re-verify from scratch.
+  // On mount: if previously rejected, pre-load existing bank details
   useEffect(() => {
     if (!user) return;
     (async () => {
@@ -67,11 +60,17 @@ export default function Step4Kyc() {
       if (data.kyc_status === 'rejected') {
         setKycState('failed');
         setKycErrorReason(data.kyc_rejection_reason ?? null);
+        // Skip to KYC sub-step on retry if bank was already saved
+        if (data.paystack_subaccount_code) setSubStep('kyc');
       } else if (data.kyc_status === 'needs_review') {
         setKycState('review');
+        setSubStep('kyc');
+      } else if (!data.kyc_status && data.paystack_subaccount_code) {
+        // Bank done, KYC never submitted (e.g. app closed during WebView) — skip to KYC sub-step
+        setSubStep('kyc');
+        setKycState('idle');
       }
 
-      // Pre-load saved bank account if one exists
       if (data.bank_account_number && data.bank_name && data.bank_account_name) {
         setAccountNumber(data.bank_account_number);
         setBankName(data.bank_name);
@@ -102,44 +101,6 @@ export default function Step4Kyc() {
     return json;
   };
 
-  // ---- KYC via Youverify ----
-  const handleStartKyc = () => {
-    // On retry (failed state) skip the disclosure — they've already seen it.
-    if (kycState === 'failed') { launchKyc(); return; }
-    setShowKycModal(true);
-  };
-
-  const launchKyc = async () => {
-    if (!user) return;
-    setKycState('loading');
-    setKycErrorReason(null);
-    try {
-      const data = await callEdgeFn('vendor-kyc-init', { vendor_id: user.id });
-      setKycUrl(data.verification_url);
-      setKycState('webview');
-    } catch (err: any) {
-      Alert.alert('Error', err.message);
-      setKycState('idle');
-    }
-  };
-
-  // Youverify WebView posts a message when verification is complete.
-  // The callback is binary — no specific error code is documented for the JS bridge.
-  const handleWebViewMessage = (event: any) => {
-    try {
-      const msg = JSON.parse(event.nativeEvent.data);
-      if (msg.type === 'kyc_complete' || msg.status === 'success') {
-        setKycState('done');
-        setKycVerified(true);
-      } else if (msg.type === 'kyc_failed') {
-        setKycState('failed');
-        setKycErrorReason(null);
-      }
-    } catch {
-      // Non-JSON messages from WebView — ignore
-    }
-  };
-
   // ---- Bank account ----
   const handleLoadBanks = async () => {
     if (banks.length) { setShowBankPicker(true); return; }
@@ -159,7 +120,6 @@ export default function Step4Kyc() {
     if (accountNumber.length < 10) {
       return Alert.alert('Invalid', 'Please enter a valid 10-digit account number.');
     }
-
     setIsVerifyingBank(true);
     try {
       const data = await callEdgeFn('paystack-verify-bank', {
@@ -173,6 +133,49 @@ export default function Step4Kyc() {
       Alert.alert('Verification failed', err.message ?? 'Could not verify account. Check the details and try again.');
     } finally {
       setIsVerifyingBank(false);
+    }
+  };
+
+  // Bank verified — advance to KYC sub-step
+  const handleBankContinue = () => {
+    if (!bankVerified) return Alert.alert('Required', 'Please verify your bank account first.');
+    setSubStep('kyc');
+    setKycState('idle');
+  };
+
+  // ---- KYC via Youverify ----
+  const handleStartKyc = () => {
+    // On retry, skip the prep screen — they've already seen it
+    if (kycState === 'failed') { launchKyc(); return; }
+    setKycState('prep');
+  };
+
+  const launchKyc = async () => {
+    if (!user) return;
+    setKycState('loading');
+    setKycErrorReason(null);
+    try {
+      const data = await callEdgeFn('vendor-kyc-init', { vendor_id: user.id });
+      setKycUrl(data.verification_url);
+      setKycState('webview');
+    } catch (err: any) {
+      Alert.alert('Error', err.message);
+      setKycState('idle');
+    }
+  };
+
+  const handleWebViewMessage = (event: any) => {
+    try {
+      const msg = JSON.parse(event.nativeEvent.data);
+      if (msg.type === 'kyc_complete' || msg.status === 'success') {
+        setKycState('done');
+        setKycVerified(true);
+      } else if (msg.type === 'kyc_failed') {
+        setKycState('failed');
+        setKycErrorReason(null);
+      }
+    } catch {
+      // Non-JSON WebView messages — ignore
     }
   };
 
@@ -200,7 +203,7 @@ export default function Step4Kyc() {
     }
   };
 
-  // Show Youverify WebView when KYC is in progress
+  // ---- Render: Youverify WebView ----
   if (kycState === 'webview') {
     return (
       <View style={{ flex: 1 }}>
@@ -226,146 +229,187 @@ export default function Step4Kyc() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Verify your identity.</Text>
-        <Text style={styles.sub}>
-          Required to go live on VARS. Your data stays with Youverify — we never see it.
-        </Text>
+        <Text style={styles.title}>Almost there.</Text>
 
-        {/* ---- KYC Section ---- */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Identity verification</Text>
-          <Text style={styles.sectionSub}>NIN, BVN, or government ID — takes about 2 minutes.</Text>
-
-          {kycState === 'failed' && (
-            <View style={styles.errorCallout}>
-              <Text style={styles.errorCalloutTitle}>Let's try that again</Text>
-              {kycErrorReason ? (
-                <Text style={styles.errorCalloutBody}>{kycErrorReason}</Text>
-              ) : null}
-              <Text style={styles.errorCalloutHint}>
-                For best results: ID well-lit with all four corners visible, selfie in natural light.
-              </Text>
-            </View>
-          )}
-
-          {kycState === 'review' && (
-            <View style={styles.reviewCallout}>
-              <Text style={styles.reviewCalloutTitle}>Confirming your details</Text>
-              <Text style={styles.reviewCalloutBody}>
-                This usually takes a few minutes. You'll get a notification once you're verified.
-              </Text>
-            </View>
-          )}
-
-          {kycVerified ? (
-            <View style={styles.verifiedBadge}>
-              <Text style={styles.verifiedText}>✓ Identity verified</Text>
-            </View>
-          ) : kycState !== 'review' ? (
-            <TouchableOpacity
-              style={[styles.kycButton, kycState === 'loading' && styles.buttonDisabled]}
-              onPress={handleStartKyc}
-              disabled={kycState === 'loading'}
-              activeOpacity={0.85}
-            >
-              {kycState === 'loading'
-                ? <ScissorsLoader size="small" color="light" />
-                : <Text style={styles.kycButtonText}>
-                    {kycState === 'failed' ? 'Try again' : 'Start identity check'}
-                  </Text>}
-            </TouchableOpacity>
-          ) : null}
+        {/* Mini sub-step indicator */}
+        <View style={styles.subStepRow}>
+          <View style={[
+            styles.subStepDot,
+            subStep === 'bank' ? styles.subStepDotActive : bankVerified ? styles.subStepDotDone : undefined,
+          ]} />
+          <View style={styles.subStepLine} />
+          <View style={[
+            styles.subStepDot,
+            kycVerified ? styles.subStepDotDone : subStep === 'kyc' ? styles.subStepDotActive : undefined,
+          ]} />
+        </View>
+        <View style={styles.subStepLabels}>
+          <Text style={[styles.subStepLabel, subStep === 'bank' && styles.subStepLabelActive]}>
+            {bankVerified ? '✓ ' : ''}1 of 2 — Bank account
+          </Text>
+          <Text style={[styles.subStepLabel, subStep === 'kyc' && styles.subStepLabelActive]}>
+            {kycVerified ? '✓ ' : ''}2 of 2 — Identity
+          </Text>
         </View>
 
-        {/* ---- Bank Account Section ---- */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Bank account</Text>
-          <Text style={styles.sectionSub}>Where your earnings will be sent after every job.</Text>
+        {/* ---- Sub-step A: Bank ---- */}
+        {subStep === 'bank' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Bank account</Text>
+            <Text style={styles.sectionSub}>Where your earnings will be sent after every job.</Text>
 
-          {/* Bank selector */}
-          <TouchableOpacity style={styles.input} onPress={handleLoadBanks}>
-            <Text style={bankName ? styles.inputText : styles.inputPlaceholder}>
-              {bankName || 'Select bank'}
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity style={styles.input} onPress={handleLoadBanks}>
+              <Text style={bankName ? styles.inputText : styles.inputPlaceholder}>
+                {bankName || 'Select bank'}
+              </Text>
+            </TouchableOpacity>
 
-          {/* Bank picker modal */}
-          {showBankPicker && (
-            <View style={styles.bankPicker}>
-              <ScrollView style={{ maxHeight: 200 }}>
-                {banks.map((b) => (
-                  <TouchableOpacity
-                    key={b.code}
-                    style={styles.bankOption}
-                    onPress={() => {
-                      setBankCode(b.code);
-                      setBankName(b.name);
-                      setShowBankPicker(false);
-                      setBankVerified(false);
-                      setBankAlreadySaved(false);
-                      setAccountName('');
-                    }}
-                  >
-                    <Text style={styles.bankOptionText}>{b.name}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          )}
+            {showBankPicker && (
+              <View style={styles.bankPicker}>
+                <ScrollView style={{ maxHeight: 200 }}>
+                  {banks.map((b) => (
+                    <TouchableOpacity
+                      key={b.code}
+                      style={styles.bankOption}
+                      onPress={() => {
+                        setBankCode(b.code);
+                        setBankName(b.name);
+                        setShowBankPicker(false);
+                        setBankVerified(false);
+                        setBankAlreadySaved(false);
+                        setAccountName('');
+                      }}
+                    >
+                      <Text style={styles.bankOptionText}>{b.name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
 
-          <TextInput
-            style={styles.textInput}
-            placeholder="Account number"
-            placeholderTextColor={Colors.textMuted}
-            value={accountNumber}
-            onChangeText={(t) => { setAccountNumber(t); setBankVerified(false); setBankAlreadySaved(false); setAccountName(''); }}
-            keyboardType="numeric"
-            maxLength={10}
-          />
+            <TextInput
+              style={styles.textInput}
+              placeholder="Account number"
+              placeholderTextColor={Colors.textMuted}
+              value={accountNumber}
+              onChangeText={(t) => { setAccountNumber(t); setBankVerified(false); setBankAlreadySaved(false); setAccountName(''); }}
+              keyboardType="numeric"
+              maxLength={10}
+            />
 
-          {accountName ? (
-            <View style={styles.verifiedBadge}>
-              <Text style={styles.verifiedText}>✓ {accountName}</Text>
-            </View>
-          ) : (
+            {accountName ? (
+              <View style={styles.verifiedBadge}>
+                <Text style={styles.verifiedText}>✓ {accountName}</Text>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={[styles.verifyButton, isVerifyingBank && styles.buttonDisabled]}
+                onPress={handleVerifyAccount}
+                disabled={isVerifyingBank}
+                activeOpacity={0.85}
+              >
+                {isVerifyingBank
+                  ? <ScissorsLoader size="small" color="dark" />
+                  : <Text style={styles.verifyButtonText}>Verify account</Text>}
+              </TouchableOpacity>
+            )}
+
             <TouchableOpacity
-              style={[styles.verifyButton, isVerifyingBank && styles.buttonDisabled]}
-              onPress={handleVerifyAccount}
-              disabled={isVerifyingBank}
+              style={[styles.button, !bankVerified && styles.buttonDisabled]}
+              onPress={handleBankContinue}
+              disabled={!bankVerified}
               activeOpacity={0.85}
             >
-              {isVerifyingBank
-                ? <ScissorsLoader size="small" color="dark" />
-                : <Text style={styles.verifyButtonText}>Verify account</Text>}
+              <Text style={styles.buttonText}>Continue — Identity check</Text>
             </TouchableOpacity>
-          )}
-        </View>
+          </View>
+        )}
 
-        <TouchableOpacity
-          style={[
-            styles.button,
-            (!kycVerified || !bankVerified || isSaving) && styles.buttonDisabled,
-          ]}
-          onPress={handleSaveBankAndContinue}
-          disabled={!kycVerified || !bankVerified || isSaving}
-          activeOpacity={0.85}
-        >
-          {isSaving
-            ? <ScissorsLoader size="small" color="light" />
-            : <Text style={styles.buttonText}>Submit for review</Text>}
-        </TouchableOpacity>
+        {/* ---- Sub-step B: KYC ---- */}
+        {subStep === 'kyc' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Identity verification</Text>
+
+            {kycState === 'failed' && (
+              <View style={styles.errorCallout}>
+                <Text style={styles.errorCalloutTitle}>Let's try that again</Text>
+                {kycErrorReason ? (
+                  <Text style={styles.errorCalloutBody}>{kycErrorReason}</Text>
+                ) : null}
+                <Text style={styles.errorCalloutHint}>
+                  For best results: ID well-lit with all four corners visible, selfie in natural light.
+                </Text>
+              </View>
+            )}
+
+            {kycState === 'review' && (
+              <View style={styles.reviewCallout}>
+                <Text style={styles.reviewCalloutTitle}>Confirming your details</Text>
+                <Text style={styles.reviewCalloutBody}>
+                  This usually takes a few minutes. You'll get a notification once you're verified.
+                </Text>
+              </View>
+            )}
+
+            {/* Prep screen — shown before launching WebView */}
+            {kycState === 'prep' && (
+              <View style={styles.prepCard}>
+                <Text style={styles.prepTitle}>Before you start</Text>
+                <Text style={styles.prepItem}>· Your NIN, BVN, or a government-issued ID</Text>
+                <Text style={styles.prepItem}>· A clear selfie in good lighting — face the camera directly</Text>
+                <Text style={styles.prepItem}>· Takes about 3 minutes</Text>
+                <View style={styles.prepDivider} />
+                <Text style={styles.prepNote}>
+                  Your identity is verified by Youverify, a licensed verification service. VARS does not store your raw ID documents.
+                </Text>
+                <TouchableOpacity
+                  style={styles.kycButton}
+                  onPress={launchKyc}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.kycButtonText}>Start identity check →</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setKycState('idle')} style={styles.prepBack}>
+                  <Text style={styles.prepBackText}>Go back</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {kycVerified ? (
+              <View style={styles.verifiedBadge}>
+                <Text style={styles.verifiedText}>✓ Identity verified</Text>
+              </View>
+            ) : kycState !== 'review' && kycState !== 'prep' ? (
+              <TouchableOpacity
+                style={[styles.kycButton, kycState === 'loading' && styles.buttonDisabled]}
+                onPress={handleStartKyc}
+                disabled={kycState === 'loading'}
+                activeOpacity={0.85}
+              >
+                {kycState === 'loading'
+                  ? <ScissorsLoader size="small" color="light" />
+                  : <Text style={styles.kycButtonText}>
+                      {kycState === 'failed' ? 'Try again' : 'Start identity check'}
+                    </Text>}
+              </TouchableOpacity>
+            ) : null}
+
+            {kycVerified && (
+              <TouchableOpacity
+                style={[styles.button, (!kycVerified || !bankVerified || isSaving) && styles.buttonDisabled]}
+                onPress={handleSaveBankAndContinue}
+                disabled={!kycVerified || !bankVerified || isSaving}
+                activeOpacity={0.85}
+              >
+                {isSaving
+                  ? <ScissorsLoader size="small" color="light" />
+                  : <Text style={styles.buttonText}>Submit for review</Text>}
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
       </ScrollView>
-      <ConfirmModal
-        visible={showKycModal}
-        title="Your photo and name will be on your profile"
-        body={
-          `The selfie and name from your ID check become your permanent VARS profile. Every customer sees them before booking you.\n\nGood lighting, face the camera directly, and you're set.`
-        }
-        confirmLabel="Got it, start the check"
-        dismissLabel="Not now"
-        onConfirm={() => { setShowKycModal(false); launchKyc(); }}
-        onDismiss={() => setShowKycModal(false)}
-      />
+
     </KeyboardAvoidingView>
   );
 }
@@ -373,34 +417,66 @@ export default function Step4Kyc() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   scroll: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 40 },
-  title: { fontSize: 26, fontWeight: '700', color: Colors.text, marginBottom: 6 },
-  sub: { fontSize: 15, color: Colors.textSecondary, marginBottom: 28 },
-  section: { marginBottom: 28, padding: 20, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 5, gap: 12 },
+  title: { fontSize: 26, fontWeight: '700', color: Colors.text, marginBottom: 20 },
+
+  subStepRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+  subStepDot: {
+    width: 10, height: 10, borderRadius: 5,
+    backgroundColor: Colors.border,
+  },
+  subStepDotActive: { backgroundColor: Colors.primary },
+  subStepDotDone: { backgroundColor: Colors.success },
+  subStepLine: { flex: 1, height: 2, backgroundColor: Colors.border, marginHorizontal: 6 },
+  subStepLabels: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 28 },
+  subStepLabel: { fontSize: 12, color: Colors.textMuted, fontWeight: '500' },
+  subStepLabelActive: { color: Colors.primary, fontWeight: '700' },
+
+  section: { gap: 12 },
   sectionTitle: { fontSize: 17, fontWeight: '700', color: Colors.text },
   sectionSub: { fontSize: 14, color: Colors.textSecondary },
-  errorCallout: { backgroundColor: '#FEF2F2', borderRadius: 5, padding: 14, gap: 6 },
+
+  errorCallout: { backgroundColor: '#FEF2F2', borderRadius: BORDER_RADIUS, padding: 14, gap: 6 },
   errorCalloutTitle: { fontSize: 15, fontWeight: '700', color: Colors.error },
   errorCalloutBody: { fontSize: 14, color: Colors.error, opacity: 0.85 },
   errorCalloutHint: { fontSize: 13, color: Colors.textSecondary, lineHeight: 18 },
-  reviewCallout: { backgroundColor: '#F0F9FF', borderRadius: 5, padding: 14, gap: 6 },
+
+  reviewCallout: { backgroundColor: '#F0F9FF', borderRadius: BORDER_RADIUS, padding: 14, gap: 6 },
   reviewCalloutTitle: { fontSize: 15, fontWeight: '700', color: Colors.text },
   reviewCalloutBody: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20 },
-  kycButton: { height: 50, backgroundColor: Colors.primary, borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
+
+  prepCard: {
+    backgroundColor: Colors.surface, borderRadius: BORDER_RADIUS,
+    borderWidth: 1, borderColor: Colors.border,
+    padding: 20, gap: 10,
+  },
+  prepTitle: { fontSize: 16, fontWeight: '700', color: Colors.text, marginBottom: 4 },
+  prepItem: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20 },
+  prepDivider: { height: 1, backgroundColor: Colors.border, marginVertical: 6 },
+  prepNote: { fontSize: 13, color: Colors.textMuted, lineHeight: 18 },
+  prepBack: { alignItems: 'center', paddingVertical: 8 },
+  prepBackText: { fontSize: 14, color: Colors.textMuted },
+
+  kycButton: { height: 50, backgroundColor: Colors.primary, borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center' },
   kycButtonText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
-  verifiedBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0FDF4', borderRadius: 5, padding: 12 },
+  verifiedBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0FDF4', borderRadius: BORDER_RADIUS, padding: 12 },
   verifiedText: { color: Colors.success, fontSize: 15, fontWeight: '600' },
-  input: { height: 50, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 5, paddingHorizontal: 14, justifyContent: 'center' },
+
+  input: { height: 50, borderWidth: 1.5, borderColor: Colors.border, borderRadius: BORDER_RADIUS, paddingHorizontal: 14, justifyContent: 'center' },
   inputText: { fontSize: 16, color: Colors.text },
   inputPlaceholder: { fontSize: 16, color: Colors.textMuted },
-  textInput: { height: 50, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 5, paddingHorizontal: 14, fontSize: 16, color: Colors.text },
-  bankPicker: { borderWidth: 1.5, borderColor: Colors.border, borderRadius: 5, overflow: 'hidden', backgroundColor: Colors.background },
+  textInput: { height: 50, borderWidth: 1.5, borderColor: Colors.border, borderRadius: BORDER_RADIUS, paddingHorizontal: 14, fontSize: 16, color: Colors.text },
+
+  bankPicker: { borderWidth: 1.5, borderColor: Colors.border, borderRadius: BORDER_RADIUS, overflow: 'hidden', backgroundColor: Colors.background },
   bankOption: { padding: 14, borderBottomWidth: 1, borderBottomColor: Colors.border },
   bankOptionText: { fontSize: 15, color: Colors.text },
-  verifyButton: { height: 46, borderWidth: 1.5, borderColor: Colors.primary, borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
+
+  verifyButton: { height: 46, borderWidth: 1.5, borderColor: Colors.primary, borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center' },
   verifyButtonText: { color: Colors.primary, fontSize: 15, fontWeight: '600' },
-  button: { height: 56, backgroundColor: Colors.primary, borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
+
+  button: { height: 56, backgroundColor: Colors.primary, borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center' },
   buttonDisabled: { opacity: 0.5 },
   buttonText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
-  cancelKyc: { position: 'absolute', top: 50, right: 16, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 5, paddingHorizontal: 14, paddingVertical: 8 },
+
+  cancelKyc: { position: 'absolute', top: 50, right: 16, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: BORDER_RADIUS, paddingHorizontal: 14, paddingVertical: 8 },
   cancelKycText: { color: '#FFF', fontWeight: '600' },
 });

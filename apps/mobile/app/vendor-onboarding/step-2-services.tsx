@@ -31,10 +31,14 @@ interface DraftService {
 
 const L1_KEYS = Object.values(CATEGORY_L1) as string[];
 
-const DURATION_OPTIONS = [1, 2, 3, 4, 6, 8].map((b) => ({
-  blocks: b,
-  label: b === 1 ? '30 min' : b < 4 ? `${b * 30} min` : `${b / 2} hr${b > 2 ? 's' : ''}`,
-}));
+const DURATION_OPTIONS = [
+  { blocks: 1, label: '30 min' },
+  { blocks: 2, label: '1 hr' },
+  { blocks: 3, label: '1 hr 30 min' },
+  { blocks: 4, label: '2 hr' },
+  { blocks: 6, label: '3 hr' },
+  { blocks: 8, label: '4 hr' },
+];
 
 export default function Step2Services() {
   const { user } = useAuth();
@@ -54,10 +58,24 @@ export default function Step2Services() {
   useEffect(() => {
     if (!user) { setIsLoading(false); return; }
     supabase.from('vendors')
-      .select('pioneer, pioneer_bookings_completed')
+      .select('pioneer, pioneer_bookings_completed, lead_service_type')
       .eq('id', user.id)
       .single()
-      .then(({ data }) => { setVendorPioneer(data ?? null); setIsLoading(false); });
+      .then(({ data }) => {
+        setVendorPioneer(data ?? null);
+        // Pre-select L1 category from lead data if available
+        const SERVICE_TYPE_TO_L1: Record<string, string> = {
+          barbing:       CATEGORY_L1.BARBER,
+          hair_styling:  CATEGORY_L1.HAIR,
+          makeovers:     CATEGORY_L1.FACE,
+        };
+        const preselect = data?.lead_service_type ? SERVICE_TYPE_TO_L1[data.lead_service_type] : null;
+        if (preselect) {
+          setFormL1(preselect);
+          setFormL2(CATEGORY_L2_MAP[preselect][0]);
+        }
+        setIsLoading(false);
+      });
   }, [user]);
 
   const handleL1Change = (l1: string) => {
