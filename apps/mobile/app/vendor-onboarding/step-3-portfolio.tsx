@@ -12,7 +12,7 @@ import { Image } from 'expo-image';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
-import { pickAndUploadPortfolioPhotos, PortfolioUpload } from '@/lib/storage';
+import { uploadSinglePortfolioPhoto, PortfolioUpload } from '@/lib/storage';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors, BORDER_RADIUS } from '@/constants/colors';
 import { CloseIcon } from '@/components/icons';
@@ -32,8 +32,8 @@ export default function Step3Portfolio() {
     if (!user || remaining <= 0) return;
     setIsUploading(true);
     try {
-      const uploads = await pickAndUploadPortfolioPhotos(user.id, photos.length, remaining);
-      if (uploads.length) setPhotos((prev) => [...prev, ...uploads]);
+      const upload = await uploadSinglePortfolioPhoto(user.id);
+      if (upload) setPhotos((prev) => [...prev, upload]);
     } catch (err: any) {
       Alert.alert('Upload failed', err.message);
     } finally {
@@ -197,10 +197,10 @@ const styles = StyleSheet.create({
   checkboxChecked: {
     backgroundColor: Colors.primary, borderColor: Colors.primary,
   },
-  checkmark: { color: '#FFF', fontSize: 13, fontWeight: '700' },
+  checkmark: { color: Colors.white, fontSize: 13, fontWeight: '700' },
   consentLabel: { flex: 1, fontSize: 14, color: Colors.text, lineHeight: 20 },
 
-  button: { height: 56, backgroundColor: Colors.primary, borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center' },
-  buttonDisabled: { opacity: 0.4 },
-  buttonText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+  button: { height: 56, backgroundColor: Colors.ink, borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center' },
+  buttonDisabled: { opacity: 0.5 },
+  buttonText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
 });

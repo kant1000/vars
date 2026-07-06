@@ -2,15 +2,17 @@
 // VARS — Supabase Storage helpers
 // ============================================================
 import * as ImagePicker from 'expo-image-picker';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import * as FileSystem from 'expo-file-system';
 import { supabase } from './supabase';
+
+const UPLOAD_SIZE = 1024;
 
 /**
  * Read a local file URI as an ArrayBuffer.
  * `fetch('file://...')` fails silently on Android — use expo-file-system instead.
  */
 async function readUriAsArrayBuffer(uri: string): Promise<{ buffer: ArrayBuffer; ext: string }> {
-  const ext = (uri.split('.').pop()?.split('?')[0] ?? 'jpg').toLowerCase();
   const base64 = await FileSystem.readAsStringAsync(uri, {
     encoding: FileSystem.EncodingType.Base64,
   });
@@ -20,34 +22,46 @@ async function readUriAsArrayBuffer(uri: string): Promise<{ buffer: ArrayBuffer;
   for (let i = 0; i < len; i++) {
     bytes[i] = binaryString.charCodeAt(i);
   }
-  return { buffer: bytes.buffer as ArrayBuffer, ext };
+  return { buffer: bytes.buffer as ArrayBuffer, ext: 'jpg' };
 }
 
 /**
- * Pick an image from device library and upload to Supabase Storage.
+ * Resize and compress a local image URI to a UPLOAD_SIZE×UPLOAD_SIZE JPEG.
+ * The crop is done by the OS picker (aspect [1,1]); this only resizes down.
+ */
+async function resizeToSquare(uri: string): Promise<string> {
+  const result = await manipulateAsync(
+    uri,
+    [{ resize: { width: UPLOAD_SIZE, height: UPLOAD_SIZE } }],
+    { compress: 0.8, format: SaveFormat.JPEG },
+  );
+  return result.uri;
+}
+
+/**
+ * Pick a single image from device library, crop to square, resize, and upload.
  * Returns the public URL.
  */
 export async function pickAndUploadImage(params: {
   bucket: string;
-  path: string;       // e.g. `vendors/${userId}/avatar.jpg`
-  aspect?: [number, number];
+  path: string;
 }): Promise<string | null> {
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ImagePicker.MediaTypeOptions.Images,
     allowsEditing: true,
-    aspect: params.aspect ?? [1, 1],
-    quality: 0.8,
+    aspect: [1, 1],
+    quality: 1,
   });
 
   if (result.canceled || !result.assets[0]) return null;
 
-  const asset = result.assets[0];
-  const { buffer, ext } = await readUriAsArrayBuffer(asset.uri);
-  const filePath = `${params.path}.${ext}`;
+  const resized = await resizeToSquare(result.assets[0].uri);
+  const { buffer } = await readUriAsArrayBuffer(resized);
+  const filePath = `${params.path}.jpg`;
 
   const { error } = await supabase.storage
     .from(params.bucket)
-    .upload(filePath, buffer, { upsert: true, contentType: `image/${ext}` });
+    .upload(filePath, buffer, { upsert: true, contentType: 'image/jpeg' });
 
   if (error) throw error;
 
@@ -61,48 +75,7 @@ export interface PortfolioUpload {
 }
 
 /**
- * Pick multiple portfolio photos and upload.
- * Returns array of { path, url }. Caller controls the max via selectionLimit.
- */
-export async function pickAndUploadPortfolioPhotos(
-  vendorId: string,
-  existingCount: number,
-  selectionLimit = 3,
-): Promise<PortfolioUpload[]> {
-  const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    allowsMultipleSelection: true,
-    quality: 0.8,
-    selectionLimit,
-  });
-
-  if (result.canceled || !result.assets.length) return [];
-
-  const uploads: PortfolioUpload[] = [];
-
-  for (let i = 0; i < result.assets.length; i++) {
-    const asset = result.assets[i];
-    const { buffer, ext } = await readUriAsArrayBuffer(asset.uri);
-    const filePath = `vendors/${vendorId}/portfolio/${Date.now()}_${existingCount + i}.${ext}`;
-
-    const { error } = await supabase.storage
-      .from('portfolio')
-      .upload(filePath, buffer, { contentType: `image/${ext}` });
-
-    if (error) {
-      console.error(`Upload failed for photo ${i}:`, error);
-      continue;
-    }
-
-    const { data } = supabase.storage.from('portfolio').getPublicUrl(filePath);
-    uploads.push({ path: filePath, url: data.publicUrl });
-  }
-
-  return uploads;
-}
-
-/**
- * Pick a single portfolio photo and upload.
+ * Pick a single portfolio photo, crop to square, resize, and upload.
  * Returns { path, url } or null if cancelled.
  */
 export async function uploadSinglePortfolioPhoto(
@@ -111,18 +84,19 @@ export async function uploadSinglePortfolioPhoto(
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ImagePicker.MediaTypeOptions.Images,
     allowsEditing: true,
-    quality: 0.85,
+    aspect: [1, 1],
+    quality: 1,
   });
 
   if (result.canceled || !result.assets[0]) return null;
 
-  const asset = result.assets[0];
-  const { buffer, ext } = await readUriAsArrayBuffer(asset.uri);
-  const filePath = `vendors/${vendorId}/portfolio/${Date.now()}.${ext}`;
+  const resized = await resizeToSquare(result.assets[0].uri);
+  const { buffer } = await readUriAsArrayBuffer(resized);
+  const filePath = `vendors/${vendorId}/portfolio/${Date.now()}.jpg`;
 
   const { error } = await supabase.storage
     .from('portfolio')
-    .upload(filePath, buffer, { contentType: `image/${ext}` });
+    .upload(filePath, buffer, { contentType: 'image/jpeg' });
 
   if (error) throw error;
 
@@ -144,12 +118,13 @@ export async function deletePortfolioPhoto(storagePath: string): Promise<void> {
  * Returns the public URL.
  */
 export async function uploadProfilePhotoFromUri(userId: string, uri: string): Promise<string> {
-  const { buffer, ext } = await readUriAsArrayBuffer(uri);
-  const filePath = `vendors/${userId}/profile.${ext}`;
+  const resized = await resizeToSquare(uri);
+  const { buffer } = await readUriAsArrayBuffer(resized);
+  const filePath = `vendors/${userId}/profile.jpg`;
 
   const { error } = await supabase.storage
     .from('portfolio')
-    .upload(filePath, buffer, { upsert: true, contentType: `image/${ext}` });
+    .upload(filePath, buffer, { upsert: true, contentType: 'image/jpeg' });
 
   if (error) throw error;
 
