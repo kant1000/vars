@@ -1,7 +1,8 @@
 // ============================================================
 // VARS — Vendor Onboarding Step 1: Profile (§6.1)
-// Display name, phone, base location, bio (optional, 150 char).
-// Field order: name → phone → location → bio (required before optional).
+// Display name, base location, bio (optional, 150 char).
+// Phone and email are pre-filled and read-only — sourced from
+// the vendor_leads registration and cannot be changed here.
 // ============================================================
 import React, { useState, useEffect } from 'react';
 import {
@@ -19,23 +20,25 @@ export default function Step1Profile() {
   const { user } = useAuth();
   const [displayName, setDisplayName] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [bio, setBio] = useState('');
   const [locationLabel, setLocationLabel] = useState('');
   const [locationCoords, setLocationCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
 
-  // Pre-fill from vendor row — trigger may have copied data from vendor_leads
+  // Pre-fill from vendor row — trigger copies data from vendor_leads at registration
   useEffect(() => {
     if (!user) return;
     supabase
       .from('vendors')
-      .select('full_name, phone_number')
+      .select('full_name, phone_number, email')
       .eq('id', user.id)
       .single()
       .then(({ data }) => {
         if (data?.full_name) setDisplayName(data.full_name);
         if (data?.phone_number) setPhone(data.phone_number);
+        if (data?.email) setEmail(data.email);
       });
   }, [user]);
 
@@ -62,7 +65,6 @@ export default function Step1Profile() {
 
   const handleNext = async () => {
     if (!displayName.trim()) return Alert.alert('Required', 'Please enter your display name.');
-    if (!phone.trim()) return Alert.alert('Required', 'Please enter your phone number.');
     if (!locationCoords) return Alert.alert('Required', 'Please set your base location.');
     if (!user) return;
 
@@ -72,7 +74,6 @@ export default function Step1Profile() {
         .from('vendors')
         .update({
           full_name: displayName.trim(),
-          phone_number: phone.trim(),
           bio: bio.trim() || null,
           base_location: `POINT(${locationCoords.lng} ${locationCoords.lat})`,
         })
@@ -97,7 +98,7 @@ export default function Step1Profile() {
         <Text style={styles.sub}>This is what clients will see on your profile.</Text>
 
         <View style={styles.form}>
-          {/* Display name */}
+          {/* Display name — editable */}
           <View>
             <TextInput
               style={styles.input}
@@ -112,15 +113,31 @@ export default function Step1Profile() {
             </Text>
           </View>
 
-          {/* Phone */}
-          <TextInput
-            style={styles.input}
-            placeholder="Phone number"
-            placeholderTextColor={Colors.textMuted}
-            value={phone}
-            onChangeText={setPhone}
-            keyboardType="phone-pad"
-          />
+          {/* Phone — read-only */}
+          <View>
+            <View style={[styles.input, styles.lockedField]}>
+              <Text style={phone ? styles.lockedText : styles.lockedPlaceholder}>
+                {phone || 'Phone number'}
+              </Text>
+              <Text style={styles.lockBadge}>Locked</Text>
+            </View>
+            <Text style={styles.fieldCaption}>
+              Phone used to sign in — contact us if this needs updating.
+            </Text>
+          </View>
+
+          {/* Email — read-only */}
+          <View>
+            <View style={[styles.input, styles.lockedField]}>
+              <Text style={email ? styles.lockedText : styles.lockedPlaceholder}>
+                {email || 'Email'}
+              </Text>
+              <Text style={styles.lockBadge}>Locked</Text>
+            </View>
+            <Text style={styles.fieldCaption}>
+              Email from your registration — contact us if this needs updating.
+            </Text>
+          </View>
 
           {/* Base location */}
           <TouchableOpacity style={styles.locationButton} onPress={handleDetectLocation}>
@@ -181,6 +198,19 @@ const styles = StyleSheet.create({
     height: 54, borderWidth: 1.5, borderColor: Colors.border,
     borderRadius: BORDER_RADIUS, paddingHorizontal: 16, fontSize: 16, color: Colors.text,
   },
+  lockedField: {
+    backgroundColor: Colors.surface,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  lockedText: { fontSize: 16, color: Colors.text, flex: 1 },
+  lockedPlaceholder: { fontSize: 16, color: Colors.textMuted, flex: 1 },
+  lockBadge: {
+    fontSize: 11, fontWeight: '600', color: Colors.textMuted,
+    borderWidth: 1, borderColor: Colors.border, borderRadius: BORDER_RADIUS,
+    paddingHorizontal: 6, paddingVertical: 2,
+  },
   fieldCaption: { fontSize: 12, color: Colors.textMuted, marginTop: 6, lineHeight: 16 },
   bioInput: { height: 90, paddingTop: 14, textAlignVertical: 'top' },
   charCount: { fontSize: 12, color: Colors.textMuted, textAlign: 'right', marginTop: 4 },
@@ -192,9 +222,9 @@ const styles = StyleSheet.create({
   locationUnset: { fontSize: 16, color: Colors.primary, fontWeight: '500' },
   locationHelper: { fontSize: 13, color: Colors.textSecondary, marginTop: -4, marginLeft: 4 },
   button: {
-    height: 56, backgroundColor: Colors.primary, borderRadius: BORDER_RADIUS,
+    height: 56, backgroundColor: Colors.ink, borderRadius: BORDER_RADIUS,
     alignItems: 'center', justifyContent: 'center',
   },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+  buttonDisabled: { opacity: 0.5 },
+  buttonText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
 });
