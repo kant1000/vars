@@ -58,6 +58,9 @@ export function ChevronRightIcon({ size = 16, color = '#1A1A1A' }: P) {
 export function HourglassIcon({ size = 16, color = '#1A1A1A' }: P) {
   return <Svg {...base(size, color)}><Path d="M5 21v-4a7 7 0 0 1 7-7 7 7 0 0 1 7 7v4" /><Path d="M5 3v4a7 7 0 0 0 7 7 7 7 0 0 0 7-7V3" /><Line x1="5" y1="3" x2="19" y2="3" /><Line x1="5" y1="21" x2="19" y2="21" /></Svg>;
 }
+export function GearIcon({ size = 16, color = '#1A1A1A' }: P) {
+  return <Svg {...base(size, color)}><Circle cx="12" cy="12" r="3" /><Path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></Svg>;
+}
 export function CheckCircleIcon({ size = 16, color = '#1A1A1A' }: P) {
   return <Svg {...base(size, color)}><Path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><Polyline points="22 4 12 14.01 9 11.01" /></Svg>;
 }

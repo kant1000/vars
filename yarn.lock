@@ -4655,6 +4655,13 @@ expo-linking@~7.0.0, expo-linking@~7.0.5:
     expo-constants "~17.0.5"
     invariant "^2.2.4"
 
+expo-local-authentication@^57.0.0:
+  version "57.0.0"
+  resolved "https://registry.yarnpkg.com/expo-local-authentication/-/expo-local-authentication-57.0.0.tgz#2852d4049c63527e8fabfabb21c8b561904414b9"
+  integrity sha512-/ZzS7OD5OaAEhSF/+zPWZqzT8xWy1rMICfDqP5ojJ6Flh4wgAOedG37p8UZlTQYJRR5u1NQ9AoAePV8H/ky14g==
+  dependencies:
+    invariant "^2.2.4"
+
 expo-location@~18.0.0:
   version "18.0.10"
   resolved "https://registry.yarnpkg.com/expo-location/-/expo-location-18.0.10.tgz#330f35f5dba2d575bd0ffd3c65d5df9299a0bf47"

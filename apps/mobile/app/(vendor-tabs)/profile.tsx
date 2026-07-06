@@ -4,7 +4,7 @@
 // ============================================================
 import React, { useCallback, useState } from 'react';
 import {
-  Alert, Dimensions, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
+  Alert, Dimensions, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
@@ -12,10 +12,9 @@ import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
-import { signOut } from '@/lib/auth';
 import { uploadSinglePortfolioPhoto, deletePortfolioPhoto } from '@/lib/storage';
 import { Colors, BORDER_RADIUS } from '@/constants/colors';
-import { CheckIcon, CloseIcon, EditIcon, PenLineIcon } from '@/components/icons';
+import { CheckIcon, CloseIcon, EditIcon, GearIcon } from '@/components/icons';
 import { CATEGORY_L2_LABELS, MAX_VENDOR_SERVICES } from '@vars/shared';
 
 const PHOTO_SIZE = (Dimensions.get('window').width - 48 - 16) / 3;
@@ -49,9 +48,6 @@ export default function VendorProfileScreen() {
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const [vendorName, setVendorName] = useState('');
   const [kycLegalName, setKycLegalName] = useState<string | null>(null);
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [editNameValue, setEditNameValue] = useState('');
-  const [isSavingName, setIsSavingName] = useState(false);
 
   const [services, setServices] = useState<VendorServiceItem[]>([]);
   const [servicesLoading, setServicesLoading] = useState(true);
@@ -136,22 +132,6 @@ export default function VendorProfileScreen() {
         supabase.from('vendor_services').update({ sort_order: i }).eq('id', s.id)
       )
     );
-  };
-
-  const handleSaveName = async () => {
-    const trimmed = editNameValue.trim();
-    if (!trimmed || isSavingName) return;
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    setIsSavingName(true);
-    const { error } = await supabase.from('vendors').update({ full_name: trimmed }).eq('id', user.id);
-    if (!error) {
-      setVendorName(trimmed);
-      setIsEditingName(false);
-    } else {
-      Alert.alert('Error', error.message);
-    }
-    setIsSavingName(false);
   };
 
   const renderServiceItem = (item: VendorServiceItem, index: number) => (
@@ -294,33 +274,14 @@ export default function VendorProfileScreen() {
 
           <View style={s.heroInfo}>
             <View style={s.heroNameRow}>
-              {isEditingName ? (
-                <TextInput
-                  style={s.heroNameInput}
-                  value={editNameValue}
-                  onChangeText={setEditNameValue}
-                  maxLength={20}
-                  autoFocus
-                  returnKeyType="done"
-                  onSubmitEditing={handleSaveName}
-                  selectTextOnFocus
-                />
-              ) : (
-                <Text style={s.heroName} numberOfLines={1}>{vendorName || 'Vendor'}</Text>
-              )}
+              <Text style={s.heroName} numberOfLines={1}>{vendorName || 'Vendor'}</Text>
               <TouchableOpacity
-                onPress={() => {
-                  if (isEditingName) { handleSaveName(); }
-                  else { setEditNameValue(vendorName); setIsEditingName(true); }
-                }}
+                onPress={() => router.push('/(vendor-tabs)/settings' as any)}
                 hitSlop={8}
                 style={s.heroEditBtn}
-                disabled={isSavingName}
                 activeOpacity={0.7}
               >
-                {isEditingName
-                  ? <CheckIcon size={16} color={Colors.success} />
-                  : <PenLineIcon size={14} color={Colors.textMuted} />}
+                <GearIcon size={16} color={Colors.textMuted} />
               </TouchableOpacity>
             </View>
 
@@ -428,13 +389,6 @@ export default function VendorProfileScreen() {
           )}
         </View>
 
-        {/* Account */}
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>Account</Text>
-          <TouchableOpacity style={s.settingRow} onPress={signOut}>
-            <Text style={s.settingLabel}>Sign out</Text>
-          </TouchableOpacity>
-        </View>
       </ScrollView>
     </View>
   );
@@ -477,11 +431,6 @@ const s = StyleSheet.create({
   heroInfo: { flex: 1 },
   heroNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   heroName: { fontSize: 18, fontWeight: '700', color: Colors.text, flex: 1 },
-  heroNameInput: {
-    flex: 1, fontSize: 18, fontWeight: '700', color: Colors.text,
-    borderBottomWidth: 1.5, borderBottomColor: Colors.ink,
-    paddingVertical: 1, paddingHorizontal: 0,
-  },
   heroEditBtn: { padding: 8 },
   heroLegalRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 5 },
   heroLegalText: { fontSize: 12, color: Colors.textMuted },
@@ -496,13 +445,6 @@ const s = StyleSheet.create({
     textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12,
   },
   photoCount: { fontSize: 12, color: Colors.textMuted, fontWeight: '600' },
-
-  settingRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  settingLabel: { fontSize: 15, fontWeight: '600', color: Colors.text },
 
   // My Services
   svcRow: {
