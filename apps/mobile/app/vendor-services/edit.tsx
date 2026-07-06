@@ -73,6 +73,11 @@ export default function EditServiceScreen() {
         .eq('id', user.id)
         .single(),
     ]).then(([svcRes, vendorRes]) => {
+      if (svcRes.error) {
+        Alert.alert('Error', 'Could not load service. Please try again.');
+        router.back();
+        return;
+      }
       if (svcRes.data) {
         const d = svcRes.data;
         setFormL1(d.category_l1);

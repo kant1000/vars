@@ -153,12 +153,12 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.background,
   },
   slide: {
     width,
     height,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.background,
   },
   illustration: {
     width,
@@ -169,44 +169,44 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     paddingTop: 32,
     paddingBottom: 48,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.background,
     justifyContent: 'space-between',
   },
   headline: {
     fontSize: 30,
     fontWeight: '700',
-    color: '#1A1A1A',
+    color: Colors.text,
     lineHeight: 38,
     letterSpacing: -0.5,
   },
   sub: {
     fontSize: 16,
-    color: '#6B7280',
+    color: Colors.textSecondary,
     lineHeight: 24,
     marginTop: 8,
   },
   ctaButton: {
-    backgroundColor: '#111111',
+    backgroundColor: Colors.ink,
     borderRadius: 5,
     paddingVertical: 18,
     alignItems: 'center',
     marginTop: 24,
   },
   ctaText: {
-    color: '#FFFFFF',
+    color: Colors.white,
     fontSize: 17,
     fontWeight: '700',
   },
   nextButton: {
     borderWidth: 1.5,
-    borderColor: '#1A1A1A',
+    borderColor: Colors.ink,
     borderRadius: 5,
     paddingVertical: 18,
     alignItems: 'center',
     marginTop: 24,
   },
   nextText: {
-    color: '#1A1A1A',
+    color: Colors.ink,
     fontSize: 17,
     fontWeight: '700',
   },
@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     letterSpacing: 1.2,
-    color: '#1A1A1A',
+    color: Colors.ink,
   },
   dots: {
     position: 'absolute',
@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   dotActive: {
-    backgroundColor: '#111111',
+    backgroundColor: Colors.ink,
     width: 20,
   },
   dotInactive: {

@@ -752,8 +752,8 @@ const s = StyleSheet.create({
     paddingHorizontal: 20, paddingVertical: 20,
     borderBottomWidth: 1, gap: 8,
   },
-  statusPill: { alignSelf: 'flex-start', borderRadius: 5, paddingHorizontal: 12, paddingVertical: 5 },
-  statusPillText: { fontSize: 14, fontWeight: '700' },
+  statusPill: { alignSelf: 'flex-start', borderRadius: 5, paddingHorizontal: 8, paddingVertical: 3 },
+  statusPillText: { fontSize: 12, fontWeight: '700' },
   statusDescription: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20 },
   escrowNote: { fontSize: 13, color: Colors.textMuted, lineHeight: 18 },
 
@@ -784,18 +784,18 @@ const s = StyleSheet.create({
   errorBanner: { backgroundColor: Colors.error + '15', marginHorizontal: 16, marginTop: 16, borderRadius: 5, padding: 12 },
   errorText: { fontSize: 13, color: Colors.error, fontWeight: '500' },
   errorTitle: { fontSize: 18, fontWeight: '700', color: Colors.text, marginBottom: 12 },
-  backLink: { paddingHorizontal: 24, paddingVertical: 12, backgroundColor: Colors.primary, borderRadius: 5 },
-  backLinkText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
+  backLink: { paddingHorizontal: 24, paddingVertical: 12, backgroundColor: Colors.ink, borderRadius: 5 },
+  backLinkText: { color: Colors.white, fontSize: 15, fontWeight: '700' },
 
   // Action buttons
   actionSection: { paddingHorizontal: 16, paddingTop: 16, gap: 10 },
   primaryBtn: {
-    height: 56, backgroundColor: Colors.primary,
+    height: 56, backgroundColor: Colors.ink,
     borderRadius: 5, alignItems: 'center', justifyContent: 'center',
   },
-  primaryBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
+  primaryBtnText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
   secondaryBtn: {
-    height: 50, borderRadius: 5, alignItems: 'center', justifyContent: 'center',
+    height: 44, borderRadius: 5, alignItems: 'center', justifyContent: 'center',
     borderWidth: 1.5, borderColor: Colors.border,
   },
   secondaryBtnText: { fontSize: 15, fontWeight: '600', color: Colors.textSecondary },
@@ -807,7 +807,7 @@ const s = StyleSheet.create({
   btnDisabled: { opacity: 0.5 },
 
   // Modals
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  modalOverlay: { flex: 1, backgroundColor: Colors.overlay, justifyContent: 'flex-end' },
   modalSheet: {
     backgroundColor: Colors.background,
     borderTopLeftRadius: 5, borderTopRightRadius: 5,
@@ -824,9 +824,9 @@ const s = StyleSheet.create({
   modalKeepText: { fontSize: 15, fontWeight: '700', color: Colors.text },
   modalCancelBtn: {
     flex: 1, height: 52, borderRadius: 5, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: Colors.error,
+    backgroundColor: Colors.ink,
   },
-  modalCancelText: { fontSize: 15, fontWeight: '700', color: '#FFF' },
+  modalCancelText: { fontSize: 15, fontWeight: '700', color: Colors.white },
   disputeInput: {
     backgroundColor: Colors.surface, borderRadius: 5,
     borderWidth: 1, borderColor: Colors.border,
@@ -847,7 +847,7 @@ const s = StyleSheet.create({
 
   // Reschedule modal
   rescheduleOverlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.65)',
+    flex: 1, backgroundColor: Colors.overlay,
     justifyContent: 'center', alignItems: 'center', padding: 24,
   },
   rescheduleSheet: {
@@ -876,9 +876,9 @@ const s = StyleSheet.create({
   },
   liveDot: {
     width: 8, height: 8, borderRadius: 4,
-    backgroundColor: '#22C55E',
+    backgroundColor: Colors.success,
   },
-  liveLabel: { fontSize: 13, fontWeight: '600', color: '#22C55E', flex: 1 },
+  liveLabel: { fontSize: 13, fontWeight: '600', color: Colors.success, flex: 1 },
   liveUpdated: { fontSize: 12, color: Colors.textMuted },
   liveMap: { width: '100%', height: 260, borderRadius: 5, overflow: 'hidden' },
   liveLoadingOverlay: {

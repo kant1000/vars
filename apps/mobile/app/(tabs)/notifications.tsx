@@ -15,7 +15,7 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import { Colors } from '@/constants/colors';
+import { Colors, BORDER_RADIUS } from '@/constants/colors';
 import { BellIcon, HourglassIcon, CheckCircleIcon, XCircleIcon, CreditCardIcon, BanknoteIcon, ArrowUpIcon, CarIcon, PinIcon, StarIcon, WarningIcon, ClockIcon, SparkleIcon } from '@/components/icons';
 
 // ── Types ───────────────────────────────────────────────────
@@ -60,7 +60,7 @@ const TYPE_ICON: Record<string, IconComp> = {
 
 function typeIcon(type: string): React.ReactElement {
   const Icon = TYPE_ICON[type] ?? BellIcon;
-  return <Icon size={20} color="#6B7280" />;
+  return <Icon size={20} color={Colors.inkMuted} />;
 }
 
 function timeAgo(iso: string): string {
@@ -220,7 +220,6 @@ export default function NotificationsScreen() {
         )}
         {notifs.length === 0 ? (
           <View style={s.empty}>
-            <BellIcon size={48} color="#6B7280" />
             <Text style={s.emptyTitle}>All clear</Text>
             <Text style={s.emptyBody}>You're up to date. Booking updates, payment confirmations and more will appear here.</Text>
           </View>
@@ -251,10 +250,10 @@ const s = StyleSheet.create({
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   headerTitle: { fontSize: 24, fontWeight: '800', color: Colors.text },
   badge: {
-    backgroundColor: Colors.error, borderRadius: 5,
+    backgroundColor: Colors.error, borderRadius: BORDER_RADIUS,
     paddingHorizontal: 7, paddingVertical: 2, minWidth: 20, alignItems: 'center',
   },
-  badgeText: { fontSize: 11, fontWeight: '800', color: '#FFF' },
+  badgeText: { fontSize: 11, fontWeight: '800', color: Colors.white },
   markAllText: { fontSize: 14, fontWeight: '600', color: Colors.primary },
 
   groupLabel: {
@@ -270,7 +269,7 @@ const s = StyleSheet.create({
     backgroundColor: Colors.background,
     gap: 12,
   },
-  rowUnread: { backgroundColor: Colors.primaryLight },
+  rowUnread: { backgroundColor: Colors.surface },
 
   iconWrap: {
     width: 44, height: 44, borderRadius: 22,
@@ -278,7 +277,7 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     flexShrink: 0,
   },
-  iconWrapUnread: { backgroundColor: Colors.primary + '20' },
+  iconWrapUnread: { backgroundColor: Colors.surface },
 
   content: { flex: 1 },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 3 },

@@ -224,9 +224,9 @@ const s = StyleSheet.create({
   noteText: { fontSize: 13, color: Colors.primary, lineHeight: 18 },
 
   submitBtn: {
-    height: 58, backgroundColor: Colors.primary,
+    height: 56, backgroundColor: Colors.ink,
     borderRadius: 5, alignItems: 'center', justifyContent: 'center',
   },
-  btnDisabled: { backgroundColor: Colors.textMuted },
-  submitBtnText: { color: '#FFF', fontSize: 17, fontWeight: '800' },
+  btnDisabled: { opacity: 0.5 },
+  submitBtnText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
 });

@@ -195,7 +195,7 @@ export default function HomeScreen() {
       {/* ── Vendor list ── */}
       {isLoadingInitial ? (
         <View style={styles.loadingWrap}>
-          <ScissorsLoader size="medium" color="dark" />
+          <ScissorsLoader size="large" color="dark" />
         </View>
       ) : (
         <FlatList
@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface, borderRadius: 5,
     paddingHorizontal: 16, paddingVertical: 11,
     fontSize: 15, color: Colors.text,
-    borderWidth: 1, borderColor: Colors.border,
+    borderWidth: 1.5, borderColor: Colors.border,
   },
   tabs: { flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 12, gap: 8 },
   tab: {
@@ -262,18 +262,18 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  tabActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  tabActive: { backgroundColor: Colors.ink, borderColor: Colors.ink },
   tabText: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
-  tabTextActive: { color: '#FFF' },
+  tabTextActive: { color: Colors.white },
   locBanner: {
     marginHorizontal: 16, marginBottom: 8,
-    backgroundColor: Colors.warning + '20',
+    backgroundColor: Colors.warning + '15',
     borderRadius: 5, padding: 10,
   },
   locBannerText: { fontSize: 12, color: Colors.warning, fontWeight: '500' },
   list: { paddingTop: 4, paddingBottom: 40 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60, gap: 10 },
   empty: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 40 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: Colors.text, marginBottom: 8 },
+  emptyTitle: { fontSize: 20, fontWeight: '700', color: Colors.text, marginBottom: 8 },
   emptyBody: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
 });

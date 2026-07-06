@@ -11,7 +11,7 @@
 // ============================================================
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Alert, Linking, Modal, RefreshControl,
+  Alert, LayoutChangeEvent, Linking, Modal, RefreshControl,
   ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import * as Notifications from 'expo-notifications';
@@ -484,9 +484,20 @@ function BookingRow({
         )}
       </View>
       <View style={{ alignItems: 'flex-end' }}>
-        <Text style={[c.rowEarning, !isCompleted && { color: Colors.textMuted }]}>
-          {isCompleted ? fmtPrice(vendorEarning(booking.service_price_kobo, booking.transport_fee_kobo, isPioneer ?? false)) : booking.status.replace(/_/g, ' ')}
-        </Text>
+        {isCompleted ? (
+          <Text style={c.rowEarning}>
+            {fmtPrice(vendorEarning(booking.service_price_kobo, booking.transport_fee_kobo, isPioneer ?? false))}
+          </Text>
+        ) : booking.status === BOOKING_STATUS.CANCELLED ? (
+          <>
+            <Text style={c.rowEarningCancelled}>
+              {fmtPrice(vendorEarning(booking.service_price_kobo, booking.transport_fee_kobo, isPioneer ?? false))}
+            </Text>
+            <Text style={c.rowStatusLabel}>Cancelled</Text>
+          </>
+        ) : (
+          <Text style={c.rowStatusLabel}>{booking.status.replace(/_/g, ' ')}</Text>
+        )}
       </View>
     </View>
   );
@@ -564,6 +575,10 @@ export default function VendorJobsScreen() {
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
   const { isOnline: isConnected } = useNetworkState();
+
+  const scrollViewRef = useRef<ScrollView>(null);
+  const historyHeightRef = useRef(0);
+  const [scrollKey, setScrollKey] = useState(0);
 
   const [bookings, setBookings] = useState<VendorBooking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -766,7 +781,10 @@ export default function VendorJobsScreen() {
   }, [isOnline, periodicGoLiveCheck]);
 
   // useFocusEffect handles both initial mount and return-from-navigation refreshes
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  useFocusEffect(useCallback(() => {
+    load();
+    setScrollKey((k) => k + 1);
+  }, [load]));
 
   // Realtime
   useEffect(() => {
@@ -775,6 +793,23 @@ export default function VendorJobsScreen() {
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [load]);
+
+  // Scroll anchor: on each tab focus + data load, position so the last 2 history
+  // items are visible with active jobs just below — same pattern as schedule screen.
+  const historyCount = bookings.filter((b) =>
+    ([BOOKING_STATUS.COMPLETED, BOOKING_STATUS.CANCELLED, BOOKING_STATUS.EXPIRED] as string[]).includes(b.status)
+  ).length;
+  useEffect(() => {
+    if (loading || historyCount === 0) return;
+    const timer = setTimeout(() => {
+      const h = historyHeightRef.current;
+      if (h === 0) return;
+      // Each row ≈ 80px; subtract 2 rows so the last 2 history items sit above the fold
+      scrollViewRef.current?.scrollTo({ y: Math.max(0, h - 160), animated: false });
+    }, 80);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scrollKey, loading, historyCount]);
 
   const toggleOnline = async () => {
     // Block going online if prerequisites are not met
@@ -957,6 +992,7 @@ export default function VendorJobsScreen() {
       )}
 
       <ScrollView
+        ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}
         refreshControl={
@@ -968,6 +1004,26 @@ export default function VendorJobsScreen() {
             <ScissorsLoader size="small" color="dark" />
           </View>
         )}
+
+        {/* History — rendered oldest→newest so the two most recent sit just above live jobs.
+            onLayout captures the section height so the scroll anchor knows where to jump. */}
+        {history.length > 0 && (
+          <View onLayout={(e: LayoutChangeEvent) => { historyHeightRef.current = e.nativeEvent.layout.height; }}>
+            <Section title="Recent history">
+              {[...history].reverse().map((b) => (
+                <BookingRow
+                  key={b.id}
+                  booking={b}
+                  vendorPhotoCount={vendorPhotoCount}
+                  hasPhotoForBooking={bookingPhotoIds.has(b.id)}
+                  onPhotoAdded={load}
+                  isPioneer={isPioneer}
+                />
+              ))}
+            </Section>
+          </View>
+        )}
+
         {/* Incoming requests */}
         {pending.length > 0 && (
           <Section title={`Incoming requests (${pending.length})`} urgent>
@@ -1000,22 +1056,6 @@ export default function VendorJobsScreen() {
             {upcoming
               .filter((b) => new Date(b.scheduled_at).toDateString() !== new Date().toDateString())
               .map((b) => <BookingRow key={b.id} booking={b} isPioneer={isPioneer} />)}
-          </Section>
-        )}
-
-        {/* History */}
-        {history.length > 0 && (
-          <Section title="Recent history">
-            {history.map((b) => (
-              <BookingRow
-                key={b.id}
-                booking={b}
-                vendorPhotoCount={vendorPhotoCount}
-                hasPhotoForBooking={bookingPhotoIds.has(b.id)}
-                onPhotoAdded={load}
-                isPioneer={isPioneer}
-              />
-            ))}
           </Section>
         )}
 
@@ -1179,6 +1219,8 @@ const c = StyleSheet.create({
   rowService: { fontSize: 14, fontWeight: '600', color: Colors.text },
   rowMeta: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
   rowEarning: { fontSize: 14, fontWeight: '700', color: Colors.success },
+  rowEarningCancelled: { fontSize: 14, fontWeight: '700', color: Colors.error },
+  rowStatusLabel: { fontSize: 11, fontWeight: '500', color: Colors.textMuted, marginTop: 2, textTransform: 'capitalize' },
   addPhotoBtn: { marginTop: 6, minHeight: 32, alignItems: 'center', justifyContent: 'center' },
   addPhotoBtnText: { fontSize: 12, color: Colors.ink, fontWeight: '600' },
   photoSent: { fontSize: 12, color: Colors.textMuted, marginTop: 4 },

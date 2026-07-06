@@ -248,7 +248,7 @@ function Step1({
             itemDay: {
               active: () => ({
                 container: { backgroundColor: Colors.primary },
-                content: { color: '#FFF' },
+                content: { color: Colors.white },
               }),
               today: () => ({
                 content: { color: Colors.primary, fontWeight: '700' },
@@ -1062,7 +1062,7 @@ const s = StyleSheet.create({
   slotText: { fontSize: 13, fontWeight: '700', color: Colors.primary },
   slotTextUnavailable: { color: Colors.textMuted },
   slotTextAutoAccept: { color: Colors.pioneerGoldDark },
-  slotTextSelected: { color: '#FFF' },
+  slotTextSelected: { color: Colors.white },
   autoAcceptLegend: {
     marginHorizontal: 16, marginBottom: 8, marginTop: 4,
     backgroundColor: Colors.pioneerGoldSurface, borderRadius: 5, paddingHorizontal: 10, paddingVertical: 6,
@@ -1086,7 +1086,7 @@ const s = StyleSheet.create({
   fieldLabel: { fontSize: 14, fontWeight: '600', color: Colors.text, marginBottom: 6 },
   textInput: {
     backgroundColor: Colors.surface, borderRadius: 5,
-    borderWidth: 1, borderColor: Colors.border,
+    borderWidth: 1.5, borderColor: Colors.border,
     paddingHorizontal: 14, paddingVertical: 12,
     fontSize: 15, color: Colors.text,
   },
@@ -1137,10 +1137,10 @@ const s = StyleSheet.create({
     padding: 16,
   },
   confirmBtn: {
-    height: 54, backgroundColor: Colors.primary,
+    height: 56, backgroundColor: Colors.ink,
     borderRadius: 5, alignItems: 'center', justifyContent: 'center',
   },
-  confirmBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
+  confirmBtnText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
 
   // Pay button
   payWrap: {
@@ -1150,10 +1150,10 @@ const s = StyleSheet.create({
     padding: 20,
   },
   payBtn: {
-    height: 58, backgroundColor: Colors.primary,
+    height: 56, backgroundColor: Colors.ink,
     borderRadius: 5, alignItems: 'center', justifyContent: 'center',
   },
-  payBtnDisabled: { backgroundColor: Colors.textMuted },
-  payBtnText: { color: '#FFF', fontSize: 17, fontWeight: '800' },
+  payBtnDisabled: { opacity: 0.5 },
+  payBtnText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
 
 });

@@ -246,7 +246,7 @@ const st = StyleSheet.create({
     paddingHorizontal: 20, paddingVertical: 14,
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  headerTitle: { fontSize: 28, fontWeight: '800', color: Colors.text },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: Colors.text },
   sectionLabel: {
     fontSize: 12, fontWeight: '700', color: Colors.textMuted,
     textTransform: 'uppercase', letterSpacing: 0.5,
@@ -266,19 +266,19 @@ const st = StyleSheet.create({
   },
   confirmingBannerText: { fontSize: 13, fontWeight: '600', color: Colors.warning },
   paymentNeededBtn: {
-    marginTop: 8, backgroundColor: Colors.warning,
+    marginTop: 8, backgroundColor: Colors.ink,
     borderRadius: BORDER_RADIUS, paddingVertical: 10, paddingHorizontal: 14,
     alignItems: 'center',
   },
   paymentNeededBtnText: {
-    color: '#FFF', fontSize: 13, fontWeight: '700',
+    color: Colors.white, fontSize: 13, fontWeight: '700',
   },
   cardTop: {
     flexDirection: 'row', justifyContent: 'space-between',
     alignItems: 'center', marginBottom: 4,
   },
   vendorName: { fontSize: 15, fontWeight: '700', color: Colors.text },
-  statusPill: { borderRadius: 5, paddingHorizontal: 8, paddingVertical: 3 },
+  statusPill: { borderRadius: BORDER_RADIUS, paddingHorizontal: 8, paddingVertical: 3 },
   statusText: { fontSize: 12, fontWeight: '700' },
   serviceName: { fontSize: 14, color: Colors.textSecondary },
   cardBottom: {
@@ -288,11 +288,11 @@ const st = StyleSheet.create({
   dateTime: { fontSize: 12, color: Colors.textMuted },
   price: { fontSize: 14, fontWeight: '700', color: Colors.text },
   emptyWrap: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 40 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: Colors.text, marginBottom: 8 },
+  emptyTitle: { fontSize: 20, fontWeight: '700', color: Colors.text, marginBottom: 8 },
   emptyBody: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
   cta: {
-    marginTop: 16, backgroundColor: Colors.primary, borderRadius: 5,
+    marginTop: 16, backgroundColor: Colors.ink, borderRadius: BORDER_RADIUS,
     paddingHorizontal: 32, paddingVertical: 14,
   },
-  ctaText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+  ctaText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
 });

@@ -17,7 +17,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { signOut } from '@/lib/auth';
 import { pickAndUploadImage } from '@/lib/storage';
-import { Colors } from '@/constants/colors';
+import { Colors, BORDER_RADIUS } from '@/constants/colors';
 import { fmtPrice, fmtLongDate } from '@/lib/format';
 import { HeartIcon, BellIcon, EditIcon, ChevronRightIcon } from '@/components/icons';
 import { BookingStatus, BOOKING_STATUS } from '@vars/shared';
@@ -243,7 +243,7 @@ export default function ProfileScreen() {
                 </View>
                 <View style={{ alignItems: 'flex-end', gap: 4 }}>
                   <Text style={s.bookingPrice}>{fmtPrice(b.service_price_kobo)}</Text>
-                  <View style={[s.statusPill, { backgroundColor: (STATUS_COLOR[b.status] ?? Colors.textMuted) + '20' }]}>
+                  <View style={[s.statusPill, { backgroundColor: (STATUS_COLOR[b.status] ?? Colors.textMuted) + '18' }]}>
                     <Text style={[s.statusText, { color: STATUS_COLOR[b.status] ?? Colors.textMuted }]}>
                       {b.status.replace(/_/g, ' ')}
                     </Text>
@@ -342,8 +342,8 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.background },
   unauthText: { fontSize: 16, color: Colors.textSecondary, marginBottom: 20 },
-  signInBtn: { paddingHorizontal: 32, paddingVertical: 14, backgroundColor: Colors.primary, borderRadius: 5 },
-  signInBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+  signInBtn: { paddingHorizontal: 32, paddingVertical: 14, backgroundColor: Colors.ink, borderRadius: BORDER_RADIUS },
+  signInBtnText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
 
   // Header
   header: {
@@ -352,12 +352,12 @@ const s = StyleSheet.create({
   },
   avatarWrap: { position: 'relative', marginBottom: 14 },
   avatar: { width: 88, height: 88, borderRadius: 44 },
-  avatarFallback: { backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
-  avatarInitial: { fontSize: 36, fontWeight: '800', color: Colors.primary },
+  avatarFallback: { backgroundColor: Colors.ink, alignItems: 'center', justifyContent: 'center' },
+  avatarInitial: { fontSize: 36, fontWeight: '800', color: Colors.white },
   editPhotoBadge: {
     position: 'absolute', bottom: 0, right: 0,
     width: 26, height: 26, borderRadius: 13,
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.ink,
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 2, borderColor: Colors.background,
   },
@@ -369,8 +369,8 @@ const s = StyleSheet.create({
   // Edit form
   editForm: { width: '100%', gap: 10, marginTop: 4 },
   input: {
-    backgroundColor: Colors.surface, borderRadius: 5,
-    borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: Colors.surface, borderRadius: BORDER_RADIUS,
+    borderWidth: 1.5, borderColor: Colors.border,
     paddingHorizontal: 14, paddingVertical: 11,
     fontSize: 15, color: Colors.text,
   },
@@ -382,12 +382,12 @@ const s = StyleSheet.create({
   },
   cancelBtnText: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
   saveBtn: {
-    flex: 2, height: 46, borderRadius: 5,
-    backgroundColor: Colors.primary,
+    flex: 2, height: 46, borderRadius: BORDER_RADIUS,
+    backgroundColor: Colors.ink,
     alignItems: 'center', justifyContent: 'center',
   },
-  saveBtnText: { fontSize: 14, fontWeight: '700', color: '#FFF' },
-  btnDisabled: { opacity: 0.45 },
+  saveBtnText: { fontSize: 14, fontWeight: '700', color: Colors.white },
+  btnDisabled: { opacity: 0.5 },
 
   // Section
   section: { paddingTop: 24, paddingHorizontal: 16 },
@@ -409,14 +409,14 @@ const s = StyleSheet.create({
   bookingService: { fontSize: 14, fontWeight: '700', color: Colors.text },
   bookingMeta: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
   bookingPrice: { fontSize: 14, fontWeight: '700', color: Colors.text },
-  statusPill: { borderRadius: 5, paddingHorizontal: 7, paddingVertical: 2 },
+  statusPill: { borderRadius: BORDER_RADIUS, paddingHorizontal: 7, paddingVertical: 2 },
   statusText: { fontSize: 11, fontWeight: '700', textTransform: 'capitalize' },
   reviewBtn: {
-    backgroundColor: Colors.star + '20', borderRadius: 5,
+    borderWidth: 1, borderColor: Colors.border, borderRadius: BORDER_RADIUS,
     paddingHorizontal: 8, paddingVertical: 3,
   },
-  reviewBtnText: { fontSize: 11, fontWeight: '700', color: Colors.star },
-  reviewedText: { fontSize: 11, color: Colors.star, fontWeight: '600' },
+  reviewBtnText: { fontSize: 11, fontWeight: '700', color: Colors.textSecondary },
+  reviewedText: { fontSize: 11, color: Colors.textMuted, fontWeight: '600' },
   emptyText: { fontSize: 13, color: Colors.textMuted, padding: 16, textAlign: 'center' },
 
   // Settings
@@ -426,7 +426,7 @@ const s = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
   settingsIcon: { width: 24, alignItems: 'center' as const, justifyContent: 'center' as const },
-  settingsLabel: { flex: 1, fontSize: 16, fontWeight: '600', color: Colors.text },
+  settingsLabel: { flex: 1, fontSize: 14, fontWeight: '600', color: Colors.text },
 
   // Sign out
   signOutWrap: { alignItems: 'center', paddingTop: 32, paddingBottom: 8, gap: 12 },

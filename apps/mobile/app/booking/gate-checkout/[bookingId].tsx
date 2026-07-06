@@ -322,11 +322,11 @@ const s = StyleSheet.create({
     fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 22,
   },
   expiredBtn: {
-    marginTop: 24, backgroundColor: Colors.primary,
-    borderRadius: BORDER_RADIUS, height: 52,
+    marginTop: 24, backgroundColor: Colors.ink,
+    borderRadius: BORDER_RADIUS, height: 56,
     alignItems: 'center', justifyContent: 'center', width: '100%',
   },
-  expiredBtnText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
+  expiredBtnText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
 
   cancelledTitle: {
     fontSize: 20, fontWeight: '800', color: Colors.text,
@@ -337,11 +337,11 @@ const s = StyleSheet.create({
   },
 
   retryBtn: {
-    marginTop: 16, backgroundColor: Colors.primary,
-    borderRadius: BORDER_RADIUS, height: 52,
+    marginTop: 16, backgroundColor: Colors.ink,
+    borderRadius: BORDER_RADIUS, height: 56,
     alignItems: 'center', justifyContent: 'center', width: '100%',
   },
-  retryBtnText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
+  retryBtnText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
 
   errorTitle: {
     fontSize: 20, fontWeight: '800', color: Colors.error,

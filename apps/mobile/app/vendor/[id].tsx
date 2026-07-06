@@ -18,8 +18,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import { Colors } from '@/constants/colors';
-import { CheckIcon } from '@/components/icons';
+import { Colors, BORDER_RADIUS } from '@/constants/colors';
+import { CheckIcon, StarFilledIcon, StarEmptyIcon } from '@/components/icons';
 import { CATEGORY_L2_LABELS } from '@vars/shared';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -83,11 +83,14 @@ function formatPrice(kobo: number): string {
 }
 
 function StarRow({ rating, size = 14 }: { rating: number; size?: number }) {
+  const rounded = Math.round(rating);
   return (
     <View style={{ flexDirection: 'row', gap: 2 }}>
-      {[1, 2, 3, 4, 5].map((i) => (
-        <Text key={i} style={{ fontSize: size, color: i <= Math.round(rating) ? Colors.star : Colors.starEmpty }}>★</Text>
-      ))}
+      {[1, 2, 3, 4, 5].map((i) =>
+        i <= rounded
+          ? <StarFilledIcon key={i} size={size} color={Colors.star} />
+          : <StarEmptyIcon key={i} size={size} color={Colors.starEmpty} />
+      )}
     </View>
   );
 }
@@ -482,14 +485,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.35)',
     alignItems: 'center', justifyContent: 'center',
   },
-  backBtnText: { color: '#FFF', fontSize: 26, lineHeight: 30, marginTop: -2 },
+  backBtnText: { color: Colors.white, fontSize: 26, lineHeight: 30, marginTop: -2 },
   favBtn: {
     position: 'absolute', right: 16, zIndex: 10,
     width: 36, height: 36, borderRadius: 18,
     backgroundColor: 'rgba(0,0,0,0.35)',
     alignItems: 'center', justifyContent: 'center',
   },
-  favBtnText: { color: '#FFF', fontSize: 20 },
+  favBtnText: { color: Colors.white, fontSize: 20 },
 
   // Profile row
   profileRow: {
@@ -502,8 +505,8 @@ const styles = StyleSheet.create({
   },
   avatarWrap: {},
   avatar: { width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2 },
-  avatarFallback: { backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
-  avatarInitial: { fontSize: 28, fontWeight: '800', color: Colors.primary },
+  avatarFallback: { backgroundColor: Colors.ink, alignItems: 'center', justifyContent: 'center' },
+  avatarInitial: { fontSize: 28, fontWeight: '800', color: Colors.white },
   profileInfo: { flex: 1, paddingTop: 2 },
   name: { fontSize: 20, fontWeight: '800', color: Colors.text, marginBottom: 2 },
   legalNameRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 },
@@ -514,7 +517,7 @@ const styles = StyleSheet.create({
   reviewCount: { fontSize: 12, color: Colors.textMuted },
   newOnVars: { fontSize: 12, fontWeight: '600', color: Colors.badgeNew },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginBottom: 6 },
-  badge: { borderRadius: 5, paddingHorizontal: 7, paddingVertical: 3 },
+  badge: { borderRadius: BORDER_RADIUS, paddingHorizontal: 7, paddingVertical: 3 },
   badgeText: { fontSize: 10, fontWeight: '700' },
   bio: { fontSize: 13, color: Colors.textSecondary, lineHeight: 19 },
   responseTime: { fontSize: 12, color: Colors.textMuted, marginTop: 4 },
@@ -526,7 +529,7 @@ const styles = StyleSheet.create({
     gap: 6, paddingVertical: 10, backgroundColor: Colors.background,
   },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.border },
-  dotActive: { width: 18, backgroundColor: Colors.primary },
+  dotActive: { width: 18, backgroundColor: Colors.ink },
 
   // Tabs
   tabRow: {
@@ -534,9 +537,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
   sectionTab: { flex: 1, paddingVertical: 12, alignItems: 'center' },
-  sectionTabActive: { borderBottomWidth: 2, borderBottomColor: Colors.primary },
+  sectionTabActive: { borderBottomWidth: 2, borderBottomColor: Colors.ink },
   sectionTabText: { fontSize: 14, fontWeight: '600', color: Colors.textMuted },
-  sectionTabTextActive: { color: Colors.primary },
+  sectionTabTextActive: { color: Colors.ink },
 
   section: { paddingHorizontal: 16, paddingTop: 8 },
 
@@ -548,8 +551,8 @@ const styles = StyleSheet.create({
     marginBottom: 8, backgroundColor: Colors.background,
   },
   serviceCardSelected: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primaryLight + '18',
+    borderColor: Colors.ink,
+    backgroundColor: Colors.ink + '08',
   },
   serviceCardLeft: { flex: 1, marginRight: 12 },
   serviceCardRight: { alignItems: 'flex-end', gap: 8 },
@@ -564,8 +567,8 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: Colors.background,
   },
-  checkboxSelected: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  checkmark: { color: '#FFF', fontSize: 13, fontWeight: '800' },
+  checkboxSelected: { backgroundColor: Colors.ink, borderColor: Colors.ink },
+  checkmark: { color: Colors.white, fontSize: 13, fontWeight: '800' },
 
   // Reviews
   reviewCard: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.border },
@@ -584,8 +587,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20, paddingTop: 12,
   },
   ctaButton: {
-    height: 56, backgroundColor: Colors.primary, borderRadius: 5,
+    height: 56, backgroundColor: Colors.ink, borderRadius: BORDER_RADIUS,
     alignItems: 'center', justifyContent: 'center',
   },
-  ctaText: { color: '#FFF', fontSize: 17, fontWeight: '800' },
+  ctaText: { color: Colors.white, fontSize: 17, fontWeight: '800' },
 });

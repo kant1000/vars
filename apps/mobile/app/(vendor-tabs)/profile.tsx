@@ -4,7 +4,7 @@
 // ============================================================
 import React, { useCallback, useState } from 'react';
 import {
-  Alert, Dimensions, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
+  Alert, Dimensions, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
@@ -161,7 +161,7 @@ export default function VendorProfileScreen() {
         <Text style={s.svcName}>{item.service_name}</Text>
         <Text style={s.svcPrice}>₦{(Math.round(item.price_kobo * 0.8) / 100).toLocaleString('en-NG')}</Text>
       </View>
-      <TouchableOpacity onPress={() => router.push(`/vendor-services/edit?id=${item.id}` as any)} style={s.svcActionBtn} hitSlop={8}>
+      <TouchableOpacity onPress={() => router.push({ pathname: '/vendor-services/edit', params: { id: item.id } } as any)} style={s.svcActionBtn} hitSlop={8}>
         <EditIcon size={14} color={Colors.textMuted} />
       </TouchableOpacity>
       <TouchableOpacity onPress={() => handleDeleteService(item.id)} style={s.svcActionBtn} hitSlop={8}>
@@ -237,9 +237,17 @@ export default function VendorProfileScreen() {
         <Text style={s.headerTitle}>Profile</Text>
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 60 }}>
-        {/* Schedule nudge — shown until dismissed */}
-        {!scheduleNudgeDismissed && (
+      {/* Schedule nudge modal — overlays page without shifting layout */}
+      <Modal
+        visible={!scheduleNudgeDismissed}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          AsyncStorage.setItem('vars_schedule_nudge_done', 'true');
+          setScheduleNudgeDismissed(true);
+        }}
+      >
+        <View style={s.nudgeOverlay}>
           <View style={s.nudgeCard}>
             <Text style={s.nudgeTitle}>Set your availability</Text>
             <Text style={s.nudgeBody}>
@@ -268,8 +276,10 @@ export default function VendorProfileScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        )}
+        </View>
+      </Modal>
 
+      <ScrollView contentContainerStyle={{ paddingBottom: 60 }}>
         {/* Hero */}
         <View style={s.heroRow}>
           <View style={s.heroAvatarWrap}>
@@ -433,9 +443,12 @@ export default function VendorProfileScreen() {
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
 
+  nudgeOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end', paddingHorizontal: 16, paddingBottom: 40,
+  },
   nudgeCard: {
-    marginHorizontal: 20, marginTop: 16, marginBottom: 4,
-    backgroundColor: Colors.ink, borderRadius: BORDER_RADIUS, padding: 16,
+    backgroundColor: Colors.ink, borderRadius: BORDER_RADIUS, padding: 20,
   },
   nudgeTitle: { fontSize: 15, fontWeight: '700', color: '#FFF', marginBottom: 4 },
   nudgeBody: { fontSize: 13, color: 'rgba(255,255,255,0.75)', lineHeight: 19, marginBottom: 14 },

@@ -95,7 +95,7 @@ function Timeline({ current }: { current: BookingStatus }) {
               <View style={[tl.dot, done && tl.dotDone, active && { backgroundColor: cfg.color, borderColor: cfg.color }]}>
                 {done
                   ? <CheckIcon size={12} color="#FFF" />
-                  : <cfg.Icon size={12} color={(done || active) ? '#FFF' : '#6B7280'} />
+                  : <cfg.Icon size={12} color={(done || active) ? Colors.white : Colors.inkMuted} />
                 }
               </View>
               {i < STATUS_ORDER.length - 1 && (
@@ -265,9 +265,9 @@ const dm = StyleSheet.create({
   btns: { flexDirection: 'row', gap: 12, marginTop: 16 },
   cancel: { flex: 1, height: 48, borderRadius: 5, borderWidth: 1.5, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
   cancelText: { fontSize: 15, fontWeight: '600', color: Colors.text },
-  submit: { flex: 2, height: 48, backgroundColor: Colors.error, borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
-  submitDisabled: { backgroundColor: Colors.textMuted },
-  submitText: { fontSize: 15, fontWeight: '700', color: '#FFF' },
+  submit: { flex: 2, height: 48, backgroundColor: Colors.ink, borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
+  submitDisabled: { opacity: 0.5 },
+  submitText: { fontSize: 15, fontWeight: '700', color: Colors.white },
 });
 
 // ── Root component ───────────────────────────────────────────
@@ -675,7 +675,7 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 8,
     margin: 16, borderRadius: 5, padding: 14,
   },
-  statusLabel: { fontSize: 17, fontWeight: '800' },
+  statusLabel: { fontSize: 17, fontWeight: '700' },
 
   card: {
     marginHorizontal: 16, marginBottom: 12,
@@ -726,11 +726,11 @@ const s = StyleSheet.create({
     padding: 16, gap: 10,
   },
   confirmBtn: {
-    height: 56, backgroundColor: Colors.primary,
+    height: 56, backgroundColor: Colors.ink,
     borderRadius: 5, alignItems: 'center', justifyContent: 'center',
   },
-  confirmBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
-  btnDisabled: { backgroundColor: Colors.textMuted },
+  confirmBtnText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
+  btnDisabled: { opacity: 0.5 },
   cancelBtn: {
     height: 44, alignItems: 'center', justifyContent: 'center',
     borderWidth: 1.5, borderColor: Colors.error, borderRadius: 5,

@@ -13,7 +13,7 @@ import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
-import { Colors } from '@/constants/colors';
+import { Colors, BORDER_RADIUS } from '@/constants/colors';
 import { CheckIcon, CloseIcon } from '@/components/icons';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
@@ -119,8 +119,8 @@ export default function ConsentScreen() {
       <View style={[styles.centered, { paddingTop: insets.top }]}>
         <View style={styles.doneIcon}>
           {done === 'approved'
-            ? <CheckIcon size={48} color="#22C55E" />
-            : <CloseIcon size={48} color="#EF4444" />
+            ? <CheckIcon size={48} color={Colors.success} />
+            : <CloseIcon size={48} color={Colors.error} />
           }
         </View>
         <Text style={styles.doneTitle}>
@@ -217,23 +217,23 @@ const styles = StyleSheet.create({
   },
   actions: { flexDirection: 'row', gap: 12, marginBottom: 16 },
   declineBtn: {
-    flex: 1, height: 54, borderWidth: 1.5, borderColor: Colors.error,
-    borderRadius: 5, alignItems: 'center', justifyContent: 'center',
+    flex: 1, height: 56, borderWidth: 1.5, borderColor: Colors.error,
+    borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center',
   },
   declineBtnText: { color: Colors.error, fontSize: 16, fontWeight: '700' },
   approveBtn: {
-    flex: 1, height: 54, backgroundColor: Colors.primary,
-    borderRadius: 5, alignItems: 'center', justifyContent: 'center',
+    flex: 1, height: 56, backgroundColor: Colors.ink,
+    borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center',
   },
-  approveBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
-  btnDisabled: { opacity: 0.6 },
+  approveBtnText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
+  btnDisabled: { opacity: 0.5 },
   hint: { fontSize: 12, color: Colors.textMuted, textAlign: 'center', lineHeight: 17 },
   errorText: { fontSize: 16, color: Colors.text, textAlign: 'center', marginBottom: 20 },
   backBtn: {
-    height: 50, backgroundColor: Colors.primary, borderRadius: 5,
+    height: 56, backgroundColor: Colors.ink, borderRadius: BORDER_RADIUS,
     paddingHorizontal: 32, alignItems: 'center', justifyContent: 'center', marginTop: 8,
   },
-  backBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+  backBtnText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
   doneIcon: { marginBottom: 16, alignItems: 'center' as const },
   doneTitle: { fontSize: 24, fontWeight: '800', color: Colors.text, marginBottom: 10, textAlign: 'center' },
   doneBody: { fontSize: 15, color: Colors.textSecondary, textAlign: 'center', lineHeight: 22, marginBottom: 28 },
