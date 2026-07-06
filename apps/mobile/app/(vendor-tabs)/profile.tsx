@@ -1,6 +1,7 @@
 // ============================================================
-// VARS — Vendor Profile / Settings
-// Sections: My Services, Portfolio, Account
+// VARS — Vendor Profile
+// Sections: Portfolio, My Services
+// Account/Security/Payout/Legal → /(vendor-tabs)/settings
 // ============================================================
 import React, { useCallback, useState } from 'react';
 import {
