@@ -137,11 +137,13 @@ export default function NotificationsScreen() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Realtime — new notifications arrive live
+  // Realtime — new notifications arrive live.
+  // Channel name includes a random suffix so each mount gets a fresh channel
+  // and never hits "cannot add callbacks after subscribe()" in strict-mode double-invocation.
   useEffect(() => {
     if (!user) return;
     const ch = supabase
-      .channel(`notifs:${user.id}`)
+      .channel(`notifs:${user.id}:${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', {
         event: 'INSERT', schema: 'public', table: 'notifications',
         filter: `recipient_id=eq.${user.id}`,

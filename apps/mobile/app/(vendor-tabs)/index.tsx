@@ -404,13 +404,13 @@ function ActiveCard({
 function BookingRow({
   booking,
   vendorPhotoCount,
-  hasPhotoForBooking,
+  photoConsentState,
   onPhotoAdded,
   isPioneer,
 }: {
   booking: VendorBooking;
   vendorPhotoCount?: number;
-  hasPhotoForBooking?: boolean;
+  photoConsentState?: 'pending' | 'approved' | null;
   onPhotoAdded?: () => void;
   isPioneer?: boolean;
 }) {
@@ -466,7 +466,9 @@ function BookingRow({
         <Text style={c.rowService}>{booking.service_name}</Text>
         <Text style={c.rowMeta}>{fmtDateTime(booking.scheduled_at)}</Text>
         {isCompleted && (
-          hasPhotoForBooking ? (
+          photoConsentState === 'approved' ? (
+            <Text style={c.photoApproved}>✓ Photo in your portfolio</Text>
+          ) : photoConsentState === 'pending' ? (
             <Text style={c.photoSent}>📷 Photo request sent</Text>
           ) : profileFull ? (
             <Text style={c.photoFull}>Profile full — delete a photo to add more</Text>
@@ -594,7 +596,7 @@ export default function VendorJobsScreen() {
   const [blockReason, setBlockReason] = useState<'kyc' | 'no_services' | 'no_notifications' | null>(null);
   const [zoneModal, setZoneModal] = useState<ZoneStatus | null>(null);
   const [vendorPhotoCount, setVendorPhotoCount] = useState(0);
-  const [bookingPhotoIds, setBookingPhotoIds] = useState<Set<string>>(new Set());
+  const [bookingPhotoStates, setBookingPhotoStates] = useState<Map<string, 'pending' | 'approved'>>(new Map());
 
   // Flush queued offline actions only when transitioning offline → online (not on mount)
   const prevConnectedRef = useRef<boolean | null>(null);
@@ -669,13 +671,13 @@ export default function VendorJobsScreen() {
         .neq('consent_state', 'declined');
 
       const count = (photos ?? []).length;
-      const ids = new Set(
+      const stateMap = new Map(
         (photos ?? [])
           .filter((p: any) => p.booking_id != null)
-          .map((p: any) => p.booking_id as string)
+          .map((p: any) => [p.booking_id as string, p.consent_state as 'pending' | 'approved'])
       );
       setVendorPhotoCount(count);
-      setBookingPhotoIds(ids);
+      setBookingPhotoStates(stateMap);
     }
 
     setLoading(false);
@@ -1015,7 +1017,7 @@ export default function VendorJobsScreen() {
                   key={b.id}
                   booking={b}
                   vendorPhotoCount={vendorPhotoCount}
-                  hasPhotoForBooking={bookingPhotoIds.has(b.id)}
+                  photoConsentState={bookingPhotoStates.get(b.id) ?? null}
                   onPhotoAdded={load}
                   isPioneer={isPioneer}
                 />
@@ -1223,8 +1225,9 @@ const c = StyleSheet.create({
   rowStatusLabel: { fontSize: 11, fontWeight: '500', color: Colors.textMuted, marginTop: 2, textTransform: 'capitalize' },
   addPhotoBtn: { marginTop: 6, minHeight: 32, alignItems: 'center', justifyContent: 'center' },
   addPhotoBtnText: { fontSize: 12, color: Colors.ink, fontWeight: '600' },
-  photoSent: { fontSize: 12, color: Colors.textMuted, marginTop: 4 },
-  photoFull: { fontSize: 12, color: Colors.textMuted, marginTop: 4, fontStyle: 'italic' },
+  photoSent:     { fontSize: 12, color: Colors.textMuted, marginTop: 4 },
+  photoApproved: { fontSize: 12, color: Colors.success,   marginTop: 4, fontWeight: '600' },
+  photoFull:     { fontSize: 12, color: Colors.textMuted, marginTop: 4, fontStyle: 'italic' },
 
   blockBanner: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',

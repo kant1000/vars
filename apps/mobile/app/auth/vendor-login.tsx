@@ -72,12 +72,13 @@ export default function VendorLoginScreen() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          apikey: SUPABASE_ANON_KEY,
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         },
         body: JSON.stringify({ identifier: canonical, type: identifierType }),
       });
       const json = await res.json();
-      if (json.error) throw new Error(json.error);
+      if (!res.ok || json.error) throw new Error(json.error ?? json.message ?? 'Identity check failed.');
 
       const status = json.status as IdentityStatus;
       if (status === 'has_account') {

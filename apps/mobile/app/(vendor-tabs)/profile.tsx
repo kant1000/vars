@@ -1,7 +1,7 @@
 // ============================================================
 // VARS — Vendor Profile
 // Sections: Portfolio, My Services
-// Account/Security/Payout/Legal → /(vendor-tabs)/settings
+// Account/Security/Payout/Legal → /vendor-settings (root stack screen)
 // ============================================================
 import React, { useCallback, useState } from 'react';
 import {
@@ -277,7 +277,7 @@ export default function VendorProfileScreen() {
             <View style={s.heroNameRow}>
               <Text style={s.heroName} numberOfLines={1}>{vendorName || 'Vendor'}</Text>
               <TouchableOpacity
-                onPress={() => router.push('/(vendor-tabs)/settings' as any)}
+                onPress={() => router.push('/vendor-settings' as any)}
                 hitSlop={8}
                 style={s.heroEditBtn}
                 activeOpacity={0.7}

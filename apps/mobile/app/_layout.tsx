@@ -170,14 +170,26 @@ function RootNavigator() {
     }
   }, [appReady, isAuthenticated, needsPhone, onboardingDone]);
 
-  // Phone gate — handles auth state changes after the initial route is set
+  // Phone gate — handles auth state changes after the initial route is set.
+  // Skips vendor routes: new vendors collect their phone in step-1-profile onboarding,
+  // not the customer /auth/phone screen.
   useEffect(() => {
     if (!appReady || !didInitRoute.current) return;
     if (isAuthenticated && needsPhone) {
       const route = segments.join('/');
-      if (route !== 'auth/phone') router.replace('/auth/phone');
+      if (route !== 'auth/phone' && !route.includes('vendor')) {
+        router.replace('/auth/phone');
+      }
     }
   }, [isAuthenticated, needsPhone, appReady, segments]);
+
+  // Sign-out gate — redirect immediately when session is cleared after init
+  useEffect(() => {
+    if (!appReady || !didInitRoute.current) return;
+    if (!isAuthenticated) {
+      router.replace(onboardingDone ? '/(tabs)' : '/onboarding');
+    }
+  }, [isAuthenticated, appReady]);
 
   // Handle OAuth deep link callback (e.g. vars://auth/callback?code=xxx)
   useEffect(() => {
@@ -224,6 +236,9 @@ function RootNavigator() {
       <Stack.Screen name="consent/[photoId]" />
       <Stack.Screen name="booking/detail/[bookingId]" />
       <Stack.Screen name="vendor-zone-setup" />
+      <Stack.Screen name="vendor-settings" />
+      <Stack.Screen name="vendor-terms" />
+      <Stack.Screen name="vendor-privacy" />
       <Stack.Screen name="+not-found" />
     </Stack>
   );

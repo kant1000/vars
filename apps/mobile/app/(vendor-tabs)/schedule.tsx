@@ -1837,6 +1837,11 @@ export default function ScheduleScreen() {
                         disabled={!inWindow}
                         onPress={() => {
                           const cur = rangeStartRef.current;
+                          if (cur && rangeEnd) {
+                            // Range already set — update end date if after start, ignore otherwise
+                            if (ds > cur) setRangeEnd(ds);
+                            return;
+                          }
                           if (cur && !rangeEnd) {
                             if (ds <= cur) { rangeStartRef.current = ds; setRangeEnd(cur); setRangeStart(ds); }
                             else { setRangeEnd(ds); }
@@ -1894,6 +1899,12 @@ export default function ScheduleScreen() {
                 />
                 {rangeStart ? (
                   <View style={cal.rangeBar}>
+                    <TouchableOpacity
+                      hitSlop={8}
+                      onPress={() => { rangeStartRef.current = null; setRangeStart(null); setRangeEnd(null); }}
+                    >
+                      <Text style={cal.rangeCancelText}>Cancel</Text>
+                    </TouchableOpacity>
                     <Text style={cal.rangeHint}>
                       {rangeEnd && rangeEnd !== rangeStart
                         ? `${fromDateId(rangeStart).getDate()} ${MONTH_SHORT[fromDateId(rangeStart).getMonth()]} – ${fromDateId(rangeEnd).getDate()} ${MONTH_SHORT[fromDateId(rangeEnd).getMonth()]}`
@@ -2213,6 +2224,7 @@ const cal = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingTop: 12,
   },
+  rangeCancelText: { fontSize: 14, fontWeight: '600', color: Colors.textMuted },
   rangeHint: { fontSize: 14, fontWeight: '600', color: Colors.text },
   blockRangeBtn: {
     backgroundColor: Colors.ink, borderRadius: 5,

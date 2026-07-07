@@ -64,7 +64,7 @@ export default function EarningsScreen() {
   const { session } = useAuth();
 
   const [vendorId, setVendorId] = useState<string | null>(null);
-  const [period, setPeriod]     = useState<Period>('week');
+  const [period, setPeriod]     = useState<Period>('all');
   const [rows, setRows]         = useState<EarningRow[]>([]);
   const [loading, setLoading]   = useState(true);
   const [refreshing, setRefreshing] = useState(false);

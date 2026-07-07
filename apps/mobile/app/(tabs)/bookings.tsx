@@ -24,9 +24,10 @@ interface BookingSummary {
   service_price_kobo: number;
   scheduled_at: string;
   vendor_name: string;
-  // Gate payment fields — only set for accepted bookings awaiting first-time payment
   gate_fired: boolean;
   gate_charged_at: string | null;
+  has_review: boolean;
+  review_rating: number | null;
 }
 
 const STATUS_LABEL: Record<BookingStatus, { text: string; color: string }> = {
@@ -66,7 +67,7 @@ export default function BookingsScreen() {
     if (!user) { setLoading(false); return; }
     const { data } = await supabase
       .from('bookings')
-      .select('id, status, service_name, service_price_kobo, scheduled_at, gate_fired, gate_charged_at, vendors:vendor_id(full_name)')
+      .select('id, status, service_name, service_price_kobo, scheduled_at, gate_fired, gate_charged_at, vendors:vendor_id(full_name), reviews(id, rating)')
       .eq('user_id', user.id)
       .order('scheduled_at', { ascending: false })
       .limit(50);
@@ -80,6 +81,8 @@ export default function BookingsScreen() {
       vendor_name: b.vendors?.full_name ?? 'Vendor',
       gate_fired: b.gate_fired ?? false,
       gate_charged_at: b.gate_charged_at ?? null,
+      has_review: (b.reviews?.length ?? 0) > 0,
+      review_rating: b.reviews?.[0]?.rating ?? null,
     })));
     setLoading(false);
     setRefreshing(false);
@@ -90,7 +93,7 @@ export default function BookingsScreen() {
   useEffect(() => {
     if (!user) return;
     const channel = supabase
-      .channel(`bookings:consumer:${user.id}`)
+      .channel(`bookings:consumer:${user.id}:${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
@@ -228,6 +231,21 @@ export default function BookingsScreen() {
                   </Text>
                 </TouchableOpacity>
               )}
+              {booking.status === BOOKING_STATUS.COMPLETED && !booking.has_review && (
+                <TouchableOpacity
+                  style={st.reviewBtn}
+                  onPress={(e) => { e.stopPropagation(); router.push(`/review/${booking.id}` as any); }}
+                  activeOpacity={0.85}
+                >
+                  <Text style={st.reviewBtnText}>Leave a review →</Text>
+                </TouchableOpacity>
+              )}
+              {booking.status === BOOKING_STATUS.COMPLETED && booking.has_review && booking.review_rating !== null && (
+                <View style={st.reviewedRow}>
+                  <Text style={st.reviewedStars}>{'★'.repeat(booking.review_rating)}{'☆'.repeat(5 - booking.review_rating)}</Text>
+                  <Text style={st.reviewedLabel}>Your review</Text>
+                </View>
+              )}
             </TouchableOpacity>
           );
         }}
@@ -287,6 +305,17 @@ const st = StyleSheet.create({
   },
   dateTime: { fontSize: 12, color: Colors.textMuted },
   price: { fontSize: 14, fontWeight: '700', color: Colors.text },
+  reviewBtn: {
+    marginTop: 10, borderTopWidth: 1, borderTopColor: Colors.border,
+    paddingTop: 10, alignItems: 'flex-start',
+  },
+  reviewBtnText: { fontSize: 13, fontWeight: '700', color: Colors.primary },
+  reviewedRow: {
+    marginTop: 10, borderTopWidth: 1, borderTopColor: Colors.border,
+    paddingTop: 10, flexDirection: 'row', alignItems: 'center', gap: 8,
+  },
+  reviewedStars: { fontSize: 14, color: Colors.primary },
+  reviewedLabel: { fontSize: 12, color: Colors.textMuted, fontWeight: '600' },
   emptyWrap: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 40 },
   emptyTitle: { fontSize: 20, fontWeight: '700', color: Colors.text, marginBottom: 8 },
   emptyBody: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },

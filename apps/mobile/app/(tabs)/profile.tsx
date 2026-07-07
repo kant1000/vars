@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,16 +20,15 @@ import { pickAndUploadImage } from '@/lib/storage';
 import { Colors, BORDER_RADIUS } from '@/constants/colors';
 import { fmtPrice, fmtLongDate } from '@/lib/format';
 import { HeartIcon, BellIcon, EditIcon, ChevronRightIcon } from '@/components/icons';
-import { BookingStatus, BOOKING_STATUS } from '@vars/shared';
+import { BookingStatus } from '@vars/shared';
 
-interface PastBooking {
+interface ActiveBooking {
   id: string;
   status: BookingStatus;
   service_name: string;
   service_price_kobo: number;
   scheduled_at: string;
   vendor_name: string;
-  has_review: boolean;
 }
 
 const STATUS_COLOR: Partial<Record<BookingStatus, string>> = {
@@ -54,7 +53,7 @@ export default function ProfileScreen() {
   const [saving, setSaving]           = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
-  const [bookings, setBookings]       = useState<PastBooking[]>([]);
+  const [bookings, setBookings]       = useState<ActiveBooking[]>([]);
   const [loadingBookings, setLoadingBookings] = useState(true);
   const [refreshing, setRefreshing]   = useState(false);
 
@@ -70,14 +69,11 @@ export default function ProfileScreen() {
     if (!user) return;
     const { data } = await supabase
       .from('bookings')
-      .select(`
-        id, status, service_name, service_price_kobo, scheduled_at,
-        vendors(full_name),
-        reviews(id)
-      `)
+      .select('id, status, service_name, service_price_kobo, scheduled_at, vendors(full_name)')
       .eq('user_id', user.id)
+      .not('status', 'in', '(completed,cancelled,expired)')
       .order('scheduled_at', { ascending: false })
-      .limit(30);
+      .limit(10);
 
     setBookings((data ?? []).map((b: any) => ({
       id: b.id,
@@ -86,13 +82,13 @@ export default function ProfileScreen() {
       service_price_kobo: b.service_price_kobo,
       scheduled_at: b.scheduled_at,
       vendor_name: b.vendors?.full_name ?? 'Vendor',
-      has_review: (b.reviews?.length ?? 0) > 0,
     })));
     setLoadingBookings(false);
     setRefreshing(false);
   }, [user]);
 
-  useEffect(() => { loadBookings(); }, [loadBookings]);
+  // Reload on every focus so the review state is fresh after returning from /review/[bookingId]
+  useFocusEffect(useCallback(() => { loadBookings(); }, [loadBookings]));
 
   const saveProfile = async () => {
     if (!user || !name.trim()) return;
@@ -146,9 +142,7 @@ export default function ProfileScreen() {
     );
   }
 
-  const TERMINAL = [BOOKING_STATUS.COMPLETED, BOOKING_STATUS.CANCELLED, BOOKING_STATUS.EXPIRED] as BookingStatus[];
-  const activeBookings = bookings.filter((b) => !TERMINAL.includes(b.status));
-  const pastBookings   = bookings.filter((b) =>  TERMINAL.includes(b.status));
+  const activeBookings = bookings;
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -254,56 +248,17 @@ export default function ProfileScreen() {
           </Section>
         )}
 
-        {/* ── Booking history ── */}
-        <Section title="Booking history">
-          {loadingBookings ? (
-            <View style={{ paddingVertical: 20, alignItems: 'center' }}><ScissorsLoader size="small" color="dark" /></View>
-          ) : pastBookings.length === 0 ? (
-            <Text style={s.emptyText}>No past bookings yet.</Text>
-          ) : (
-            pastBookings.map((b) => (
-              <View key={b.id} style={s.bookingRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.bookingService}>{b.service_name}</Text>
-                  <Text style={s.bookingMeta}>{b.vendor_name} · {fmtLongDate(b.scheduled_at)}</Text>
-                </View>
-                <View style={{ alignItems: 'flex-end', gap: 6 }}>
-                  <Text style={s.bookingPrice}>{fmtPrice(b.service_price_kobo)}</Text>
-                  {b.status === 'completed' && !b.has_review && (
-                    <TouchableOpacity
-                      style={s.reviewBtn}
-                      onPress={() => router.push(`/review/${b.id}` as any)}
-                    >
-                      <Text style={s.reviewBtnText}>Leave review</Text>
-                    </TouchableOpacity>
-                  )}
-                  {b.status === 'completed' && b.has_review && (
-                    <Text style={s.reviewedText}>★ Reviewed</Text>
-                  )}
-                  {b.status !== 'completed' && (
-                    <View style={[s.statusPill, { backgroundColor: (STATUS_COLOR[b.status] ?? Colors.textMuted) + '20' }]}>
-                      <Text style={[s.statusText, { color: STATUS_COLOR[b.status] ?? Colors.textMuted }]}>
-                        {b.status}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              </View>
-            ))
-          )}
-        </Section>
-
         {/* ── Settings rows ── */}
         <Section title="Account">
           <SettingsRow
             icon={<HeartIcon size={18} color={Colors.text} />}
             label="My favourites"
-            onPress={() => router.push('/(tabs)' as any)}
+            onPress={() => Alert.alert('Coming soon', 'Save your favourite vendors — launching soon.')}
           />
           <SettingsRow
             icon={<BellIcon size={18} color={Colors.text} />}
             label="Notification preferences"
-            onPress={() => router.push('/settings/notifications' as any)}
+            onPress={() => Alert.alert('Coming soon', 'Notification controls are on the way.')}
           />
         </Section>
 

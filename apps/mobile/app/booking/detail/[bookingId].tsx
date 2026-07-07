@@ -10,6 +10,7 @@ import {
   Pressable, RefreshControl, ScrollView,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -301,6 +302,9 @@ export default function BookingDetailScreen() {
   const [booking, setBooking] = useState<BookingDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [approvedPhotoUrls, setApprovedPhotoUrls] = useState<string[]>([]);
+  const [hasReview, setHasReview] = useState(false);
+  const [reviewRating, setReviewRating] = useState<number | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -410,6 +414,20 @@ export default function BookingDetailScreen() {
       } as BookingDetail;
       setBooking(fresh);
       cacheSet(`booking_detail_${bookingId}`, fresh, 5 * 60_000).catch(() => {});
+
+      if (fresh.status === 'completed') {
+        const [{ data: review }, { data: photos }] = await Promise.all([
+          supabase.from('reviews').select('rating').eq('booking_id', bookingId).maybeSingle(),
+          supabase.from('portfolio_photos').select('storage_path').eq('booking_id', bookingId).eq('consent_state', 'approved'),
+        ]);
+        setHasReview(!!review);
+        setReviewRating(review?.rating ?? null);
+        setApprovedPhotoUrls(
+          (photos ?? []).map((p: any) =>
+            supabase.storage.from('portfolio').getPublicUrl(p.storage_path).data.publicUrl
+          )
+        );
+      }
     }
     setLoading(false);
     setRefreshing(false);
@@ -420,7 +438,7 @@ export default function BookingDetailScreen() {
 
   useEffect(() => {
     const channel = supabase
-      .channel(`booking:${bookingId}`)
+      .channel(`booking:${bookingId}:${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',
@@ -610,6 +628,43 @@ export default function BookingDetailScreen() {
             >
               <Text style={s.primaryBtnText}>Find another vendor</Text>
             </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Approved photos from this service */}
+        {booking.status === BOOKING_STATUS.COMPLETED && approvedPhotoUrls.length > 0 && (
+          <View style={s.section}>
+            <Text style={s.sectionTitle}>Photos from this service</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 20, paddingVertical: 4 }}>
+              {approvedPhotoUrls.map((url) => (
+                <Image
+                  key={url}
+                  source={{ uri: url }}
+                  style={s.servicePhoto}
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
+                />
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* Review section for completed bookings */}
+        {booking.status === BOOKING_STATUS.COMPLETED && (
+          <View style={s.actionSection}>
+            {hasReview && reviewRating !== null ? (
+              <View style={s.reviewDisplay}>
+                <Text style={s.reviewStars}>{'★'.repeat(reviewRating)}{'☆'.repeat(5 - reviewRating)}</Text>
+                <Text style={s.reviewLabel}>Your review</Text>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={s.primaryBtn}
+                onPress={() => router.push(`/review/${booking.id}` as any)}
+              >
+                <Text style={s.primaryBtnText}>Leave a review</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -805,6 +860,14 @@ const s = StyleSheet.create({
   },
   cancelBtnText: { fontSize: 15, fontWeight: '600', color: Colors.error },
   btnDisabled: { opacity: 0.5 },
+  servicePhoto: { width: 160, height: 160, borderRadius: 5 },
+  reviewDisplay: {
+    borderWidth: 1, borderColor: Colors.border, borderRadius: 5,
+    paddingHorizontal: 16, paddingVertical: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+  },
+  reviewStars: { fontSize: 20, color: Colors.primary },
+  reviewLabel: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
 
   // Modals
   modalOverlay: { flex: 1, backgroundColor: Colors.overlay, justifyContent: 'flex-end' },
