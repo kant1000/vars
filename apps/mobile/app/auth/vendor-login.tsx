@@ -500,11 +500,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between',
     alignItems: 'center', marginBottom: 32,
   },
-  backText: { fontSize: 16, color: Colors.primary, fontWeight: '500' },
+  backText: { fontSize: 16, color: Colors.ink, fontWeight: '500' },
   customerLinkText: { fontSize: 13, fontWeight: '700', letterSpacing: 1.2, color: Colors.text },
 
   wordmark: {
-    fontSize: 36, fontWeight: '800', color: Colors.primary,
+    fontSize: 36, fontWeight: '800', color: Colors.ink,
     letterSpacing: -1, marginBottom: 12,
   },
   title: { fontSize: 26, fontWeight: '700', color: Colors.text, marginBottom: 6 },
@@ -547,13 +547,13 @@ const styles = StyleSheet.create({
   otpInput: { textAlign: 'center', fontSize: 24, fontWeight: '700', letterSpacing: 6 },
 
   button: {
-    height: 54, backgroundColor: Colors.primary,
+    height: 54, backgroundColor: Colors.ink,
     borderRadius: BORDER_RADIUS, alignItems: 'center',
     justifyContent: 'center', marginTop: 4,
   },
   buttonDisabled: { opacity: 0.4 },
-  buttonText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+  buttonText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
 
   secondaryAction: { alignItems: 'center', paddingVertical: 16 },
-  secondaryActionText: { fontSize: 14, color: Colors.primary, fontWeight: '500' },
+  secondaryActionText: { fontSize: 14, color: Colors.ink, fontWeight: '500' },
 });

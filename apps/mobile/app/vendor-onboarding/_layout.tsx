@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   pioneerText: {
-    color: '#FFF',
+    color: Colors.white,
     fontSize: 11,
     fontWeight: '500',
     letterSpacing: 0.1,
@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   track: { flexDirection: 'row', gap: 4, width: 200 },
-  segment: { flex: 1, height: 3, borderRadius: 5 },
-  segmentFilled: { backgroundColor: Colors.primary },
+  segment: { flex: 1, height: 3, borderRadius: BORDER_RADIUS },
+  segmentFilled: { backgroundColor: Colors.ink },
   segmentEmpty: { backgroundColor: Colors.border },
 });

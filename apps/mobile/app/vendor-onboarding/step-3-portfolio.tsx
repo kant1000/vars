@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, borderColor: Colors.border, borderStyle: 'dashed',
     alignItems: 'center', justifyContent: 'center', gap: 4,
   },
-  addIcon: { fontSize: 28, color: Colors.primary, fontWeight: '300' },
+  addIcon: { fontSize: 28, color: Colors.ink, fontWeight: '300' },
   addLabel: { fontSize: 12, color: Colors.textSecondary, fontWeight: '500' },
 
   note: { backgroundColor: Colors.surface, borderRadius: BORDER_RADIUS, padding: 14, marginBottom: 20 },
@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   checkboxChecked: {
-    backgroundColor: Colors.primary, borderColor: Colors.primary,
+    backgroundColor: Colors.ink, borderColor: Colors.ink,
   },
   checkmark: { color: Colors.white, fontSize: 13, fontWeight: '700' },
   consentLabel: { flex: 1, fontSize: 14, color: Colors.text, lineHeight: 20 },

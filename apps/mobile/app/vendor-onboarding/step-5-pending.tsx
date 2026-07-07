@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
   },
   orb: {
     width: 80, height: 80, borderRadius: 40,
-    backgroundColor: Colors.primary, opacity: 0.15,
+    backgroundColor: Colors.ink, opacity: 0.15,
     marginBottom: 28,
   },
   title: { fontSize: 28, fontWeight: '800', color: Colors.text, marginBottom: 12, textAlign: 'center' },
@@ -163,11 +163,11 @@ const styles = StyleSheet.create({
     textAlign: 'center', lineHeight: 19, marginBottom: 32,
   },
   button: {
-    height: 56, backgroundColor: Colors.primary, borderRadius: BORDER_RADIUS,
+    height: 56, backgroundColor: Colors.ink, borderRadius: BORDER_RADIUS,
     alignItems: 'center', justifyContent: 'center',
     paddingHorizontal: 40, width: '100%',
   },
-  buttonText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+  buttonText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
 });
 
 const rowStyles = StyleSheet.create({

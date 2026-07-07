@@ -106,7 +106,13 @@ export default function Step4Kyc() {
     if (banks.length) { setShowBankPicker(true); return; }
     try {
       const data = await callEdgeFn('paystack-verify-bank', { action: 'list_banks' });
-      setBanks(data.banks);
+      const seen = new Set<string>();
+      const deduped = (data.banks as { name: string; code: string }[]).filter((b) => {
+        if (seen.has(b.code)) return false;
+        seen.add(b.code);
+        return true;
+      });
+      setBanks(deduped);
       setShowBankPicker(true);
     } catch (err: any) {
       Alert.alert('Error', err.message);
@@ -424,12 +430,12 @@ const styles = StyleSheet.create({
     width: 10, height: 10, borderRadius: 5,
     backgroundColor: Colors.border,
   },
-  subStepDotActive: { backgroundColor: Colors.primary },
+  subStepDotActive: { backgroundColor: Colors.ink },
   subStepDotDone: { backgroundColor: Colors.success },
   subStepLine: { flex: 1, height: 2, backgroundColor: Colors.border, marginHorizontal: 6 },
   subStepLabels: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 28 },
   subStepLabel: { fontSize: 12, color: Colors.textMuted, fontWeight: '500' },
-  subStepLabelActive: { color: Colors.primary, fontWeight: '700' },
+  subStepLabelActive: { color: Colors.ink, fontWeight: '700' },
 
   section: { gap: 12 },
   sectionTitle: { fontSize: 17, fontWeight: '700', color: Colors.text },
@@ -456,8 +462,8 @@ const styles = StyleSheet.create({
   prepBack: { alignItems: 'center', paddingVertical: 8 },
   prepBackText: { fontSize: 14, color: Colors.textMuted },
 
-  kycButton: { height: 50, backgroundColor: Colors.primary, borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center' },
-  kycButtonText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
+  kycButton: { height: 50, backgroundColor: Colors.ink, borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center' },
+  kycButtonText: { color: Colors.white, fontSize: 15, fontWeight: '700' },
   verifiedBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0FDF4', borderRadius: BORDER_RADIUS, padding: 12 },
   verifiedText: { color: Colors.success, fontSize: 15, fontWeight: '600' },
 
@@ -470,13 +476,13 @@ const styles = StyleSheet.create({
   bankOption: { padding: 14, borderBottomWidth: 1, borderBottomColor: Colors.border },
   bankOptionText: { fontSize: 15, color: Colors.text },
 
-  verifyButton: { height: 46, borderWidth: 1.5, borderColor: Colors.primary, borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center' },
-  verifyButtonText: { color: Colors.primary, fontSize: 15, fontWeight: '600' },
+  verifyButton: { height: 46, borderWidth: 1.5, borderColor: Colors.ink, borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center' },
+  verifyButtonText: { color: Colors.ink, fontSize: 15, fontWeight: '600' },
 
-  button: { height: 56, backgroundColor: Colors.primary, borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center' },
+  button: { height: 56, backgroundColor: Colors.ink, borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center' },
   buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+  buttonText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
 
   cancelKyc: { position: 'absolute', top: 50, right: 16, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: BORDER_RADIUS, paddingHorizontal: 14, paddingVertical: 8 },
-  cancelKycText: { color: '#FFF', fontWeight: '600' },
+  cancelKycText: { color: Colors.white, fontWeight: '600' },
 });

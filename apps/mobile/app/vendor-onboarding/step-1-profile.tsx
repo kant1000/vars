@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
     borderRadius: BORDER_RADIUS, paddingHorizontal: 16, justifyContent: 'center',
   },
   locationSet: { fontSize: 16, color: Colors.text, fontWeight: '500' },
-  locationUnset: { fontSize: 16, color: Colors.primary, fontWeight: '500' },
+  locationUnset: { fontSize: 16, color: Colors.ink, fontWeight: '500' },
   locationHelper: { fontSize: 13, color: Colors.textSecondary, marginTop: -4, marginLeft: 4 },
   button: {
     height: 56, backgroundColor: Colors.ink, borderRadius: BORDER_RADIUS,

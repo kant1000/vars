@@ -12,7 +12,7 @@ import { VendorPriceInput } from '@/components/VendorPriceInput';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import { Colors } from '@/constants/colors';
+import { Colors, BORDER_RADIUS } from '@/constants/colors';
 import { CloseIcon } from '@/components/icons';
 import {
   CATEGORY_L1, CATEGORY_L1_LABELS, CATEGORY_L2_MAP, CATEGORY_L2_LABELS,
@@ -326,15 +326,15 @@ const styles = StyleSheet.create({
   pillRowInner: { flexDirection: 'row', gap: 8, paddingRight: 24 },
   pill: {
     paddingVertical: 8, paddingHorizontal: 16,
-    borderRadius: 5, borderWidth: 1.5, borderColor: Colors.border,
+    borderRadius: BORDER_RADIUS, borderWidth: 1.5, borderColor: Colors.border,
     backgroundColor: Colors.background,
   },
-  pillActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  pillActive: { backgroundColor: Colors.ink, borderColor: Colors.ink },
   pillText: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
-  pillTextActive: { color: '#FFF' },
+  pillTextActive: { color: Colors.white },
 
   textInput: {
-    height: 44, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 5,
+    height: 44, borderWidth: 1.5, borderColor: Colors.border, borderRadius: BORDER_RADIUS,
     paddingHorizontal: 12, fontSize: 15, color: Colors.text, marginBottom: 16,
     backgroundColor: Colors.surface,
   },
@@ -345,14 +345,14 @@ const styles = StyleSheet.create({
   durationRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
   durationChip: {
     paddingVertical: 8, paddingHorizontal: 16,
-    borderRadius: 5, borderWidth: 1.5, borderColor: Colors.border,
+    borderRadius: BORDER_RADIUS, borderWidth: 1.5, borderColor: Colors.border,
   },
-  durationChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  durationChipActive: { backgroundColor: Colors.ink, borderColor: Colors.ink },
   durationChipText: { fontSize: 13, color: Colors.textSecondary, fontWeight: '500' },
-  durationChipTextActive: { color: '#FFF' },
+  durationChipTextActive: { color: Colors.white },
 
   addBtn: {
-    height: 48, borderRadius: 5, alignItems: 'center', justifyContent: 'center',
+    height: 48, borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center',
     borderWidth: 1.5, borderColor: Colors.ink, marginBottom: 24,
   },
   addBtnDisabled: { opacity: 0.4 },
@@ -365,7 +365,7 @@ const styles = StyleSheet.create({
   },
   draftRow: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: Colors.surface, borderRadius: 5, padding: 14, marginBottom: 8,
+    backgroundColor: Colors.surface, borderRadius: BORDER_RADIUS, padding: 14, marginBottom: 8,
     borderWidth: 1, borderColor: Colors.border,
   },
   draftInfo: { flex: 1 },
@@ -378,9 +378,9 @@ const styles = StyleSheet.create({
   draftRemove: { padding: 8 },
 
   nextBtn: {
-    height: 56, backgroundColor: Colors.primary, borderRadius: 5,
+    height: 56, backgroundColor: Colors.ink, borderRadius: BORDER_RADIUS,
     alignItems: 'center', justifyContent: 'center', marginTop: 16,
   },
   nextBtnDisabled: { opacity: 0.4 },
-  nextBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+  nextBtnText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
 });

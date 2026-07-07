@@ -23,7 +23,7 @@ import {
 } from 'react-native';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Colors } from '@/constants/colors';
+import { Colors, BORDER_RADIUS } from '@/constants/colors';
 import {
   signInWithGoogle,
   signInWithFacebook,
@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
   wordmark: {
     fontSize: 40,
     fontWeight: '800',
-    color: Colors.primary,
+    color: Colors.ink,
     letterSpacing: -1,
     marginBottom: 4,
   },
@@ -318,14 +318,14 @@ const styles = StyleSheet.create({
   modeToggle: {
     flexDirection: 'row',
     backgroundColor: Colors.surface,
-    borderRadius: 5,
+    borderRadius: BORDER_RADIUS,
     padding: 4,
     marginBottom: 28,
   },
   modeButton: {
     flex: 1,
     paddingVertical: 10,
-    borderRadius: 5,
+    borderRadius: BORDER_RADIUS,
     alignItems: 'center',
   },
   modeButtonActive: {
@@ -353,7 +353,7 @@ const styles = StyleSheet.create({
     height: 54,
     borderWidth: 1.5,
     borderColor: Colors.border,
-    borderRadius: 5,
+    borderRadius: BORDER_RADIUS,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -388,7 +388,7 @@ const styles = StyleSheet.create({
     height: 54,
     borderWidth: 1.5,
     borderColor: Colors.border,
-    borderRadius: 5,
+    borderRadius: BORDER_RADIUS,
     paddingHorizontal: 16,
     fontSize: 16,
     color: Colors.text,
@@ -402,8 +402,8 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     height: 54,
-    backgroundColor: Colors.primary,
-    borderRadius: 5,
+    backgroundColor: Colors.ink,
+    borderRadius: BORDER_RADIUS,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 4,
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   submitText: {
-    color: '#FFFFFF',
+    color: Colors.white,
     fontSize: 16,
     fontWeight: '700',
   },
