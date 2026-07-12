@@ -345,7 +345,7 @@ export default async function HomePage() {
           <a href="/roadmap">Roadmap</a>
         </p>
         <p style={{ marginTop: 16 }}>
-          &copy; {new Date().getFullYear()} VARS. All rights reserved.
+          &copy; {new Date().getFullYear()} Varsapp Limited. All rights reserved.
         </p>
       </footer>
     </>
