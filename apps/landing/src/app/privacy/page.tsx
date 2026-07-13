@@ -4,7 +4,7 @@ import Link from 'next/link';
 export const metadata: Metadata = {
   title: 'Privacy Policy',
   description:
-    'How VARS handles personal information for Lagos stylists and customers, including phone numbers, location data, payments, and stylist verification.',
+    'How VARS collects, uses, and protects personal data for customers, vendors, and prospective vendors on the VARS platform.',
   alternates: {
     canonical: '/privacy',
   },
@@ -16,167 +16,250 @@ export default function PrivacyPage() {
       <div className="legal-container">
         <Link href="/" className="legal-back">Back to VARS</Link>
         <p className="legal-kicker">Privacy Policy</p>
-        <h1>How VARS handles your information</h1>
-        <p className="legal-updated">Last updated: 19 June 2026</p>
+        <h1>How VARS handles your data</h1>
+        <p className="legal-updated">Last updated: 13 July 2026</p>
 
         <section>
-          <h2>Our approach</h2>
+          <h2>Who we are</h2>
           <p>
-            VARS is a Lagos home service beauty platform for stylists, barbers,
-            hairstylists, makeup artists, and the customers who book them. We
-            collect only the information we need to run the platform, support
-            bookings, verify stylists, process payments, and keep people safer.
+            VARS is an on-demand beauty and grooming marketplace connecting customers
+            in Lagos with verified barbers, hair stylists, makeup artists, and nail
+            technicians. We are a CAC-registered entity based in Lagos, Nigeria.
           </p>
           <p>
-            Everything we collect has a specific purpose. Nothing is collected
-            to be sold. Where we share your information with third parties, we
-            name them in this policy.
+            Data controller: VARS, Lagos, Nigeria.
+            Contact: <a href="mailto:hello@bookwithvars.com">hello@bookwithvars.com</a>.
+          </p>
+          <p>
+            This policy applies to the VARS mobile app (iOS and Android), the website
+            at bookwithvars.com, and all related services.
+          </p>
+          <p>
+            A Data Protection Officer (DPO) will be appointed. Until then, direct all
+            data protection queries to hello@bookwithvars.com.
           </p>
         </section>
 
         <section>
-          <h2>Information we collect</h2>
+          <h2>What we collect</h2>
+
+          <h3>Customers</h3>
+          <ul>
+            <li>Name and email address when you create your account</li>
+            <li>Phone number when you add it to your profile</li>
+            <li>Name and email from Google or Facebook if you sign in that way</li>
+            <li>A secure payment token when you verify a card through Paystack (not your full card number)</li>
+            <li>Your GPS location when you set a booking location</li>
+            <li>Access details (building name, floor, flat number, gate code) when you confirm a booking</li>
+            <li>Booking history, reviews, and dispute details through your use of the platform</li>
+          </ul>
+
+          <h3>Vendors</h3>
+          <ul>
+            <li>Name, email address, and phone number at registration</li>
+            <li>Government-issued ID and a liveness face image during identity verification through Youverify</li>
+            <li>Profile photo, extracted from your KYC liveness check and locked to your account</li>
+            <li>Bank account details when you set up payouts (verified via Paystack)</li>
+            <li>GPS location while you are online (every 5 minutes for zone drift detection) and while en route to a booking (every 60 seconds for live tracking)</li>
+            <li>Service listings, portfolio photos, earnings, and booking history</li>
+          </ul>
+
+          <h3>Prospective vendors</h3>
+          <ul>
+            <li>Name, email address, phone number, and service type when you register interest on our website</li>
+          </ul>
+
           <p>
-            We may collect your name, email address, phone number, service
-            category, operating area, profile details, portfolio information,
-            booking details, device information, and messages or support requests
-            you send to us.
-          </p>
-          <p>
-            For bookings, we collect the service location including the full
-            address and structured access details — building name, floor, flat
-            number, and access code. These are stored on the booking record and
-            shared with the assigned stylist so they can reach you. Access
-            details are visible only to the matched stylist and VARS admin.
-          </p>
-          <p>
-            For stylists, VARS requires identity and liveness verification during
-            onboarding, handled through Youverify. VARS does not store raw
-            government ID documents. The liveness photo captured during
-            verification becomes the stylist&apos;s locked profile picture — the
-            face on a VARS profile is the face that passed the check.
+            We do not collect data from anyone under 18. We do not use analytics
+            tools, advertising identifiers, or third-party tracking. For full
+            details, see our <Link href="/cookie-policy">Cookie and Tracking Policy</Link>.
           </p>
         </section>
 
         <section>
-          <h2>How you sign in</h2>
+          <h2>Why we collect it</h2>
           <p>
-            VARS supports three sign-in methods: Google, Facebook, and email.
-            When you sign in with Google or Facebook, those providers
-            authenticate your identity and share your name and email address
-            with VARS. Your phone number is collected separately as a plain text
-            field after login.
+            Nigerian data protection law (NDPA 2023) requires a lawful basis for
+            every type of processing. Here is how ours maps:
+          </p>
+          <ul>
+            <li><strong>Creating and managing your account</strong> — contract</li>
+            <li><strong>Processing bookings, payments, and refunds</strong> — contract</li>
+            <li><strong>Vendor identity verification (KYC), including biometric data</strong> — explicit consent plus legal obligation</li>
+            <li><strong>Verifying vendor bank accounts for payouts</strong> — contract</li>
+            <li><strong>Location-based vendor discovery</strong> — legitimate interest (core platform function)</li>
+            <li><strong>Live vendor tracking while en route to a booking</strong> — contract</li>
+            <li><strong>Booking confirmations, reminders, and status updates</strong> — contract</li>
+            <li><strong>Dispute resolution</strong> — contract and legitimate interest</li>
+            <li><strong>Lead outreach to prospective vendors</strong> — consent plus legitimate interest</li>
+            <li><strong>Fraud prevention and platform enforcement</strong> — legitimate interest</li>
+          </ul>
+          <p>
+            Where we rely on consent, you can withdraw it at any time (see &ldquo;Your rights&rdquo; below).
           </p>
         </section>
 
         <section>
-          <h2>Payment and verification partners</h2>
+          <h2>Who we share your data with</h2>
+          <p>We share your data only with parties necessary to deliver the service. We never sell your data.</p>
+
+          <h3>Between customers and vendors</h3>
           <p>
-            Payments are processed through <strong>Paystack</strong>. VARS does
-            not store raw card details. Paystack receives the payment information
-            needed to process transactions and protect against fraud.
+            When a booking is confirmed, the customer sees the vendor&apos;s name,
+            photo, bio, services, and ratings. The vendor sees the customer&apos;s
+            first name and service requested. Fifteen minutes before the appointment,
+            both parties receive each other&apos;s phone number and the vendor receives
+            the customer&apos;s access details. While the vendor is en route, the
+            customer sees the vendor&apos;s live location on a map.
           </p>
+
+          <h3>Service providers</h3>
+          <ul>
+            <li>
+              <strong>Supabase</strong> — database hosting, authentication, file storage,
+              and edge functions (United States and European Union)
+            </li>
+            <li>
+              <strong>Paystack</strong> — payment processing, card verification, vendor
+              bank verification, and settlement (Nigeria)
+            </li>
+            <li>
+              <strong>Youverify</strong> — vendor identity verification including
+              biometric liveness check (Nigeria)
+            </li>
+            <li>
+              <strong>Resend</strong> — email delivery (United States)
+            </li>
+            <li>
+              <strong>360dialog</strong> — WhatsApp message delivery (European Union)
+            </li>
+            <li>
+              <strong>Expo</strong> — push notification delivery via Apple APNs and
+              Google FCM (United States)
+            </li>
+            <li>
+              <strong>Google</strong> — sign-in (United States)
+            </li>
+            <li>
+              <strong>Facebook / Meta</strong> — sign-in (United States)
+            </li>
+            <li>
+              <strong>Apple</strong> — sign-in and push notification delivery (United States)
+            </li>
+            <li>
+              <strong>Vercel</strong> — website and admin panel hosting (United States)
+            </li>
+          </ul>
           <p>
-            Stylist identity checks are handled through <strong>Youverify</strong>.
-            Youverify receives the information needed to confirm identity and
-            eligibility.
-          </p>
-          <p>
-            Push notifications are delivered via <strong>Expo</strong>. We store
-            one push token per device to send booking updates and alerts. Expo
-            receives that token to route notifications to your device.
-          </p>
-          <p>
-            WhatsApp messages are sent through <strong>360dialog</strong>.
-            360dialog receives your phone number to deliver those messages.
-          </p>
-          <p>
-            Transactional emails — booking confirmations, settlement receipts,
-            and similar — are sent through <strong>Resend</strong>. Resend
-            receives your email address to deliver those messages.
+            Each provider processes data under contract and only for the purposes stated.
+            We disclose data to legal or regulatory authorities when required by Nigerian
+            law or court order.
           </p>
         </section>
 
         <section>
-          <h2>Analytics and error monitoring</h2>
+          <h2>International transfers</h2>
           <p>
-            We use <strong>PostHog</strong> to understand how the app is used —
-            which screens are visited, where sessions drop off, and how features
-            perform. We use <strong>Sentry</strong> to capture crash and error
-            reports so we can identify and fix problems quickly. Both providers
-            may receive device information, app version, and anonymised usage
-            data. Neither receives payment card details or identity documents.
+            Several of our service providers operate outside Nigeria. When your data
+            is transferred internationally, we protect it through data processing
+            agreements with each provider, transfer impact assessments where required,
+            and standard contractual safeguards consistent with NDPC guidance.
           </p>
         </section>
 
         <section>
-          <h2>Location data</h2>
+          <h2>How long we keep your data</h2>
+          <ul>
+            <li>Customer and vendor account data: life of account plus 6 months after deletion</li>
+            <li>KYC records (ID documents and face images): 5 years after the end of the vendor relationship, as required by anti-money laundering law</li>
+            <li>Booking records and payment history: 6 years, as required by Nigerian tax law (CITA)</li>
+            <li>Payout and settlement records: 6 years</li>
+            <li>Dispute records: 6 years</li>
+            <li>Booking access details (building, floor, flat, gate code): deleted 30 days after booking completion or cancellation</li>
+            <li>Vendor GPS location: ephemeral; overwritten on each update, never stored as a historical trail</li>
+            <li>Reviews: life of the platform; anonymised to &quot;VARS Customer&quot; if you delete your account</li>
+            <li>Unconverted vendor leads: 24 months from last contact, then deleted</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Your rights</h2>
+          <p>Under the NDPA 2023, you have the following rights over your personal data:</p>
+          <ul>
+            <li><strong>Access</strong> — request a copy of the data we hold about you</li>
+            <li><strong>Rectification</strong> — ask us to correct inaccurate or incomplete data</li>
+            <li>
+              <strong>Erasure</strong> — ask us to delete your data; we will comply
+              unless a legal obligation requires retention (for example, KYC records
+              for 5 years, financial records for 6 years)
+            </li>
+            <li><strong>Restriction</strong> — ask us to limit processing while a concern is being resolved</li>
+            <li><strong>Portability</strong> — request your data in a structured, machine-readable format</li>
+            <li><strong>Objection</strong> — object to processing based on legitimate interest</li>
+            <li>
+              <strong>Withdraw consent</strong> — where processing relies on your consent,
+              you can withdraw it at any time; withdrawal does not affect processing that
+              already took place
+            </li>
+          </ul>
           <p>
-            VARS uses location to connect customers with stylists nearby,
-            calculate any applicable transport surcharge, and support the safety
-            of home service bookings.
+            To exercise any of these rights, email{' '}
+            <a href="mailto:hello@bookwithvars.com">hello@bookwithvars.com</a> with
+            enough detail to verify your identity. We will respond within 30 days.
           </p>
           <p>
-            Stylists choose and confirm their operating zone. During an active
-            booking — once the stylist taps &ldquo;On My Way&rdquo; — their live
-            GPS position is shared with the customer in real time until the
-            service is complete. This is how customers know their stylist is
-            on the way and when to expect them. The stylist&apos;s live position
-            is not stored beyond what is needed to display it.
+            To unsubscribe from marketing emails, use the unsubscribe link in any
+            email we send.
           </p>
           <p>
-            Customers set their booking location before confirming a service.
-            The exact coordinates and address are stored on the booking record
-            and used to calculate any transport surcharge and to guide the stylist
-            to the right place.
+            If you are not satisfied with our response, you have the right to lodge
+            a complaint with the Nigeria Data Protection Commission (NDPC) at{' '}
+            <a href="https://ndpc.gov.ng" target="_blank" rel="noopener noreferrer">ndpc.gov.ng</a>.
           </p>
         </section>
 
         <section>
-          <h2>Portfolio photos</h2>
+          <h2>Security</h2>
           <p>
-            After a completed service, a stylist may upload a photo and request
-            the customer&apos;s consent to include it in their VARS portfolio.
-            If the customer declines, the photo is not published and is removed.
-            Approved photos are displayed on the stylist&apos;s public VARS profile.
+            Our security measures include encryption in transit (TLS) and at rest,
+            row-level security policies ensuring users can only access their own data,
+            hashed passwords, HMAC-authenticated webhooks for payment and KYC
+            callbacks, and access controls limiting each role to the minimum access
+            needed. Service keys are server-side only and never exposed in client-side
+            code.
+          </p>
+          <p>
+            If you believe your account has been compromised, contact us immediately
+            at <a href="mailto:hello@bookwithvars.com">hello@bookwithvars.com</a>.
           </p>
         </section>
 
         <section>
-          <h2>How we use information</h2>
+          <h2>Cookies and tracking</h2>
           <p>
-            We use information to create and manage accounts, verify stylists,
-            process bookings, hold and release payments, calculate pricing
-            including transport surcharges, deliver notifications, show profiles
-            and ratings, prevent misuse, answer support requests, and improve
-            VARS.
+            VARS uses only strictly necessary cookies and local storage. We do not use
+            analytics tools, advertising cookies, or third-party tracking. For full
+            details, see our <Link href="/cookie-policy">Cookie and Tracking Policy</Link>.
           </p>
         </section>
 
         <section>
-          <h2>Who we share information with</h2>
+          <h2>Changes to this policy</h2>
           <p>
-            We share information only where needed to operate VARS. This includes
-            the payment, verification, notification, and analytics providers
-            named in this policy, as well as our hosting providers (Supabase,
-            Vercel) and legal or safety authorities where required by law.
-          </p>
-        </section>
-
-        <section>
-          <h2>Your choices</h2>
-          <p>
-            You can ask us to update, correct, or delete your information where
-            the law allows. Some information may need to be kept for security,
-            payment, dispute, legal, or fraud-prevention reasons.
+            When we make material changes, we will notify you via the app or by email
+            before the changes take effect. The &quot;Last updated&quot; date at the
+            top reflects the most recent version. Continued use of VARS after a policy
+            update constitutes acceptance.
           </p>
         </section>
 
         <section>
           <h2>Contact</h2>
           <p>
-            For privacy questions, email{' '}
-            <a href="mailto:hello@bookwithvars.com">hello@bookwithvars.com</a>.
+            Email: <a href="mailto:hello@bookwithvars.com">hello@bookwithvars.com</a>
+          </p>
+          <p>
+            DPO contact details will be published here once appointed.
           </p>
         </section>
       </div>

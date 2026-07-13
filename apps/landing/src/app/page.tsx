@@ -340,6 +340,10 @@ export default async function HomePage() {
           &nbsp;&nbsp;|&nbsp;&nbsp;
           <a href="/terms">Terms</a>
           &nbsp;&nbsp;|&nbsp;&nbsp;
+          <a href="/vendor-terms">Vendor Terms</a>
+          &nbsp;&nbsp;|&nbsp;&nbsp;
+          <a href="/cookie-policy">Cookies</a>
+          &nbsp;&nbsp;|&nbsp;&nbsp;
           <a href="/blog">Blog</a>
           &nbsp;&nbsp;|&nbsp;&nbsp;
           <a href="/roadmap">Roadmap</a>
