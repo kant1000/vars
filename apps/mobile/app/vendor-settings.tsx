@@ -4,7 +4,7 @@
 // ============================================================
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, TextInput, TouchableOpacity,
+  View, Text, StyleSheet, TextInput, TouchableOpacity, Pressable,
   ScrollView, Alert, Modal, Switch, KeyboardAvoidingView, Platform, Linking,
 } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
@@ -340,28 +340,26 @@ export default function VendorSettings() {
       {/* Support channel picker */}
       <Modal
         visible={showSupportModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
+        transparent
+        animationType="fade"
         onRequestClose={() => setShowSupportModal(false)}
       >
-        <View style={s.modalContainer}>
-          <View style={s.modalHeader}>
-            <Text style={s.modalTitle}>Get help</Text>
-            <TouchableOpacity onPress={() => setShowSupportModal(false)} hitSlop={12}>
-              <Text style={s.modalCancel}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={[s.card, { marginHorizontal: 20, marginTop: 28 }]}>
-            <TouchableOpacity style={s.row} onPress={handleSupportWhatsApp} activeOpacity={0.7}>
-              <Text style={s.rowLabel}>WhatsApp</Text>
-              <ChevronRightIcon size={16} color={Colors.textMuted} />
-            </TouchableOpacity>
-            <TouchableOpacity style={[s.row, s.lastRow]} onPress={handleSupportEmail} activeOpacity={0.7}>
-              <Text style={s.rowLabel}>Email</Text>
-              <ChevronRightIcon size={16} color={Colors.textMuted} />
-            </TouchableOpacity>
-          </View>
-        </View>
+        <Pressable style={s.supportOverlay} onPress={() => setShowSupportModal(false)}>
+          <Pressable style={s.supportSheet} onPress={() => {}}>
+            <Text style={s.supportTitle}>Get help</Text>
+            <Text style={s.supportSub}>Choose how you'd like to reach us</Text>
+            <View style={[s.card, { marginTop: 16, marginBottom: 0 }]}>
+              <TouchableOpacity style={s.row} onPress={handleSupportWhatsApp} activeOpacity={0.7}>
+                <Text style={s.rowLabel}>WhatsApp</Text>
+                <ChevronRightIcon size={16} color={Colors.textMuted} />
+              </TouchableOpacity>
+              <TouchableOpacity style={[s.row, s.lastRow]} onPress={handleSupportEmail} activeOpacity={0.7}>
+                <Text style={s.rowLabel}>Email</Text>
+                <ChevronRightIcon size={16} color={Colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       <Modal
@@ -492,6 +490,15 @@ const s = StyleSheet.create({
   },
   saveBtnDisabled: { opacity: 0.5 },
   saveBtnText: { color: Colors.white, fontSize: 15, fontWeight: '700' },
+
+  supportOverlay: { flex: 1, backgroundColor: Colors.overlay, justifyContent: 'flex-end' },
+  supportSheet: {
+    backgroundColor: Colors.background,
+    borderTopLeftRadius: BORDER_RADIUS, borderTopRightRadius: BORDER_RADIUS,
+    padding: 24, paddingBottom: 40,
+  },
+  supportTitle: { fontSize: 20, fontWeight: '800', color: Colors.text },
+  supportSub: { fontSize: 14, color: Colors.textSecondary, marginTop: 4 },
 
   modalContainer: { flex: 1, backgroundColor: Colors.background },
   modalHeader: {
