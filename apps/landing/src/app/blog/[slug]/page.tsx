@@ -188,10 +188,25 @@ export default function ArticlePage({ params }: { params: { slug: string } }) {
         {isLive && <CommentSection slug={article.slug} />}
       </article>
 
-      <footer className="site-footer">
-        <span className="f-brand">Wide Awake</span>
+      <footer>
+        <p style={{ marginBottom: 8 }}>
+          <strong>VARS</strong> &nbsp;|&nbsp; Your craft, your income.
+        </p>
         <p>
-          A blog by <Link href="/">Vars</Link>. Playing The Long Game.
+          <a href="mailto:hello@bookwithvars.com">hello@bookwithvars.com</a>
+          &nbsp;&nbsp;|&nbsp;&nbsp;
+          <a href="https://www.instagram.com/bookwithvars">Instagram</a>
+          &nbsp;&nbsp;|&nbsp;&nbsp;
+          <a href="/privacy">Privacy</a>
+          &nbsp;&nbsp;|&nbsp;&nbsp;
+          <a href="/terms">Terms</a>
+          &nbsp;&nbsp;|&nbsp;&nbsp;
+          <a href="/blog">Blog</a>
+          &nbsp;&nbsp;|&nbsp;&nbsp;
+          <a href="/roadmap">Roadmap</a>
+        </p>
+        <p style={{ marginTop: 16 }}>
+          &copy; {new Date().getFullYear()} Varsapp Limited. All rights reserved.
         </p>
       </footer>
     </>

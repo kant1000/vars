@@ -38,7 +38,7 @@ const structuredData = [
     name: 'VARS',
     url: siteUrl,
     logo: `${siteUrl}/logo.svg`,
-    email: 'support@bookwithvars.com',
+    email: 'hello@bookwithvars.com',
     sameAs: ['https://www.instagram.com/bookwithvars'],
     description:
       'VARS is a Lagos home service beauty platform for stylists, barbers, and makeup artists.',
@@ -332,7 +332,7 @@ export default async function HomePage() {
           <strong>VARS</strong> &nbsp;|&nbsp; Your craft, your income.
         </p>
         <p>
-          <a href="mailto:support@bookwithvars.com">support@bookwithvars.com</a>
+          <a href="mailto:hello@bookwithvars.com">hello@bookwithvars.com</a>
           &nbsp;&nbsp;|&nbsp;&nbsp;
           <a href="https://www.instagram.com/bookwithvars">Instagram</a>
           &nbsp;&nbsp;|&nbsp;&nbsp;

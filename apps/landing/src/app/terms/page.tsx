@@ -248,7 +248,7 @@ export default function TermsPage() {
           <h2>Contact</h2>
           <p>
             For questions about these terms, email{' '}
-            <a href="mailto:support@bookwithvars.com">support@bookwithvars.com</a>.
+            <a href="mailto:hello@bookwithvars.com">hello@bookwithvars.com</a>.
           </p>
         </section>
       </div>

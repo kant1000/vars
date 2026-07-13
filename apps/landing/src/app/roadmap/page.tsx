@@ -117,7 +117,7 @@ export default async function RoadmapPage() {
           <strong>VARS</strong> &nbsp;|&nbsp; Your craft, your income.
         </p>
         <p>
-          <a href="mailto:support@bookwithvars.com">support@bookwithvars.com</a>
+          <a href="mailto:hello@bookwithvars.com">hello@bookwithvars.com</a>
           &nbsp;&nbsp;|&nbsp;&nbsp;
           <a href="https://www.instagram.com/bookwithvars">Instagram</a>
           &nbsp;&nbsp;|&nbsp;&nbsp;
