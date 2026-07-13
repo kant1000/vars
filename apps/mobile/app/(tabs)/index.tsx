@@ -157,7 +157,7 @@ export default function HomeScreen() {
       <View style={styles.searchWrap}>
         <TextInput
           style={styles.searchInput}
-          placeholder="Search vendors..."
+          placeholder="Search stylists..."
           placeholderTextColor={Colors.textMuted}
           value={search}
           onChangeText={setSearch}
@@ -188,7 +188,7 @@ export default function HomeScreen() {
       {/* ── Location permission banner ── */}
       {permissionDenied && (
         <View style={styles.locBanner}>
-          <Text style={styles.locBannerText}>Showing vendors in Lagos — location access was denied.</Text>
+          <Text style={styles.locBannerText}>Showing stylists in Lagos — location access was denied.</Text>
         </View>
       )}
 
@@ -223,7 +223,7 @@ export default function HomeScreen() {
           onEndReachedThreshold={0.4}
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Text style={styles.emptyTitle}>No vendors nearby</Text>
+              <Text style={styles.emptyTitle}>No stylists nearby</Text>
               <Text style={styles.emptyBody}>
                 We're growing fast. Check back soon or try a wider search.
               </Text>

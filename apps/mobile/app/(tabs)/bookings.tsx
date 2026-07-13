@@ -31,7 +31,7 @@ interface BookingSummary {
 }
 
 const STATUS_LABEL: Record<BookingStatus, { text: string; color: string }> = {
-  pending:          { text: 'Awaiting vendor',   color: Colors.statusPending   },
+  pending:          { text: 'Awaiting stylist',   color: Colors.statusPending   },
   accepted:         { text: 'Confirmed',          color: Colors.statusAccepted  },
   on_way:           { text: 'On the way',         color: Colors.statusOnWay     },
   arrived:          { text: 'Arrived',            color: Colors.statusArrived   },
@@ -78,7 +78,7 @@ export default function BookingsScreen() {
       service_name: b.service_name,
       service_price_kobo: b.service_price_kobo,
       scheduled_at: b.scheduled_at,
-      vendor_name: b.vendors?.full_name ?? 'Vendor',
+      vendor_name: b.vendors?.full_name ?? 'Stylist',
       gate_fired: b.gate_fired ?? false,
       gate_charged_at: b.gate_charged_at ?? null,
       has_review: (b.reviews?.length ?? 0) > 0,
@@ -170,7 +170,7 @@ export default function BookingsScreen() {
             return (
               <View style={st.emptyWrap}>
                 <Text style={st.emptyTitle}>No bookings yet</Text>
-                <Text style={st.emptyBody}>Your bookings will appear here once you book a vendor.</Text>
+                <Text style={st.emptyBody}>Your bookings will appear here once you book a stylist.</Text>
               </View>
             );
           }

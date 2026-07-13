@@ -21,6 +21,7 @@ import {
   Alert,
   StatusBar,
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Colors, BORDER_RADIUS } from '@/constants/colors';
@@ -154,12 +155,14 @@ export default function LoginScreen() {
         {/* Social auth buttons */}
         <View style={styles.socialButtons}>
           <SocialButton
+            provider="google"
             label="Continue with Google"
             onPress={handleGoogle}
             isLoading={loadingProvider === 'google'}
             disabled={!!loadingProvider || isLoading}
           />
           <SocialButton
+            provider="facebook"
             label="Continue with Facebook"
             onPress={handleFacebook}
             isLoading={loadingProvider === 'facebook'}
@@ -262,29 +265,64 @@ export default function LoginScreen() {
   );
 }
 
+// ---- Brand icons ----
+function GoogleG({ size = 20 }: { size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 533.5 544.3">
+      <Path fill="#4285F4" d="M533.5 278.4c0-18.5-1.5-37.1-4.7-55.3H272.1v104.8h147c-6.1 33.8-25.7 63.7-54.4 82.7v68h87.7c51.5-47.4 81.1-117.4 81.1-200.2z"/>
+      <Path fill="#34A853" d="M272.1 544.3c73.4 0 135.3-24.1 180.4-65.7l-87.7-68c-24.4 16.6-55.9 26-92.6 26-71 0-131.2-47.9-152.8-112.3H28.9v70.1c46.2 91.9 140.3 149.9 243.2 149.9z"/>
+      <Path fill="#FBBC05" d="M119.3 324.3c-11.4-33.8-11.4-70.4 0-104.2V150H28.9c-38.6 76.9-38.6 167.5 0 244.4l90.4-70.1z"/>
+      <Path fill="#EA4335" d="M272.1 107.7c38.8-.6 76.3 14 104.4 40.8l77.7-77.7C405 24.6 339.7-.8 272.1 0 169.2 0 75.1 58 28.9 150l90.4 70.1c21.5-64.5 81.8-112.4 152.8-112.4z"/>
+    </Svg>
+  );
+}
+
+function FacebookF({ size = 20 }: { size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 10 18">
+      <Path
+        fill="white"
+        d="M6.558 17.854v-8.14h2.735l.41-3.178H6.558V4.328c0-.92.255-1.546 1.573-1.546l1.68-.001V.125C9.51.087 8.474 0 7.27 0 4.83 0 3.155 1.492 3.155 4.23v2.307H.42v3.178H3.155v8.14h3.403z"
+      />
+    </Svg>
+  );
+}
+
 // ---- Social auth button ----
 function SocialButton({
+  provider,
   label,
   onPress,
   isLoading,
   disabled,
 }: {
+  provider: 'google' | 'facebook';
   label: string;
   onPress: () => void;
   isLoading: boolean;
   disabled: boolean;
 }) {
+  const isGoogle = provider === 'google';
   return (
     <TouchableOpacity
-      style={[styles.socialButton, disabled && styles.socialButtonDisabled]}
+      style={[
+        styles.socialButton,
+        isGoogle ? styles.socialButtonGoogle : styles.socialButtonFacebook,
+        disabled && styles.socialButtonDisabled,
+      ]}
       onPress={onPress}
       disabled={disabled}
       activeOpacity={0.85}
     >
       {isLoading ? (
-        <ScissorsLoader size="small" color="dark" />
+        <ScissorsLoader size="small" color={isGoogle ? 'dark' : 'light'} />
       ) : (
-        <Text style={styles.socialButtonText}>{label}</Text>
+        <View style={styles.socialButtonInner}>
+          {isGoogle ? <GoogleG size={20} /> : <FacebookF size={20} />}
+          <Text style={[styles.socialButtonText, !isGoogle && styles.socialButtonTextLight]}>
+            {label}
+          </Text>
+        </View>
       )}
     </TouchableOpacity>
   );
@@ -351,19 +389,33 @@ const styles = StyleSheet.create({
   },
   socialButton: {
     height: 54,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
     borderRadius: BORDER_RADIUS,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  socialButtonGoogle: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#dadce0',
+  },
+  socialButtonFacebook: {
+    backgroundColor: '#1877F2',
+  },
   socialButtonDisabled: {
     opacity: 0.5,
   },
+  socialButtonInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   socialButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    color: Colors.text,
+    color: '#3c4043',
+  },
+  socialButtonTextLight: {
+    color: '#ffffff',
   },
   divider: {
     flexDirection: 'row',

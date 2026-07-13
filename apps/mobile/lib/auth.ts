@@ -61,6 +61,13 @@ export async function signInWithFacebook(): Promise<boolean> {
 
   if (result.type !== 'success' || !result.url) return false;
 
+  const { queryParams } = Linking.parse(result.url);
+  const oauthError = queryParams?.error;
+  const errorDescription = queryParams?.error_description;
+  if (typeof oauthError === 'string') {
+    throw new Error(typeof errorDescription === 'string' ? errorDescription : oauthError);
+  }
+
   const { error: sessionError } = await supabase.auth.exchangeCodeForSession(result.url);
   if (sessionError) throw sessionError;
 

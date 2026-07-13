@@ -85,16 +85,16 @@ const DISPUTE_CATEGORIES: { value: DisputeCategory; label: string }[] = [
 
 // ── Status config ─────────────────────────────────────────────
 const STATUS_CONFIG: Record<BookingStatus, { label: string; color: string; description: string }> = {
-  pending:              { label: 'Confirming...',          color: Colors.statusPending,   description: 'Your vendor has 1 hour to confirm.' },
-  accepted:             { label: 'Confirmed',              color: Colors.statusAccepted,  description: 'Your vendor confirmed. See you soon.' },
-  on_way:               { label: 'On the way',             color: Colors.statusOnWay,     description: 'Your vendor is on their way to you.' },
-  arrived:              { label: 'Arrived',                color: Colors.statusArrived,   description: 'Your vendor has arrived.' },
-  service_rendered:     { label: 'Service complete',       color: Colors.primary,         description: 'Confirm below to release payment to your vendor.' },
+  pending:              { label: 'Confirming...',          color: Colors.statusPending,   description: 'Your stylist has 1 hour to confirm.' },
+  accepted:             { label: 'Confirmed',              color: Colors.statusAccepted,  description: 'Your stylist confirmed. See you soon.' },
+  on_way:               { label: 'On the way',             color: Colors.statusOnWay,     description: 'Your stylist is on their way to you.' },
+  arrived:              { label: 'Arrived',                color: Colors.statusArrived,   description: 'Your stylist has arrived.' },
+  service_rendered:     { label: 'Service complete',       color: Colors.primary,         description: 'Confirm below to release payment to your stylist.' },
   completed:            { label: 'Completed',              color: Colors.statusCompleted, description: 'Service complete. Payment has been released.' },
   cancelled:            { label: 'Cancelled',              color: Colors.statusCancelled, description: 'This booking was cancelled.' },
   expired:              { label: 'Expired',                color: Colors.statusExpired,   description: 'This booking expired — you\'ve been fully refunded.' },
   disputed:             { label: 'Under review',           color: Colors.statusDisputed,  description: 'This booking is under review by the VARS team.' },
-  rescheduled_pending:  { label: 'New time suggested',     color: Colors.statusPending,   description: 'Your vendor suggested a new time. Review it below.' },
+  rescheduled_pending:  { label: 'New time suggested',     color: Colors.statusPending,   description: 'Your stylist suggested a new time. Review it below.' },
 };
 
 // ── Timeline ──────────────────────────────────────────────────
@@ -278,7 +278,7 @@ function LiveTrackingMap({
         {vendorCoords && (
           <Marker
             coordinate={{ latitude: vendorCoords.lat, longitude: vendorCoords.lng }}
-            title="Your vendor"
+            title="Your stylist"
             pinColor="#22C55E"
           />
         )}

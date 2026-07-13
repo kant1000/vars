@@ -81,7 +81,7 @@ export default function ProfileScreen() {
       service_name: b.service_name,
       service_price_kobo: b.service_price_kobo,
       scheduled_at: b.scheduled_at,
-      vendor_name: b.vendors?.full_name ?? 'Vendor',
+      vendor_name: b.vendors?.full_name ?? 'Stylist',
     })));
     setLoadingBookings(false);
     setRefreshing(false);
@@ -253,7 +253,7 @@ export default function ProfileScreen() {
           <SettingsRow
             icon={<HeartIcon size={18} color={Colors.text} />}
             label="My favourites"
-            onPress={() => Alert.alert('Coming soon', 'Save your favourite vendors — launching soon.')}
+            onPress={() => Alert.alert('Coming soon', 'Save your favourite stylists — launching soon.')}
           />
           <SettingsRow
             icon={<BellIcon size={18} color={Colors.text} />}

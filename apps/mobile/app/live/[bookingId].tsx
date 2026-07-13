@@ -555,7 +555,7 @@ export default function LiveScreen() {
               <Marker
                 coordinate={{ latitude: booking.vendor_live_lat!, longitude: booking.vendor_live_lng! }}
                 title={booking.vendor_name}
-                description="Your vendor"
+                description="Your stylist"
               />
             </MapView>
           </View>

@@ -71,7 +71,7 @@ export default function Step5Pending() {
   const body = isLive
     ? 'Your profile and portfolio are now visible to customers. Time to get your first booking.'
     : isReview
-    ? 'Our team is reviewing your details. Most vendors are confirmed within 24 hours. We\'ll notify you the moment you\'re approved.'
+    ? 'Our team is reviewing your details. Most stylists are confirmed within 24 hours. We\'ll notify you the moment you\'re approved.'
     : 'This usually takes under a minute. Stay on this screen.';
 
   return (

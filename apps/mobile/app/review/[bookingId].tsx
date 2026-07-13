@@ -81,7 +81,7 @@ export default function ReviewScreen() {
       }
       Alert.alert(
         'Thanks for your review! ⭐',
-        'Your feedback helps the VARS community find the best vendors.',
+        'Your feedback helps the VARS community find the best stylists.',
         [{ text: 'Done', onPress: () => router.replace('/(tabs)/profile') }],
       );
     } catch {
