@@ -60,8 +60,8 @@ interface BookingData {
 const STATUS_CONFIG: Record<BookingStatus, { label: string; color: string; Icon: React.ComponentType<{ size?: number; color?: string }> }> = {
   pending:          { label: 'Confirming...',         color: Colors.statusPending,   Icon: HourglassIcon },
   accepted:         { label: 'Booking confirmed',    color: Colors.statusAccepted,  Icon: CheckCircleIcon },
-  on_way:           { label: 'Vendor on their way',  color: Colors.statusOnWay,     Icon: CarIcon },
-  arrived:          { label: 'Vendor has arrived',   color: Colors.statusArrived,   Icon: PinIcon },
+  on_way:           { label: 'Stylist on their way',  color: Colors.statusOnWay,     Icon: CarIcon },
+  arrived:          { label: 'Stylist has arrived',   color: Colors.statusArrived,   Icon: PinIcon },
   service_rendered: { label: 'Service complete',     color: Colors.primary,         Icon: SparkleIcon },
   completed:        { label: 'All done',             color: Colors.statusCompleted, Icon: StarIcon },
   cancelled:          { label: 'Cancelled',            color: Colors.statusCancelled, Icon: XCircleIcon },

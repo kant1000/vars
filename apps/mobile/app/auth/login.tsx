@@ -231,7 +231,7 @@ export default function LoginScreen() {
                 onSubmitEditing={handleEmailSubmit}
               />
               {/* Helper text per spec §4.4 */}
-              <Text style={styles.phoneHelper}>So your vendor can reach you on the day</Text>
+              <Text style={styles.phoneHelper}>So your stylist can reach you on the day</Text>
             </>
           )}
 
@@ -266,6 +266,13 @@ export default function LoginScreen() {
 }
 
 // ---- Brand icons ----
+// GoogleG and FacebookF use MANDATORY third-party brand colours per Google Identity Branding
+// Guidelines and Meta Brand Resources. These colours are NOT VARS design system colours and
+// must NEVER be replaced with VARS tokens or BORDER_RADIUS values during design audits.
+//   Google button: bg #ffffff, border #dadce0, text #3c4043
+//   Facebook button: bg #1877F2, text #ffffff
+// Ref: https://developers.google.com/identity/branding-guidelines
+//      https://developers.facebook.com/docs/facebook-login/userexperience#buttondesign
 function GoogleG({ size = 20 }: { size?: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 533.5 544.3">

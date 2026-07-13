@@ -2,7 +2,7 @@
 // VARS — Phone Number Collection Screen
 // Shown after social login (Google/Facebook) if phone not yet set.
 // Per spec §4.4: phone required for ALL auth methods.
-// Helper text: "So your vendor can reach you on the day"
+// Helper text: "So your stylist can reach you on the day"
 // ============================================================
 
 import React, { useState } from 'react';
@@ -64,7 +64,7 @@ export default function PhoneScreen() {
           What's your phone number?
         </Text>
         {/* Helper text from spec §4.4 */}
-        <Text style={styles.helper}>So your vendor can reach you on the day.</Text>
+        <Text style={styles.helper}>So your stylist can reach you on the day.</Text>
 
         <TextInput
           style={styles.input}

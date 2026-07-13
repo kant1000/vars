@@ -286,7 +286,7 @@ function LiveTrackingMap({
       {!vendorCoords && (
         <View style={s.liveLoadingOverlay}>
           <ScissorsLoader size="small" color="dark" />
-          <Text style={s.liveLoadingText}>Locating your vendor…</Text>
+          <Text style={s.liveLoadingText}>Locating your stylist…</Text>
         </View>
       )}
     </View>
@@ -530,7 +530,7 @@ export default function BookingDetailScreen() {
         {hasMap && (
           <View style={s.section}>
             <Text style={s.sectionTitle}>
-              {booking.status === BOOKING_STATUS.ON_WAY ? 'Vendor tracking' : 'Location'}
+              {booking.status === BOOKING_STATUS.ON_WAY ? 'Stylist tracking' : 'Location'}
             </Text>
             {booking.status === BOOKING_STATUS.ON_WAY ? (
               <LiveTrackingMap
@@ -626,7 +626,7 @@ export default function BookingDetailScreen() {
               style={s.primaryBtn}
               onPress={() => router.replace('/(tabs)')}
             >
-              <Text style={s.primaryBtnText}>Find another vendor</Text>
+              <Text style={s.primaryBtnText}>Find another stylist</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -722,7 +722,7 @@ export default function BookingDetailScreen() {
                 onPress={handleDeclineReschedule}
                 disabled={actionLoading}
               >
-                <Text style={s.secondaryBtnText}>Find another vendor</Text>
+                <Text style={s.secondaryBtnText}>Find another stylist</Text>
               </TouchableOpacity>
             </View>
           </View>

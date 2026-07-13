@@ -94,6 +94,12 @@ Keep this file under 200 lines total. Add project-specific rules below these 12.
 - Circular elements (avatars, status dots) are exempt: they use `borderRadius = width / 2` to remain circular.
 - When adding any new component or style, set `borderRadius: BORDER_RADIUS` (not `borderRadius: 5` inline — import the constant).
 
+### Brand Color Exceptions — Do Not Audit or Replace
+The social auth buttons in `apps/mobile/app/auth/login.tsx` use **mandatory third-party brand colours** that must never be replaced with VARS design tokens:
+- **Google**: `backgroundColor: '#ffffff'`, `borderColor: '#dadce0'`, text `'#3c4043'` — required by Google Identity Branding Guidelines.
+- **Facebook**: `backgroundColor: '#1877F2'`, text `'#ffffff'` — required by Meta Brand Resources.
+These are the **only** hardcoded colour strings permitted in the mobile codebase. All other colours must use `Colors.*` tokens from `constants/colors.ts`.
+
 ### Constants and Types
 - `BookingStatus` type and `BOOKING_STATUS` constant live in `packages/shared/src/constants.ts` and `types.ts`.
 - Mobile and admin import from `@vars/shared`. Edge functions import from `supabase/functions/_shared/constants.ts` (Deno cannot resolve workspace packages — keep the mirror in sync manually).

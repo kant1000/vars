@@ -227,7 +227,7 @@ export default function BookingsScreen() {
                   activeOpacity={0.88}
                 >
                   <Text style={st.paymentNeededBtnText}>
-                    Your vendor is on their way — complete payment →
+                    Your stylist is on their way — complete payment →
                   </Text>
                 </TouchableOpacity>
               )}

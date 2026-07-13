@@ -48,7 +48,7 @@ export default function ReviewScreen() {
       if (data) {
         setBooking({
           vendor_id: (data as any).vendor_id,
-          vendor_name: (data as any).vendors?.full_name ?? 'Your vendor',
+          vendor_name: (data as any).vendors?.full_name ?? 'Your stylist',
           service_name: (data as any).service_name,
         });
       }
@@ -158,7 +158,7 @@ export default function ReviewScreen() {
 
           <View style={s.note}>
             <Text style={s.noteText}>
-              Your review is public and helps other customers choose the right vendor.
+              Your review is public and helps other customers choose the right stylist.
             </Text>
           </View>
 
