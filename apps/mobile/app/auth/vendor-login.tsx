@@ -1,13 +1,16 @@
 // ============================================================
 // VARS — Vendor Sign In / Sign Up
-// Flow:
-//   1. Enter email (default) or phone (coming soon)
-//   2. Identity check via vendor-check-identity edge function:
-//      has_account  → password screen
-//      lead_only    → OTP flow → create password → onboarding
+// Flow (email):
+//   1. Enter email → vendor-check-identity
+//      has_account  → password screen (forgot → OTP → dashboard)
+//      lead_only    → OTP → create password → onboarding
 //      not_found    → error with link to bookwithvars.com
-// Returning vendor who forgets password: "Send me a code instead"
-// on the password screen sends an OTP and logs them in directly.
+// Flow (phone):
+//   1. Enter phone → vendor-check-identity
+//      has_account  → WhatsApp OTP → dashboard
+//      lead_only    → prompt to use email to set up first
+//      not_found    → error with link to bookwithvars.com
+// OTP delivery: email (via Resend) + WhatsApp (via 360dialog hook)
 // ============================================================
 
 import React, { useRef, useState } from 'react';
@@ -82,10 +85,22 @@ export default function VendorLoginScreen() {
 
       const status = json.status as IdentityStatus;
       if (status === 'has_account') {
-        setScreen('password');
+        if (identifierType === 'phone') {
+          forgotMode.current = false;
+          await sendOtp();
+        } else {
+          setScreen('password');
+        }
       } else if (status === 'lead_only') {
-        forgotMode.current = false;
-        await sendOtp();
+        if (identifierType === 'phone') {
+          Alert.alert(
+            'Set up your account first',
+            "We found your number, but your account isn't set up yet. Use your email address to get started — you can log in with your phone once that's done.",
+          );
+        } else {
+          forgotMode.current = false;
+          await sendOtp();
+        }
       } else {
         setScreen('not_found');
       }
@@ -101,14 +116,19 @@ export default function VendorLoginScreen() {
   const sendOtp = async () => {
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email: canonical,
-        options: {
-          // user_type ensures fn_handle_new_user creates a vendors row on first sign-up
-          data: { user_type: 'vendor' },
-        },
-      });
-      if (error) throw error;
+      if (identifierType === 'phone') {
+        const { error } = await supabase.auth.signInWithOtp({ phone: canonical });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.auth.signInWithOtp({
+          email: canonical,
+          options: {
+            // user_type ensures fn_handle_new_user creates a vendors row on first sign-up
+            data: { user_type: 'vendor' },
+          },
+        });
+        if (error) throw error;
+      }
       setOtpCode('');
       setScreen('otp_input');
     } catch (err: any) {
@@ -120,24 +140,34 @@ export default function VendorLoginScreen() {
 
   const handleVerifyOtp = async () => {
     if (otpCode.trim().length !== 6) {
-      return Alert.alert('Required', 'Enter the 6-digit code from your email.');
+      return Alert.alert('Required', 'Enter the 6-digit code.');
     }
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.verifyOtp({
-        email: canonical,
-        token: otpCode.trim(),
-        type: 'email',
-      });
-      if (error) throw error;
-
-      if (forgotMode.current) {
-        // Already authenticated — route directly to vendor state
+      if (identifierType === 'phone') {
+        const { error } = await supabase.auth.verifyOtp({
+          phone: canonical,
+          token: otpCode.trim(),
+          type: 'sms',
+        });
+        if (error) throw error;
         await AsyncStorage.setItem('vars_onboarding_done', 'true');
         await routeToVendorState();
       } else {
-        // New vendor — collect password
-        setScreen('create_password');
+        const { error } = await supabase.auth.verifyOtp({
+          email: canonical,
+          token: otpCode.trim(),
+          type: 'email',
+        });
+        if (error) throw error;
+        if (forgotMode.current) {
+          // Already authenticated — route directly to vendor state
+          await AsyncStorage.setItem('vars_onboarding_done', 'true');
+          await routeToVendorState();
+        } else {
+          // New vendor — collect password
+          setScreen('create_password');
+        }
       }
     } catch (err: any) {
       Alert.alert('Incorrect code', err.message ?? 'The code was wrong or expired. Try again.');
@@ -276,14 +306,10 @@ export default function VendorLoginScreen() {
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.tab, styles.tabDisabled]}
-                onPress={() => setIdentifierType('phone')}
-                activeOpacity={0.6}
+                style={[styles.tab, identifierType === 'phone' && styles.tabActive]}
+                onPress={() => { setIdentifierType('phone'); setIdentifier(''); }}
               >
-                <Text style={[styles.tabText, styles.tabTextDisabled]}>Phone</Text>
-                <View style={styles.comingSoonBadge}>
-                  <Text style={styles.comingSoonText}>Soon</Text>
-                </View>
+                <Text style={[styles.tabText, identifierType === 'phone' && styles.tabTextActive]}>Phone</Text>
               </TouchableOpacity>
             </View>
 
@@ -301,29 +327,25 @@ export default function VendorLoginScreen() {
                 onSubmitEditing={handleCheckIdentity}
               />
             ) : (
-              <>
-                <TextInput
-                  style={[styles.input, styles.inputDisabled]}
-                  placeholder="Phone number"
-                  placeholderTextColor={Colors.textMuted}
-                  value={identifier}
-                  onChangeText={setIdentifier}
-                  keyboardType="phone-pad"
-                  editable={false}
-                />
-                <Text style={styles.comingSoonHelper}>
-                  SMS verification is coming soon. Please use email for now.
-                </Text>
-              </>
+              <TextInput
+                style={styles.input}
+                placeholder="Phone number (e.g. 08012345678)"
+                placeholderTextColor={Colors.textMuted}
+                value={identifier}
+                onChangeText={setIdentifier}
+                keyboardType="phone-pad"
+                returnKeyType="done"
+                onSubmitEditing={handleCheckIdentity}
+              />
             )}
 
             <TouchableOpacity
               style={[
                 styles.button,
-                (!identifier.trim() || isLoading || identifierType === 'phone') && styles.buttonDisabled,
+                (!identifier.trim() || isLoading) && styles.buttonDisabled,
               ]}
               onPress={handleCheckIdentity}
-              disabled={!identifier.trim() || isLoading || identifierType === 'phone'}
+              disabled={!identifier.trim() || isLoading}
               activeOpacity={0.85}
             >
               {isLoading
@@ -378,7 +400,9 @@ export default function VendorLoginScreen() {
         {/* ── OTP input screen ── */}
         {screen === 'otp_input' && (
           <>
-            <Text style={styles.title}>Check your email.</Text>
+            <Text style={styles.title}>
+              {identifierType === 'phone' ? 'Check your WhatsApp.' : 'Check your email.'}
+            </Text>
             <Text style={styles.sub}>
               We sent a 6-digit code to{'\n'}{identifier.trim()}.
             </Text>
@@ -483,7 +507,9 @@ export default function VendorLoginScreen() {
               style={styles.secondaryAction}
               onPress={() => { setIdentifier(''); setScreen('entry'); }}
             >
-              <Text style={styles.secondaryActionText}>Try a different email</Text>
+              <Text style={styles.secondaryActionText}>
+                Try a different {identifierType === 'phone' ? 'number' : 'email'}
+              </Text>
             </TouchableOpacity>
           </>
         )}
@@ -523,19 +549,8 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
   },
-  tabDisabled: { opacity: 0.5 },
   tabText: { fontSize: 15, fontWeight: '500', color: Colors.textSecondary },
   tabTextActive: { color: Colors.text, fontWeight: '600' },
-  tabTextDisabled: { color: Colors.textMuted },
-
-  comingSoonBadge: {
-    backgroundColor: Colors.border,
-    borderRadius: BORDER_RADIUS, paddingHorizontal: 5, paddingVertical: 2,
-  },
-  comingSoonText: { fontSize: 9, fontWeight: '700', color: Colors.textMuted, letterSpacing: 0.3 },
-  comingSoonHelper: {
-    fontSize: 13, color: Colors.textMuted, marginTop: -10, marginBottom: 24, marginLeft: 2,
-  },
 
   input: {
     height: 54, borderWidth: 1.5, borderColor: Colors.border,
