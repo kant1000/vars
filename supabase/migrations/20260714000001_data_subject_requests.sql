@@ -16,7 +16,7 @@ create table data_subject_requests (
   requester_email  text,
   requester_name   text,
   details          text,
-  deadline_at      timestamptz not null generated always as (created_at + interval '30 days') stored,
+  deadline_at      timestamptz not null default (now() + interval '30 days'),
   resolved_at      timestamptz,
   resolved_by      uuid        references auth.users(id) on delete set null,
   resolution_notes text,
