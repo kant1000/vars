@@ -5,7 +5,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
-  ScrollView, Alert, Modal, Switch, KeyboardAvoidingView, Platform,
+  ScrollView, Alert, Modal, Switch, KeyboardAvoidingView, Platform, Linking,
 } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -143,6 +143,14 @@ export default function VendorSettings() {
     }
   };
 
+  const openSupportEmail = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    const vendorId = user?.id ?? 'unknown';
+    const ticket = `VARS-${Date.now().toString(36).toUpperCase().slice(-8)}`;
+    const subject = encodeURIComponent(`[${ticket}] Vendor: ${vendorId}`);
+    Linking.openURL(`mailto:support@bookwithvars.com?subject=${subject}`);
+  };
+
   const handleSignOut = () => {
     Alert.alert(
       'Sign out',
@@ -277,12 +285,11 @@ export default function VendorSettings() {
         </View>
 
         {/* SUPPORT */}
-        {/* TODO: scope support channel (email, WhatsApp, Intercom) — activate this row then */}
         <Text style={s.sectionLabel}>Support</Text>
         <View style={s.card}>
           <TouchableOpacity
             style={[s.row, s.lastRow]}
-            onPress={() => Alert.alert('Support', "We're setting up our help channel — we'll update you as soon as it's live.")}
+            onPress={openSupportEmail}
             activeOpacity={0.7}
           >
             <Text style={s.rowLabel}>Get help</Text>
