@@ -10,7 +10,7 @@ export const revalidate = 60;
 export const metadata: Metadata = {
   title: 'Roadmap — VARS',
   description:
-    "How VARS is building Lagos's first on-demand beauty and grooming marketplace. Supply first. Market opens July 2026.",
+    "How VARS is building Lagos's first on-demand beauty and grooming marketplace. Vendor go-live: end of July 2026. Market fully open: end of August 2026.",
   alternates: { canonical: '/roadmap' },
 };
 
@@ -71,7 +71,7 @@ export default async function RoadmapPage() {
         <div className="container">
           <h1>Building VARS.</h1>
           <p className="rm-hero-sub">
-            Supply first. Trust infrastructure locked. Market opens July 2026.
+            Supply built. Vendors going live end of July. Market fully open end of August.
           </p>
         </div>
       </section>
@@ -106,7 +106,7 @@ export default async function RoadmapPage() {
 
           {/* Section 4 — Footer Signal */}
           <p className="rm-footer-signal">
-            Last updated: May 2026 &middot; This roadmap is a living document.
+            Last updated: July 2026 &middot; This roadmap is a living document.
           </p>
 
         </div>

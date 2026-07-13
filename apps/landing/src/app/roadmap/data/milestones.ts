@@ -73,26 +73,26 @@ export const phases: Phase[] = [
       {
         id: 'vendor-pipeline',
         title: '400 Vendors in the Pipeline',
-        period: 'Target: June 2026',
+        period: 'June 2026',
         description:
-          '{vendorCount} professionals have already registered their interest. The target is 400 by end of June — verified and ready to go live when the app launches.',
+          '{vendorCount} professionals registered their interest ahead of launch. The pipeline is built — onboarding is now active.',
+        state: 'completed',
+      },
+      {
+        id: 'app-store-launch',
+        title: 'Vendor Go-Live',
+        period: 'End of July 2026',
+        description:
+          'This is where we are now. The onboarding funnel is live, moving pipeline professionals through identity verification and into active profiles. Target: every verified stylist is live on the platform by end of July. No customer marketing yet — this phase is about making sure the supply is exceptional before demand arrives.',
         state: 'active',
         isNow: true,
       },
       {
-        id: 'app-store-launch',
-        title: 'App Store Launch',
-        period: 'July 2026',
-        description:
-          'VARS goes live on iOS App Store and Google Play. The first month is supply-only: the onboarding funnel converts interested vendors into fully verified, active professionals. No customer marketing yet — this month is about making sure the supply is exceptional before demand arrives.',
-        state: 'upcoming',
-      },
-      {
         id: 'both-sides-open',
         title: 'Both Sides Open',
-        period: 'August 2026',
+        period: 'End of August 2026',
         description:
-          'Customer-facing marketing activates. For the first time, both sides of the marketplace are live simultaneously: customers book, vendors deliver. VARS is fully open.',
+          'Customer-facing marketing activates. For the first time, both sides of the marketplace are live simultaneously: customers book, stylists deliver. VARS is fully open.',
         state: 'upcoming',
       },
       {
