@@ -147,7 +147,7 @@ export default function VendorSettings() {
     const { data: { user } } = await supabase.auth.getUser();
     const vendorId = user?.id ?? 'unknown';
     const ticket = `VARS-${Date.now().toString(36).toUpperCase().slice(-8)}`;
-    const subject = encodeURIComponent(`[${ticket}] Vendor: ${vendorId}`);
+    const subject = encodeURIComponent(`[${ticket}] VARS Support Request`);
     const body = encodeURIComponent(
       `[Write your message above this line — do not edit below]\n\n────────────────────────\nTicket: ${ticket}\nVendor ID: ${vendorId}\nVARS Email: ${email}\nVARS Phone: ${phone}`
     );
