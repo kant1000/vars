@@ -43,6 +43,7 @@ export default function Step1Profile() {
   }, [user]);
 
   const handleDetectLocation = async () => {
+    if (isLocating) return;
     setIsLocating(true);
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -50,14 +51,22 @@ export default function Step1Profile() {
         Alert.alert('Permission needed', 'Please allow location access to set your base area.');
         return;
       }
-      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('timeout')), 10000)
+      );
+      const getPos = async () => {
+        const last = await Location.getLastKnownPositionAsync({ maxAge: 30000, requiredAccuracy: 200 });
+        if (last) return last;
+        return Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      };
+      const loc = await Promise.race([getPos(), timeoutPromise]);
       const [geo] = await Location.reverseGeocodeAsync(loc.coords);
       const label = [geo.district ?? geo.subregion, geo.city ?? geo.region]
         .filter(Boolean).join(', ');
       setLocationLabel(label || 'Current location');
       setLocationCoords({ lat: loc.coords.latitude, lng: loc.coords.longitude });
-    } catch {
-      Alert.alert('Error', 'Could not detect location.');
+    } catch (err: any) {
+      Alert.alert('Error', err.message === 'timeout' ? 'Location timed out. Try again.' : 'Could not detect location.');
     } finally {
       setIsLocating(false);
     }
@@ -140,7 +149,7 @@ export default function Step1Profile() {
           </View>
 
           {/* Base location */}
-          <TouchableOpacity style={styles.locationButton} onPress={handleDetectLocation}>
+          <TouchableOpacity style={styles.locationButton} onPress={handleDetectLocation} disabled={isLocating} activeOpacity={0.85}>
             {isLocating ? (
               <ScissorsLoader size="small" color="dark" />
             ) : (

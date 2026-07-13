@@ -31,14 +31,29 @@ interface DraftService {
 
 const L1_KEYS = Object.values(CATEGORY_L1) as string[];
 
-const DURATION_OPTIONS = [
-  { blocks: 1, label: '30 min' },
-  { blocks: 2, label: '1 hr' },
-  { blocks: 3, label: '1 hr 30 min' },
-  { blocks: 4, label: '2 hr' },
-  { blocks: 6, label: '3 hr' },
-  { blocks: 8, label: '4 hr' },
-];
+const NAME_PLACEHOLDER: Record<string, string> = {
+  hair:   'e.g. Knotless Braids',
+  barber: 'e.g. Low Fade',
+  face:   'e.g. Full Glam',
+  nails:  'e.g. Gel Manicure',
+};
+
+const DESC_PLACEHOLDER: Record<string, string> = {
+  hair:   'e.g. Knotless braids, mid-back length, feeds included...',
+  barber: 'e.g. Low fade with line-up and beard shape-up...',
+  face:   'e.g. Full glam beat, contouring and lashes included...',
+  nails:  'e.g. Gel extensions, any shape, nail art on request...',
+};
+
+function durationLabel(b: number): string {
+  if (b === 1) return '30 min';
+  if (b < 4) return `${b * 30} min`;
+  return `${b / 2} hr${b / 2 > 1 ? 's' : ''}`;
+}
+
+const BASE_DURATIONS = [1, 2, 3, 4, 6, 8].map(b => ({ blocks: b, label: durationLabel(b) }));
+const BRAIDS_EXTRA   = [10, 12, 14, 16].map(b => ({ blocks: b, label: durationLabel(b) }));
+const BRAIDS_DURATIONS = [...BASE_DURATIONS, ...BRAIDS_EXTRA];
 
 export default function Step2Services() {
   const { user } = useAuth();
@@ -81,6 +96,12 @@ export default function Step2Services() {
   const handleL1Change = (l1: string) => {
     setFormL1(l1);
     setFormL2(CATEGORY_L2_MAP[l1][0]);
+    if (formDuration > 8) setFormDuration(2);
+  };
+
+  const handleL2Change = (l2: string) => {
+    setFormL2(l2);
+    if (l2 !== 'braids' && formDuration > 8) setFormDuration(2);
   };
 
   const handleAddService = () => {
@@ -155,6 +176,7 @@ export default function Step2Services() {
   }
 
   const l2Options = CATEGORY_L2_MAP[formL1] ?? [];
+  const durationOptions = formL2 === 'braids' ? BRAIDS_DURATIONS : BASE_DURATIONS;
 
   return (
     <ScrollView
@@ -192,7 +214,7 @@ export default function Step2Services() {
             <TouchableOpacity
               key={l2}
               style={[styles.pill, formL2 === l2 && styles.pillActive]}
-              onPress={() => setFormL2(l2)}
+              onPress={() => handleL2Change(l2)}
               activeOpacity={0.8}
             >
               <Text style={[styles.pillText, formL2 === l2 && styles.pillTextActive]}>
@@ -209,7 +231,7 @@ export default function Step2Services() {
         style={styles.textInput}
         value={formName}
         onChangeText={setFormName}
-        placeholder="e.g. Knotless Braids"
+        placeholder={NAME_PLACEHOLDER[formL1] ?? 'e.g. Service name'}
         placeholderTextColor={Colors.textMuted}
         maxLength={SERVICE_NAME_MAX_CHARS}
         returnKeyType="next"
@@ -223,14 +245,13 @@ export default function Step2Services() {
         style={[styles.textInput, styles.textArea]}
         value={formDesc}
         onChangeText={setFormDesc}
-        placeholder="Briefly describe the service..."
+        placeholder={DESC_PLACEHOLDER[formL1] ?? 'Briefly describe the service...'}
         placeholderTextColor={Colors.textMuted}
         maxLength={SERVICE_DESC_MAX_CHARS}
         multiline
         numberOfLines={3}
         textAlignVertical="top"
       />
-      <Text style={styles.inputHint}>Keep it short.</Text>
 
       {/* Price */}
       <Text style={styles.fieldLabel}>Price</Text>
@@ -241,14 +262,14 @@ export default function Step2Services() {
         pioneerBookingsCompleted={vendorPioneer?.pioneer_bookings_completed}
       />
       <Text style={styles.priceHint}>
-        Factor in local travel cost. VARS only adds a distance fee when the customer is far away.
+        Min ₦{(MIN_SERVICE_PRICE_KOBO / 100).toLocaleString('en-NG')} · Travel cost added automatically for clients over 5km away
       </Text>
 
       {/* Duration */}
       <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Duration</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View style={styles.durationRow}>
-          {DURATION_OPTIONS.map((opt) => (
+          {durationOptions.map((opt) => (
             <TouchableOpacity
               key={opt.blocks}
               style={[styles.durationChip, formDuration === opt.blocks && styles.durationChipActive]}
@@ -338,8 +359,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, fontSize: 15, color: Colors.text, marginBottom: 16,
     backgroundColor: Colors.surface,
   },
-  textArea: { height: 80, paddingTop: 10, lineHeight: 20 },
-  inputHint: { fontSize: 12, color: Colors.textMuted, marginTop: -10, marginBottom: 16 },
+  textArea: { height: 80, paddingTop: 10, lineHeight: 20, marginBottom: 16 },
   priceHint: { fontSize: 12, color: Colors.textMuted, marginTop: 6, marginBottom: 16 },
 
   durationRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
