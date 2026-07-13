@@ -67,14 +67,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      (_event, session) => {
         setSession(session);
         if (session?.user) {
-          await fetchProfile(session.user.id);
+          fetchProfile(session.user.id).finally(() => setIsLoading(false));
         } else {
           setProfile(null);
+          setIsLoading(false);
         }
-        setIsLoading(false);
       }
     );
 

@@ -210,6 +210,13 @@ export default function VendorLoginScreen() {
     }
     setIsLoading(true);
     try {
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      if (!currentSession) {
+        Alert.alert('Session expired', 'Your session expired. Please sign in again.');
+        setScreen('entry');
+        setOtpCode('');
+        return;
+      }
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
       await AsyncStorage.setItem('vars_onboarding_done', 'true');

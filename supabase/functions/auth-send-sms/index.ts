@@ -56,8 +56,9 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  const phone = body.user?.phone ?? '';
-  const otp   = body.sms?.otp   ?? '';
+  const rawPhone = body.user?.phone ?? '';
+  const phone    = rawPhone.replace(/^\+/, '');
+  const otp      = body.sms?.otp   ?? '';
 
   if (!phone || !otp) {
     console.error('[auth-send-sms] Missing phone or otp in payload');

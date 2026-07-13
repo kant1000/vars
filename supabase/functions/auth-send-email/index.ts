@@ -8,7 +8,15 @@
 // Configured in: Supabase Dashboard → Authentication → Hooks → Send Email
 // ============================================================
 
-import { createAdminClient } from '../_shared/supabase.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+function createAdminClient() {
+  return createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    { auth: { autoRefreshToken: false, persistSession: false } },
+  );
+}
 
 const RESEND_API_KEY      = Deno.env.get('RESEND_API_KEY')      ?? '';
 const RESEND_FROM         = 'VARS <no-reply@bookwithvars.com>';
@@ -143,6 +151,8 @@ Deno.serve(async (req: Request) => {
           ? `Your VARS reset code is: *${otp}*\n\nExpires in 10 minutes. Do not share this with anyone.`
           : `Your VARS login code is: *${otp}*\n\nExpires in 10 minutes. Do not share this with anyone.`;
 
+        const phoneTo = phone.replace(/^\+/, '');
+
         const res = await fetch(`${DIALOG360_BASE_URL}/messages`, {
           method: 'POST',
           headers: {
@@ -151,7 +161,7 @@ Deno.serve(async (req: Request) => {
           },
           body: JSON.stringify({
             messaging_product: 'whatsapp',
-            to: phone,
+            to: phoneTo,
             type: 'text',
             text: { body: waText },
           }),
@@ -160,7 +170,7 @@ Deno.serve(async (req: Request) => {
           console.error('[auth-send-email] WhatsApp error:', await res.text());
         } else {
           const data = await res.json();
-          console.log('[auth-send-email] WhatsApp sent:', data.messages?.[0]?.id, '→', phone);
+          console.log('[auth-send-email] WhatsApp sent:', data.messages?.[0]?.id, '→', phoneTo);
         }
       } else {
         console.log('[auth-send-email] No phone found for', email, '— WhatsApp skipped');
