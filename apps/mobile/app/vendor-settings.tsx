@@ -364,18 +364,19 @@ export default function VendorSettings() {
 
       <Modal
         visible={showPasswordModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
+        transparent
+        animationType="fade"
         onRequestClose={dismissPasswordModal}
       >
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <View style={s.modalContainer}>
-            <View style={s.modalHeader}>
-              <Text style={s.modalTitle}>Change password</Text>
-              <TouchableOpacity onPress={dismissPasswordModal} hitSlop={12}>
-                <Text style={s.modalCancel}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
+          <Pressable style={s.supportOverlay} onPress={dismissPasswordModal}>
+            <Pressable style={s.supportSheet} onPress={() => {}}>
+              <View style={s.modalHeader}>
+                <Text style={s.modalTitle}>Change password</Text>
+                <TouchableOpacity onPress={dismissPasswordModal} hitSlop={12}>
+                  <Text style={s.modalCancel}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
             <View style={s.modalBody}>
               <View style={s.passwordField}>
                 <TextInput
@@ -433,7 +434,8 @@ export default function VendorSettings() {
                   : <Text style={s.saveBtnText}>Update password</Text>}
               </TouchableOpacity>
             </View>
-          </View>
+            </Pressable>
+          </Pressable>
         </KeyboardAvoidingView>
       </Modal>
     </View>
@@ -500,15 +502,13 @@ const s = StyleSheet.create({
   supportTitle: { fontSize: 20, fontWeight: '800', color: Colors.text },
   supportSub: { fontSize: 14, color: Colors.textSecondary, marginTop: 4 },
 
-  modalContainer: { flex: 1, backgroundColor: Colors.background },
   modalHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 20, paddingTop: 20, paddingBottom: 14,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
+    paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
   modalTitle: { fontSize: 17, fontWeight: '700', color: Colors.text },
   modalCancel: { fontSize: 15, color: Colors.textMuted, fontWeight: '500' },
-  modalBody: { paddingHorizontal: 20, paddingTop: 24 },
+  modalBody: { paddingTop: 20 },
   passwordField: {
     flexDirection: 'row', alignItems: 'center',
     borderWidth: 1.5, borderColor: Colors.border, borderRadius: BORDER_RADIUS,

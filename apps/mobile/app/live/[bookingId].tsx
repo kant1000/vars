@@ -189,7 +189,7 @@ function DisputeModal({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
+    <Modal visible={visible} transparent animationType="fade">
       <View style={dm.overlay}>
         <View style={dm.sheet}>
           <Text style={dm.title}>Raise a dispute</Text>
