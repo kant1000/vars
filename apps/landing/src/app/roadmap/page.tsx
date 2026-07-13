@@ -10,7 +10,7 @@ export const revalidate = 60;
 export const metadata: Metadata = {
   title: 'Roadmap — VARS',
   description:
-    "How VARS is building Lagos's first on-demand beauty and grooming marketplace. Vendor go-live: end of July 2026. Market fully open: end of August 2026.",
+    "How VARS is building Lagos's first on-demand beauty and grooming marketplace. App Store launch: end of July 2026. Market fully open: end of September 2026.",
   alternates: { canonical: '/roadmap' },
 };
 
@@ -71,7 +71,7 @@ export default async function RoadmapPage() {
         <div className="container">
           <h1>Building VARS.</h1>
           <p className="rm-hero-sub">
-            Supply built. Vendors going live end of July. Market fully open end of August.
+            Supply built. App Store launch end of July. Market fully open end of September.
           </p>
         </div>
       </section>
