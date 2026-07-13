@@ -476,17 +476,16 @@ export function formatTime(iso: string): string {
 }
 
 // ============================================================
-// TRANSACTIONAL DELIVERY — Resend (email) + Termii (SMS)
+// TRANSACTIONAL DELIVERY — Resend (email) + 360dialog (WhatsApp)
 // Credentials read once on module load, same pattern as deliver-outreach.
 // Every send is fully guarded: missing credentials or provider errors
 // log a warning and return — they never throw, never break booking flow.
 // ============================================================
 
-const _RESEND_KEY        = Deno.env.get('RESEND_API_KEY')   ?? '';
-const _RESEND_FROM       = 'VARS <no-reply@bookwithvars.com>';
-const _TERMII_KEY        = Deno.env.get('TERMII_API_KEY')   ?? '';
-const _TERMII_SENDER_ID  = Deno.env.get('TERMII_SENDER_ID') ?? '';
-const _TERMII_BASE_URL   = Deno.env.get('TERMII_BASE_URL')  ?? 'https://v3.api.termii.com';
+const _RESEND_KEY         = Deno.env.get('RESEND_API_KEY')     ?? '';
+const _RESEND_FROM        = 'VARS <no-reply@bookwithvars.com>';
+const _DIALOG360_API_KEY  = Deno.env.get('DIALOG360_API_KEY')  ?? '';
+const _DIALOG360_BASE_URL = Deno.env.get('DIALOG360_BASE_URL') ?? 'https://waba-v2.360dialog.io';
 
 export async function sendTransactionalEmail(
   to: string,
@@ -517,35 +516,36 @@ export async function sendTransactionalEmail(
   }
 }
 
-export async function sendTransactionalSms(
+export async function sendTransactionalWhatsApp(
   to: string,
   body: string,
 ): Promise<void> {
-  if (!_TERMII_KEY || !_TERMII_SENDER_ID) {
-    console.warn('[notify] Termii credentials incomplete — skipping SMS to', to);
+  if (!_DIALOG360_API_KEY) {
+    console.warn('[notify] DIALOG360_API_KEY not set — skipping WhatsApp to', to);
     return;
   }
   try {
-    const res = await fetch(`${_TERMII_BASE_URL}/api/sms/send`, {
+    const res = await fetch(`${_DIALOG360_BASE_URL}/messages`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'D360-API-KEY': _DIALOG360_API_KEY,
+      },
       body: JSON.stringify({
-        api_key: _TERMII_KEY,
+        messaging_product: 'whatsapp',
         to,
-        from:    _TERMII_SENDER_ID,
-        sms:     body,
-        type:    'plain',
-        channel: 'dnd',
+        type: 'text',
+        text: { body },
       }),
     });
     if (!res.ok) {
-      console.error('[notify] Termii SMS error for', to, ':', await res.text());
+      console.error('[notify] 360dialog WhatsApp error for', to, ':', await res.text());
       return;
     }
     const data = await res.json();
-    console.log('[notify] SMS sent:', data.message_id, '→', to);
+    console.log('[notify] WhatsApp sent:', data.messages?.[0]?.id, '→', to);
   } catch (err) {
-    console.error('[notify] sendTransactionalSms failed:', err);
+    console.error('[notify] sendTransactionalWhatsApp failed:', err);
   }
 }
 

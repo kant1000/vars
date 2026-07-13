@@ -10,7 +10,7 @@
 // SMS channel exists in schema but is NOT CURRENTLY USED —
 // reserved for future reactivation. No SMS records are created
 // by vendor_lead_tick().
-// Providers: Termii (whatsapp), Resend (email)
+// Providers: 360dialog (whatsapp), Resend (email)
 //
 // Call via POST — no body required.
 // Optional body: { lead_id: string } to deliver only for one lead.
@@ -35,9 +35,8 @@ import { EMAIL_TEMPLATE } from '../_shared/email-template.ts';
 
 const DELIVERY_LIVE      = Deno.env.get('DELIVERY_LIVE') === 'true';
 
-const TERMII_API_KEY     = Deno.env.get('TERMII_API_KEY')   ?? '';
-const TERMII_SENDER_ID   = Deno.env.get('TERMII_SENDER_ID') ?? '';
-const TERMII_BASE_URL    = Deno.env.get('TERMII_BASE_URL')  ?? 'https://v3.api.termii.com';
+const DIALOG360_API_KEY  = Deno.env.get('DIALOG360_API_KEY')  ?? '';
+const DIALOG360_BASE_URL = Deno.env.get('DIALOG360_BASE_URL') ?? 'https://waba-v2.360dialog.io';
 
 const RESEND_API_KEY     = Deno.env.get('RESEND_API_KEY')   ?? '';
 const RESEND_FROM        = 'VARS <hello@bookwithvars.com>';
@@ -91,48 +90,31 @@ async function sendWhatsApp(to: string, body: string): Promise<string> {
     return `stub-wa-${Date.now()}`;
   }
 
-  const res = await fetch(`${TERMII_BASE_URL}/api/sms/send`, {
+  const res = await fetch(`${DIALOG360_BASE_URL}/messages`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'D360-API-KEY': DIALOG360_API_KEY,
+    },
     body: JSON.stringify({
-      api_key: TERMII_API_KEY,
+      messaging_product: 'whatsapp',
       to,
-      from:    TERMII_SENDER_ID,
-      sms:     body,
-      type:    'plain',
-      channel: 'whatsapp',
+      type: 'text',
+      text: { body },
     }),
   });
 
-  if (!res.ok) throw new Error(`Termii WhatsApp error: ${await res.text()}`);
+  if (!res.ok) throw new Error(`360dialog WhatsApp error: ${await res.text()}`);
   const data = await res.json();
-  return data.message_id as string;
+  return data.messages?.[0]?.id as string;
 }
 
 // NOT CURRENTLY USED — reserved for future SMS reactivation.
 // vendor_lead_tick() does not generate sms channel records.
+// 360dialog does not support SMS; a separate SMS provider would be required.
 async function sendSms(to: string, body: string): Promise<string> {
-  if (!DELIVERY_LIVE) {
-    console.log('[deliver-outreach] SMS stub →', to, ':', body.slice(0, 80));
-    return `stub-sms-${Date.now()}`;
-  }
-
-  const res = await fetch(`${TERMII_BASE_URL}/api/sms/send`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      api_key: TERMII_API_KEY,
-      to,
-      from:    TERMII_SENDER_ID,
-      sms:     body,
-      type:    'plain',
-      channel: 'generic',
-    }),
-  });
-
-  if (!res.ok) throw new Error(`Termii SMS error: ${await res.text()}`);
-  const data = await res.json();
-  return data.message_id as string;
+  console.log('[deliver-outreach] SMS stub (no provider) →', to, ':', body.slice(0, 80));
+  return `stub-sms-${Date.now()}`;
 }
 
 async function sendEmail(

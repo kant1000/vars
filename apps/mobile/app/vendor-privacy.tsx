@@ -90,7 +90,7 @@ export default function PrivacyScreen() {
             device to send booking updates and alerts.
           </Body>
           <Body>
-            WhatsApp and SMS messages are sent through <Bold>Termii</Bold>. Termii receives your
+            WhatsApp messages are sent through <Bold>360dialog</Bold>. 360dialog receives your
             phone number to deliver those messages.
           </Body>
           <Body>

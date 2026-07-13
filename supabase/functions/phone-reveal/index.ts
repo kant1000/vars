@@ -10,7 +10,7 @@ import { createAdminClient } from '../_shared/supabase.ts';
 import { BOOKING_STATUS } from '../_shared/constants.ts';
 import {
   sendNotification,
-  sendTransactionalSms,
+  sendTransactionalWhatsApp,
   msg_reminder15min,
   msg_vendor_reminder15min,
   sms_phoneReveal_customer,
@@ -103,19 +103,19 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // SMS: send actual phone numbers out-of-band, independent of push
+    // WhatsApp: send actual phone numbers out-of-band, independent of push
     // Fires regardless of push outcome — critical fallback if app is closed.
     if (profile?.phone_number && vendor?.phone_number) {
-      await sendTransactionalSms(
+      await sendTransactionalWhatsApp(
         profile.phone_number,
         sms_phoneReveal_customer({ vendorName, vendorPhone: vendor.phone_number }),
       );
-      await sendTransactionalSms(
+      await sendTransactionalWhatsApp(
         vendor.phone_number,
         sms_phoneReveal_vendor({ customerFirstName: clientFirstName, customerPhone: profile.phone_number }),
       );
     } else {
-      console.warn(`phone-reveal: missing phone number(s) for booking ${booking.id} — SMS skipped`);
+      console.warn(`phone-reveal: missing phone number(s) for booking ${booking.id} — WhatsApp skipped`);
     }
 
     revealedCount++;

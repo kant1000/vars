@@ -51,7 +51,7 @@ The platform operates a **two-sided marketplace**:
 | Mobile app | Expo SDK 52, React Native 0.76, Expo Router 4 |
 | Maps | react-native-maps |
 | Animations | React Native `Animated` API, react-native-svg 15.8.0 |
-| Auth | Supabase Auth — customers: email/password + Google/Facebook OAuth; vendors: email OTP (phone OTP coming when Termii is wired) |
+| Auth | Supabase Auth — customers: email/password + Google/Facebook OAuth; vendors: email OTP (phone OTP coming when 360dialog is configured) |
 | Database | Supabase Postgres (PostGIS enabled) |
 | Realtime | Supabase Realtime (booking status + vendor location) |
 | Edge functions | Deno (Supabase Edge Functions) |
@@ -113,7 +113,7 @@ vars/
 
 ### For Vendors
 
-- **Auth** — OTP-based sign-in. Landing page leads enter their email; `vendor-check-identity` resolves whether they have an existing account (→ password form), are a pre-registered lead (→ OTP → create password → onboarding), or are unknown (→ link to bookwithvars.com). Phone OTP supported once Termii is configured. Sessions persist in SecureStore — vendors stay logged in until they sign out. `vars_onboarding_done` is set automatically for any authenticated vendor on cold launch so customer onboarding is never shown.
+- **Auth** — OTP-based sign-in. Landing page leads enter their email; `vendor-check-identity` resolves whether they have an existing account (→ password form), are a pre-registered lead (→ OTP → create password → onboarding), or are unknown (→ link to bookwithvars.com). Phone OTP supported once 360dialog is configured. Sessions persist in SecureStore — vendors stay logged in until they sign out. `vars_onboarding_done` is set automatically for any authenticated vendor on cold launch so customer onboarding is never shown.
 - **Onboarding** — multi-step: profile → services (free-name, L1/L2 taxonomy, price + duration) → portfolio → KYC (Youverify) → instant activation on clean pass. Profile and category fields pre-filled from `vendor_leads` match (by email or normalised phone). Pioneer Programme banner shown throughout for eligible vendors.
 - **Jobs dashboard** — incoming requests with 1-hour accept window; active jobs with flow buttons (On My Way → Arrived → Service Rendered); cancel button for accepted/in-progress bookings; history
 - **Online / offline toggle** — going online makes the vendor visible in the customer discovery feed; offline means invisible. Three prerequisites must all be met before a vendor can go online: KYC verified, at least one active service, and device notifications granted. The most relevant unmet condition is shown as a banner. If any condition fails while the vendor is online (checked every 2 minutes and on every screen focus return), the vendor is automatically taken offline and the DB is updated. Customers never see online/offline status — only "Typically accepts in X" on the vendor profile.
@@ -272,7 +272,7 @@ All functions live in `supabase/functions/` and run on Deno.
 | `vendor-kyc-webhook` | POST | Receives Youverify result — clean pass: `kyc_status = verified` + `is_active = true` (instant activation); also extracts the liveness face image from the payload, uploads raw and passport-cropped versions to `vendor-identity-images` storage, and sets `profile_image_url` / `profile_image_raw_url` / `profile_image_locked = true` on the vendor row. Image failure is non-blocking — KYC pass completes regardless. Failure: `kyc_status = rejected`, appears in admin queue |
 | `vendor-register-lead` | POST/GET | Captures a vendor lead; GET returns current pioneer spot count. On successful POST: normalises phone to E.164, inserts into `vendor_leads`, creates an auto-approved `welcome_email` outreach record ready for delivery |
 | `vendor-check-identity` | POST | Public endpoint (no auth required). Accepts `{ identifier, type: 'email' \| 'phone' }`. Returns `{ status: 'has_account' \| 'lead_only' \| 'not_found' }`. Called by the vendor login screen before sending OTP — determines whether to show the password form, send an OTP for first-time setup, or show the "register your interest" error |
-| `deliver-outreach` | POST | Picks up approved `vendor_lead_outreach` records and delivers via the appropriate channel (WhatsApp/SMS via Termii, email via Resend). Controlled by `DELIVERY_LIVE` secret — logs only when unset. Accepts optional `{ record_id }` or `{ lead_id }` to scope delivery |
+| `deliver-outreach` | POST | Picks up approved `vendor_lead_outreach` records and delivers via the appropriate channel (WhatsApp via 360dialog, email via Resend). Controlled by `DELIVERY_LIVE` secret — logs only when unset. Accepts optional `{ record_id }` or `{ lead_id }` to scope delivery |
 | `unsubscribe-lead` | GET | One-click email unsubscribe — verifies HMAC-SHA256 token, sets `email_unsubscribed = true` on `vendor_leads`. Linked from every outreach and marketing email footer |
 | `send-marketing-email` | POST | Sends a bulk HTML campaign email to a segment of vendor leads. Segmentation via Supabase (`service_type`, `pioneer`, `lead_state`, `converted`). Renders per-lead HTML with unsubscribe URL. Delivers via Resend Batch API (100/request). Called by admin marketing panel |
 | `vendor-set-zone` | POST | Saves vendor's auto-accept geographic zone; when `auto_accept_enabled = true`, also writes `auto_accept_zone_confirmed_date` atomically so no separate confirm-zone call is needed from zone setup |
@@ -359,7 +359,7 @@ Admin Outreach Queue (apps/admin/src/app/leads/outreach/)
        │
        ▼
 deliver-outreach (edge fn) — called by cron or "Send Now"
-  • Routes by channel: WhatsApp/SMS → Termii, email → Resend
+  • Routes by channel: WhatsApp → 360dialog, email → Resend
   • Stamps last_outreach on lead for phone channels only (email is parallel)
   • Marks record sent / failed with provider message ID
 ```
@@ -391,8 +391,8 @@ The system is fully built. Providers are stubbed until `DELIVERY_LIVE=true`.
 2. Set `DELIVERY_LIVE=true`
 
 **WhatsApp (additional steps required):**
-1. Submit the three outreach message templates (intro, reengagement, go-live) to Meta via the Termii dashboard for HSM approval — without approved templates, messages are silently discarded
-2. Set `TERMII_API_KEY`, `TERMII_SENDER_ID`, `TERMII_BASE_URL` in Supabase secrets
+1. Submit the three outreach message templates (intro, reengagement, go-live) to Meta via 360dialog for HSM approval — without approved templates, messages are silently discarded
+2. Set `DIALOG360_API_KEY`, `DIALOG360_BASE_URL` in Supabase secrets
 3. Set `DELIVERY_LIVE=true`
 
 **Optional:**
@@ -946,9 +946,8 @@ YOUVERIFY_BASE_URL=        # defaults to https://api.youverify.co if unset
 YOUVERIFY_WEBHOOK_SECRET=  # HMAC secret for Youverify webhook signature verification
 CRON_SECRET=               # shared secret validated by all cron-triggered edge functions
 RESEND_API_KEY=            # email delivery (outreach + marketing)
-TERMII_API_KEY=            # WhatsApp + SMS delivery
-TERMII_SENDER_ID=
-TERMII_BASE_URL=           # https://v3.api.termii.com
+DIALOG360_API_KEY=         # WhatsApp delivery
+DIALOG360_BASE_URL=        # https://waba-v2.360dialog.io
 DELIVER_OUTREACH_SECRET=   # required — deliver-outreach throws on startup if absent
 UNSUBSCRIBE_SECRET=        # HMAC key for email unsubscribe tokens
 DELIVERY_LIVE=             # set to 'true' to activate real delivery (default: stub mode)

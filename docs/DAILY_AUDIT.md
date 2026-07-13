@@ -327,7 +327,7 @@ Return type: `TABLE(transitions integer, queued integer)` — FAIL if it returns
 - 50 leads processed per tick
 
 **deliver-outreach:**
-- Routes by channel: whatsapp/sms → Termii; email → Resend
+- Routes by channel: whatsapp → 360dialog; email → Resend
 - Stamps `last_outreach` on lead for phone channels only — FAIL if email stamps `last_outreach`
 - Guards email sends against `email_unsubscribed = true` on the lead record — FAIL if this check is absent
 - Marks record `sent`/`failed` with provider message ID
@@ -342,7 +342,7 @@ Return type: `TABLE(transitions integer, queued integer)` — FAIL if it returns
 **vendor-register-lead welcome email:**
 - On POST: must auto-create an `approved` `welcome_email` outreach record — FAIL if it only inserts the lead without creating the outreach record
 - Phone number must be normalised to E.164 (`+234XXXXXXXXXX`) before insert — FAIL if raw local format (`080XXXXXXXXXX`) is stored
-- WARN if `DELIVERY_LIVE=true` but Termii/Resend secrets are unset
+- WARN if `DELIVERY_LIVE=true` but 360dialog/Resend secrets are unset
 
 ---
 
@@ -385,8 +385,8 @@ Four utilities must exist and match spec — FAIL for each deviation:
 - `photo-consent-expire-cron` — confirmed present in live project. WARN only if removed or renamed.
 - `booking-expire-every-5min` — confirmed in live project. Critical: without this job, unanswered bookings sit as pending indefinitely and customer funds are never released. FAIL if missing from Dashboard.
 - `vendor-lead-tick` — must be registered hourly. WARN until confirmed in Dashboard.
-- `deliver-outreach-cron` — deployed and confirmed active at `*/10 * * * *`. Delivery is stubbed — set `DELIVERY_LIVE=true` in Supabase secrets to activate real Termii/Resend delivery.
-- WhatsApp delivery — blocked on Meta HSM template approval via Termii dashboard. Three templates required: intro, reengagement, go-live. Free-form WhatsApp messages are silently discarded by Meta. WARN until all three templates are approved and `TERMII_API_KEY` / `TERMII_SENDER_ID` are set in Supabase secrets.
+- `deliver-outreach-cron` — deployed and confirmed active at `*/10 * * * *`. Delivery is stubbed — set `DELIVERY_LIVE=true` in Supabase secrets to activate real 360dialog/Resend delivery.
+- WhatsApp delivery — blocked on Meta HSM template approval via 360dialog. Three templates required: intro, reengagement, go-live. Free-form WhatsApp messages are silently discarded by Meta. WARN until all three templates are approved and `DIALOG360_API_KEY` is set in Supabase secrets.
 - Youverify webhook schema — unconfirmed with vendor. WARN until confirmed with their team.
 - Monnify — no code action; note only if Paystack live mode is blocked at launch.
 - `DELIVERY_LIVE` secret — WARN if unset in production and outreach delivery is expected.

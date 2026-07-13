@@ -87,8 +87,8 @@ export default function PrivacyPage() {
             receives that token to route notifications to your device.
           </p>
           <p>
-            WhatsApp and SMS messages are sent through <strong>Termii</strong>.
-            Termii receives your phone number to deliver those messages.
+            WhatsApp messages are sent through <strong>360dialog</strong>.
+            360dialog receives your phone number to deliver those messages.
           </p>
           <p>
             Transactional emails — booking confirmations, settlement receipts,

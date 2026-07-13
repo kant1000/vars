@@ -110,7 +110,7 @@ SELECT cron.schedule(
   )$$
 );
 
--- 9. Deliver approved outreach messages via Termii/Resend (every 10 min)
+-- 9. Deliver approved outreach messages via 360dialog/Resend (every 10 min)
 SELECT cron.schedule(
   'deliver-outreach-cron',
   '*/10 * * * *',
