@@ -148,7 +148,10 @@ export default function VendorSettings() {
     const vendorId = user?.id ?? 'unknown';
     const ticket = `VARS-${Date.now().toString(36).toUpperCase().slice(-8)}`;
     const subject = encodeURIComponent(`[${ticket}] Vendor: ${vendorId}`);
-    Linking.openURL(`mailto:support@bookwithvars.com?subject=${subject}`);
+    const body = encodeURIComponent(
+      `Hi VARS Support,\n\nI need help with the following:\n\n[Please describe your issue here]\n\n---\nTicket: ${ticket}\nVendor ID: ${vendorId}\nName: ${displayName}\nEmail: ${email}`
+    );
+    Linking.openURL(`mailto:support@bookwithvars.com?subject=${subject}&body=${body}`);
   };
 
   const handleSignOut = () => {
