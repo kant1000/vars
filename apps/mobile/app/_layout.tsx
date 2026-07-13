@@ -21,6 +21,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { hasAcceptedCurrentTerms } from '@/lib/termsGate';
 
 // ── Debug error boundary — shows full error on screen instead of crashing ──
 import { Text, View } from 'react-native';
@@ -149,6 +150,15 @@ function RootNavigator() {
                 router.replace(onboardingStep as any);
                 return;
               }
+              // Terms gate — check before giving access to vendor tabs
+              const termsOk = await hasAcceptedCurrentTerms(user.id, 'vendor');
+              if (!termsOk) {
+                router.replace({
+                  pathname: '/terms-acceptance',
+                  params: { userType: 'vendor', destination: '/(vendor-tabs)/profile' },
+                } as any);
+                return;
+              }
               router.replace('/(vendor-tabs)/profile');
               return;
             }
@@ -157,6 +167,17 @@ function RootNavigator() {
           if (!onboardingDone) {
             router.replace('/onboarding');
             return;
+          }
+          // Terms gate — check before giving access to customer tabs
+          if (user) {
+            const termsOk = await hasAcceptedCurrentTerms(user.id, 'customer');
+            if (!termsOk) {
+              router.replace({
+                pathname: '/terms-acceptance',
+                params: { userType: 'customer', destination: '/(tabs)' },
+              } as any);
+              return;
+            }
           }
           router.replace('/(tabs)');
         })();
@@ -239,6 +260,9 @@ function RootNavigator() {
       <Stack.Screen name="vendor-settings" />
       <Stack.Screen name="vendor-terms" />
       <Stack.Screen name="vendor-privacy" />
+      <Stack.Screen name="terms-acceptance" options={{ gestureEnabled: false }} />
+      <Stack.Screen name="delete-account" />
+      <Stack.Screen name="privacy-data" />
       <Stack.Screen name="+not-found" />
     </Stack>
   );

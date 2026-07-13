@@ -12,6 +12,7 @@ import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors, BORDER_RADIUS } from '@/constants/colors';
+import { hasAcceptedCurrentTerms } from '@/lib/termsGate';
 
 const POLL_INTERVAL_MS = 8000;
 
@@ -103,7 +104,22 @@ export default function Step5Pending() {
 
       <TouchableOpacity
         style={styles.button}
-        onPress={() => isLive ? router.replace('/(vendor-tabs)/profile') : router.replace('/')}
+        onPress={async () => {
+          if (!isLive) { router.replace('/'); return; }
+          // Terms gate — newly verified vendors haven't seen the acceptance screen yet
+          const userId = user?.id;
+          if (userId) {
+            const termsOk = await hasAcceptedCurrentTerms(userId, 'vendor');
+            if (!termsOk) {
+              router.replace({
+                pathname: '/terms-acceptance',
+                params: { userType: 'vendor', destination: '/(vendor-tabs)/profile' },
+              } as any);
+              return;
+            }
+          }
+          router.replace('/(vendor-tabs)/profile');
+        }}
         activeOpacity={0.85}
       >
         <Text style={styles.buttonText}>{isLive ? 'Let\'s go' : 'Back to home'}</Text>

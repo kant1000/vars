@@ -329,11 +329,19 @@ export default function VendorSettings() {
             <ChevronRightIcon size={16} color={Colors.textMuted} />
           </TouchableOpacity>
           <TouchableOpacity
-            style={[s.row, s.lastRow]}
+            style={s.row}
             onPress={() => router.push('/vendor-privacy' as any)}
             activeOpacity={0.7}
           >
             <Text style={s.rowLabel}>Privacy policy</Text>
+            <ChevronRightIcon size={16} color={Colors.textMuted} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[s.row, s.lastRow]}
+            onPress={() => router.push('/privacy-data' as any)}
+            activeOpacity={0.7}
+          >
+            <Text style={s.rowLabel}>Privacy and data</Text>
             <ChevronRightIcon size={16} color={Colors.textMuted} />
           </TouchableOpacity>
         </View>

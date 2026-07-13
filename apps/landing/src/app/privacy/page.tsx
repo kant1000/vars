@@ -70,9 +70,12 @@ export default function PrivacyPage() {
           </ul>
 
           <p>
-            We do not collect data from anyone under 18. We do not use analytics
-            tools, advertising identifiers, or third-party tracking. For full
-            details, see our <Link href="/cookie-policy">Cookie and Tracking Policy</Link>.
+            We do not collect data from anyone under 18. We do not use advertising
+            identifiers or third-party tracking for marketing purposes. The mobile
+            app uses Sentry for crash reporting and PostHog as an analytics
+            provider; both are configured to minimise data collection (crash
+            reports only; screen capture is disabled). For full details, see our{' '}
+            <Link href="/cookie-policy">Cookie and Tracking Policy</Link>.
           </p>
         </section>
 
@@ -148,6 +151,17 @@ export default function PrivacyPage() {
             </li>
             <li>
               <strong>Vercel</strong> — website and admin panel hosting (United States)
+            </li>
+            <li>
+              <strong>Sentry</strong> — crash reporting and error monitoring in the
+              mobile app (United States / EU). Enabled in production only. Collects
+              stack traces and device context; no personal identifiers are explicitly
+              sent.
+            </li>
+            <li>
+              <strong>PostHog</strong> — analytics provider in the mobile app
+              (European Union, eu.i.posthog.com). Automatic event capture is disabled.
+              No screen recordings or personally identifiable events are collected.
             </li>
           </ul>
           <p>
@@ -237,8 +251,13 @@ export default function PrivacyPage() {
         <section>
           <h2>Cookies and tracking</h2>
           <p>
-            VARS uses only strictly necessary cookies and local storage. We do not use
-            analytics tools, advertising cookies, or third-party tracking. For full
+            The VARS website uses only strictly necessary cookies. We do not use
+            advertising cookies or cross-site tracking on the website.
+          </p>
+          <p>
+            The VARS mobile app uses Sentry (crash reporting) and PostHog
+            (analytics) as described in the service providers section above.
+            Neither tool is used for advertising or selling data. For full
             details, see our <Link href="/cookie-policy">Cookie and Tracking Policy</Link>.
           </p>
         </section>

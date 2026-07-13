@@ -11,6 +11,7 @@ const NAV = [
   { href: '/disputes',  icon: '⚠️',  label: 'Disputes'  },
   { href: '/leads/outreach',   icon: '📣', label: 'Outreach'  },
   { href: '/leads/marketing',  icon: '✉️',  label: 'Marketing' },
+  { href: '/dsr',              icon: '🔒', label: 'DSR'       },
 ];
 
 export default function Sidebar() {

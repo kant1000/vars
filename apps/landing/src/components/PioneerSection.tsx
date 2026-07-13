@@ -19,6 +19,7 @@ export default function PioneerSection({ initialVendorCount }: Props) {
     service_type: '',
     location: '',
   });
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [alreadyRegistered, setAlreadyRegistered] = useState(false);
@@ -48,7 +49,7 @@ export default function PioneerSection({ initialVendorCount }: Props) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${ANON_KEY}`,
         },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, privacy_accepted_at: new Date().toISOString() }),
       });
 
       const data = await res.json();
@@ -225,6 +226,22 @@ export default function PioneerSection({ initialVendorCount }: Props) {
                     </select>
                   </div>
 
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, margin: '16px 0', cursor: 'pointer', fontSize: 13, color: 'rgba(255,255,255,0.75)', lineHeight: '1.5' }}>
+                    <input
+                      type="checkbox"
+                      checked={privacyAccepted}
+                      onChange={(e) => setPrivacyAccepted(e.target.checked)}
+                      style={{ marginTop: 2, flexShrink: 0, accentColor: '#ffffff' }}
+                      required
+                    />
+                    <span>
+                      I have read and agree to the{' '}
+                      <a href="/vendor-terms" target="_blank" rel="noopener noreferrer" style={{ color: '#ffffff', textDecoration: 'underline' }}>Vendor Terms</a>
+                      {' '}and{' '}
+                      <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: '#ffffff', textDecoration: 'underline' }}>Privacy Policy</a>.
+                    </span>
+                  </label>
+
                   {error && <p className="form-error">{error}</p>}
 
                   <button
@@ -232,6 +249,7 @@ export default function PioneerSection({ initialVendorCount }: Props) {
                     className="form-submit"
                     disabled={
                       submitting ||
+                      !privacyAccepted ||
                       !form.full_name ||
                       !form.email ||
                       !form.phone ||

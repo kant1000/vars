@@ -22,6 +22,7 @@ import { router } from 'expo-router';
 import { Colors } from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { savePhoneNumber } from '@/lib/auth';
+import { hasAcceptedCurrentTerms } from '@/lib/termsGate';
 
 export default function PhoneScreen() {
   const { user, refreshProfile } = useAuth();
@@ -41,7 +42,15 @@ export default function PhoneScreen() {
     try {
       await savePhoneNumber(user.id, cleaned);
       await refreshProfile();
-      // Navigate to tabs — phone is now set
+      // Terms gate — new OAuth customers haven't seen the acceptance screen yet
+      const termsOk = await hasAcceptedCurrentTerms(user.id, 'customer');
+      if (!termsOk) {
+        router.replace({
+          pathname: '/terms-acceptance',
+          params: { userType: 'customer', destination: '/(tabs)' },
+        } as any);
+        return;
+      }
       router.replace('/(tabs)');
     } catch (err: any) {
       Alert.alert('Error', err.message ?? 'Could not save phone number.');

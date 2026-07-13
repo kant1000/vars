@@ -260,6 +260,11 @@ export default function ProfileScreen() {
             label="Notification preferences"
             onPress={() => Alert.alert('Coming soon', 'Notification controls are on the way.')}
           />
+          <SettingsRow
+            icon={<Text style={{ fontSize: 16 }}>🔒</Text>}
+            label="Privacy and data"
+            onPress={() => router.push('/privacy-data' as any)}
+          />
         </Section>
 
         {/* ── Sign out ── */}

@@ -69,3 +69,13 @@ export const GATE_PROXIMITY_KM = 1;
 
 /** How many minutes before scheduled_at the "On My Way" gate window opens. */
 export const GATE_WINDOW_MINUTES = 120;
+
+// ── Document version constants ─────────────────────────────────
+// Mirror of apps/mobile/constants/terms.ts — keep in sync manually.
+// Bump a version string to trigger reacceptance on next cold start.
+export const DOCUMENT_VERSIONS = {
+  customer_terms:        '2026-07-13',
+  privacy_policy:        '2026-07-13',
+  vendor_terms:          '2026-07-13',
+  vendor_privacy_policy: '2026-07-13',
+} as const;

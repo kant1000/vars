@@ -78,30 +78,59 @@ export default function CookiePolicyPage() {
             </li>
           </ul>
           <p>
-            The app does not include any third-party analytics SDKs, crash reporting
-            tools, advertising identifiers, or behavioural tracking libraries.
+            The app also uses:
+          </p>
+          <ul>
+            <li>
+              <strong>Sentry</strong> — crash reporting and error monitoring.
+              When the app crashes in production, Sentry captures the stack trace
+              and device context (OS version, app version, memory state) and
+              sends it to Sentry&apos;s servers. No personal identifiers are
+              explicitly included. Enabled in production only (disabled in
+              development). Sentry servers: United States and EU.
+            </li>
+            <li>
+              <strong>PostHog</strong> — analytics provider. The PostHog SDK is
+              initialised but automatic event capture is disabled. No screens,
+              taps, or personal identifiers are automatically sent. PostHog is
+              configured to use the EU endpoint (eu.i.posthog.com). No data
+              is sent to PostHog unless an explicit tracking call is made in code.
+            </li>
+          </ul>
+          <p>
+            Neither Sentry nor PostHog is used for advertising, retargeting,
+            or selling data. They are infrastructure tools used to maintain
+            app quality and understand usage patterns.
           </p>
         </section>
 
         <section>
-          <h2>No third-party tracking</h2>
+          <h2>What we do not use</h2>
           <p>VARS does not use:</p>
           <ul>
             <li>Advertising or retargeting cookies</li>
             <li>Social media tracking pixels</li>
-            <li>Analytics platforms (Google Analytics, Mixpanel, Amplitude, and others)</li>
-            <li>Crash reporting SDKs (Sentry, Crashlytics, and others)</li>
+            <li>Third-party analytics on the website (Google Analytics, Mixpanel, Amplitude, and others)</li>
             <li>Heatmap or session recording tools</li>
             <li>Cross-device tracking or fingerprinting</li>
           </ul>
+          <p>
+            The mobile app uses Sentry and PostHog as described above. These
+            are the only third-party data processors active in the app.
+          </p>
         </section>
 
         <section>
           <h2>Your choices</h2>
           <p>
-            Because we only use strictly necessary cookies and storage, there is nothing
-            optional to accept or reject. We do not show a cookie consent banner because
-            there are no non-essential cookies to consent to.
+            On the website, only strictly necessary cookies are set. There is nothing
+            optional to accept or reject.
+          </p>
+          <p>
+            In the mobile app, Sentry crash reporting and PostHog analytics are active
+            in production. These cannot currently be disabled per-user within the app.
+            If you wish to opt out, you can delete the app. We will add per-user opt-out
+            controls in a future release.
           </p>
           <p>
             <strong>On the website:</strong> Your browser settings allow you to block

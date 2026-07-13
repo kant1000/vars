@@ -1,7 +1,7 @@
 # Cookie and Tracking Policy
 
-**Version:** 1.0
-**Last updated:** 13 July 2026
+**Version:** 1.1
+**Last updated:** 14 July 2026
 **Status:** Draft, pending lawyer review
 **Owner:** DPO (once appointed); interim: Seyi Ibitoye, Founder
 **Applies to:** bookwithvars.com (landing page and blog) and the VARS mobile app (iOS and Android)
@@ -33,24 +33,34 @@ The mobile app does not use browser cookies. It uses the following local storage
 | AsyncStorage (local cache) | Caches non-sensitive app data (e.g. last viewed screen, cached vendor listings, UI preferences) to improve performance and provide basic offline resilience. No personally identifiable information is transmitted from this cache. Data stays on your device. | Strictly necessary |
 | Expo Push Token | A device-specific token registered with Apple (APNs) or Google (FCM) to deliver push notifications you have opted into. The token identifies your device, not you personally. You can revoke it at any time by disabling notifications in your device settings. | Strictly necessary (with your permission) |
 
-The app does not include any third-party analytics SDKs, crash reporting tools, advertising identifiers, or behavioural tracking libraries.
+The app also includes the following third-party SDKs:
 
-## 3. Third-Party Cookies
+| SDK | Provider | Purpose | Data sent | Config |
+|---|---|---|---|---|
+| Sentry (`@sentry/react-native`) | Sentry (US/EU) | Crash reporting and error monitoring | Stack traces, device OS/version, memory state. No personal identifiers explicitly sent. | Enabled in production only (`enabled: !__DEV__`). 10% performance trace sample rate. |
+| PostHog (`posthog-react-native`) | PostHog (EU — eu.i.posthog.com) | Analytics provider | No events are sent by default. Automatic screen and tap capture is disabled (`autocapture={false}`). | SDK is initialised but no personalised data is captured unless an explicit event call is added to code. |
 
-VARS does not embed any third-party cookies or tracking scripts on its website or in its mobile app. We do not use:
+Neither SDK is used for advertising, profiling, or selling data. Sentry and PostHog are infrastructure tools for app quality and product analytics.
+
+## 3. Third-Party Tools
+
+VARS does not embed any third-party cookies or tracking scripts on its **website**. We do not use:
 
 - Advertising or retargeting cookies
 - Social media tracking pixels
-- Analytics platforms (Google Analytics, Mixpanel, Amplitude, etc.)
-- Crash reporting SDKs (Sentry, Crashlytics, etc.)
+- Analytics platforms on the website (Google Analytics, Mixpanel, Amplitude, etc.)
 - Heatmap or session recording tools
 - Cross-device tracking or fingerprinting
 
+The **mobile app** uses Sentry and PostHog as described in section 2.2.
+
 ## 4. Your Choices
 
-Because we only use strictly necessary cookies and storage, there is nothing optional to accept or reject. We do not show a cookie consent banner because there are no non-essential cookies to consent to.
+On the **website**, only strictly necessary cookies are set. There is nothing optional to accept or reject.
 
-You can still control storage on your devices:
+In the **mobile app**, Sentry and PostHog are active in production. They cannot currently be disabled per-user within the app. If you wish to opt out, you can delete the app. We will add per-user opt-out controls in a future release.
+
+You can also control storage on your devices:
 
 **On the website:** Your browser settings allow you to block or delete cookies at any time. Blocking the Supabase Auth cookie will prevent you from staying logged in, but will not affect your ability to browse the public site.
 
@@ -83,3 +93,4 @@ You also have the right to lodge a complaint with the Nigeria Data Protection Co
 | Version | Date | Author | Changes |
 |---|---|---|---|
 | 1.0 | 13 July 2026 | Seyi Ibitoye | Initial draft |
+| 1.1 | 14 July 2026 | Claude (Phase B) | Added Sentry and PostHog disclosures; updated third-party section |

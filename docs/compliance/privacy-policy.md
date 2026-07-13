@@ -68,7 +68,7 @@ We collect different data depending on whether you are a customer, a vendor (bea
 
 We do not collect data from children under 18. VARS is not directed at minors, and if we learn that a person under 18 has created an account, we will delete it.
 
-We do not collect browsing behaviour, advertising identifiers, or analytics data. See our [Cookie and Tracking Policy](cookie-policy.md) for details.
+We do not collect browsing behaviour or advertising identifiers. The mobile app uses Sentry for crash reporting and PostHog as an analytics provider; both are configured to minimise data collection (crash reports only; automatic screen capture disabled). See our [Cookie and Tracking Policy](cookie-policy.md) for full details.
 
 ## 3. Why We Collect It and Our Legal Basis
 
@@ -198,7 +198,7 @@ If you believe your account has been compromised, contact us immediately at hell
 
 ## 9. Cookies and Tracking
 
-VARS uses only strictly necessary cookies and local storage. We do not use analytics, advertising, or third-party tracking tools. For full details, see our [Cookie and Tracking Policy](cookie-policy.md).
+The VARS website uses only strictly necessary cookies. The mobile app uses Sentry (crash reporting) and PostHog (analytics provider) as described in Section 2.4 above. Neither tool is used for advertising, profiling, or selling data. For full details, see our [Cookie and Tracking Policy](cookie-policy.md).
 
 ## 10. Changes to This Policy
 

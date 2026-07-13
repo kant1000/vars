@@ -70,6 +70,7 @@ Deno.serve(async (req: Request) => {
       phone?: string;
       service_type?: string;
       location?: string;
+      privacy_accepted_at?: string;
     };
 
     try {
@@ -78,7 +79,7 @@ Deno.serve(async (req: Request) => {
       return errorResponse('Invalid JSON body', 400);
     }
 
-    const { full_name, email, phone, service_type, location } = body;
+    const { full_name, email, phone, service_type, location, privacy_accepted_at } = body;
 
     if (!full_name?.trim())    return errorResponse('full_name is required');
     if (!email?.trim())        return errorResponse('email is required');
@@ -143,6 +144,17 @@ Deno.serve(async (req: Request) => {
     if (outreachError) {
       // Log but don't block — registration already succeeded
       console.error('vendor-register-lead: outreach insert failed:', outreachError.message);
+    }
+
+    // Record privacy acceptance timestamp if provided by the landing page form
+    if (privacy_accepted_at) {
+      const { error: privacyError } = await supabase
+        .from('vendor_leads')
+        .update({ privacy_accepted_at })
+        .eq('id', newLead.id);
+      if (privacyError) {
+        console.error('vendor-register-lead: privacy_accepted_at update failed:', privacyError.message);
+      }
     }
 
     return jsonResponse({
