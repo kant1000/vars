@@ -7,12 +7,14 @@ const AnimatedG = Animated.createAnimatedComponent(G);
 // SVG content lives in a 555×718 coordinate space.
 // After rotating each blade ±32° around the screw pivot, the blade tips
 // travel ~80px above y=0 and the handles swing ~110px outside each side.
-// The viewBox is expanded by 120px left/right and 90px top / 10px bottom
-// so nothing clips during the snip animation.
+// VB_H is 920 (not 820) to give 112 units of bottom clearance after the
+// scissor content ends at y≈718 (viewBox starts at y=-90, so bottom is y=830).
+// With 820 only 12 units of clearance remain — blade tips clip at full rotation.
+// The roadmap web ScissorIcon uses the same VB_H=920. Do not reduce this value.
 const VB_MIN_X = -120;
 const VB_MIN_Y = -90;
 const VB_W     = 800;   // -120 → 680  (content max ~661)
-const VB_H     = 820;   // -90  → 730  (content max ~719)
+const VB_H     = 920;   // -90  → 830  (content ends ~718, 112 units clearance)
 
 // Screw pivot in the original SVG coordinate space — unchanged
 const PIVOT_X  = 277.095;

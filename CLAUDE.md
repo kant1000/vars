@@ -94,6 +94,11 @@ Keep this file under 200 lines total. Add project-specific rules below these 12.
 - Circular elements (avatars, status dots) are exempt: they use `borderRadius = width / 2` to remain circular.
 - When adding any new component or style, set `borderRadius: BORDER_RADIUS` (not `borderRadius: 5` inline — import the constant).
 
+### ScissorsLoader Convention
+- The only scissors loader is `apps/mobile/components/ScissorsLoader.tsx`. Import from `@/components/ScissorsLoader` — never recreate inline.
+- `VB_H` must remain `920`. This gives 112 units of bottom clearance so blade tips never clip at ±32° rotation. The roadmap web `ScissorIcon` uses the same value. Never reduce to 820.
+- Sizes: `small` in buttons/inline states, `large` for full-screen loading states, `medium` for mid-weight contexts (e.g. zone map). Color: `light` on dark/filled backgrounds, `dark` on white/surface.
+
 ### Brand Color Exceptions — Do Not Audit or Replace
 The social auth buttons in `apps/mobile/app/auth/login.tsx` use **mandatory third-party brand colours** that must never be replaced with VARS design tokens:
 - **Google**: `backgroundColor: '#ffffff'`, `borderColor: '#dadce0'`, text `'#3c4043'` — required by Google Identity Branding Guidelines.

@@ -260,7 +260,7 @@ msg_reschedule_accepted_vendor   msg_reschedule_declined_vendor   msg_reschedule
 - ScissorsLoader spec:
   - Sizes: small = 23×24 px, medium = 39×39 px, large = 61×63 px — FAIL if old values (35/58/92 px) appear
   - Animation: 0.7s cycle (350ms close + 350ms open), ease-in-out, CLOSE_DEG = 32 — FAIL if 33° or bounce easing
-  - ViewBox: must be `"-120 -90 800 820"` for the mobile ScissorsLoader component — FAIL if original `"0 0 555 718"` (blades clip at ±32°)
+  - ViewBox: must be `"-120 -90 800 920"` for the mobile ScissorsLoader component — FAIL if `"0 0 555 718"` (original, blades clip) or `"-120 -90 800 820"` (insufficient bottom clearance: only 12 units; correct value gives 112 units below content end at y≈718)
   - Rotation: must use nested translate-rotate-untranslate pattern (`G transform={translate(pivot)}` → `AnimatedG rotation` → `G transform={translate(-pivot)}`) — FAIL if `originX`/`originY` props are used on `AnimatedG` (unreliable on React Native 0.76 new architecture)
   - color prop: `light` (#FFFFFF) on dark/primary-colour backgrounds; `dark` (#1A1A1A) on white or surface backgrounds — FAIL if hardcoded colour values appear inside the component
 - Pull-to-refresh: `RefreshControl` must suppress the native OS spinner (`tintColor="transparent"`, `colors={['transparent']}`) and render an inline `ScissorsLoader` instead — FAIL if the native spinner is visible
@@ -294,7 +294,7 @@ WARN for TODO or comment references to these features.
 - `app/_layout.tsx` must preload both auth state and `vars_onboarding_done` (AsyncStorage) before calling `SplashScreen.hideAsync()` — FAIL if either is missing from the pre-hide gate
 - Routing must be guarded by a single-fire ref (`didInitRoute`) — FAIL if `useEffect` dependencies could trigger multiple redirects
 - No `ScissorsLoader` overlay must exist between splash and destination screen — FAIL if a full-screen animated overlay is rendered in `_layout.tsx` after the splash hides
-- Homepage (`/(tabs)/index.tsx`): must show `ScissorsLoader` (size="medium" color="dark") while `loading && vendors.length === 0` — FAIL if a blank screen or immediate empty-state is rendered on first load
+- Homepage (`/(tabs)/index.tsx`): must show `ScissorsLoader` (size="large" color="dark") while `loading && vendors.length === 0` — FAIL if a blank screen or immediate empty-state is rendered on first load
 - Booking flow Step 3 (Location step): transport surcharge preview must calculate distance client-side via Haversine using vendor zone coordinates fetched at `BookingFlow` mount; when `transport_fee_kobo > 0`, total shown must include the surcharge and the note "Your stylist is travelling further to reach you — this price reflects that." must appear — FAIL if the pay button shows `service_price_kobo` alone when a surcharge applies; WARN if vendor zone coordinates are unavailable and preview silently shows service price only (acceptable fallback)
 
 ---

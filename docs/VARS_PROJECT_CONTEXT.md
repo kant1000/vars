@@ -58,7 +58,7 @@ The README is the canonical record of what's implemented — screens, edge funct
 | Typography | Inter — Regular, Medium, Bold. Same across app, web, and all content. |
 | Illustration style | Human ink sketch — loose, gestural linework in the style of 19th century engraving (Gustave Doré reference). Black ink on white or white ink on black. No fills, no gradients, no colour. Used on onboarding screens, empty states, brand moments. |
 | Logo mark | Crosshair/location pin — two blades that cross at a pivot point. Drives the scissors loading animation. |
-| Loading animation | Blades open and close slowly and precisely. 0.7s per direction, ease-in-out, no bounce. Three sizes: small (23×24px), medium (39×39px), large (61×63px). White (`light`) on filled black buttons; dark (`dark`) on white/surface backgrounds. |
+| Loading animation | Blades open and close slowly and precisely. 0.7s per direction, ease-in-out, no bounce. Three sizes: small (23×24px), medium (39×39px), large (61×63px). White (`light`) on filled black buttons; dark (`dark`) on white/surface backgrounds. SVG viewBox must be `"-120 -90 800 920"` — the 920 height gives 112 units of bottom clearance so blade tips never clip at ±32°. The web roadmap `ScissorIcon` uses the same value. Do not reduce VB_H below 920. |
 
 ### Brand voice
 
