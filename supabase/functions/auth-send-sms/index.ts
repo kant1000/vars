@@ -9,13 +9,33 @@ const DIALOG360_API_KEY  = Deno.env.get('DIALOG360_API_KEY')  ?? '';
 const DIALOG360_BASE_URL = Deno.env.get('DIALOG360_BASE_URL') ?? 'https://waba-v2.360dialog.io';
 const HOOK_SECRET        = Deno.env.get('AUTH_HOOK_SECRET')   ?? '';
 
+// Standard Webhooks signature verification (https://www.standardwebhooks.com)
+async function verifySignature(req: Request, body: string): Promise<boolean> {
+  const webhookId        = req.headers.get('webhook-id')        ?? '';
+  const webhookTimestamp = req.headers.get('webhook-timestamp') ?? '';
+  const webhookSignature = req.headers.get('webhook-signature') ?? '';
+  if (!webhookId || !webhookTimestamp || !webhookSignature) return false;
+
+  const b64 = HOOK_SECRET.replace(/^v1,whsec_/, '');
+  const keyBytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  const key = await crypto.subtle.importKey(
+    'raw', keyBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'],
+  );
+
+  const signed = `${webhookId}.${webhookTimestamp}.${body}`;
+  const sig    = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(signed));
+  const computed = btoa(String.fromCharCode(...new Uint8Array(sig)));
+
+  return webhookSignature.split(' ').some(s => s === `v1,${computed}`);
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
   }
 
-  const auth = req.headers.get('authorization') ?? '';
-  if (!HOOK_SECRET || auth !== `Bearer ${HOOK_SECRET}`) {
+  const rawBody = await req.text();
+  if (!HOOK_SECRET || !(await verifySignature(req, rawBody))) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' },
@@ -28,7 +48,7 @@ Deno.serve(async (req: Request) => {
   };
 
   try {
-    body = await req.json();
+    body = JSON.parse(rawBody);
   } catch {
     return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
       status: 400,
