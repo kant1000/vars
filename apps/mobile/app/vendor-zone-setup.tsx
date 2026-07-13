@@ -178,7 +178,7 @@ export default function VendorZoneSetup() {
     <View style={[s.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(vendor-tabs)/profile')} style={s.backBtn} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
           <Text style={s.backText}>‹</Text>
         </TouchableOpacity>
         <Text style={s.headerTitle}>Auto-Accept Zone</Text>

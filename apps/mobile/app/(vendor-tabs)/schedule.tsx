@@ -5,7 +5,7 @@
 // ============================================================
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Dimensions, Modal, PanResponder, Platform,
+  Alert, Dimensions, Modal, PanResponder, Platform,
   RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { Calendar as RNCalendar } from 'react-native-calendars';
@@ -17,6 +17,7 @@ import * as Location from 'expo-location';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
+import { useVendorOnline } from '@/contexts/VendorOnlineContext';
 import { fmtPrice, fmtDuration, fmtTime, fmtDate } from '@/lib/format';
 import { CheckIcon, CloseIcon, PinIcon, LockIcon, LightningIcon } from '@/components/icons';
 import * as Haptics from 'expo-haptics';
@@ -974,6 +975,7 @@ function BlockRangeSheet({
 export default function ScheduleScreen() {
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
+  const { isOnline } = useVendorOnline();
 
   const [vendorId, setVendorId] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState(() => getEffectiveToday());
@@ -1546,7 +1548,16 @@ export default function ScheduleScreen() {
       {/* Header */}
       <View style={s.header}>
         <Text style={s.headerTitle}>My Schedule</Text>
-        <TouchableOpacity style={s.zoneBtn} onPress={() => router.push('/vendor-zone-setup' as any)}>
+        <TouchableOpacity
+          style={[s.zoneBtn, !isOnline && s.zoneBtnDisabled]}
+          onPress={() => {
+            if (!isOnline) {
+              Alert.alert('Go online first', 'Go online on the Jobs tab before configuring auto-accept.');
+              return;
+            }
+            router.push('/vendor-zone-setup' as any);
+          }}
+        >
           <LightningIcon size={13} color={autoAcceptLive ? Colors.success : Colors.textMuted} />
           <Text style={[s.zoneBtnLabel, { color: autoAcceptLive ? Colors.ink : Colors.textMuted }]}>Auto-accept</Text>
         </TouchableOpacity>
@@ -1972,6 +1983,7 @@ const s = StyleSheet.create({
     borderRadius: 5, borderWidth: 1.5, borderColor: Colors.ink, backgroundColor: Colors.background,
   },
   zoneBtnLabel: { fontSize: 13, fontWeight: '700', color: Colors.ink },
+  zoneBtnDisabled: { opacity: 0.35, borderColor: Colors.inkFaint },
 
   // Day nav header
   dayNavRow: {

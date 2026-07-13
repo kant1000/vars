@@ -26,15 +26,15 @@ export default function PrivacyScreen() {
   return (
     <View style={[s.container, { paddingTop: insets.top }]}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={12} style={s.backBtn}>
-          <Text style={s.backText}>← Settings</Text>
+        <TouchableOpacity onPress={() => router.back()} hitSlop={8} style={s.backBtn} accessibilityLabel="Go back" accessibilityRole="button">
+          <Text style={s.backText}>‹</Text>
         </TouchableOpacity>
-        <Text style={s.title}>Privacy Policy</Text>
-        <Text style={s.updated}>Last updated: 19 June 2026</Text>
+        <Text style={s.headerTitle}>Privacy Policy</Text>
+        <View style={{ width: 36 }} />
       </View>
 
       <ScrollView contentContainerStyle={s.scroll}>
-
+        <Text style={s.updated}>Last updated: 19 June 2026</Text>
         <Section title="Our approach">
           <Body>
             VARS is a Lagos home service beauty platform for stylists, barbers, hairstylists,
@@ -173,14 +173,15 @@ export default function PrivacyScreen() {
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   header: {
-    paddingHorizontal: 20, paddingVertical: 14,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 12,
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  backBtn: { marginBottom: 4 },
-  backText: { fontSize: 13, color: Colors.textMuted, fontWeight: '500' },
-  title: { fontSize: 24, fontWeight: '800', color: Colors.text, marginBottom: 2 },
-  updated: { fontSize: 12, color: Colors.textMuted },
-  scroll: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 60 },
+  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  backText: { fontSize: 28, color: Colors.ink, lineHeight: 32 },
+  headerTitle: { fontSize: 17, fontWeight: '700', color: Colors.text },
+  updated: { fontSize: 12, color: Colors.textMuted, marginBottom: 16 },
+  scroll: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 60 },
   section: { marginTop: 24 },
   sectionTitle: { fontSize: 15, fontWeight: '700', color: Colors.text, marginBottom: 8 },
   body: { fontSize: 14, color: Colors.textSecondary, lineHeight: 22, marginBottom: 8 },

@@ -21,6 +21,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Colors, BORDER_RADIUS } from '@/constants/colors';
 import { CheckIcon, StarFilledIcon, StarEmptyIcon } from '@/components/icons';
 import { CATEGORY_L2_LABELS } from '@vars/shared';
+import { sanitizeContent } from '@/lib/format';
+import { StatusDot, VendorStatus } from '@/components/StatusDot';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const CAROUSEL_H = 240;
@@ -63,6 +65,8 @@ interface VendorProfile {
   badge_top_rated: boolean;
   pioneer: boolean;
   avg_response_minutes: number | null;
+  is_online: boolean;
+  is_busy: boolean;
   services: VendorService[];
   portfolio: PortfolioPhoto[];
   reviews: Review[];
@@ -131,7 +135,7 @@ export default function VendorProfileScreen() {
 
     const [vendorRes, servicesRes, portfolioRes, reviewsRes, favRes] = await Promise.all([
       supabase.from('vendors')
-        .select('id, full_name, kyc_legal_name, bio, profile_image_url, avg_rating, total_reviews, base_location_text, badge_vars_choice, badge_top_rated, pioneer, avg_response_minutes')
+        .select('id, full_name, kyc_legal_name, bio, profile_image_url, avg_rating, total_reviews, base_location_text, badge_vars_choice, badge_top_rated, pioneer, avg_response_minutes, is_online, is_busy')
         .eq('id', id)
         .single(),
 
@@ -289,6 +293,12 @@ export default function VendorProfileScreen() {
                 <Text style={styles.avatarInitial}>{vendor.full_name?.[0]?.toUpperCase()}</Text>
               </View>
             )}
+            <View style={styles.statusDotWrap}>
+              <StatusDot
+                status={(vendor.is_busy ? 'busy' : vendor.is_online ? 'online' : 'offline') as VendorStatus}
+                size={16}
+              />
+            </View>
           </View>
 
           <View style={styles.profileInfo}>
@@ -316,7 +326,7 @@ export default function VendorProfileScreen() {
               {vendor.badge_top_rated && <Badge label="Top Rated" color={Colors.badgeTopRated} />}
               <Badge label="Verified" color={Colors.badgeVerified} />
             </View>
-            {vendor.bio ? <Text style={styles.bio} numberOfLines={3}>{vendor.bio}</Text> : null}
+            {vendor.bio ? <Text style={styles.bio} numberOfLines={3}>{sanitizeContent(vendor.bio, 150)}</Text> : null}
             <Text style={styles.responseTime}>{formatAcceptTime(vendor.avg_response_minutes)}</Text>
           </View>
         </View>
@@ -395,9 +405,9 @@ export default function VendorProfileScreen() {
                     >
                       <View style={styles.serviceCardLeft}>
                         <Text style={styles.serviceL2}>{l2Label}</Text>
-                        <Text style={styles.serviceName}>{svc.service_name}</Text>
+                        <Text style={styles.serviceName}>{sanitizeContent(svc.service_name, 20)}</Text>
                         {svc.description ? (
-                          <Text style={styles.serviceDesc} numberOfLines={2}>{svc.description}</Text>
+                          <Text style={styles.serviceDesc} numberOfLines={2}>{sanitizeContent(svc.description, 60)}</Text>
                         ) : null}
                         <Text style={styles.serviceDuration}>{formatDuration(svc.duration_blocks)}</Text>
                       </View>
@@ -503,8 +513,9 @@ const styles = StyleSheet.create({
     gap: 14,
     backgroundColor: Colors.background,
   },
-  avatarWrap: {},
+  avatarWrap: { width: AVATAR_SIZE, height: AVATAR_SIZE },
   avatar: { width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2 },
+  statusDotWrap: { position: 'absolute', bottom: 0, right: 0 },
   avatarFallback: { backgroundColor: Colors.ink, alignItems: 'center', justifyContent: 'center' },
   avatarInitial: { fontSize: 28, fontWeight: '800', color: Colors.white },
   profileInfo: { flex: 1, paddingTop: 2 },

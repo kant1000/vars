@@ -4745,6 +4745,11 @@ expo-structured-headers@~4.0.0:
   resolved "https://registry.yarnpkg.com/expo-structured-headers/-/expo-structured-headers-4.0.0.tgz#85537ae6daec61ebfb214ede4107c8841c6e16d0"
   integrity sha512-uPiwZjWq3AdFGgY52+I2nGPrNa6izxAglymPXHUZLekZW290GqIUOk7MBNDD4sg4JwUbSi3gdxEurpEvuq+FSg==
 
+expo-text-extractor@^2.0.0:
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/expo-text-extractor/-/expo-text-extractor-2.0.0.tgz#64a872185f8c08830e00034ffd229344828e5851"
+  integrity sha512-HgB3YwPreQWZ2A/zg3bW4mj1yaSXoM3ttCVswSvablSzJ7Qj6txYe9LnBh8cHVCyJsgOhr9ndj0Gsq8hmYUaiA==
+
 expo-updates-interface@~1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/expo-updates-interface/-/expo-updates-interface-1.0.0.tgz#b98c66b800d29561c62409556948b2af3d5316e5"

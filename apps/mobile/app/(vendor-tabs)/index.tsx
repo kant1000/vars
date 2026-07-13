@@ -18,9 +18,7 @@ import * as Notifications from 'expo-notifications';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as Location from 'expo-location';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/contexts/AuthContext';
 import { Colors, BORDER_RADIUS } from '@/constants/colors';
 import { uploadSinglePortfolioPhoto } from '@/lib/storage';
 import { fmtPrice, fmtDuration, fmtDateTime } from '@/lib/format';
@@ -31,10 +29,9 @@ import { cacheSet, cacheGet } from '@/lib/cache';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { LightningIcon } from '@/components/icons';
 import { BookingStatus, BOOKING_STATUS } from '@vars/shared';
+import { useVendorOnline } from '@/contexts/VendorOnlineContext';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
-
-const LOCATION_UPDATE_INTERVAL_MS = 5 * 60_000; // every 5 min while online
 
 // ── Types ───────────────────────────────────────────────────
 
@@ -575,7 +572,6 @@ function ZoneConfirmModal({
 // ── Root component ───────────────────────────────────────────
 export default function VendorJobsScreen() {
   const insets = useSafeAreaInsets();
-  const { session } = useAuth();
   const { isOnline: isConnected } = useNetworkState();
 
   const scrollViewRef = useRef<ScrollView>(null);
@@ -585,15 +581,12 @@ export default function VendorJobsScreen() {
   const [bookings, setBookings] = useState<VendorBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [isOnline, setIsOnline] = useState(false);
+  const { isOnline, togglingOnline, toggleError, blockReason, toggleOnline, refreshOnlineStatus } = useVendorOnline();
   const [isPioneer, setIsPioneer] = useState(false);
   const [isRestricted, setIsRestricted] = useState(false);
   const [restrictionAmountKobo, setRestrictionAmountKobo] = useState(0);
   const [repaymentClaiming, setRepaymentClaiming] = useState(false);
   const [repaymentClaimed, setRepaymentClaimed] = useState(false);
-  const [togglingOnline, setTogglingOnline] = useState(false);
-  const [toggleError, setToggleError] = useState<string | null>(null);
-  const [blockReason, setBlockReason] = useState<'kyc' | 'no_services' | 'no_notifications' | null>(null);
   const [zoneModal, setZoneModal] = useState<ZoneStatus | null>(null);
   const [vendorPhotoCount, setVendorPhotoCount] = useState(0);
   const [bookingPhotoStates, setBookingPhotoStates] = useState<Map<string, 'pending' | 'approved'>>(new Map());
@@ -684,46 +677,24 @@ export default function VendorJobsScreen() {
     setRefreshing(false);
   }, []);
 
-  // Fetch vendor online status, zone confirmation check, and go-live prerequisites
+  // Fetch vendor-display-only data: pioneer badge, restriction, zone modal
   const checkGoLive = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const [vendorRes, svcRes, notifPerms] = await Promise.all([
-      supabase
-        .from('vendors')
-        .select('is_online, kyc_status, pioneer, pioneer_bookings_completed, auto_accept_enabled, auto_accept_zone_confirmed_date, auto_accept_zone_lat, auto_accept_zone_lng, auto_accept_zone_radius_km, auto_accept_paused_due_to_drift, is_restricted, restriction_amount_owed_kobo, restriction_repayment_claimed_at')
-        .eq('id', user.id)
-        .single(),
-      supabase
-        .from('vendor_services')
-        .select('id', { count: 'exact', head: true })
-        .eq('vendor_id', user.id)
-        .eq('is_active', true),
-      Notifications.getPermissionsAsync(),
-    ]);
+    const { data } = await supabase
+      .from('vendors')
+      .select('pioneer, pioneer_bookings_completed, auto_accept_enabled, auto_accept_zone_confirmed_date, auto_accept_zone_lat, auto_accept_zone_lng, auto_accept_zone_radius_km, is_restricted, restriction_amount_owed_kobo, restriction_repayment_claimed_at')
+      .eq('id', user.id)
+      .single();
 
-    const data = vendorRes.data;
     if (!data) return;
 
-    setIsOnline(data.is_online);
     setIsPioneer(data.pioneer === true && (data.pioneer_bookings_completed ?? 3) < 3);
     setIsRestricted(data.is_restricted === true);
     setRestrictionAmountKobo(data.restriction_amount_owed_kobo ?? 0);
     setRepaymentClaimed(data.restriction_repayment_claimed_at != null);
 
-    // Derive the single most relevant blocking reason
-    if (data.kyc_status !== 'verified') {
-      setBlockReason('kyc');
-    } else if ((svcRes.count ?? 0) === 0) {
-      setBlockReason('no_services');
-    } else if (notifPerms.status !== 'granted') {
-      setBlockReason('no_notifications');
-    } else {
-      setBlockReason(null);
-    }
-
-    // Show zone confirmation modal if auto-accept is on but not confirmed today
     const today = new Date().toISOString().slice(0, 10);
     const zoneConfigured = data.auto_accept_zone_lat != null;
     const confirmedToday = data.auto_accept_zone_confirmed_date === today;
@@ -744,43 +715,8 @@ export default function VendorJobsScreen() {
 
   useEffect(() => { checkGoLive(); }, []);
 
-  // Checks all 3 prerequisites; if vendor is online and any fail, auto-takes them offline.
-  // Called on focus return and on the periodic interval.
-  const periodicGoLiveCheck = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const [svcRes, notifPerms, vendorRes] = await Promise.all([
-      supabase.from('vendor_services')
-        .select('id', { count: 'exact', head: true })
-        .eq('vendor_id', user.id)
-        .eq('is_active', true),
-      Notifications.getPermissionsAsync(),
-      supabase.from('vendors').select('kyc_status').eq('id', user.id).single(),
-    ]);
-
-    let reason: 'kyc' | 'no_services' | 'no_notifications' | null = null;
-    if (vendorRes.data?.kyc_status !== 'verified') reason = 'kyc';
-    else if ((svcRes.count ?? 0) === 0) reason = 'no_services';
-    else if (notifPerms.status !== 'granted') reason = 'no_notifications';
-
-    setBlockReason(reason);
-
-    if (reason) {
-      setIsOnline(false);
-      await supabase.from('vendors').update({ is_online: false }).eq('id', user.id);
-    }
-  }, []);
-
-  // Re-run full prerequisite check on focus (catches permission changes in Settings)
-  useFocusEffect(useCallback(() => { periodicGoLiveCheck(); }, [periodicGoLiveCheck]));
-
-  // Poll every 2 minutes while online — auto-offline if any prerequisite fails
-  useEffect(() => {
-    if (!isOnline) return;
-    const id = setInterval(periodicGoLiveCheck, 2 * 60_000);
-    return () => clearInterval(id);
-  }, [isOnline, periodicGoLiveCheck]);
+  // Re-run online prerequisite check on focus (context handles interval + auto-offline)
+  useFocusEffect(useCallback(() => { refreshOnlineStatus(); }, [refreshOnlineStatus]));
 
   // useFocusEffect handles both initial mount and return-from-navigation refreshes
   useFocusEffect(useCallback(() => {
@@ -812,65 +748,6 @@ export default function VendorJobsScreen() {
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scrollKey, loading, historyCount]);
-
-  const toggleOnline = async () => {
-    // Block going online if prerequisites are not met
-    if (!isOnline && blockReason) return;
-
-    setTogglingOnline(true);
-    setToggleError(null);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const next = !isOnline;
-      setIsOnline(next); // optimistic
-      const { error } = await supabase.from('vendors').update({ is_online: next }).eq('id', user.id);
-      if (error) {
-        setIsOnline(!next); // revert
-        setToggleError("Couldn't save — tap to retry");
-      }
-    }
-    setTogglingOnline(false);
-  };
-
-  // ── Periodic location updates for zone drift detection ────
-  // Fires every 60 s while the vendor is marked online.
-  // Stops automatically when vendor goes offline or app backgrounds.
-  useEffect(() => {
-    if (!isOnline || !session) return;
-
-    let intervalId: ReturnType<typeof setInterval> | null = null;
-
-    const sendLocation = async () => {
-      const { status } = await Location.getForegroundPermissionsAsync();
-      if (status !== 'granted') return;
-      try {
-        const loc = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
-        await fetch(`${SUPABASE_URL}/functions/v1/vendor-update-location`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            lat: loc.coords.latitude,
-            lng: loc.coords.longitude,
-          }),
-        });
-      } catch {
-        // Non-critical — skip this tick silently
-      }
-    };
-
-    // Send immediately on going online, then every interval
-    sendLocation();
-    intervalId = setInterval(sendLocation, LOCATION_UPDATE_INTERVAL_MS);
-
-    return () => {
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, [isOnline, session]);
 
   const pending  = bookings.filter((b) => b.status === BOOKING_STATUS.PENDING);
   const ACTIVE_STATUSES  = [BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ON_WAY, BOOKING_STATUS.ARRIVED, BOOKING_STATUS.SERVICE_RENDERED] as BookingStatus[];
@@ -962,16 +839,21 @@ export default function VendorJobsScreen() {
             onPress={toggleOnline}
             disabled={togglingOnline}
           >
-            {togglingOnline ? (
-              <ScissorsLoader size="small" color="dark" />
-            ) : isOnline ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.accentGreen }} />
-                <Text style={c.onlineToggleText}>Online</Text>
-              </View>
-            ) : (
-              <Text style={c.onlineToggleText}>Go online</Text>
-            )}
+            {/* Invisible anchor — always in normal flow, locks button to "Go online" width */}
+            <Text style={[c.onlineToggleText, { opacity: 0 }]}>Go online</Text>
+            {/* Actual content centred absolutely so it never affects layout */}
+            <View style={c.onlineToggleOverlay}>
+              {togglingOnline ? (
+                <ScissorsLoader size="small" color="dark" />
+              ) : isOnline ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.accentGreen }} />
+                  <Text style={c.onlineToggleText}>Online</Text>
+                </View>
+              ) : (
+                <Text style={c.onlineToggleText}>Go online</Text>
+              )}
+            </View>
           </TouchableOpacity>
           {toggleError && <Text style={c.inlineError}>{toggleError}</Text>}
         </View>
@@ -1095,8 +977,13 @@ const c = StyleSheet.create({
   },
   headerTitle: { fontSize: 24, fontWeight: '800', color: Colors.text },
   onlineToggle: {
-    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 5,
+    height: 34, paddingHorizontal: 14, borderRadius: 5,
     borderWidth: 1.5, borderColor: Colors.ink, backgroundColor: 'transparent',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  onlineToggleOverlay: {
+    position: 'absolute', top: 0, bottom: 0, left: 0, right: 0,
+    alignItems: 'center', justifyContent: 'center',
   },
   onlineOn:  {},
   onlineOff: {},

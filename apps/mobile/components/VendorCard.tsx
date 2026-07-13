@@ -12,6 +12,7 @@ import { Colors } from '@/constants/colors';
 import { StarFilledIcon } from '@/components/icons';
 import { usePostHog, EVENTS } from '@/lib/analytics';
 import { CATEGORY_L1_LABELS } from '@vars/shared';
+import { StatusDot, VendorStatus } from '@/components/StatusDot';
 
 export interface VendorCardData {
   id: string;
@@ -20,6 +21,7 @@ export interface VendorCardData {
   profile_image_url: string | null;
   distance_km: number;
   is_online: boolean;
+  is_busy: boolean;
   avg_rating: number;
   total_reviews: number;
   badge_vars_choice: boolean;
@@ -66,6 +68,12 @@ export function VendorCard({ vendor, returnTo }: Props) {
             </Text>
           </View>
         )}
+        <View style={styles.statusDotWrap}>
+          <StatusDot
+            status={(vendor.is_busy ? 'busy' : vendor.is_online ? 'online' : 'offline') as VendorStatus}
+            size={14}
+          />
+        </View>
       </View>
 
       {/* Info */}
@@ -135,8 +143,9 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.border,
     marginHorizontal: 16, marginBottom: 12,
   },
-  avatarWrap: {},
+  avatarWrap: { width: 68, height: 68 },
   avatar: { width: 68, height: 68, borderRadius: 34 },
+  statusDotWrap: { position: 'absolute', bottom: 0, right: 0 },
   avatarFallback: { backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
   avatarInitial: { fontSize: 24, fontWeight: '700', color: Colors.primary },
   info: { flex: 1, gap: 4 },

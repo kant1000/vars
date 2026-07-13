@@ -65,7 +65,7 @@ interface BookingDetail {
 
 // ── Silent input filter ───────────────────────────────────────
 function sanitize(text: string, maxLen: number) {
-  return text.replace(/@/g, '').replace(/\d{7,}/g, '').slice(0, maxLen);
+  return text.replace(/@/g, '').replace(/(\d[\s.\-]{0,2}){7,}/g, '').replace(/\d{7,}/g, '').slice(0, maxLen);
 }
 
 
@@ -480,7 +480,7 @@ export default function BookingDetailScreen() {
 
       {/* Header */}
       <View style={s.header}>
-        <TouchableOpacity onPress={handleBack} style={s.headerBack}>
+        <TouchableOpacity onPress={handleBack} style={s.headerBack} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
           <Text style={s.headerBackText}>‹</Text>
         </TouchableOpacity>
         <Text style={s.headerTitle}>Booking details</Text>
@@ -800,7 +800,7 @@ const s = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
   headerBack: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  headerBackText: { fontSize: 28, color: Colors.primary, lineHeight: 32 },
+  headerBackText: { fontSize: 28, color: Colors.ink, lineHeight: 32 },
   headerTitle: { fontSize: 17, fontWeight: '700', color: Colors.text },
 
   statusHero: {

@@ -6,9 +6,11 @@ import { Tabs } from 'expo-router';
 import { Platform } from 'react-native';
 import { Colors } from '@/constants/colors';
 import { BriefcaseIcon, CalendarIcon, BanknoteIcon, PersonIcon } from '@/components/icons';
+import { VendorOnlineProvider } from '@/contexts/VendorOnlineContext';
 
 export default function VendorTabLayout() {
   return (
+    <VendorOnlineProvider>
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -32,5 +34,6 @@ export default function VendorTabLayout() {
       <Tabs.Screen name="terms"    options={{ href: null }} />
       <Tabs.Screen name="privacy"  options={{ href: null }} />
     </Tabs>
+    </VendorOnlineProvider>
   );
 }

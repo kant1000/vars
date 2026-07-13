@@ -15,6 +15,7 @@ import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors, BORDER_RADIUS } from '@/constants/colors';
+import { sanitizeContent } from '@/lib/format';
 
 export default function Step1Profile() {
   const { user } = useAuth();
@@ -116,6 +117,7 @@ export default function Step1Profile() {
               value={displayName}
               onChangeText={setDisplayName}
               autoCapitalize="words"
+              maxLength={25}
             />
             <Text style={styles.fieldCaption}>
               This is how you'll appear to customers. Your legal name is confirmed during identity verification.
@@ -172,7 +174,7 @@ export default function Step1Profile() {
               placeholder="What makes you great?"
               placeholderTextColor={Colors.textMuted}
               value={bio}
-              onChangeText={(t) => setBio(t.slice(0, 150))}
+              onChangeText={(t) => setBio(sanitizeContent(t, 150))}
               multiline
               maxLength={150}
             />

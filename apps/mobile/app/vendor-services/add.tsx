@@ -17,6 +17,7 @@ import {
   CATEGORY_L1, CATEGORY_L1_LABELS, CATEGORY_L2_MAP, CATEGORY_L2_LABELS,
   MIN_SERVICE_PRICE_KOBO, MAX_VENDOR_SERVICES, SERVICE_NAME_MAX_CHARS, SERVICE_DESC_MAX_CHARS,
 } from '@vars/shared';
+import { sanitizeContent } from '@/lib/format';
 
 const L1_KEYS = Object.values(CATEGORY_L1) as string[];
 
@@ -138,8 +139,8 @@ export default function AddServiceScreen() {
     >
       {/* Header */}
       <View style={styles.headerRow}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={12}>
-          <Text style={styles.back}>‹ Back</Text>
+        <TouchableOpacity onPress={() => router.back()} hitSlop={8} style={styles.backBtn} accessibilityLabel="Go back" accessibilityRole="button">
+          <Text style={styles.back}>‹</Text>
         </TouchableOpacity>
       </View>
       <Text style={styles.title}>Add a service</Text>
@@ -188,7 +189,7 @@ export default function AddServiceScreen() {
       <TextInput
         style={styles.textInput}
         value={formName}
-        onChangeText={setFormName}
+        onChangeText={(t) => setFormName(sanitizeContent(t, SERVICE_NAME_MAX_CHARS))}
         placeholder={NAME_PLACEHOLDER[formL1] ?? 'e.g. Service name'}
         placeholderTextColor={Colors.textMuted}
         maxLength={SERVICE_NAME_MAX_CHARS}
@@ -202,7 +203,7 @@ export default function AddServiceScreen() {
       <TextInput
         style={[styles.textInput, styles.textArea]}
         value={formDesc}
-        onChangeText={setFormDesc}
+        onChangeText={(t) => setFormDesc(sanitizeContent(t, SERVICE_DESC_MAX_CHARS))}
         placeholder={DESC_PLACEHOLDER[formL1] ?? 'Briefly describe the service...'}
         placeholderTextColor={Colors.textMuted}
         maxLength={SERVICE_DESC_MAX_CHARS}
@@ -262,7 +263,8 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   headerRow: { marginBottom: 12 },
-  back: { fontSize: 16, color: Colors.primary, fontWeight: '600' },
+  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  back: { fontSize: 28, color: Colors.ink, lineHeight: 32 },
   title: { fontSize: 26, fontWeight: '700', color: Colors.text, marginBottom: 6 },
   subtitle: { fontSize: 14, color: Colors.textSecondary, marginBottom: 24 },
 

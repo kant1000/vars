@@ -18,6 +18,7 @@ import {
   CATEGORY_L1, CATEGORY_L1_LABELS, CATEGORY_L2_MAP, CATEGORY_L2_LABELS,
   MIN_SERVICE_PRICE_KOBO, MAX_VENDOR_SERVICES, SERVICE_NAME_MAX_CHARS, SERVICE_DESC_MAX_CHARS,
 } from '@vars/shared';
+import { sanitizeContent } from '@/lib/format';
 
 interface DraftService {
   tempId: string;
@@ -230,7 +231,7 @@ export default function Step2Services() {
       <TextInput
         style={styles.textInput}
         value={formName}
-        onChangeText={setFormName}
+        onChangeText={(t) => setFormName(sanitizeContent(t, SERVICE_NAME_MAX_CHARS))}
         placeholder={NAME_PLACEHOLDER[formL1] ?? 'e.g. Service name'}
         placeholderTextColor={Colors.textMuted}
         maxLength={SERVICE_NAME_MAX_CHARS}
@@ -244,7 +245,7 @@ export default function Step2Services() {
       <TextInput
         style={[styles.textInput, styles.textArea]}
         value={formDesc}
-        onChangeText={setFormDesc}
+        onChangeText={(t) => setFormDesc(sanitizeContent(t, SERVICE_DESC_MAX_CHARS))}
         placeholder={DESC_PLACEHOLDER[formL1] ?? 'Briefly describe the service...'}
         placeholderTextColor={Colors.textMuted}
         maxLength={SERVICE_DESC_MAX_CHARS}

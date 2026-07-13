@@ -108,7 +108,7 @@ export default function ReviewScreen() {
       <View style={[s.container, { paddingTop: insets.top }]}>
         {/* Header */}
         <View style={s.header}>
-          <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+          <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')} style={s.backBtn} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
             <Text style={s.backText}>‹</Text>
           </TouchableOpacity>
           <Text style={s.headerTitle}>Leave a review</Text>
@@ -192,7 +192,7 @@ const s = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  backText: { fontSize: 28, color: Colors.primary, lineHeight: 32 },
+  backText: { fontSize: 28, color: Colors.ink, lineHeight: 32 },
   headerTitle: { fontSize: 17, fontWeight: '700', color: Colors.text },
 
   body: { padding: 20, gap: 16, paddingBottom: 60 },

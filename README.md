@@ -127,6 +127,7 @@ vars/
   - **Recurring weekly blocks** — "BLOCK EVERY" Mon–Sun chip row in the calendar modal. Tap a chip to block that weekday every week indefinitely; new days entering the 14-day window are blocked automatically on each schedule focus. Tap again to remove the rule and clear future blocks. Multiple weekdays supported; no end date. Stored in `recurring_block_weekdays integer[]` on the `vendors` row.
 - **Auto-Accept** — geographic zone system for instant booking confirmation (see below)
 - **Earnings (Stage 1)** — period-filtered earnings hero (Today / This week / This month / All time) with hide-balance toggle; booking-level list with three distinct status buckets: **Cleared** (completed, vendor_amount_kobo from payout_history), **Confirming** (service_rendered, estimated 80%), **Under review** (disputed, estimated 80%); hero chip shows each bucket's subtotal; disputed bookings are visible and counted in the total
+- **Content controls** — vendor-authored text (bio, service name, service description) is sanitised on input and at display time: `@` symbols, phone-pattern digit clusters, and 5+ consecutive digits are stripped. Portfolio photo uploads are scanned on-device via `expo-text-extractor` (OCR) and rejected if they contain phone numbers or social handles; requires EAS dev build to activate
 - **Pioneer programme** — lead capture and conversion flow (cohort complete as of May 2026; landing form now presents general stylist registration for all new vendors)
 
 ### Landing Page & Blog

@@ -157,8 +157,8 @@ export default function ConsentScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <TouchableOpacity style={styles.navBack} onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')}>
-        <Text style={styles.navBackText}>← Back</Text>
+      <TouchableOpacity style={styles.navBack} onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
+        <Text style={styles.navBackText}>‹</Text>
       </TouchableOpacity>
 
       <Text style={styles.title}>Photo approval</Text>
@@ -207,8 +207,8 @@ const styles = StyleSheet.create({
     flex: 1, backgroundColor: Colors.background,
     alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32,
   },
-  navBack: { marginTop: 8, marginBottom: 20 },
-  navBackText: { fontSize: 16, color: Colors.primary, fontWeight: '500' },
+  navBack: { marginTop: 8, marginBottom: 20, width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  navBackText: { fontSize: 28, color: Colors.ink, lineHeight: 32 },
   title: { fontSize: 24, fontWeight: '800', color: Colors.text, marginBottom: 10 },
   body: { fontSize: 15, color: Colors.textSecondary, lineHeight: 22, marginBottom: 24 },
   vendorName: { fontWeight: '700', color: Colors.text },

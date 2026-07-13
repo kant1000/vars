@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { signOut } from '@/lib/auth';
 import { Colors, BORDER_RADIUS } from '@/constants/colors';
-import { ChevronRightIcon } from '@/components/icons';
+import { ChevronRightIcon, CheckIcon } from '@/components/icons';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 
 // Stored in AsyncStorage; enforcement gate belongs in _layout.tsx on AppState change.
@@ -196,10 +196,11 @@ export default function VendorSettings() {
   return (
     <View style={[s.container, { paddingTop: insets.top }]}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={12} style={s.backBtn}>
-          <Text style={s.backText}>← Profile</Text>
+        <TouchableOpacity onPress={() => router.back()} hitSlop={8} style={s.backBtn} accessibilityLabel="Go back" accessibilityRole="button">
+          <Text style={s.backText}>‹</Text>
         </TouchableOpacity>
         <Text style={s.headerTitle}>Settings</Text>
+        <View style={{ width: 36 }} />
       </View>
 
       <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
@@ -218,30 +219,33 @@ export default function VendorSettings() {
               autoCapitalize="words"
               returnKeyType="done"
               onSubmitEditing={handleSaveName}
+              maxLength={25}
             />
+            {nameDirty && (
+              <TouchableOpacity
+                style={[s.confirmBtn, savingName && s.saveBtnDisabled]}
+                onPress={handleSaveName}
+                disabled={savingName}
+                activeOpacity={0.85}
+                accessibilityLabel="Save name"
+                accessibilityRole="button"
+              >
+                {savingName
+                  ? <ScissorsLoader size="small" color="light" />
+                  : <CheckIcon size={18} color={Colors.white} />}
+              </TouchableOpacity>
+            )}
           </View>
           <View style={[s.fieldRow, s.lockedRow]}>
             <Text style={s.fieldLabel}>Email</Text>
             <Text style={s.fieldValue}>{email || '—'}</Text>
             <Text style={s.lockBadge}>Locked</Text>
           </View>
-          <View style={[s.fieldRow, s.lockedRow, !nameDirty && s.lastRow]}>
+          <View style={[s.fieldRow, s.lockedRow, s.lastRow]}>
             <Text style={s.fieldLabel}>Phone</Text>
             <Text style={s.fieldValue}>{phone || '—'}</Text>
             <Text style={s.lockBadge}>Locked</Text>
           </View>
-          {nameDirty && (
-            <TouchableOpacity
-              style={[s.saveBtn, savingName && s.saveBtnDisabled]}
-              onPress={handleSaveName}
-              disabled={savingName}
-              activeOpacity={0.85}
-            >
-              {savingName
-                ? <ScissorsLoader size="small" color="light" />
-                : <Text style={s.saveBtnText}>Save changes</Text>}
-            </TouchableOpacity>
-          )}
         </View>
 
         {/* SECURITY */}
@@ -445,12 +449,13 @@ export default function VendorSettings() {
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   header: {
-    paddingHorizontal: 20, paddingVertical: 14,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 12,
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  backBtn: { marginBottom: 4 },
-  backText: { fontSize: 13, color: Colors.textMuted, fontWeight: '500' },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: Colors.text },
+  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  backText: { fontSize: 28, color: Colors.ink, lineHeight: 32 },
+  headerTitle: { fontSize: 17, fontWeight: '700', color: Colors.text },
   scroll: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 60 },
 
   sectionLabel: {
@@ -486,6 +491,12 @@ const s = StyleSheet.create({
   rowLabel: { fontSize: 15, fontWeight: '500', color: Colors.text },
   rowDestructive: { fontSize: 15, fontWeight: '500', color: Colors.error },
 
+  confirmBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: Colors.ink,
+    alignItems: 'center', justifyContent: 'center',
+    marginLeft: 8,
+  },
   saveBtn: {
     margin: 12, height: 48, backgroundColor: Colors.ink,
     borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center',

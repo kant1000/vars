@@ -286,8 +286,8 @@ export default function VendorLoginScreen() {
           <TouchableOpacity onPress={() => {
             if (screen !== 'entry') { setScreen('entry'); setPassword(''); setOtpCode(''); }
             else router.back();
-          }}>
-            <Text style={styles.backText}>← Back</Text>
+          }} hitSlop={8} style={styles.backBtn} accessibilityLabel="Go back" accessibilityRole="button">
+            <Text style={styles.backText}>‹</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => router.replace('/auth/login')}>
             <Text style={styles.customerLinkText}>CUSTOMER LOGIN  ›</Text>
@@ -533,7 +533,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between',
     alignItems: 'center', marginBottom: 32,
   },
-  backText: { fontSize: 16, color: Colors.ink, fontWeight: '500' },
+  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  backText: { fontSize: 28, color: Colors.ink, lineHeight: 32 },
   customerLinkText: { fontSize: 13, fontWeight: '700', letterSpacing: 1.2, color: Colors.text },
 
   wordmark: {

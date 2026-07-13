@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // VARS — Vendor Profile
 // Sections: Portfolio, My Services
 // Account/Security/Payout/Legal → /vendor-settings (root stack screen)
@@ -17,6 +17,8 @@ import { uploadSinglePortfolioPhoto, deletePortfolioPhoto } from '@/lib/storage'
 import { Colors, BORDER_RADIUS } from '@/constants/colors';
 import { CheckIcon, CloseIcon, EditIcon, GearIcon } from '@/components/icons';
 import { CATEGORY_L2_LABELS, MAX_VENDOR_SERVICES } from '@vars/shared';
+import { useVendorOnline } from '@/contexts/VendorOnlineContext';
+import { StatusDot } from '@/components/StatusDot';
 
 const PHOTO_SIZE = (Dimensions.get('window').width - 48 - 16) / 3;
 
@@ -45,6 +47,8 @@ const CONSENT_LABEL: Record<string, { text: string; color: string }> = {
 
 export default function VendorProfileScreen() {
   const insets = useSafeAreaInsets();
+  const { vendorStatus, isOnline, isBusy, togglingOnline, blockReason, toggleError, toggleOnline } = useVendorOnline();
+  const [showStatusModal, setShowStatusModal] = useState(false);
 
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const [vendorName, setVendorName] = useState('');
@@ -260,10 +264,90 @@ export default function VendorProfileScreen() {
         </View>
       </Modal>
 
+      {/* Online / offline status modal */}
+      <Modal
+        visible={showStatusModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowStatusModal(false)}
+      >
+        <TouchableOpacity
+          style={s.statusOverlay}
+          activeOpacity={1}
+          onPress={() => setShowStatusModal(false)}
+        >
+          <TouchableOpacity activeOpacity={1} style={s.statusCard} onPress={() => {}}>
+            <View style={s.statusCardHeader}>
+              <StatusDot status={vendorStatus} size={18} />
+              <Text style={s.statusCardTitle}>
+                {vendorStatus === 'online' ? "You're online"
+                  : vendorStatus === 'busy' ? "You're busy"
+                  : "You're offline"}
+              </Text>
+            </View>
+
+            <Text style={s.statusCardBody}>
+              {vendorStatus === 'online'
+                ? 'Customers can see you and send bookings.'
+                : vendorStatus === 'busy'
+                ? isBusy && !isOnline
+                  ? "You'll appear offline once your current booking is done."
+                  : "You're with a client. Go offline now and you'll stop receiving new bookings when the job ends."
+                : blockReason === 'kyc'
+                ? 'Complete identity verification before going online.'
+                : blockReason === 'no_services'
+                ? 'Add at least one service before going online.'
+                : blockReason === 'no_notifications'
+                ? 'Allow notifications before going online.'
+                : "You're not visible to customers."}
+            </Text>
+
+            {toggleError ? (
+              <Text style={s.statusError}>{toggleError}</Text>
+            ) : null}
+
+            {/* Don't show toggle if already acted (busy+offline pending end) */}
+            {!(isBusy && !isOnline) && (
+              <TouchableOpacity
+                style={[
+                  s.statusToggleBtn,
+                  (!isOnline && !!blockReason) && s.statusToggleBtnDisabled,
+                ]}
+                onPress={async () => {
+                  await toggleOnline();
+                  if (!blockReason) setShowStatusModal(false);
+                }}
+                disabled={togglingOnline || (!isOnline && !!blockReason)}
+                activeOpacity={0.8}
+              >
+                <Text style={s.statusToggleBtnText}>
+                  {togglingOnline
+                    ? 'Saving...'
+                    : isOnline ? 'Go offline' : 'Go online'}
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              onPress={() => setShowStatusModal(false)}
+              hitSlop={8}
+              style={{ alignSelf: 'center', marginTop: 10 }}
+            >
+              <Text style={s.statusDismiss}>Close</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
       <ScrollView contentContainerStyle={{ paddingBottom: 60 }}>
         {/* Hero */}
         <View style={s.heroRow}>
-          <View style={s.heroAvatarWrap}>
+          <TouchableOpacity
+            style={s.heroAvatarWrap}
+            onPress={() => setShowStatusModal(true)}
+            activeOpacity={0.85}
+            hitSlop={4}
+          >
             {profileImageUrl ? (
               <Image source={{ uri: profileImageUrl }} style={s.heroAvatar} contentFit="cover" />
             ) : (
@@ -271,7 +355,10 @@ export default function VendorProfileScreen() {
                 <Text style={s.heroAvatarText}>{(vendorName || 'V').charAt(0).toUpperCase()}</Text>
               </View>
             )}
-          </View>
+            <View style={s.statusDotWrap}>
+              <StatusDot status={vendorStatus} size={16} />
+            </View>
+          </TouchableOpacity>
 
           <View style={s.heroInfo}>
             <View style={s.heroNameRow}>
@@ -282,7 +369,7 @@ export default function VendorProfileScreen() {
                 style={s.heroEditBtn}
                 activeOpacity={0.7}
               >
-                <GearIcon size={16} color={Colors.textMuted} />
+                <GearIcon size={24} color={Colors.textMuted} />
               </TouchableOpacity>
             </View>
 
@@ -427,6 +514,9 @@ const s = StyleSheet.create({
   },
   heroAvatarWrap: { width: 56, height: 56 },
   heroAvatar: { width: 56, height: 56, borderRadius: 28 },
+  statusDotWrap: {
+    position: 'absolute', bottom: 0, right: 0,
+  },
   heroAvatarFallback: { backgroundColor: Colors.ink, alignItems: 'center', justifyContent: 'center' },
   heroAvatarText: { fontSize: 22, fontWeight: '800', color: Colors.white },
   heroInfo: { flex: 1 },
@@ -500,4 +590,26 @@ const s = StyleSheet.create({
   photoHint: {
     fontSize: 12, color: Colors.textMuted, marginTop: 4, marginBottom: 8, lineHeight: 17,
   },
+
+  statusOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  statusCard: {
+    backgroundColor: Colors.background, borderTopLeftRadius: 16, borderTopRightRadius: 16,
+    paddingHorizontal: 24, paddingTop: 24, paddingBottom: 40,
+  },
+  statusCardHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10,
+  },
+  statusCardTitle: { fontSize: 18, fontWeight: '700', color: Colors.text },
+  statusCardBody: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20, marginBottom: 20 },
+  statusError: { fontSize: 13, color: Colors.error ?? '#EF4444', marginBottom: 12 },
+  statusToggleBtn: {
+    height: 50, borderRadius: BORDER_RADIUS, backgroundColor: Colors.ink,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 4,
+  },
+  statusToggleBtnDisabled: { opacity: 0.4 },
+  statusToggleBtnText: { fontSize: 15, fontWeight: '700', color: '#FFF' },
+  statusDismiss: { fontSize: 14, color: Colors.textMuted, fontWeight: '500' },
 });

@@ -5,6 +5,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import * as FileSystem from 'expo-file-system';
 import { supabase } from './supabase';
+import { imageContainsContact } from './ocr';
 
 const UPLOAD_SIZE = 1024;
 
@@ -89,6 +90,10 @@ export async function uploadSinglePortfolioPhoto(
   });
 
   if (result.canceled || !result.assets[0]) return null;
+
+  if (await imageContainsContact(result.assets[0].uri)) {
+    throw new Error("Photos can't include contact details like phone numbers or handles. Try a different one.");
+  }
 
   const resized = await resizeToSquare(result.assets[0].uri);
   const { buffer } = await readUriAsArrayBuffer(resized);
