@@ -47,7 +47,6 @@ export default function VendorTermsPage() {
           <p>This means:</p>
           <ul>
             <li>You are responsible for your own taxes, tools, products, transport, and professional insurance</li>
-            <li>VARS does not provide employment benefits, holiday pay, sick pay, or pension contributions</li>
             <li>You are free to work on other platforms or independently. There is no exclusivity requirement.</li>
             <li>You control your own schedule, pricing, and service offerings within the platform&apos;s rules</li>
           </ul>

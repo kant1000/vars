@@ -22,7 +22,6 @@ You are an independent contractor. You are not an employee, worker, agent, or pa
 This means:
 
 - You are responsible for your own taxes, tools, products, transport, and professional insurance
-- VARS does not provide employment benefits, holiday pay, sick pay, or pension contributions
 - You are free to work on other platforms or independently. There is no exclusivity requirement.
 - You control your own schedule, pricing, and service offerings within the platform's rules
 
