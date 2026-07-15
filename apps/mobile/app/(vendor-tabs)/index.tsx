@@ -27,7 +27,7 @@ import { useNetworkState } from '@/lib/useNetworkState';
 import { flushQueue } from '@/lib/actionQueue';
 import { cacheSet, cacheGet } from '@/lib/cache';
 import { OfflineBanner } from '@/components/OfflineBanner';
-import { LightningIcon } from '@/components/icons';
+import { LightningIcon, CheckCircleIcon, XCircleIcon, CarIcon, CreditCardIcon } from '@/components/icons';
 import { BookingStatus, BOOKING_STATUS } from '@vars/shared';
 import { useVendorOnline } from '@/contexts/VendorOnlineContext';
 
@@ -187,6 +187,8 @@ function ActiveCard({
   const [advanceError, setAdvanceError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
+  const [gateStage, setGateStage] = useState<'confirm' | 'charging' | 'success' | 'awaiting_payment' | 'error' | null>(null);
+  const [gateError, setGateError] = useState<string | null>(null);
   const action = FLOW_ACTIONS[booking.status];
 
   // "On My Way" gate window: opens GATE_WINDOW_MINUTES (120) before scheduled_at
@@ -276,6 +278,43 @@ function ActiveCard({
     );
   };
 
+  const handleGate = async () => {
+    setGateStage('charging');
+    setGateError(null);
+    try {
+      const { data: { session: s } } = await supabase.auth.getSession();
+      const res = await fetchWithRetry(`${SUPABASE_URL}/functions/v1/paystack-gate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s?.access_token ?? ''}` },
+        body: JSON.stringify({ booking_id: booking.id, trigger_type: 'manual' }),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        setGateError(d.error ?? "Couldn't process payment — please try again.");
+        setGateStage('error');
+        return;
+      }
+      const d = await res.json();
+      if (d.gate_already_fired) {
+        setGateStage(null);
+        onUpdated();
+        return;
+      }
+      if (d.checkout_required) {
+        setGateStage('awaiting_payment');
+        return;
+      }
+      setGateStage('success');
+      setTimeout(() => {
+        setGateStage(null);
+        onUpdated();
+      }, 1500);
+    } catch {
+      setGateError("Couldn't reach the server — please try again.");
+      setGateStage('error');
+    }
+  };
+
   const statusColors: Partial<Record<BookingStatus, string>> = {
     accepted:         Colors.statusAccepted,
     on_way:           Colors.statusOnWay,
@@ -321,32 +360,10 @@ function ActiveCard({
       {booking.status === BOOKING_STATUS.ACCEPTED && !booking.gate_fired && (
         isInGateWindow ? (
           <TouchableOpacity
-            style={[c.flowBtn, { backgroundColor: Colors.statusOnWay }, acting && c.btnDisabled]}
-            onPress={async () => {
-              setActing(true);
-              setAdvanceError(null);
-              try {
-                const { data: { session: s } } = await supabase.auth.getSession();
-                const res = await fetchWithRetry(`${SUPABASE_URL}/functions/v1/paystack-gate`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s?.access_token ?? ''}` },
-                  body: JSON.stringify({ booking_id: booking.id, trigger_type: 'manual' }),
-                });
-                if (!res.ok) {
-                  const d = await res.json();
-                  setAdvanceError(d.error ?? "Couldn't save — tap to retry");
-                } else {
-                  onUpdated();
-                }
-              } catch {
-                setAdvanceError("Couldn't reach server — tap to retry");
-              }
-              setActing(false);
-            }}
-            disabled={acting}
+            style={[c.flowBtn, { backgroundColor: Colors.statusOnWay }]}
+            onPress={() => setGateStage('confirm')}
           >
-            {acting ? <ScissorsLoader size="small" color="light" />
-              : <Text style={c.flowBtnText}>I'm on my way</Text>}
+            <Text style={c.flowBtnText}>I'm on my way</Text>
           </TouchableOpacity>
         ) : (
           <View style={c.gateWindowBanner}>
@@ -393,7 +410,101 @@ function ActiveCard({
         </TouchableOpacity>
       )}
       {cancelError && <Text style={c.inlineError}>{cancelError}</Text>}
+      <GateModal
+        stage={gateStage}
+        customerName={booking.customer_name}
+        error={gateError}
+        onConfirm={handleGate}
+        onDismiss={() => setGateStage(null)}
+        onClose={() => { setGateStage(null); onUpdated(); }}
+      />
     </View>
+  );
+}
+
+// ── Gate payment modal ────────────────────────────────────────
+type GateStage = 'confirm' | 'charging' | 'success' | 'awaiting_payment' | 'error' | null;
+
+function GateModal({
+  stage, customerName, error, onConfirm, onDismiss, onClose,
+}: {
+  stage: GateStage;
+  customerName: string;
+  error: string | null;
+  onConfirm: () => void;
+  onDismiss: () => void;
+  onClose: () => void;
+}) {
+  if (!stage) return null;
+  const firstName = customerName.split(' ')[0];
+  return (
+    <Modal
+      visible
+      transparent
+      animationType="fade"
+      onRequestClose={stage === 'confirm' ? onDismiss : () => {}}
+    >
+      <View style={gm.overlay}>
+        <View style={gm.sheet}>
+          {stage === 'confirm' && (
+            <>
+              <CarIcon size={28} color={Colors.statusOnWay} />
+              <Text style={gm.title}>Heading out?</Text>
+              <Text style={gm.body}>
+                {'Once you tap below, '}
+                {firstName}
+                {' gets charged and your departure is logged.\n\nTrust is the currency on VARS.'}
+              </Text>
+              <TouchableOpacity style={gm.primaryBtn} onPress={onConfirm}>
+                <Text style={gm.primaryBtnText}>I'm on my way →</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={gm.ghostBtn} onPress={onDismiss}>
+                <Text style={gm.ghostBtnText}>Not yet</Text>
+              </TouchableOpacity>
+            </>
+          )}
+          {stage === 'charging' && (
+            <>
+              <ScissorsLoader size="large" color="dark" />
+              <Text style={gm.chargingTitle}>Securing payment...</Text>
+              <Text style={gm.subText}>Hang tight, this takes a second.</Text>
+            </>
+          )}
+          {stage === 'success' && (
+            <>
+              <CheckCircleIcon size={36} color={Colors.success} />
+              <Text style={gm.successTitle}>Payment confirmed</Text>
+              <Text style={gm.successBody}>{'You\'re on your way. '}{firstName} has been notified.</Text>
+            </>
+          )}
+          {stage === 'awaiting_payment' && (
+            <>
+              <CreditCardIcon size={32} color={Colors.statusOnWay} />
+              <Text style={gm.title}>Payment request sent</Text>
+              <Text style={gm.body}>
+                {firstName}{' is completing their payment. Head out — you\'ll be notified the moment it confirms.'}
+              </Text>
+              <TouchableOpacity style={gm.primaryBtn} onPress={onClose}>
+                <Text style={gm.primaryBtnText}>Got it</Text>
+              </TouchableOpacity>
+            </>
+          )}
+          {stage === 'error' && (
+            <>
+              <XCircleIcon size={32} color={Colors.error} />
+              <Text style={gm.errorTitle}>Something went wrong</Text>
+              <Text style={gm.errorBody}>{error}</Text>
+              <TouchableOpacity style={gm.primaryBtn} onPress={onConfirm}>
+                <Text style={gm.primaryBtnText}>Try again</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={gm.ghostBtn} onPress={onClose}>
+                <Text style={gm.ghostBtnText}>Cancel</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -1127,6 +1238,39 @@ const c = StyleSheet.create({
   empty: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 40 },
   emptyTitle: { fontSize: 20, fontWeight: '700', color: Colors.text, marginBottom: 8 },
   emptyBody: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
+});
+
+// Gate modal styles
+const gm = StyleSheet.create({
+  overlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center', justifyContent: 'flex-end',
+  },
+  sheet: {
+    backgroundColor: Colors.background,
+    borderTopLeftRadius: BORDER_RADIUS, borderTopRightRadius: BORDER_RADIUS,
+    padding: 28, width: '100%', alignItems: 'center', gap: 8,
+  },
+  title: { fontSize: 20, fontWeight: '800', color: Colors.text, textAlign: 'center', marginTop: 4 },
+  body: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 8 },
+  chargingTitle: { fontSize: 18, fontWeight: '800', color: Colors.text, textAlign: 'center', marginTop: 8 },
+  subText: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center' },
+  successTitle: { fontSize: 20, fontWeight: '800', color: Colors.success, textAlign: 'center', marginTop: 4 },
+  successBody: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
+  errorTitle: { fontSize: 20, fontWeight: '800', color: Colors.error, textAlign: 'center', marginTop: 4 },
+  errorBody: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 8 },
+  primaryBtn: {
+    width: '100%', height: 54, backgroundColor: Colors.statusOnWay,
+    borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center', marginTop: 8,
+  },
+  primaryBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
+  ghostBtn: {
+    width: '100%', height: 48,
+    borderWidth: 1.5, borderColor: Colors.border,
+    borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center',
+    marginTop: 4,
+  },
+  ghostBtnText: { fontSize: 15, fontWeight: '700', color: Colors.textSecondary },
 });
 
 // Zone modal styles
