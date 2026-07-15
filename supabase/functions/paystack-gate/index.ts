@@ -408,15 +408,28 @@ async function openRetryWindow(
     Date.now() + GATE_PAYMENT_RETRY_WINDOW_MINUTES * 60 * 1000
   ).toISOString();
 
-  // Open a new checkout for the customer to use a different card
-  const transaction = await paystack.initializeTransaction({
-    email: profile?.email ?? '',
-    amount: totalKobo,
-    reference: retryReference,
-    callback_url: 'vars://gate-payment-complete',
-    metadata,
-    ...(subaccountParams as { subaccount?: string; bearer?: 'account'; transaction_charge?: number }),
-  });
+  // Open a new checkout for the customer to use a different card.
+  // If initializeTransaction throws here, the gate is already claimed and
+  // gate_retry_expires_at has not yet been set — mark it to now so sweep 2
+  // of the release cron cancels the booking rather than leaving it stuck.
+  let transaction;
+  try {
+    transaction = await paystack.initializeTransaction({
+      email: profile?.email ?? '',
+      amount: totalKobo,
+      reference: retryReference,
+      callback_url: 'vars://gate-payment-complete',
+      metadata,
+      ...(subaccountParams as { subaccount?: string; bearer?: 'account'; transaction_charge?: number }),
+    });
+  } catch (initErr) {
+    console.error(`Gate: openRetryWindow initializeTransaction threw for booking ${booking.id} — marking for cron cleanup`, initErr);
+    await supabase
+      .from('bookings')
+      .update({ gate_retry_expires_at: new Date().toISOString() })
+      .eq('id', booking.id);
+    return errorResponse('Payment retry initialisation failed. The booking will be cancelled automatically.', 502);
+  }
 
   // Update booking with new reference and retry expiry
   await supabase

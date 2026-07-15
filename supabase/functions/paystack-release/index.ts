@@ -57,19 +57,12 @@ Deno.serve(async (req: Request) => {
 
       if (!booking) return errorResponse('Booking not found', 404);
 
-      await supabase
-        .from('bookings')
-        .update({
-          status: BOOKING_STATUS.CANCELLED,
-          cancelled_by: 'admin',
-          cancellation_reason: 'Dispute resolved — user refunded',
-        })
-        .eq('id', booking_id);
-
-      // Full refund from VARS main account.
-      // NOTE: if booking is already settled (vendor's subaccount share moved to their
-      // bank), Paystack only refunds the VARS portion. Recovering the vendor's share
-      // requires manual reconciliation. Ops must check payout_history before issuing.
+      // Attempt Paystack refund BEFORE updating the booking or marking the dispute resolved.
+      // Returning a non-2xx here causes DisputeActions to surface the error and NOT call
+      // updateDispute — the dispute stays open for manual retry.
+      // NOTE: if the booking is already settled (vendor's subaccount share transferred to
+      // their bank), Paystack only refunds the VARS portion. Ops must check payout_history
+      // before issuing and handle vendor-side recovery manually.
       if (booking.paystack_reference) {
         try {
           const paystack = new PaystackClient(Deno.env.get('PAYSTACK_SECRET_KEY')!);
@@ -79,8 +72,22 @@ Deno.serve(async (req: Request) => {
           });
         } catch (err) {
           console.error(`Dispute refund failed for booking ${booking_id}:`, err);
+          return errorResponse(
+            `Paystack refund failed: ${err instanceof Error ? err.message : 'unknown error'}. ` +
+            `Dispute NOT marked resolved — issue manual refund then retry.`,
+            502
+          );
         }
       }
+
+      await supabase
+        .from('bookings')
+        .update({
+          status: BOOKING_STATUS.CANCELLED,
+          cancelled_by: 'admin',
+          cancellation_reason: 'Dispute resolved — user refunded',
+        })
+        .eq('id', booking_id);
 
       const { data: profile } = await supabase
         .from('profiles').select('push_token').eq('id', booking.user_id).single();

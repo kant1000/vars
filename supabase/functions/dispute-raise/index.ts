@@ -106,11 +106,28 @@ Deno.serve(async (req: Request) => {
 
     if (disputeError) {
       console.error('dispute-raise: failed to insert dispute', disputeError);
-      // Rollback booking to its original status
-      await supabase
+      // Rollback: restore booking status and clear settlement_on_hold if no other
+      // open/under-review disputes remain for this vendor (mirrors the resolve paths).
+      const { data: vendorBookingRows } = await supabase
         .from('bookings')
-        .update({ status: booking.status })
-        .eq('id', booking_id);
+        .select('id')
+        .eq('vendor_id', booking.vendor_id);
+      const vendorBookingIds = (vendorBookingRows ?? []).map((b: { id: string }) => b.id);
+      const { count: openCount } = await supabase
+        .from('disputes')
+        .select('id', { count: 'exact', head: true })
+        .in('booking_id', vendorBookingIds)
+        .in('status', ['open', 'under_review']);
+      await Promise.all([
+        supabase.from('bookings').update({ status: booking.status }).eq('id', booking_id),
+        ...(openCount === 0
+          ? [supabase.from('vendors').update({ settlement_on_hold: false }).eq('id', booking.vendor_id)]
+          : []
+        ),
+      ]);
+      if (openCount === 0) {
+        console.log(`dispute-raise: rollback — cleared settlement_on_hold for vendor ${booking.vendor_id}`);
+      }
       return errorResponse('Failed to create dispute', 500);
     }
 
