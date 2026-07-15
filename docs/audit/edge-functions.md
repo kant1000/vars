@@ -2,6 +2,13 @@
 
 Date: 2026-05-25
 
+> **Superseded findings (2026-07-16 — edge function hardening pass):**
+> - **`paystack-release`** — Admin dispute path now calls `refundTransaction()` BEFORE updating booking state; returns 502 on refund failure so dispute stays open. Deployed v32.
+> - **`paystack-webhook`** — Now returns non-2xx for retryable internal failures; no longer catches-and-swallows errors with a blanket 200.
+> - **`vendor-kyc-webhook`** — Invalid HMAC signatures now return 401 instead of 200.
+> - **`dispute-raise`** — Rollback on dispute insert failure now also clears `settlement_on_hold` on the vendor if no other open/under-review disputes remain (mirrors the resolve paths in `paystack-settle` and `paystack-release`). Deployed v26.
+> - **`paystack-gate`** — `openRetryWindow` now wraps `initializeTransaction` in try/catch; on failure sets `gate_retry_expires_at = now` before returning 502 so cron sweep 2 can cancel the stuck booking. Deployed v10.
+
 ## Verdict
 
 The functions are feature-rich but not safe enough for production money movement. The recurring pattern is: read current state, update DB, call external API, log failures. That pattern is not transactionally safe and does not provide idempotent recovery.

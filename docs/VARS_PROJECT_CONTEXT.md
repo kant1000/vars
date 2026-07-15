@@ -222,7 +222,7 @@ All push and in-app notification copy lives here as exported functions. Never wr
 What is built:
 - `vendor-kyc-init` initiates a Youverify hosted KYC session; returns a URL opened in a WebView.
 - `vendor-kyc-webhook` receives the result and handles three outcomes:
-  - **Verified** (`status: "found"`, `allValidationPassed: true`): extracts liveness face image (base64 data URI at `data.image`) and legal name (`data.firstName/middleName/lastName`), crops to passport-style 400×400, uploads raw + cropped to `vendor-identity-images` bucket, sets `kyc_status = verified`, `is_active = true`, `profile_image_locked = true`.
+  - **Verified** (`status: "found"`, `allValidationPassed: true`): extracts liveness face image (base64 data URI at `data.image`) and legal name (`data.firstName/middleName/lastName`), crops to passport-style 400×400, uploads the raw original to the **private** `vendor-identity-raw` bucket (storage path stored in `profile_image_raw_url`) and the cropped version to the **public** `vendor-identity-images` bucket (public URL stored in `profile_image_url`), sets `kyc_status = verified`, `is_active = true`, `profile_image_locked = true`.
   - **Rejected** (`status: "found"`, `allValidationPassed: false`, or `failed/rejected/declined`): sets `kyc_status = rejected`, stores reason, sends "try again" push notification.
   - **needs_review**: if face image or legal name is missing from the webhook payload, the webhook calls `GET /v2/api/identity/:id` as a fallback. If data is still missing after the GET, sets `kyc_status = needs_review` — vendor stays unverified; admin resolves manually using the Youverify dashboard.
 - Webhook authenticated via HMAC-SHA256 (`YOUVERIFY_WEBHOOK_SECRET`).

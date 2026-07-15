@@ -4,6 +4,9 @@ Date: 2026-05-25
 
 > **Superseded items (2026-06-24 — subaccount migration):**
 > Items 1, 2, 10 from Top Financial Risks are addressed: payout_history.booking_id is now unique (migration 20260525160000); settlement is now `settlement_queued` status (no Transfer race); Pioneer counter increments at booking completion, not at transfer. The "Escrow Correctness" and "Settlement Correctness" sections describe the old Transfer-based model — replaced by Paystack subaccount split at charge time. Remaining open items (3–9, reconciliation, audit trail) are unchanged.
+>
+> **Superseded items (2026-07-16 — dispute refund ordering fix):**
+> Item 6 (Admin dispute refund marks booking completed and does not guarantee refund success) is addressed: `paystack-release` admin path now calls `paystack.refundTransaction()` BEFORE updating booking state; on refund failure it returns 502 so `DisputeActions.tsx` does not call `updateDispute` and the dispute remains open for manual retry. Deployed as `paystack-release` v32.
 
 ## Verdict
 

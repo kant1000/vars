@@ -43,6 +43,7 @@ Final output: severity-grouped summary, then **ITEMS REQUIRING FOUNDER DECISION*
 - `vendors.profile_image_url TEXT`, `profile_image_raw_url TEXT`, `profile_image_locked BOOLEAN NOT NULL DEFAULT false` exist (20260531000001)
 - `vendors_update_own` RLS policy has `WITH CHECK` correlated-subquery guards on `profile_image_url`, `profile_image_raw_url`, `profile_image_locked` — FAIL if absent
 - `vendor-identity-images` storage bucket exists and is public (required for mobile `<Image>` auth-free URLs)
+- `vendor-identity-raw` storage bucket exists and is **private** — FAIL if it is set to public (raw biometric/liveness images are NDPA-sensitive and must never be publicly addressable)
 - `vendors.auto_accept_zone_radius_km` is `NUMERIC(4,1)` constrained to (1, 1.5) — FAIL if column is still INT or constraint allows other values (20260526000001)
 - `system_alerts` table exists (010)
 - `blog_comments` table exists (022/023) — columns: `article_slug`, `name`, `email`, `body`, `approved BOOLEAN DEFAULT TRUE`, `created_at`; RLS enabled; SELECT policy returns `approved = true` only; anon INSERT policy `WITH CHECK (approved = true)`
@@ -57,19 +58,21 @@ Final output: severity-grouped summary, then **ITEMS REQUIRING FOUNDER DECISION*
 
 **Source:** `ls supabase/functions/` vs `README.md` edge functions table.
 
-All 30 must exist on disk:
+All 36 must exist on disk (permanent functions only — `migrate-raw-kyc-images` is a one-time ops function; see §18):
 
 ```
-paystack-initialize        paystack-webhook           paystack-capture
+paystack-verify-card       paystack-initialize        paystack-gate
+paystack-gate-checkout     paystack-webhook           paystack-capture
 paystack-release           paystack-settle            paystack-cancel
 paystack-verify-bank       vendor-cancel-booking      vendor-cancel-grace
-dispute-raise              vendor-kyc-init            vendor-kyc-webhook
-vendor-register-lead       vendor-set-zone            vendor-confirm-zone
-vendor-update-location     photo-consent-request      photo-consent-respond
-photo-consent-expire       phone-reveal               send-reminders
+vendor-claim-repayment     dispute-raise              vendor-kyc-init
+vendor-kyc-webhook         vendor-register-lead       vendor-check-identity
+vendor-set-zone            vendor-confirm-zone        vendor-update-location
+photo-consent-request      photo-consent-respond      photo-consent-expire
+phone-reveal               send-reminders             vendor-update-job-status
 vendor-suggest-reschedule  customer-accept-reschedule customer-decline-reschedule
-reschedule-expire          deliver-outreach           vendor-update-job-status
-submit-review              unsubscribe-lead           send-marketing-email
+reschedule-expire          deliver-outreach           submit-review
+unsubscribe-lead           send-marketing-email
 ```
 
 FAIL any function present in README but absent from disk, or on disk but missing from the README table.
@@ -223,7 +226,7 @@ msg_reschedule_accepted_vendor   msg_reschedule_declined_vendor   msg_reschedule
 - On each new KYC attempt: `kyc_rejection_reason` is cleared before the new session is initiated
 - Webhook authenticated via HMAC using `YOUVERIFY_WEBHOOK_SECRET` before any processing
 - No raw ID data stored at any point
-- Trust layer — on clean pass, `vendor-kyc-webhook` must also: extract the Youverify liveness face image (tried across multiple candidate field paths), crop to 400×400 JPEG (top 65% geometric crop), upload raw and cropped versions to `vendor-identity-images` bucket, and set `profile_image_url` / `profile_image_raw_url` / `profile_image_locked = true` on the vendor row — FAIL if any write is absent on the accepted path
+- Trust layer — on clean pass, `vendor-kyc-webhook` must also: extract the Youverify liveness face image (tried across multiple candidate field paths), crop to 400×400 JPEG (top 65% geometric crop), upload the raw original to the **private** `vendor-identity-raw` bucket (path — not full URL — stored in `profile_image_raw_url`), upload the cropped version to the **public** `vendor-identity-images` bucket (public URL stored in `profile_image_url`), and set `profile_image_locked = true` on the vendor row — FAIL if any write is absent on the accepted path; FAIL if the raw image is uploaded to the public `vendor-identity-images` bucket
 - `profile_image_locked` must only be written by service role — RLS guards on `vendors_update_own` `WITH CHECK` (confirmed in Section 1) prevent JWT overwrite; FAIL if a vendor JWT can set `profile_image_url` directly
 - WARN always: Youverify webhook payload schema is not yet confirmed with their team (`docs/VARS_PROJECT_CONTEXT.md` §4). Face image field path is tried via multiple candidates and the matched index is logged. Flag if code makes rigid single-field assumptions.
 
@@ -373,7 +376,7 @@ Four utilities must exist and match spec — FAIL for each deviation:
 - Outreach queue: checkboxes + bulk approve/reject with per-message channel selector — FAIL if bulk actions bypass the channel selector
 - Outreach compose panel: filter by service type, converted/unconverted toggle — FAIL if either filter is absent
 - KYC queue: defaults to rejected cases only; clean passes never reach the queue — FAIL if verified vendors appear requiring admin action
-- Vendors list: must show both `profile_image_url` (circular, 40×40) and `profile_image_raw_url` (rectangular audit image labelled "Audit") per vendor row — FAIL if either column is absent from the query or not rendered
+- Vendors list: must show both `profile_image_url` (circular, 40×40) and `profile_image_raw_url` (rectangular audit image labelled "Audit") per vendor row — FAIL if either column is absent from the query or not rendered; `profile_image_raw_url` is now a storage path in the private `vendor-identity-raw` bucket — admin page must generate signed URLs server-side (3600s TTL via `createSignedUrls`) before rendering; backwards-compatible: vendors whose `profile_image_raw_url` starts with `http` use the URL directly — FAIL if the raw storage path is set as an image `src` without a signed URL
 
 ---
 
@@ -386,6 +389,7 @@ Four utilities must exist and match spec — FAIL for each deviation:
 - `booking-expire-every-5min` — confirmed in live project. Critical: without this job, unanswered bookings sit as pending indefinitely and customer funds are never released. FAIL if missing from Dashboard.
 - `vendor-lead-tick` — must be registered hourly. WARN until confirmed in Dashboard.
 - `deliver-outreach-cron` — deployed and confirmed active at `*/10 * * * *`. Delivery is stubbed — set `DELIVERY_LIVE=true` in Supabase secrets to activate real 360dialog/Resend delivery.
+- `migrate-raw-kyc-images` — one-time idempotent ops function. Run if any vendor has `profile_image_raw_url LIKE 'http%'` (legacy records where raw image was stored in the public bucket before the bucket split). Invoke with `Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>`. Safe to re-run — skips vendors already using storage paths. Check `payout_history` or run `SELECT id FROM vendors WHERE profile_image_raw_url LIKE 'http%'` first to determine whether a run is needed.
 - WhatsApp delivery — blocked on Meta HSM template approval via 360dialog. Three templates required: intro, reengagement, go-live. Free-form WhatsApp messages are silently discarded by Meta. WARN until all three templates are approved and `DIALOG360_API_KEY` is set in Supabase secrets.
 - Youverify webhook schema — unconfirmed with vendor. WARN until confirmed with their team.
 - Monnify — no code action; note only if Paystack live mode is blocked at launch.

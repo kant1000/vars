@@ -2,6 +2,12 @@
 
 Date: 2026-05-25
 
+> **Superseded findings (2026-07-16 — security hardening pass):**
+> - **P0: Broad Booking Update RLS** — Fixed. `bookings_user_update` and `bookings_vendor_update` RLS policies now have column-level `WITH CHECK` correlated-subquery guards preventing JWT clients from writing financial columns (`transport_fee_kobo`, `distance_km`, `pre_transport_buffer_slots`). Applied via migration `20260531000002_transport_surcharge`.
+> - **P0: Admin Page Authorization Bypass Risk** — Fixed. `requireAdmin()` helper added to all admin Server Actions and page-level data fetches; verifies the session UID exists in `admin_users` before any service-role query. Unauthenticated or non-admin tokens receive 401/redirect.
+> - **P0: Webhook Error Handling Suppresses Retries** — Fixed. `paystack-webhook` now returns non-2xx (502/500) for retryable internal failures so Paystack will retry delivery. Previously caught all errors and returned 200.
+> - **P1: Youverify Invalid Signature Returns 200** — Fixed. `vendor-kyc-webhook` now returns 401 for invalid HMAC signatures instead of silently returning 200.
+
 ## Overall Security Verdict
 
 Not production-ready. The project has some good primitives: Supabase Auth, RLS, Paystack HMAC validation, Youverify HMAC validation, native SecureStore. But access control, service-role usage, webhook replay safety, cron protection, and financial state integrity are not yet hardened.

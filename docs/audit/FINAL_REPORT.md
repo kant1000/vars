@@ -121,7 +121,25 @@ Launch should be delayed until the money path is rebuilt around a small, auditab
 
 Overall: roughly 8-12 focused engineering weeks before a constrained beta with real money; longer for full production readiness.
 
-## 10. Launch Recommendation
+## 10. Remediation Progress
+
+> Last updated: 2026-07-16
+
+The following blockers from Section 3 have been addressed since the original report:
+
+| Blocker | Status | Notes |
+|---|---|---|
+| **8** — Booking update RLS allows direct client mutation of non-status financial fields | **Fixed** | `bookings_user_update` and `bookings_vendor_update` RLS policies now have column-level `WITH CHECK` correlated-subquery guards. Migration `20260531000002`. |
+| **9** — Admin middleware checks only token presence, not admin membership | **Fixed** | `requireAdmin()` helper verifies session UID in `admin_users` before all service-role queries. |
+| **10** — Admin pages use service role without page-level `requireAdmin()` | **Fixed** | All admin Server Actions and page data fetches now call `requireAdmin()`. |
+| **11** — Refund flows update booking state before refund success | **Partially fixed** | `paystack-release` admin dispute path now refunds first, returns 502 on failure; dispute stays open. Other cancel/refund paths (paystack-cancel, vendor-cancel-booking, etc.) still follow the update-first pattern — those are deferred to the full payment rewrite. |
+| **13** — Paystack webhook returns 200 on internal handler errors | **Fixed** | `paystack-webhook` now returns non-2xx for retryable failures so Paystack retries delivery. |
+
+Blockers 1–7, 12, 14–20 remain open. The financial ledger / idempotency / reconciliation work described in Section 7 is not yet started.
+
+---
+
+## 11. Launch Recommendation
 
 Do not approve production launch for real customers, vendors, payments, refunds, disputes, or payouts.
 
