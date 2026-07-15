@@ -28,7 +28,35 @@ async function getVendors(status: string, page: number, q: string) {
   if (q) query = query.ilike('full_name', `%${q}%`);
 
   const { data, count } = await query;
-  return { vendors: data ?? [], total: count ?? 0 };
+  const vendors = data ?? [];
+
+  // profile_image_raw_url is now a storage path in the private vendor-identity-raw bucket.
+  // Generate short-lived signed URLs server-side so the admin can view audit images
+  // without exposing the raw biometric data publicly.
+  const rawPaths = vendors
+    .map((v: any) => v.profile_image_raw_url)
+    .filter((p: string | null) => typeof p === 'string' && !p.startsWith('http'));
+
+  const signedUrlMap: Record<string, string> = {};
+  if (rawPaths.length > 0) {
+    const { data: signed } = await db.storage
+      .from('vendor-identity-raw')
+      .createSignedUrls(rawPaths, 3600);
+    for (const entry of signed ?? []) {
+      if (entry.signedUrl) signedUrlMap[entry.path] = entry.signedUrl;
+    }
+  }
+
+  // Vendors whose raw URL is already a full http URL (migrated before this change)
+  // are left as-is so the audit image still renders.
+  const vendorsWithSignedRaw = vendors.map((v: any) => ({
+    ...v,
+    profile_image_raw_signed: v.profile_image_raw_url?.startsWith('http')
+      ? v.profile_image_raw_url
+      : (signedUrlMap[v.profile_image_raw_url] ?? null),
+  }));
+
+  return { vendors: vendorsWithSignedRaw, total: count ?? 0 };
 }
 
 export default async function VendorsPage({ searchParams }: Props) {
@@ -91,10 +119,10 @@ export default async function VendorsPage({ searchParams }: Props) {
                   ) : (
                     <span style={{ fontSize: 12, color: 'var(--text2)' }}>Not set</span>
                   )}
-                  {v.profile_image_raw_url ? (
+                  {v.profile_image_raw_signed ? (
                     <div style={{ marginTop: 6 }}>
                       <img
-                        src={v.profile_image_raw_url}
+                        src={v.profile_image_raw_signed}
                         alt="Liveness capture (audit)"
                         style={{ width: 40, height: 56, objectFit: 'cover', display: 'block', borderRadius: 4 }}
                       />

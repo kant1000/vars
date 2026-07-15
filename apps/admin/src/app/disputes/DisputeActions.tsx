@@ -18,22 +18,30 @@ export default function DisputeActions({
   const router  = useRouter();
   const [notes,   setNotes]   = useState('');
   const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState<string | null>(null);
 
   const resolve = async (resolution: 'refund_user' | 'pay_vendor' | 'split') => {
     setLoading(true);
+    setError(null);
     try {
-      await updateDispute(disputeId, {
-        status:      'resolved',
-        resolution,
-        admin_notes: notes.trim() || null,
-      });
-
+      // Move money first — only mark resolved if the payment action succeeds.
+      // Reversing order (mark resolved then pay) leaves the dispute permanently
+      // marked resolved with no money moved if the edge function call fails.
       if (resolution === 'refund_user') {
         await callSettlementEdgeFn('paystack-release', bookingId);
       } else if (resolution === 'pay_vendor') {
         await callSettlementEdgeFn('paystack-settle', bookingId);
       }
-      // 'split' requires a custom manual Paystack operation — admin handles out-of-band
+      // 'split' requires a custom manual Paystack operation — mark resolved immediately
+      // so the admin queue clears; ops handles the actual payment out-of-band.
+
+      await updateDispute(disputeId, {
+        status:      'resolved',
+        resolution,
+        admin_notes: notes.trim() || null,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Action failed — dispute NOT marked resolved. Check logs.');
     } finally {
       setLoading(false);
     }
@@ -49,6 +57,11 @@ export default function DisputeActions({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {error && (
+        <div style={{ color: 'var(--error)', fontSize: 12, padding: '6px 8px', background: 'var(--error-bg, #fff0f0)', borderRadius: 4 }}>
+          {error}
+        </div>
+      )}
       <textarea
         placeholder="Admin notes (optional)…"
         rows={2}

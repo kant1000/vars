@@ -97,6 +97,28 @@ Deno.serve(async (req: Request) => {
         data: { bookingId: booking_id },
       });
 
+      // Clear settlement_on_hold if no other open/under-review disputes remain
+      // for this vendor. Mirrors the same check in paystack-settle admin path.
+      const { data: vendorBookingRows } = await supabase
+        .from('bookings')
+        .select('id')
+        .eq('vendor_id', booking.vendor_id);
+      const vendorBookingIds = (vendorBookingRows ?? []).map((b: { id: string }) => b.id);
+
+      const { count: remainingOpen } = await supabase
+        .from('disputes')
+        .select('id', { count: 'exact', head: true })
+        .in('booking_id', vendorBookingIds)
+        .in('status', ['open', 'under_review']);
+
+      if (remainingOpen === 0) {
+        await supabase
+          .from('vendors')
+          .update({ settlement_on_hold: false })
+          .eq('id', booking.vendor_id);
+        console.log(`Vendor ${booking.vendor_id}: settlement_on_hold cleared — no remaining open disputes`);
+      }
+
       console.log(`Dispute resolved (user): booking ${booking_id} refunded`);
       return jsonResponse({ success: true, booking_id, status: 'refunded' });
     }

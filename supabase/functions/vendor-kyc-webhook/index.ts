@@ -269,21 +269,23 @@ Deno.serve(async (req: Request) => {
     const rawPath     = `${vendorId}/raw.jpg`;
     const profilePath = `${vendorId}/profile.jpg`;
 
+    // Raw liveness image → private bucket (NDPA sensitive data; admin-only access).
+    // Store the storage path, not a public URL. Admin generates signed URLs server-side.
     const { error: rawErr } = await adminClient.storage
-      .from('vendor-identity-images')
+      .from('vendor-identity-raw')
       .upload(rawPath, imageBuffer, { contentType: 'image/jpeg', upsert: true });
     if (rawErr) throw new Error(`Raw upload failed: ${rawErr.message}`);
 
+    // Cropped profile image → public bucket (served in React Native discovery feed).
     const { error: profileErr } = await adminClient.storage
       .from('vendor-identity-images')
       .upload(profilePath, croppedBuffer, { contentType: 'image/jpeg', upsert: true });
     if (profileErr) throw new Error(`Profile upload failed: ${profileErr.message}`);
 
-    const { data: { publicUrl: rawPublicUrl } }     = adminClient.storage.from('vendor-identity-images').getPublicUrl(rawPath);
     const { data: { publicUrl: profilePublicUrl } } = adminClient.storage.from('vendor-identity-images').getPublicUrl(profilePath);
 
     dbUpdate.profile_image_url     = profilePublicUrl;
-    dbUpdate.profile_image_raw_url = rawPublicUrl;
+    dbUpdate.profile_image_raw_url = rawPath;   // storage path — admin generates signed URL on demand
     dbUpdate.profile_image_locked  = true;
 
     console.log(`vendor-kyc-webhook: identity images stored for vendor ${vendorId}`);

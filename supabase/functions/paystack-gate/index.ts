@@ -101,32 +101,11 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // ── 2. Atomic gate claim ──────────────────────────────────────
-    // UPDATE ... WHERE gate_fired = FALSE returning the row.
-    // Zero rows returned = another trigger already claimed the gate.
-    const gateReference = generateReference('VARS_GATE');
-    const now = new Date().toISOString();
-
-    const { data: claimed } = await supabase
-      .from('bookings')
-      .update({
-        gate_fired: true,
-        gate_trigger_type: trigger_type,
-        gate_triggered_at: now,
-        paystack_reference: gateReference,
-      })
-      .eq('id', booking_id)
-      .eq('gate_fired', false)
-      .select('id');
-
-    if (!claimed || claimed.length === 0) {
-      console.log(`Gate already claimed for booking ${booking_id} — duplicate trigger ignored`);
-      return jsonResponse({ success: true, booking_id, gate_already_fired: true });
-    }
-
-    console.log(`Gate claimed: booking=${booking_id} trigger=${trigger_type} ref=${gateReference}`);
-
-    // ── 3. Fetch vendor, profile, and stored auth code ────────────
+    // ── 2. Fetch vendor, profile, and validate before claiming ───
+    // Validation happens here — before the atomic gate claim — so that
+    // a failed prerequisite check never leaves the booking in a stuck
+    // gate_fired=true, gate_charged_at=null, gate_retry_expires_at=null state
+    // that the release cron cannot clean up.
     const totalKobo: number =
       (booking.service_price_kobo ?? 0) +
       ((booking as unknown as Record<string, number>).transport_fee_kobo ?? 0);
@@ -134,7 +113,7 @@ Deno.serve(async (req: Request) => {
     const [{ data: vendor }, { data: profile }] = await Promise.all([
       supabase
         .from('vendors')
-        .select('full_name, email, push_token, pioneer, pioneer_bookings_completed, paystack_subaccount_code')
+        .select('full_name, email, push_token, pioneer, pioneer_bookings_completed, paystack_subaccount_code, is_restricted')
         .eq('id', booking.vendor_id)
         .single(),
       supabase
@@ -143,6 +122,12 @@ Deno.serve(async (req: Request) => {
         .eq('id', booking.user_id)
         .single(),
     ]);
+
+    // Restricted vendors may not collect new payments.
+    if (vendor?.is_restricted) {
+      console.error(`Gate: vendor ${booking.vendor_id} is restricted — blocking gate`);
+      return errorResponse('Your account is currently restricted. Please contact support.', 403);
+    }
 
     const vendorName    = vendor?.full_name ?? 'Your vendor';
     const userEmail     = profile?.email ?? '';
@@ -170,6 +155,33 @@ Deno.serve(async (req: Request) => {
       ...(isPioneer ? { transaction_charge: 0 } : {}),
     };
 
+    // ── 3. Atomic gate claim ──────────────────────────────────────
+    // UPDATE ... WHERE gate_fired = FALSE returning the row.
+    // Zero rows returned = another trigger already claimed the gate.
+    // All prerequisite validation above this line ensures that a
+    // successful claim is always followed by a successful payment call.
+    const gateReference = generateReference('VARS_GATE');
+    const now = new Date().toISOString();
+
+    const { data: claimed } = await supabase
+      .from('bookings')
+      .update({
+        gate_fired: true,
+        gate_trigger_type: trigger_type,
+        gate_triggered_at: now,
+        paystack_reference: gateReference,
+      })
+      .eq('id', booking_id)
+      .eq('gate_fired', false)
+      .select('id');
+
+    if (!claimed || claimed.length === 0) {
+      console.log(`Gate already claimed for booking ${booking_id} — duplicate trigger ignored`);
+      return jsonResponse({ success: true, booking_id, gate_already_fired: true });
+    }
+
+    console.log(`Gate claimed: booking=${booking_id} trigger=${trigger_type} ref=${gateReference}`);
+
     const paystack = new PaystackClient(Deno.env.get('PAYSTACK_SECRET_KEY')!);
     const chargeMeta = {
       vars_gate: {
@@ -189,14 +201,27 @@ Deno.serve(async (req: Request) => {
     }
 
     // ── 4b. First-time customer — open checkout ─────────────────
-    const transaction = await paystack.initializeTransaction({
-      email: userEmail,
-      amount: totalKobo,
-      reference: gateReference,
-      callback_url: 'vars://gate-payment-complete',
-      metadata: chargeMeta,
-      ...subaccountParams,
-    });
+    // If initializeTransaction throws, the gate is already claimed. Set
+    // gate_retry_expires_at to now so sweep 2 of the release cron cancels
+    // the booking on its next run rather than leaving it permanently stuck.
+    let transaction;
+    try {
+      transaction = await paystack.initializeTransaction({
+        email: userEmail,
+        amount: totalKobo,
+        reference: gateReference,
+        callback_url: 'vars://gate-payment-complete',
+        metadata: chargeMeta,
+        ...subaccountParams,
+      });
+    } catch (initErr) {
+      console.error(`Gate: initializeTransaction threw for booking ${booking_id} — marking for cron cleanup`, initErr);
+      await supabase
+        .from('bookings')
+        .update({ gate_retry_expires_at: new Date().toISOString() })
+        .eq('id', booking_id);
+      return errorResponse('Payment initialisation failed. The booking will be cancelled automatically.', 502);
+    }
 
     // Set retry expiry on the booking — booking cancelled if not completed in time
     const retryExpiry = new Date(

@@ -73,12 +73,22 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ success: true, booking_id, dispute_id: existingDispute.id, already_exists: true });
     }
 
-    // 1. Freeze escrow: mark booking as disputed
-    //    This prevents auto-release cron from firing (cron only queries 'service_rendered')
-    await supabase
-      .from('bookings')
-      .update({ status: BOOKING_STATUS.DISPUTED })
-      .eq('id', booking_id);
+    // 1. Freeze escrow: mark booking as disputed and hold vendor settlement.
+    //    status=disputed prevents auto-release (cron only queries 'service_rendered').
+    //    settlement_on_hold=true prevents the settle cron from settling any of this
+    //    vendor's completed bookings until admin resolves. Cleared by admin resolve path
+    //    in paystack-settle (pay vendor) and paystack-release (refund customer) once
+    //    no open disputes remain for this vendor.
+    await Promise.all([
+      supabase
+        .from('bookings')
+        .update({ status: BOOKING_STATUS.DISPUTED })
+        .eq('id', booking_id),
+      supabase
+        .from('vendors')
+        .update({ settlement_on_hold: true })
+        .eq('id', booking.vendor_id),
+    ]);
 
     // 2. Create dispute record
     const { data: dispute, error: disputeError } = await supabase
