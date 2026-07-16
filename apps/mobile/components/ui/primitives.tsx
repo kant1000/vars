@@ -38,6 +38,7 @@ import {
   PenLineIcon,
   PersonIcon,
   PinIcon,
+  PlusIcon,
   SearchIcon,
   SparkleIcon,
   StarEmptyIcon,
@@ -106,7 +107,7 @@ export const iconSystemNames = {
 export type VarsIconName = keyof typeof iconSystemNames;
 
 const SvgIconByName: Record<VarsIconName, React.ComponentType<{ size?: number; color?: string }>> = {
-  add: CheckIcon,
+  add: PlusIcon,
   arrowUp: ArrowUpIcon,
   banknote: BanknoteIcon,
   bell: BellIcon,
@@ -299,6 +300,71 @@ export function VarsCheckbox({
   );
 }
 
+const SWITCH_TRACK_WIDTH = 44;
+const SWITCH_TRACK_HEIGHT = 26;
+const SWITCH_THUMB_SIZE = 22;
+const SWITCH_TRACK_PADDING = 2;
+const SWITCH_THUMB_TRAVEL = SWITCH_TRACK_WIDTH - SWITCH_THUMB_SIZE - SWITCH_TRACK_PADDING * 2;
+
+export function VarsSwitch({
+  value,
+  onChange,
+  label,
+  theme = varsLight,
+  disabled = false,
+}: {
+  value: boolean;
+  onChange: (value: boolean) => void;
+  label?: string;
+  theme?: VarsTheme;
+  disabled?: boolean;
+}) {
+  const thumbPosition = useRef(new Animated.Value(value ? 1 : 0)).current;
+
+  useEffect(() => {
+    Animated.timing(thumbPosition, {
+      toValue: value ? 1 : 0,
+      duration: 160,
+      easing: Easing.inOut(Easing.ease),
+      useNativeDriver: true,
+    }).start();
+  }, [value, thumbPosition]);
+
+  const translateX = thumbPosition.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, SWITCH_THUMB_TRAVEL],
+  });
+
+  return (
+    <Pressable
+      accessibilityRole="switch"
+      accessibilityState={{ checked: value, disabled }}
+      disabled={disabled}
+      onPress={() => onChange(!value)}
+      style={({ pressed }) => [styles.checkRow, { opacity: disabled ? 0.5 : pressed ? 0.75 : 1 }]}
+    >
+      {label ? <Text style={[styles.checkLabel, { color: theme.color.ink }]}>{label}</Text> : null}
+      <View
+        style={[
+          styles.switchTrack,
+          {
+            backgroundColor: value
+              ? theme.color.accentGreen
+              : theme.appearance === 'dark'
+              ? theme.color.surface3
+              : theme.color.surface2,
+            borderColor: value ? 'transparent' : theme.color.inkFaint,
+          },
+        ]}
+      >
+        <Animated.View
+          style={[styles.switchThumb, { borderColor: theme.color.inkFaint, transform: [{ translateX }] }]}
+        />
+      </View>
+    </Pressable>
+  );
+}
+
 export function VarsSegmentedControl<T extends string>({
   value,
   options,
@@ -306,7 +372,7 @@ export function VarsSegmentedControl<T extends string>({
   theme = varsLight,
 }: {
   value: T;
-  options: Array<{ value: T; label: string }>;
+  options: { value: T; label: string }[];
   onChange: (value: T) => void;
   theme?: VarsTheme;
 }) {
@@ -334,6 +400,31 @@ export function VarsSegmentedControl<T extends string>({
           </Pressable>
         );
       })}
+    </View>
+  );
+}
+
+export function VarsTabItem({
+  focused,
+  icon,
+  label,
+  theme = varsLight,
+}: {
+  focused: boolean;
+  icon: VarsIconName;
+  label: string;
+  theme?: VarsTheme;
+}) {
+  const color = focused ? theme.color.ink : theme.color.inkMuted;
+  return (
+    <View style={styles.tabItem}>
+      <VarsIcon name={icon} size={22} color={color} theme={theme} />
+      <Text
+        style={[styles.tabItemLabel, { color, fontWeight: focused ? '700' : '400' }]}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
     </View>
   );
 }
@@ -508,6 +599,23 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     lineHeight: 20,
   },
+  // Pill radius (height / 2), not VARS_RADIUS: a switch track is treated like the
+  // circular-element exception (avatars, status dots) so it still reads as a toggle.
+  switchTrack: {
+    width: SWITCH_TRACK_WIDTH,
+    height: SWITCH_TRACK_HEIGHT,
+    borderRadius: SWITCH_TRACK_HEIGHT / 2,
+    borderWidth: 1.5,
+    padding: SWITCH_TRACK_PADDING,
+    justifyContent: 'center',
+  },
+  switchThumb: {
+    width: SWITCH_THUMB_SIZE,
+    height: SWITCH_THUMB_SIZE,
+    borderRadius: SWITCH_THUMB_SIZE / 2,
+    borderWidth: 1,
+    backgroundColor: '#FFFFFF',
+  },
   segmentWrap: {
     minHeight: 44,
     flexDirection: 'row',
@@ -525,6 +633,15 @@ const styles = StyleSheet.create({
   segmentText: {
     fontSize: 13,
     fontWeight: '700',
+  },
+  tabItem: {
+    minWidth: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  tabItemLabel: {
+    fontSize: 11,
   },
   toast: {
     minHeight: 52,

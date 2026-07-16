@@ -243,7 +243,9 @@ Accent colors remain tiny glyphs, dots, rails, or text emphasis. They are not br
 | `VarsButton` | Command surface | Submit, save, confirm, cancel, retry | Navigation rows, chips | primary/secondary/ghost, sm/md/lg, disabled/loading/pressed, tone | All hand-built `TouchableOpacity` buttons |
 | `VarsInput` | Text input shell | Forms, search, notes, access details | Price picker rows or select rows | default/error/disabled/focus-ready | Auth, booking, settings, service forms |
 | `VarsCheckbox` | Binary consent/selection | Consent checkbox, terms, optional toggles when check style fits | Online/biometric system switches | checked/unchecked/disabled | Portfolio consent, manual checkmark boxes |
+| `VarsSwitch` | On/off system toggle | Vendor online/offline, other binary system switches | Consent/selection checkmarks | on/off/disabled | Vendor online toggle |
 | `VarsSegmentedControl` | Mutually exclusive compact modes | Period filters, Services/Reviews, Block/Unblock modes | Main app tabs | selected/unselected/disabled-ready | Earnings filters, vendor profile tabs |
+| `VarsTabItem` | Icon/label styling for a tab bar item | Inside `tabBarIcon`/`tabBarLabel` on Expo Router bottom tabs | A replacement tab bar or navigation structure | focused/unfocused | Bottom tab bar icon + label styling |
 | `VarsDialog` | Blocking confirmation | Destructive confirmation, auto-accept confirmation | Long forms or WebViews | neutral/info/warning/danger, visible/hidden | `ConfirmModal`, support/password modal patterns |
 | `VarsToast` | Temporary feedback | Undo, offline sync, save confirmation | Permanent banners | neutral/success/warning/danger/info with optional action | Schedule undo toast, OfflineBanner |
 | `VarsSkeleton` | Content-shaped wait | Lists, cards, image placeholders | Financial/KYC confirmation | pulse only; fixed footprint required | Replaces many full-screen loaders |
@@ -319,7 +321,9 @@ What is included:
 - `VarsButton`
 - `VarsInput`
 - `VarsCheckbox`
+- `VarsSwitch`
 - `VarsSegmentedControl`
+- `VarsTabItem`
 - `VarsSkeleton`
 - `VarsToast`
 - `VarsDialog`
