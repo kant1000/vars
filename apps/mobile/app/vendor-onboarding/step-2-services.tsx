@@ -308,7 +308,7 @@ export default function Step2Services() {
                 </Text>
                 <Text style={styles.draftName}>{svc.service_name}</Text>
                 <Text style={styles.draftDetail}>
-                  ₦{Number(svc.price_naira).toLocaleString('en-NG')} · {DURATION_OPTIONS.find((o) => o.blocks === svc.duration_blocks)?.label}
+                  ₦{Number(svc.price_naira).toLocaleString('en-NG')} · {durationLabel(svc.duration_blocks)}
                 </Text>
               </View>
               <TouchableOpacity style={styles.draftRemove} onPress={() => handleRemove(svc.tempId)}>
