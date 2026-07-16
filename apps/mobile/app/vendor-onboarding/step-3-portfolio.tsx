@@ -14,6 +14,8 @@ import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { uploadSinglePortfolioPhoto, PortfolioUpload } from '@/lib/storage';
 import { useAuth } from '@/contexts/AuthContext';
+import { VarsButton, VarsCheckbox, VarsSurface } from '@/components/ui';
+import { useVarsTheme } from '@/contexts/ThemeContext';
 import { Colors, BORDER_RADIUS } from '@/constants/colors';
 import { CloseIcon } from '@/components/icons';
 
@@ -21,6 +23,7 @@ const MAX_UNVERIFIED = 3;
 
 export default function Step3Portfolio() {
   const { user } = useAuth();
+  const { theme } = useVarsTheme();
   const [photos, setPhotos] = useState<PortfolioUpload[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -81,11 +84,11 @@ export default function Step3Portfolio() {
       </Text>
 
       {/* Guidance card */}
-      <View style={styles.guidanceCard}>
+      <VarsSurface theme={theme} elevation={1} style={styles.guidanceCard}>
         <Text style={styles.guidanceText}>
           Upload photos of your work — results on real clients, before/after shots, finished styles. No selfies or stock images.
         </Text>
-      </View>
+      </VarsSurface>
 
       <View style={styles.grid}>
         {photos.map((p) => (
@@ -116,34 +119,28 @@ export default function Step3Portfolio() {
         )}
       </View>
 
-      <View style={styles.note}>
+      <VarsSurface theme={theme} elevation={1} style={styles.note}>
         <Text style={styles.noteText}>
           After each booking, you can ask clients to verify a photo from your session. Verified photos carry the most weight on your profile.
         </Text>
-      </View>
+      </VarsSurface>
 
       {/* Consent checkbox */}
-      <TouchableOpacity
-        style={styles.consentRow}
-        onPress={() => setConsentChecked((v) => !v)}
-        activeOpacity={0.7}
-      >
-        <View style={[styles.checkbox, consentChecked && styles.checkboxChecked]}>
-          {consentChecked && <Text style={styles.checkmark}>✓</Text>}
-        </View>
-        <Text style={styles.consentLabel}>These are photos of my own professional work</Text>
-      </TouchableOpacity>
+      <VarsCheckbox
+        theme={theme}
+        checked={consentChecked}
+        onChange={setConsentChecked}
+        label="These are photos of my own professional work"
+      />
 
-      <TouchableOpacity
-        style={[styles.button, !canContinue && styles.buttonDisabled]}
+      <VarsButton
+        theme={theme}
+        loading={isSaving}
         onPress={handleNext}
         disabled={!canContinue}
-        activeOpacity={0.85}
-      >
-        {isSaving
-          ? <ScissorsLoader size="small" color="light" />
-          : <Text style={styles.buttonText}>Continue</Text>}
-      </TouchableOpacity>
+        label="Continue"
+        style={styles.buttonSpacing}
+      />
     </ScrollView>
   );
 }
@@ -154,14 +151,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 26, fontWeight: '700', color: Colors.text, marginBottom: 6 },
   sub: { fontSize: 15, color: Colors.textSecondary, marginBottom: 16 },
 
-  guidanceCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: BORDER_RADIUS,
-    padding: 14,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
+  guidanceCard: { padding: 14, marginBottom: 20 },
   guidanceText: { fontSize: 13, color: Colors.textSecondary, lineHeight: 19 },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
@@ -181,26 +171,8 @@ const styles = StyleSheet.create({
   addIcon: { fontSize: 28, color: Colors.ink, fontWeight: '300' },
   addLabel: { fontSize: 12, color: Colors.textSecondary, fontWeight: '500' },
 
-  note: { backgroundColor: Colors.surface, borderRadius: BORDER_RADIUS, padding: 14, marginBottom: 20 },
+  note: { padding: 14, marginBottom: 20 },
   noteText: { fontSize: 13, color: Colors.textSecondary, lineHeight: 18 },
 
-  consentRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    marginBottom: 28,
-  },
-  checkbox: {
-    width: 22, height: 22, borderRadius: 4,
-    borderWidth: 1.5, borderColor: Colors.border,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: Colors.background,
-  },
-  checkboxChecked: {
-    backgroundColor: Colors.ink, borderColor: Colors.ink,
-  },
-  checkmark: { color: Colors.white, fontSize: 13, fontWeight: '700' },
-  consentLabel: { flex: 1, fontSize: 14, color: Colors.text, lineHeight: 20 },
-
-  button: { height: 56, backgroundColor: Colors.ink, borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center' },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
+  buttonSpacing: { marginTop: 28 },
 });
