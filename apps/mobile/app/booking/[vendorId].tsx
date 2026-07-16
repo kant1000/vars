@@ -13,7 +13,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Dimensions,
   ScrollView, StyleSheet, Text, TouchableOpacity,
-  View, TextInput, Platform,
+  View, Platform,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
@@ -22,6 +22,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { supabase } from '@/lib/supabase';
+import { VarsButton, VarsInput, VarsSurface } from '@/components/ui';
+import { useVarsTheme } from '@/contexts/ThemeContext';
 import { Colors } from '@/constants/colors';
 import { fmtPrice, fmtDuration, fmtTime, fmtDate } from '@/lib/format';
 import { LightningIcon, CheckIcon, PinIcon } from '@/components/icons';
@@ -211,6 +213,7 @@ function Step1({
 
   useEffect(() => { loadSlots(selectedDay); }, [selectedDay, loadSlots]);
 
+  const { theme } = useVarsTheme();
   const [selectedSlot, setSelectedSlot] = useState<Date | null>(null);
   const [selectedAutoAccept, setSelectedAutoAccept] = useState(false);
 
@@ -326,15 +329,11 @@ function Step1({
 
       {selectedSlot && (
         <View style={s.confirmBar}>
-          <TouchableOpacity
-            style={s.confirmBtn}
+          <VarsButton
+            theme={theme}
             onPress={() => onConfirm(selectedSlot, selectedAutoAccept)}
-            activeOpacity={0.88}
-          >
-            <Text style={s.confirmBtnText}>
-              Confirm {fmtTime(selectedSlot)} – {fmtTime(addMinutes(selectedSlot, totalDurationBlocks * BLOCK_MINS))} →
-            </Text>
-          </TouchableOpacity>
+            label={`Confirm ${fmtTime(selectedSlot)} – ${fmtTime(addMinutes(selectedSlot, totalDurationBlocks * BLOCK_MINS))} →`}
+          />
         </View>
       )}
     </>
@@ -360,35 +359,33 @@ function Step2Review({
   locError: string | null;
 }) {
   const floorSheetRef = useRef<BottomSheetModal>(null);
+  const { theme } = useVarsTheme();
 
   return (
     <>
       <ScrollView contentContainerStyle={{ padding: 20, gap: 16, paddingBottom: 120 }}>
         <Text style={s.stepTitle}>Review your booking</Text>
 
-        <View style={s.summaryCard}>
+        <VarsSurface theme={theme} elevation={1} style={s.summaryCard}>
           <Row label="Service" value={serviceSummary} />
           <Row label="Duration" value={fmtDuration(totalDurationBlocks)} />
           <Row label="Date" value={fmtDate(slot)} />
           <Row label="Time" value={`${fmtTime(slot)} – ${fmtTime(addMinutes(slot, totalDurationBlocks * BLOCK_MINS))}`} />
           <View style={s.divider} />
           <Row label="Total" value={fmtPrice(totalServiceKobo)} bold />
-        </View>
+        </VarsSurface>
 
         <Text style={s.sectionHeading}>Access details <Text style={s.optionalTag}>(optional)</Text></Text>
         <Text style={s.accessHint}>Help your vendor find you faster.</Text>
 
-        <View>
-          <Text style={s.fieldLabel}>Building / estate name</Text>
-          <TextInput
-            style={s.textInput}
-            placeholder="e.g. Palm Spring Residences"
-            placeholderTextColor={Colors.textMuted}
-            value={access.building}
-            onChangeText={(t) => setAccess({ ...access, building: sanitize(t, 60) })}
-            returnKeyType="next"
-          />
-        </View>
+        <VarsInput
+          theme={theme}
+          label="Building / estate name"
+          placeholder="e.g. Palm Spring Residences"
+          value={access.building}
+          onChangeText={(t) => setAccess({ ...access, building: sanitize(t, 60) })}
+          returnKeyType="next"
+        />
 
         <View>
           <Text style={s.fieldLabel}>Floor</Text>
@@ -404,29 +401,23 @@ function Step2Review({
           </TouchableOpacity>
         </View>
 
-        <View>
-          <Text style={s.fieldLabel}>Flat / unit number</Text>
-          <TextInput
-            style={s.textInput}
-            placeholder="e.g. 4B"
-            placeholderTextColor={Colors.textMuted}
-            value={access.flat}
-            onChangeText={(t) => setAccess({ ...access, flat: sanitize(t, 20) })}
-            returnKeyType="next"
-          />
-        </View>
+        <VarsInput
+          theme={theme}
+          label="Flat / unit number"
+          placeholder="e.g. 4B"
+          value={access.flat}
+          onChangeText={(t) => setAccess({ ...access, flat: sanitize(t, 20) })}
+          returnKeyType="next"
+        />
 
-        <View>
-          <Text style={s.fieldLabel}>Gate / access code</Text>
-          <TextInput
-            style={s.textInput}
-            placeholder="e.g. 1234"
-            placeholderTextColor={Colors.textMuted}
-            value={access.gateCode}
-            onChangeText={(t) => setAccess({ ...access, gateCode: sanitize(t, 20) })}
-            returnKeyType="done"
-          />
-        </View>
+        <VarsInput
+          theme={theme}
+          label="Gate / access code"
+          placeholder="e.g. 1234"
+          value={access.gateCode}
+          onChangeText={(t) => setAccess({ ...access, gateCode: sanitize(t, 20) })}
+          returnKeyType="done"
+        />
 
         <View style={s.accessPrivacyNote}>
           <Text style={s.accessPrivacyText}>
@@ -442,17 +433,12 @@ function Step2Review({
       </ScrollView>
 
       <View style={s.payWrap}>
-        <TouchableOpacity
-          style={[s.payBtn, locating && s.payBtnDisabled]}
+        <VarsButton
+          theme={theme}
+          loading={locating}
           onPress={onConfirmLocation}
-          disabled={locating}
-          activeOpacity={0.88}
-        >
-          {locating
-            ? <ScissorsLoader size="small" color="light" />
-            : <Text style={s.payBtnText}>Confirm location →</Text>
-          }
-        </TouchableOpacity>
+          label="Confirm location →"
+        />
       </View>
 
       <BottomSheetModal ref={floorSheetRef} snapPoints={['50%']} enableDynamicSizing={false}>
@@ -498,6 +484,7 @@ function Step2Location({
   onPay: () => void;
   paying: boolean;
 }) {
+  const { theme } = useVarsTheme();
   const [mapReady, setMapReady] = useState(false);
 
   const hasAccess = access.building || access.floor || access.flat || access.gateCode;
@@ -531,22 +518,22 @@ function Step2Location({
         </MapView>
 
         <View style={{ padding: 20, gap: 16 }}>
-          <View style={s.addressRow}>
+          <VarsSurface theme={theme} elevation={1} style={s.addressRow}>
             <PinIcon size={16} color={Colors.text} />
             <Text style={s.addressText} numberOfLines={2}>{locAddress || 'Your current location'}</Text>
-          </View>
+          </VarsSurface>
 
           {hasAccess && (
-            <View style={s.accessSummaryCard}>
+            <VarsSurface theme={theme} elevation={1} style={s.accessSummaryCard}>
               <Text style={s.accessSummaryTitle}>Access details</Text>
               {access.building ? <AccessRow label="Building" value={access.building} /> : null}
               {access.floor ? <AccessRow label="Floor" value={access.floor} /> : null}
               {access.flat ? <AccessRow label="Flat/unit" value={access.flat} /> : null}
               {access.gateCode ? <AccessRow label="Gate code" value={access.gateCode} /> : null}
-            </View>
+            </VarsSurface>
           )}
 
-          <View style={s.summaryCard}>
+          <VarsSurface theme={theme} elevation={1} style={s.summaryCard}>
             <Row label="Service" value={serviceSummary} />
             <Row label="Date" value={fmtDate(slot)} />
             <Row label="Time" value={`${fmtTime(slot)} – ${fmtTime(addMinutes(slot, totalDurationBlocks * BLOCK_MINS))}`} />
@@ -557,7 +544,7 @@ function Step2Location({
                 Your stylist is travelling further to reach you — this price reflects that.
               </Text>
             )}
-          </View>
+          </VarsSurface>
 
           <View style={[s.infoBox, isAutoAccept && s.infoBoxAutoAccept]}>
             <Text style={[s.infoText, isAutoAccept && s.infoTextAutoAccept]}>
@@ -570,17 +557,13 @@ function Step2Location({
       </ScrollView>
 
       <View style={s.payWrap}>
-        <TouchableOpacity
-          style={[s.payBtn, (!mapReady || paying) && s.payBtnDisabled]}
+        <VarsButton
+          theme={theme}
+          loading={paying}
           onPress={onPay}
           disabled={!mapReady || paying}
-          activeOpacity={0.88}
-        >
-          {paying
-            ? <ScissorsLoader size="small" color="light" />
-            : <Text style={s.payBtnText}>Confirm booking — {fmtPrice(totalKobo)}</Text>
-          }
-        </TouchableOpacity>
+          label={`Confirm booking — ${fmtPrice(totalKobo)}`}
+        />
       </View>
     </>
   );
@@ -606,6 +589,8 @@ function CardVerifyView({
   onCancel: () => void;
   onRetry: () => void;
 }) {
+  const { theme } = useVarsTheme();
+
   if (phase === 'disclosure') {
     return (
       <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 24, gap: 20, justifyContent: 'center' }}>
@@ -618,9 +603,12 @@ function CardVerifyView({
         <Text style={{ fontSize: 13, color: Colors.textMuted, textAlign: 'center', lineHeight: 19 }}>
           This is charged once per account, not per booking. It is not refundable.
         </Text>
-        <TouchableOpacity style={[s.payBtn, { marginTop: 8 }]} onPress={onStart} activeOpacity={0.88}>
-          <Text style={s.payBtnText}>Verify card — {fmtPrice(amountKobo)}</Text>
-        </TouchableOpacity>
+        <VarsButton
+          theme={theme}
+          onPress={onStart}
+          label={`Verify card — ${fmtPrice(amountKobo)}`}
+          style={{ marginTop: 8 }}
+        />
         <TouchableOpacity onPress={onCancel} style={{ alignItems: 'center', paddingVertical: 12 }} activeOpacity={0.7}>
           <Text style={{ fontSize: 14, color: Colors.textSecondary }}>Cancel</Text>
         </TouchableOpacity>
@@ -665,9 +653,7 @@ function CardVerifyView({
       <Text style={{ fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 21 }}>
         If you completed the payment, your verification should land shortly. Tap below to check.
       </Text>
-      <TouchableOpacity style={s.payBtn} onPress={onRetry} activeOpacity={0.88}>
-        <Text style={s.payBtnText}>Check again</Text>
-      </TouchableOpacity>
+      <VarsButton theme={theme} onPress={onRetry} label="Check again" />
       <TouchableOpacity onPress={onCancel} style={{ alignItems: 'center', paddingVertical: 12 }} activeOpacity={0.7}>
         <Text style={{ fontSize: 14, color: Colors.textSecondary }}>Cancel</Text>
       </TouchableOpacity>
@@ -1074,10 +1060,7 @@ const s = StyleSheet.create({
   sectionHeading: { fontSize: 16, fontWeight: '700', color: Colors.text, marginBottom: -8 },
   optionalTag: { fontSize: 13, fontWeight: '400', color: Colors.textMuted },
   accessHint: { fontSize: 13, color: Colors.textSecondary, marginTop: -8 },
-  summaryCard: {
-    backgroundColor: Colors.surface, borderRadius: 5,
-    padding: 16, borderWidth: 1, borderColor: Colors.border,
-  },
+  summaryCard: { padding: 16 },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
   summaryLabel: { fontSize: 14, color: Colors.textSecondary },
   summaryValue: { fontSize: 14, fontWeight: '600', color: Colors.text },
@@ -1110,15 +1093,10 @@ const s = StyleSheet.create({
   // Map + location
   mapThumb: { width: SCREEN_W, height: 200 },
   addressRow: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 8,
-    backgroundColor: Colors.surface, borderRadius: 5,
-    padding: 12, borderWidth: 1, borderColor: Colors.border,
+    flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 12,
   },
   addressText: { flex: 1, fontSize: 14, color: Colors.text, lineHeight: 20, fontWeight: '500' },
-  accessSummaryCard: {
-    backgroundColor: Colors.surface, borderRadius: 5,
-    padding: 14, borderWidth: 1, borderColor: Colors.border, gap: 4,
-  },
+  accessSummaryCard: { padding: 14, gap: 4 },
   accessSummaryTitle: { fontSize: 13, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 },
   accessDetailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 },
   accessDetailLabel: { fontSize: 13, color: Colors.textSecondary },
@@ -1136,12 +1114,6 @@ const s = StyleSheet.create({
     borderTopWidth: 1, borderTopColor: Colors.border,
     padding: 16,
   },
-  confirmBtn: {
-    height: 56, backgroundColor: Colors.ink,
-    borderRadius: 5, alignItems: 'center', justifyContent: 'center',
-  },
-  confirmBtnText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
-
   // Pay button
   payWrap: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
@@ -1149,11 +1121,4 @@ const s = StyleSheet.create({
     borderTopWidth: 1, borderTopColor: Colors.border,
     padding: 20,
   },
-  payBtn: {
-    height: 56, backgroundColor: Colors.ink,
-    borderRadius: 5, alignItems: 'center', justifyContent: 'center',
-  },
-  payBtnDisabled: { opacity: 0.5 },
-  payBtnText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
-
 });

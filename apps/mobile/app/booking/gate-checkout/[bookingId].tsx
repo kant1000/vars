@@ -26,7 +26,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { CloseIcon } from '@/components/icons';
 import { supabase } from '@/lib/supabase';
-import { Colors, BORDER_RADIUS } from '@/constants/colors';
+import { VarsButton } from '@/components/ui';
+import { useVarsTheme } from '@/contexts/ThemeContext';
+import { Colors } from '@/constants/colors';
 import { fmtPrice } from '@/lib/format';
 import { BOOKING_STATUS } from '@vars/shared';
 
@@ -53,6 +55,7 @@ function useCountdownSecs(expiresAt: Date | null) {
 export default function GateCheckoutScreen() {
   const { bookingId } = useLocalSearchParams<{ bookingId: string }>();
   const insets = useSafeAreaInsets();
+  const { theme } = useVarsTheme();
 
   const [phase, setPhase] = useState<Phase>('loading');
   const [accessCode, setAccessCode] = useState<string | null>(null);
@@ -180,12 +183,12 @@ export default function GateCheckoutScreen() {
           The payment window for this booking has expired and the booking has been cancelled.{'\n\n'}
           You can book again whenever you're ready.
         </Text>
-        <TouchableOpacity
-          style={s.expiredBtn}
+        <VarsButton
+          theme={theme}
           onPress={() => router.replace('/(tabs)/bookings')}
-        >
-          <Text style={s.expiredBtnText}>Back to bookings</Text>
-        </TouchableOpacity>
+          label="Back to bookings"
+          style={s.expiredBtn}
+        />
       </View>
     );
   }
@@ -196,15 +199,14 @@ export default function GateCheckoutScreen() {
       <View style={[s.container, s.centered, { paddingTop: insets.top, paddingHorizontal: 32 }]}>
         <Text style={s.errorTitle}>Something went wrong</Text>
         <Text style={s.errorBody}>{errorMsg}</Text>
-        <TouchableOpacity style={s.retryBtn} onPress={fetchCheckout}>
-          <Text style={s.retryBtnText}>Try again</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[s.retryBtn, { backgroundColor: Colors.surface, marginTop: 8 }]}
+        <VarsButton theme={theme} onPress={fetchCheckout} label="Try again" style={s.retryBtn} />
+        <VarsButton
+          theme={theme}
+          variant="secondary"
           onPress={() => router.replace('/(tabs)/bookings')}
-        >
-          <Text style={[s.retryBtnText, { color: Colors.text }]}>Back to bookings</Text>
-        </TouchableOpacity>
+          label="Back to bookings"
+          style={[s.retryBtn, { marginTop: 8 }]}
+        />
       </View>
     );
   }
@@ -228,18 +230,20 @@ export default function GateCheckoutScreen() {
           No charge was made.{expiresAt ? ` You have ${countdown} to complete payment before the booking is cancelled.` : ''}
         </Text>
         {!countdownExpired && (
-          <TouchableOpacity style={s.retryBtn} onPress={fetchCheckout}>
-            <Text style={s.retryBtnText}>
-              Try again — {amountKobo > 0 ? fmtPrice(amountKobo) : ''}
-            </Text>
-          </TouchableOpacity>
+          <VarsButton
+            theme={theme}
+            onPress={fetchCheckout}
+            label={`Try again — ${amountKobo > 0 ? fmtPrice(amountKobo) : ''}`}
+            style={s.retryBtn}
+          />
         )}
-        <TouchableOpacity
-          style={[s.retryBtn, { backgroundColor: Colors.surface, marginTop: 8 }]}
+        <VarsButton
+          theme={theme}
+          variant="secondary"
           onPress={() => router.replace('/(tabs)/bookings')}
-        >
-          <Text style={[s.retryBtnText, { color: Colors.text }]}>Back to bookings</Text>
-        </TouchableOpacity>
+          label="Back to bookings"
+          style={[s.retryBtn, { marginTop: 8 }]}
+        />
       </View>
     );
   }
@@ -321,12 +325,7 @@ const s = StyleSheet.create({
   expiredBody: {
     fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 22,
   },
-  expiredBtn: {
-    marginTop: 24, backgroundColor: Colors.ink,
-    borderRadius: BORDER_RADIUS, height: 56,
-    alignItems: 'center', justifyContent: 'center', width: '100%',
-  },
-  expiredBtnText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
+  expiredBtn: { marginTop: 24, width: '100%' },
 
   cancelledTitle: {
     fontSize: 20, fontWeight: '800', color: Colors.text,
@@ -336,12 +335,7 @@ const s = StyleSheet.create({
     fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 22,
   },
 
-  retryBtn: {
-    marginTop: 16, backgroundColor: Colors.ink,
-    borderRadius: BORDER_RADIUS, height: 56,
-    alignItems: 'center', justifyContent: 'center', width: '100%',
-  },
-  retryBtnText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
+  retryBtn: { marginTop: 16, width: '100%' },
 
   errorTitle: {
     fontSize: 20, fontWeight: '800', color: Colors.error,
