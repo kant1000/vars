@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVarsTheme } from '@/contexts/ThemeContext';
-import { VarsSwitch } from '@/components/ui';
+import { VarsSkeleton, VarsSwitch } from '@/components/ui';
 import { signOut } from '@/lib/auth';
 import { pickAndUploadImage } from '@/lib/storage';
 import { Colors, BORDER_RADIUS } from '@/constants/colors';
@@ -226,7 +226,22 @@ export default function ProfileScreen() {
         </View>
 
         {/* ── Active bookings ── */}
-        {activeBookings.length > 0 && (
+        {loadingBookings ? (
+          <Section title="Active bookings">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <View key={i} style={s.bookingRow}>
+                <View style={{ flex: 1, gap: 6 }}>
+                  <VarsSkeleton theme={theme} height={14} width="55%" />
+                  <VarsSkeleton theme={theme} height={12} width="70%" />
+                </View>
+                <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                  <VarsSkeleton theme={theme} height={14} width={50} />
+                  <VarsSkeleton theme={theme} height={18} width={70} radius={BORDER_RADIUS} />
+                </View>
+              </View>
+            ))}
+          </Section>
+        ) : activeBookings.length > 0 && (
           <Section title="Active bookings">
             {activeBookings.map((b) => (
               <TouchableOpacity
