@@ -16,12 +16,15 @@ import { signOut } from '@/lib/auth';
 import { Colors, BORDER_RADIUS } from '@/constants/colors';
 import { ChevronRightIcon, CheckIcon } from '@/components/icons';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
+import { useVarsTheme } from '@/contexts/ThemeContext';
+import { VarsSwitch } from '@/components/ui';
 
 // Stored in AsyncStorage; enforcement gate belongs in _layout.tsx on AppState change.
 const BIOMETRIC_KEY = 'vars_biometric_lock';
 
 export default function VendorSettings() {
   const insets = useSafeAreaInsets();
+  const { theme, appearance, override, setOverride } = useVarsTheme();
 
   // Account
   const [displayName, setDisplayName] = useState('');
@@ -279,6 +282,29 @@ export default function VendorSettings() {
           </TouchableOpacity>
         </View>
 
+        {/* APPEARANCE */}
+        <Text style={s.sectionLabel}>Appearance</Text>
+        <View style={s.card}>
+          <View style={[s.switchRow, override === 'system' && s.lastRow]}>
+            <VarsSwitch
+              value={override === 'system'}
+              onChange={(on) => setOverride(on ? 'system' : appearance)}
+              label="Match system appearance"
+              theme={theme}
+            />
+          </View>
+          {override !== 'system' && (
+            <View style={[s.switchRow, s.lastRow]}>
+              <VarsSwitch
+                value={override === 'dark'}
+                onChange={(on) => setOverride(on ? 'dark' : 'light')}
+                label="Dark mode"
+                theme={theme}
+              />
+            </View>
+          )}
+        </View>
+
         {/* PAYOUT DETAILS */}
         <Text style={s.sectionLabel}>Payout details</Text>
         <View style={s.card}>
@@ -498,6 +524,11 @@ const s = StyleSheet.create({
   },
   rowLabel: { fontSize: 15, fontWeight: '500', color: Colors.text },
   rowDestructive: { fontSize: 15, fontWeight: '500', color: Colors.error },
+
+  switchRow: {
+    paddingHorizontal: 14, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
 
   confirmBtn: {
     width: 36, height: 36, borderRadius: 18,

@@ -15,6 +15,8 @@ import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { useVarsTheme } from '@/contexts/ThemeContext';
+import { VarsSwitch } from '@/components/ui';
 import { signOut } from '@/lib/auth';
 import { pickAndUploadImage } from '@/lib/storage';
 import { Colors, BORDER_RADIUS } from '@/constants/colors';
@@ -46,6 +48,7 @@ const STATUS_COLOR: Partial<Record<BookingStatus, string>> = {
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { user, profile, refreshProfile, isAuthenticated } = useAuth();
+  const { theme, appearance, override, setOverride } = useVarsTheme();
 
   const [editing, setEditing]         = useState(false);
   const [name, setName]               = useState('');
@@ -267,6 +270,28 @@ export default function ProfileScreen() {
           />
         </Section>
 
+        {/* ── Appearance ── */}
+        <Section title="Appearance">
+          <View style={[s.switchRow, override === 'system' && s.switchRowLast]}>
+            <VarsSwitch
+              value={override === 'system'}
+              onChange={(on) => setOverride(on ? 'system' : appearance)}
+              label="Match system appearance"
+              theme={theme}
+            />
+          </View>
+          {override !== 'system' && (
+            <View style={[s.switchRow, s.switchRowLast]}>
+              <VarsSwitch
+                value={override === 'dark'}
+                onChange={(on) => setOverride(on ? 'dark' : 'light')}
+                label="Dark mode"
+                theme={theme}
+              />
+            </View>
+          )}
+        </Section>
+
         {/* ── Sign out ── */}
         <View style={s.signOutWrap}>
           <TouchableOpacity style={s.signOutBtn} onPress={handleSignOut}>
@@ -387,6 +412,11 @@ const s = StyleSheet.create({
   },
   settingsIcon: { width: 24, alignItems: 'center' as const, justifyContent: 'center' as const },
   settingsLabel: { flex: 1, fontSize: 14, fontWeight: '600', color: Colors.text },
+  switchRow: {
+    paddingHorizontal: 14, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
+  switchRowLast: { borderBottomWidth: 0 },
 
   // Sign out
   signOutWrap: { alignItems: 'center', paddingTop: 32, paddingBottom: 8, gap: 12 },
