@@ -80,6 +80,7 @@ module.exports = {
           project: 'vars-mobile',
         },
       ],
+      './plugins/withSentryAutolinkFix',
     ],
     updates: {
       url: 'https://u.expo.dev/e7b18395-9c2e-40d9-b667-63d030784790',
