@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, TextInput, StyleSheet } from 'react-native';
-import { Colors } from '@/constants/colors';
+import { BORDER_RADIUS } from '@/constants/colors';
+import { VarsTheme } from '@/constants/visualSystem';
+import { useVarsTheme } from '@/contexts/ThemeContext';
 import { MIN_SERVICE_PRICE_KOBO } from '@vars/shared';
 
 const MIN_PRICE = MIN_SERVICE_PRICE_KOBO / 100;
@@ -22,6 +24,8 @@ export function VendorPriceInput({
   pioneer = false,
   pioneerBookingsCompleted = 0,
 }: Props) {
+  const { theme } = useVarsTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const num = Number(value);
   const hasValue = value.trim() !== '' && num > 0 && !isNaN(num);
   const isPioneerActive = pioneer && pioneerBookingsCompleted < 3;
@@ -49,7 +53,7 @@ export function VendorPriceInput({
           onChangeText={onChangeText}
           onBlur={handleBlur}
           placeholder={MIN_PRICE.toLocaleString('en-NG')}
-          placeholderTextColor={Colors.textMuted}
+          placeholderTextColor={theme.color.inkMuted}
           keyboardType="numeric"
           returnKeyType="done"
         />
@@ -59,16 +63,18 @@ export function VendorPriceInput({
   );
 }
 
-const styles = StyleSheet.create({
-  wrapper: { marginBottom: 4 },
+function makeStyles(theme: VarsTheme) {
+  return StyleSheet.create({
+    wrapper: { marginBottom: 4 },
 
-  inputRow: {
-    flexDirection: 'row', alignItems: 'center',
-    height: 44, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 5,
-    paddingHorizontal: 12, backgroundColor: Colors.surface,
-  },
-  prefix: { fontSize: 16, fontWeight: '600', color: Colors.text, marginRight: 4 },
-  input: { flex: 1, fontSize: 16, fontWeight: '600', color: Colors.text },
+    inputRow: {
+      flexDirection: 'row', alignItems: 'center',
+      height: 44, borderWidth: 1.5, borderColor: theme.color.inkFaint, borderRadius: BORDER_RADIUS,
+      paddingHorizontal: 12, backgroundColor: theme.color.surface2,
+    },
+    prefix: { fontSize: 16, fontWeight: '600', color: theme.color.ink, marginRight: 4 },
+    input: { flex: 1, fontSize: 16, fontWeight: '600', color: theme.color.ink },
 
-  preview: { marginTop: 4, fontSize: 13, color: Colors.textMuted },
-});
+    preview: { marginTop: 4, fontSize: 13, color: theme.color.inkMuted },
+  });
+}

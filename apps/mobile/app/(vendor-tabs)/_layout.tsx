@@ -4,21 +4,23 @@
 // ============================================================
 import { Tabs } from 'expo-router';
 import { Platform } from 'react-native';
-import { Colors } from '@/constants/colors';
+import { useVarsTheme } from '@/contexts/ThemeContext';
 import { BriefcaseIcon, CalendarIcon, BanknoteIcon, PersonIcon } from '@/components/icons';
 import { VendorOnlineProvider } from '@/contexts/VendorOnlineContext';
 
 export default function VendorTabLayout() {
+  const { theme } = useVarsTheme();
+
   return (
     <VendorOnlineProvider>
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: Colors.ink,
-        tabBarInactiveTintColor: Colors.inkMuted,
+        tabBarActiveTintColor: theme.color.ink,
+        tabBarInactiveTintColor: theme.color.inkMuted,
         tabBarStyle: {
-          backgroundColor: Colors.background,
-          borderTopColor: Colors.inkFaint,
+          backgroundColor: theme.color.bg,
+          borderTopColor: theme.color.inkFaint,
           height: Platform.OS === 'ios' ? 84 : 64,
           paddingBottom: Platform.OS === 'ios' ? 28 : 10,
           paddingTop: 8,

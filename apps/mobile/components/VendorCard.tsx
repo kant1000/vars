@@ -2,13 +2,15 @@
 // VARS — VendorCard component
 // Used in discovery feed. Tapping navigates to /vendor/[id].
 // ============================================================
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { Colors } from '@/constants/colors';
+import { Colors, BORDER_RADIUS } from '@/constants/colors';
+import { VarsTheme } from '@/constants/visualSystem';
+import { useVarsTheme } from '@/contexts/ThemeContext';
 import { StarFilledIcon } from '@/components/icons';
 import { usePostHog, EVENTS } from '@/lib/analytics';
 import { CATEGORY_L1_LABELS } from '@vars/shared';
@@ -39,6 +41,8 @@ interface Props {
 }
 
 export function VendorCard({ vendor, returnTo }: Props) {
+  const { theme } = useVarsTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const posthog = usePostHog();
   const displayPrice = `₦${Math.round(vendor.price_from / 100).toLocaleString('en-NG')}`;
   const displayDist = vendor.distance_km < 1
@@ -84,7 +88,7 @@ export function VendorCard({ vendor, returnTo }: Props) {
         </View>
 
         {/* Badges */}
-        <BadgeRow vendor={vendor} />
+        <BadgeRow vendor={vendor} styles={styles} />
 
         {/* Category + rating */}
         <View style={styles.metaRow}>
@@ -115,7 +119,7 @@ export function VendorCard({ vendor, returnTo }: Props) {
   );
 }
 
-function BadgeRow({ vendor }: { vendor: VendorCardData }) {
+function BadgeRow({ vendor, styles }: { vendor: VendorCardData; styles: ReturnType<typeof makeStyles> }) {
   const badges: { label: string; color: string }[] = [];
   if (vendor.pioneer) badges.push({ label: '★ Pioneer', color: Colors.badgePioneer });
   if (vendor.badge_vars_choice) badges.push({ label: 'VARS Choice', color: Colors.badgeVarsChoice });
@@ -135,32 +139,34 @@ function BadgeRow({ vendor }: { vendor: VendorCardData }) {
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    flexDirection: 'row', gap: 14,
-    backgroundColor: Colors.background,
-    borderRadius: 5, padding: 14,
-    borderWidth: 1, borderColor: Colors.border,
-    marginHorizontal: 16, marginBottom: 12,
-  },
-  avatarWrap: { width: 68, height: 68 },
-  avatar: { width: 68, height: 68, borderRadius: 34 },
-  statusDotWrap: { position: 'absolute', bottom: 0, right: 0 },
-  avatarFallback: { backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
-  avatarInitial: { fontSize: 24, fontWeight: '700', color: Colors.primary },
-  info: { flex: 1, gap: 4 },
-  nameRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  name: { fontSize: 16, fontWeight: '700', color: Colors.text, flex: 1, marginRight: 6 },
-  distance: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
-  badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
-  badge: { borderRadius: 5, paddingHorizontal: 6, paddingVertical: 2 },
-  badgeText: { fontSize: 12, fontWeight: '700' },
-  metaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  category: { fontSize: 12, color: Colors.textSecondary, flex: 1 },
-  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  ratingText: { fontSize: 12, fontWeight: '600', color: Colors.text },
-  reviewCount: { fontWeight: '400', color: Colors.textSecondary },
-  newOnVars: { fontSize: 12, fontWeight: '600', color: Colors.badgeNew },
-  price: { fontSize: 13, color: Colors.textSecondary },
-  priceAmount: { fontWeight: '700', color: Colors.text },
-});
+function makeStyles(theme: VarsTheme) {
+  return StyleSheet.create({
+    card: {
+      flexDirection: 'row', gap: 14,
+      backgroundColor: theme.color.bg,
+      borderRadius: BORDER_RADIUS, padding: 14,
+      borderWidth: 1, borderColor: theme.color.inkFaint,
+      marginHorizontal: 16, marginBottom: 12,
+    },
+    avatarWrap: { width: 68, height: 68 },
+    avatar: { width: 68, height: 68, borderRadius: 34 },
+    statusDotWrap: { position: 'absolute', bottom: 0, right: 0 },
+    avatarFallback: { backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
+    avatarInitial: { fontSize: 24, fontWeight: '700', color: Colors.primary },
+    info: { flex: 1, gap: 4 },
+    nameRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+    name: { fontSize: 16, fontWeight: '700', color: theme.color.ink, flex: 1, marginRight: 6 },
+    distance: { fontSize: 12, color: theme.color.inkMuted, marginTop: 2 },
+    badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
+    badge: { borderRadius: BORDER_RADIUS, paddingHorizontal: 6, paddingVertical: 2 },
+    badgeText: { fontSize: 12, fontWeight: '700' },
+    metaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    category: { fontSize: 12, color: theme.color.inkMuted, flex: 1 },
+    ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+    ratingText: { fontSize: 12, fontWeight: '600', color: theme.color.ink },
+    reviewCount: { fontWeight: '400', color: theme.color.inkMuted },
+    newOnVars: { fontSize: 12, fontWeight: '600', color: Colors.badgeNew },
+    price: { fontSize: 13, color: theme.color.inkMuted },
+    priceAmount: { fontWeight: '700', color: theme.color.ink },
+  });
+}

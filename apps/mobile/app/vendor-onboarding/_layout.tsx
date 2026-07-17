@@ -3,10 +3,13 @@
 // Shows progress bar across all 5 steps.
 // Shows Pioneer banner when vendor.pioneer = TRUE.
 // ============================================================
+import React, { useMemo } from 'react';
 import { Stack } from 'expo-router';
 import { View, Text, StyleSheet } from 'react-native';
 import { useSegments } from 'expo-router';
-import { Colors, BORDER_RADIUS } from '@/constants/colors';
+import { BORDER_RADIUS } from '@/constants/colors';
+import { VarsTheme } from '@/constants/visualSystem';
+import { useVarsTheme } from '@/contexts/ThemeContext';
 import { VendorOnboardingProvider, useVendorOnboarding } from '@/contexts/VendorOnboardingContext';
 
 const STEPS = [
@@ -28,6 +31,8 @@ function getStepIndex(segments: string[]): number {
 }
 
 function OnboardingHeader() {
+  const { theme } = useVarsTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const segments = useSegments();
   const { isPioneer } = useVendorOnboarding();
   const current = getStepIndex(segments);
@@ -64,6 +69,8 @@ function OnboardingHeader() {
 }
 
 export default function VendorOnboardingLayout() {
+  const { theme } = useVarsTheme();
+
   return (
     <VendorOnboardingProvider>
       <Stack
@@ -71,7 +78,7 @@ export default function VendorOnboardingLayout() {
           headerShown: true,
           headerTitle: () => <OnboardingHeader />,
           headerLeft: () => null,
-          headerStyle: { backgroundColor: Colors.background },
+          headerStyle: { backgroundColor: theme.color.bg },
           headerShadowVisible: false,
           gestureEnabled: false,
         }}
@@ -86,31 +93,33 @@ export default function VendorOnboardingLayout() {
   );
 }
 
-const styles = StyleSheet.create({
-  headerContainer: { alignItems: 'center', gap: 6 },
+function makeStyles(theme: VarsTheme) {
+  return StyleSheet.create({
+    headerContainer: { alignItems: 'center', gap: 6 },
 
-  pioneerBanner: {
-    backgroundColor: Colors.ink,
-    borderRadius: BORDER_RADIUS,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  pioneerText: {
-    color: Colors.white,
-    fontSize: 11,
-    fontWeight: '500',
-    letterSpacing: 0.1,
-  },
+    pioneerBanner: {
+      backgroundColor: theme.color.ink,
+      borderRadius: BORDER_RADIUS,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+    },
+    pioneerText: {
+      color: theme.color.inverseInk,
+      fontSize: 11,
+      fontWeight: '500',
+      letterSpacing: 0.1,
+    },
 
-  progressContainer: { alignItems: 'center', paddingVertical: 2 },
-  progressLabel: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    marginBottom: 6,
-    fontWeight: '500',
-  },
-  track: { flexDirection: 'row', gap: 4, width: 200 },
-  segment: { flex: 1, height: 3, borderRadius: BORDER_RADIUS },
-  segmentFilled: { backgroundColor: Colors.ink },
-  segmentEmpty: { backgroundColor: Colors.border },
-});
+    progressContainer: { alignItems: 'center', paddingVertical: 2 },
+    progressLabel: {
+      fontSize: 12,
+      color: theme.color.inkMuted,
+      marginBottom: 6,
+      fontWeight: '500',
+    },
+    track: { flexDirection: 'row', gap: 4, width: 200 },
+    segment: { flex: 1, height: 3, borderRadius: BORDER_RADIUS },
+    segmentFilled: { backgroundColor: theme.color.ink },
+    segmentEmpty: { backgroundColor: theme.color.inkFaint },
+  });
+}

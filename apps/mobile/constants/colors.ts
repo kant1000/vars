@@ -14,7 +14,7 @@ export const Colors = {
   textOnPrimary: '#FFFFFF',
 
   success: '#22C55E',
-  error: '#EF4444',
+  error: '#DC2626',
   warning: '#F59E0B',
 
   // Booking status colours
@@ -67,7 +67,7 @@ export const Colors = {
   accentBlue:  '#0A7AFF',  // booked dot
   accentAmber: '#F59E0B',  // auto-accept ⚡ icon
   accentGreen: '#22C55E',  // online dot, active zone dot
-  accentRed:   '#EF4444',  // blocked ✕ icon
+  accentRed:   '#DC2626',  // blocked ✕ icon
 } as const;
 
 export type ColorKey = keyof typeof Colors;

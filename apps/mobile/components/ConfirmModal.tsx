@@ -1,9 +1,11 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import {
   Animated, Modal, Pressable, StyleSheet,
   Text, TouchableOpacity, View,
 } from 'react-native';
-import { Colors, BORDER_RADIUS } from '@/constants/colors';
+import { BORDER_RADIUS } from '@/constants/colors';
+import { VarsTheme } from '@/constants/visualSystem';
+import { useVarsTheme } from '@/contexts/ThemeContext';
 
 interface ConfirmModalProps {
   visible: boolean;
@@ -22,6 +24,8 @@ export function ConfirmModal({
   onConfirm, onDismiss,
   destructive = false,
 }: ConfirmModalProps) {
+  const { theme } = useVarsTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
   const scale = useRef(new Animated.Value(0.92)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
@@ -65,60 +69,62 @@ export function ConfirmModal({
   );
 }
 
-const s = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: Colors.overlay,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 28,
-  },
-  card: {
-    width: '100%',
-    backgroundColor: Colors.background,
-    borderRadius: BORDER_RADIUS,
-    padding: 24,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: Colors.text,
-    marginBottom: 12,
-    lineHeight: 24,
-  },
-  body: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    lineHeight: 21,
-    marginBottom: 24,
-  },
-  bodyWrap: {
-    marginBottom: 24,
-  },
-  confirmBtn: {
-    height: 52,
-    backgroundColor: Colors.ink,
-    borderRadius: BORDER_RADIUS,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  confirmBtnDestructive: {
-    backgroundColor: Colors.error,
-  },
-  confirmBtnText: {
-    color: '#FFF',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  dismissBtn: {
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dismissBtnText: {
-    fontSize: 14,
-    color: Colors.textMuted,
-    fontWeight: '500',
-  },
-});
+function makeStyles(theme: VarsTheme) {
+  return StyleSheet.create({
+    overlay: {
+      flex: 1,
+      backgroundColor: theme.color.overlay,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 28,
+    },
+    card: {
+      width: '100%',
+      backgroundColor: theme.color.bg,
+      borderRadius: BORDER_RADIUS,
+      padding: 24,
+    },
+    title: {
+      fontSize: 18,
+      fontWeight: '800',
+      color: theme.color.ink,
+      marginBottom: 12,
+      lineHeight: 24,
+    },
+    body: {
+      fontSize: 14,
+      color: theme.color.inkMuted,
+      lineHeight: 21,
+      marginBottom: 24,
+    },
+    bodyWrap: {
+      marginBottom: 24,
+    },
+    confirmBtn: {
+      height: 52,
+      backgroundColor: theme.color.ink,
+      borderRadius: BORDER_RADIUS,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 10,
+    },
+    confirmBtnDestructive: {
+      backgroundColor: theme.color.accentRed,
+    },
+    confirmBtnText: {
+      color: theme.color.inverseInk,
+      fontSize: 15,
+      fontWeight: '700',
+    },
+    dismissBtn: {
+      height: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    dismissBtnText: {
+      fontSize: 14,
+      color: theme.color.inkMuted,
+      fontWeight: '500',
+    },
+  });
+}

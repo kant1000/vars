@@ -621,7 +621,7 @@ const s = StyleSheet.create({
   },
   statusCardTitle: { fontSize: 18, fontWeight: '700', color: Colors.text },
   statusCardBody: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20, marginBottom: 20 },
-  statusError: { fontSize: 13, color: Colors.error ?? '#EF4444', marginBottom: 12 },
+  statusError: { fontSize: 13, color: Colors.error, marginBottom: 12 },
   statusToggleBtn: {
     height: 50, borderRadius: BORDER_RADIUS, backgroundColor: Colors.ink,
     alignItems: 'center', justifyContent: 'center', marginBottom: 4,
