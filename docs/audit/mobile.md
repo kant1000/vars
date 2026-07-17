@@ -285,7 +285,7 @@ Concrete next actions, in a reasonable order. Items resolved by the post-audit f
 8. Run a real screen-reader pass (VoiceOver + TalkBack) confirming the `VarsButton`/`VarsInput`/`VarsToast`/`VarsDialog` fixes actually announce correctly at runtime, not just that the props are set — still open, this update was static-analysis-only.
 9. Spot-check 2–3 of the diff-audited files in [section 5](#5-business-logic-preservation-evidence) independently rather than trusting the audit trail alone — pick booking flow or gate checkout given they're payment-adjacent. Still open.
 10. Decide whether the six skeleton-only screens and the schedule grid get scheduled as follow-up work, and if so, scope them the same way (buttons/inputs/cards only, business logic untouched, diff-reviewed). **Superseded** — folded into the theme migration roadmap in section 10, which covers these plus every other unmigrated screen.
-11. Execute the theme migration roadmap in section 10. Phase 8 in progress.
+11. ~~Execute the theme migration roadmap in section 10.~~ **Done** — all 9 phases (8–16) complete as of 2026-07-17. Every screen and shared component now reads live `theme.color.*` tokens; remaining static `Colors.*` references are deliberate exceptions (brand colors, per-status semantic maps, fixed-warning treatments, overlays on photos/maps/WebViews).
 
 ---
 
@@ -314,16 +314,16 @@ Grouped by risk and reuse rather than file order — shared components go first 
 | Phase | Scope | Files | Lines | Why this grouping |
 |---|---|---|---|---|
 | 8 ✅ | Shared components + nav shell (`ConfirmModal`, `VendorCard`, `VendorPriceInput`, both tab layouts, onboarding layout) | 6 | ~590 | Reused everywhere — do first so later phases inherit the fix. `OfflineBanner` excluded on inspection — its colors are a fixed warning treatment, not theme-reactive by design |
-| 9 | Auth & onboarding entry (`auth/login`, `auth/phone`, `auth/vendor-login`, `onboarding`) | 4 | ~1,480 | Pre-login, zero payment/business-logic risk. **Must preserve the hardcoded Google/Facebook brand colors in `login.tsx` untouched** — see CLAUDE.md's Brand Color Exceptions |
-| 10 | Customer core tabs (home, bookings, notifications, profile) | 4 | ~1,416 | Highest-traffic customer screens |
-| 11 | Vendor core tabs minus schedule (dashboard, earnings, profile) | 3 | ~2,280 | Highest-traffic vendor screens; `(vendor-tabs)/index.tsx` is 1,304 lines alone |
-| 12 | `schedule.tsx` — dedicated phase | 1 | 2,240 | Custom grid/gesture UI, previously scoped out of Phase 5 for the same reason; too large and too risky to bundle with anything else |
-| 13 | Booking flow & live tracking (`booking/[vendorId]`, `booking/detail`, `gate-checkout`, `live/[bookingId]`, `review`) | 5 | ~3,400 | Highest business value, touches payment *UI* (not logic) — needs the most care |
-| 14 | Vendor onboarding theme wiring (steps 1–5) | 5 | ~1,438 | Already on `Vars*` primitives from Phase 3 — this is finishing the wiring, not a re-skin |
-| 15 | Vendor profile/services/zone (`vendor-settings`, `vendor/[id]`, services add/edit, zone-setup) | 5 | ~2,224 | Where the dark-mode gap was originally noticed |
-| 16 | Legal/static pages (terms, privacy, consent, delete-account) | 6 | ~1,478 | Lowest visual priority — candidate to deprioritize or drop entirely |
+| 9 ✅ | Auth & onboarding entry (`auth/login`, `auth/phone`, `auth/vendor-login`, `onboarding`) | 4 | ~1,480 | Pre-login, zero payment/business-logic risk. **Preserved the hardcoded Google/Facebook brand colors in `login.tsx` untouched** — see CLAUDE.md's Brand Color Exceptions |
+| 10 ✅ | Customer core tabs (home, bookings, notifications, profile) | 4 | ~1,416 | Highest-traffic customer screens |
+| 11 ✅ | Vendor core tabs minus schedule (dashboard, earnings, profile) | 3 | ~2,280 | Highest-traffic vendor screens; `(vendor-tabs)/index.tsx` is 1,304 lines alone |
+| 12 ✅ | `schedule.tsx` — dedicated phase | 1 | 2,240 | Custom grid/gesture UI, previously scoped out of Phase 5 for the same reason; too large and too risky to bundle with anything else |
+| 13 ✅ | Booking flow & live tracking (`booking/[vendorId]`, `booking/detail`, `gate-checkout`, `live/[bookingId]`, `review`) | 5 | ~3,400 | Highest business value, touches payment *UI* (not logic) — needs the most care |
+| 14 ✅ | Vendor onboarding theme wiring (steps 1–5) | 5 | ~1,438 | Already on `Vars*` primitives from Phase 3 — this is finishing the wiring, not a re-skin |
+| 15 ✅ | Vendor profile/services/zone (`vendor-settings`, `vendor/[id]`, services add/edit, zone-setup) | 5 | ~2,224 | Where the dark-mode gap was originally noticed |
+| 16 ✅ | Legal/static pages (terms, privacy, consent, delete-account) | 6 | ~1,478 | Lowest visual priority — migrated anyway for consistency |
 
-Total: 9 phases, ~14,600 lines across 40 files.
+Total: 9 phases, ~14,600 lines across 40 files. **All phases complete as of 2026-07-17.**
 
 ### Phase 8 notes (completed 2026-07-17)
 
@@ -331,6 +331,15 @@ Total: 9 phases, ~14,600 lines across 40 files.
 - Resolved a second conflict: the static system has two muted-text tiers (`textSecondary` `#6B7280`, `textMuted` `#A3A3A3`); the theme system only has one (`inkMuted`). Founder decision: collapse both into `theme.color.inkMuted` rather than add a new token tier. Applied consistently across all Phase 8 files.
 - Pattern established: screens/components call `useVarsTheme()`, memoize `StyleSheet.create` output via `useMemo(() => makeStyles(theme), [theme])` instead of a module-level static `StyleSheet.create`. Semantic/brand tokens with no theme equivalent (badge colors, pioneer gold, star rating, status colors) are deliberately left on the static `Colors` import — only core-shell tokens (background/surface/border/text/ink) migrate.
 - Verified: `tsc --noEmit` clean, lint clean (0 errors, same 26 pre-existing warnings), on-device confirmation that the underlying `theme.color.*` mechanism renders correctly in both light and dark via `_dev-visual-preview`. Did not force-verify the migrated tab bar specifically on-device — the terms-acceptance gate blocked further in-app navigation for the test account and re-triggering it wasn't worth a real, timestamped acceptance record on that account.
+
+### Phases 9–16 notes (completed 2026-07-17)
+
+- Every phase followed the pattern and conventions locked in during Phase 8: `useVarsTheme()` + `useMemo(() => makeStyles(theme), [theme])` replacing module-level `StyleSheet.create`; `#DC2626` as the sole `accentRed`/error value; both muted-text tiers collapsed into `theme.color.inkMuted`; `Colors.primary` → `theme.color.accentBlue`; `Colors.success` → `theme.color.accentGreen`; buttons/pills filled with `theme.color.ink` pair their text with `theme.color.inverseInk` rather than a static `'#FFF'`.
+- Subcomponents defined outside a screen's root component either call `useVarsTheme()` independently (small presentational helpers reused many times per file — `Section`/`Body`/`Bullet`/`Bold` in the legal pages, `CheckRow` in onboarding step 5) or receive `theme`/`styles` as an explicit prop (`Badge`, `DocItem`, `VendorProfileSkeleton`).
+- Deliberate non-migration boundary, applied consistently: per-status semantic color maps (`STATUS_CONFIG` etc. — object keys stay string literals per CLAUDE.md, values stay on static `Colors.status*`), fixed-warning-treatment banners (`Colors.warning`), brand accent colors (Google/Facebook buttons, pioneer gold), and fixed-contrast overlays sitting on photos/maps/WebViews (map hint pills, floating nav buttons on portfolio photos) are intentionally left static — not gaps.
+- Fixed two real pre-existing bugs surfaced by the migration itself: a hardcoded white-translucent booked-slot label in `schedule.tsx` that would have gone illegible against an inverted dark background, and a Timeline status-icon color ternary in the booking flow that conflated "done" (reactive) and "active" (fixed-per-status) states into one incorrect branch.
+- Verified per-phase: `tsc --noEmit` clean and lint at or below the pre-existing 23-warning baseline (0 errors) for every phase, checked before each commit.
+- Not done: a full on-device light/dark toggle walkthrough of every migrated screen (40 files) — only the vendor-settings screen (the screen where the gap was first reported) and the underlying token mechanism via `_dev-visual-preview` were visually confirmed on the physical test device. Recommend a manual pass through [section 9](#9-founder-device-qa-checklist)'s theme-toggle checklist before shipping.
 
 ---
 
