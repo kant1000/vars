@@ -1537,7 +1537,7 @@ export default function ScheduleScreen() {
   };
 
   if (loading) {
-    return <View style={s.centered}><ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'light' : 'dark'} /></View>;
+    return <View style={s.centered}><ScissorsLoader size="large" color={theme.appearance === 'dark' ? 'light' : 'dark'} /></View>;
   }
 
   // Show ⚡ on available slots only when the vendor has confirmed their zone

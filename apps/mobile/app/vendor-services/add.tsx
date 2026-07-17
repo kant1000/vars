@@ -128,7 +128,7 @@ export default function AddServiceScreen() {
   };
 
   if (isLoading) {
-    return <View style={styles.center}><ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'light' : 'dark'} /></View>;
+    return <View style={styles.center}><ScissorsLoader size="large" color={theme.appearance === 'dark' ? 'light' : 'dark'} /></View>;
   }
 
   const l2Options = CATEGORY_L2_MAP[formL1] ?? [];

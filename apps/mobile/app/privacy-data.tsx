@@ -127,7 +127,7 @@ export default function PrivacyDataScreen() {
 
       {loading ? (
         <View style={s.centered}>
-          <ScissorsLoader size="medium" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
+          <ScissorsLoader size="large" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
         </View>
       ) : (
         <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>

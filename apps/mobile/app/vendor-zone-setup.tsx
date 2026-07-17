@@ -11,10 +11,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert, StyleSheet, Text,
-  TouchableOpacity, View, Switch, ScrollView,
+  TouchableOpacity, View, ScrollView,
 } from 'react-native';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
+import { VarsSwitch } from '@/components/ui';
 import MapView, { Circle, Marker, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
@@ -165,7 +166,7 @@ export default function VendorZoneSetup() {
   if (loading) {
     return (
       <View style={s.centered}>
-        <ScissorsLoader size="medium" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
+        <ScissorsLoader size="large" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
       </View>
     );
   }
@@ -257,12 +258,7 @@ export default function VendorZoneSetup() {
                 You'll have 5 minutes to cancel if needed.
               </Text>
             </View>
-            <Switch
-              value={autoEnabled}
-              onValueChange={setAutoEnabled}
-              trackColor={{ false: theme.color.inkFaint, true: theme.color.ink }}
-              thumbColor={theme.color.inverseInk}
-            />
+            <VarsSwitch value={autoEnabled} onChange={setAutoEnabled} theme={theme} />
           </View>
 
           {/* Info note */}

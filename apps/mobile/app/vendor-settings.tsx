@@ -5,7 +5,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, Pressable,
-  ScrollView, Alert, Modal, Switch, KeyboardAvoidingView, Platform, Linking,
+  ScrollView, Alert, Modal, KeyboardAvoidingView, Platform, Linking,
 } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -270,13 +270,7 @@ export default function VendorSettings() {
           {biometricAvailable && (
             <View style={s.row}>
               <Text style={s.rowLabel}>Biometric unlock</Text>
-              <Switch
-                value={biometricEnabled}
-                onValueChange={handleToggleBiometric}
-                trackColor={{ false: theme.color.inkFaint, true: theme.color.ink }}
-                thumbColor={theme.color.inverseInk}
-                ios_backgroundColor={theme.color.inkFaint}
-              />
+              <VarsSwitch value={biometricEnabled} onChange={handleToggleBiometric} theme={theme} />
             </View>
           )}
           <TouchableOpacity style={[s.row, s.lastRow]} onPress={handleSignOut} activeOpacity={0.7}>
