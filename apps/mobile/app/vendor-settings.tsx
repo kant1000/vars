@@ -17,6 +17,7 @@ import { BORDER_RADIUS } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { ChevronRightIcon, CheckIcon } from '@/components/icons';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
+import { ConfirmModal } from '@/components/ConfirmModal';
 import { useVarsTheme } from '@/contexts/ThemeContext';
 import { VarsSwitch } from '@/components/ui';
 
@@ -43,6 +44,9 @@ export default function VendorSettings() {
 
   // Support modal
   const [showSupportModal, setShowSupportModal] = useState(false);
+
+  // Sign-out confirmation
+  const [showSignOutModal, setShowSignOutModal] = useState(false);
 
   // Change password modal
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -172,16 +176,7 @@ export default function VendorSettings() {
     Linking.openURL(`https://wa.me/447344975063?text=${message}`);
   };
 
-  const handleSignOut = () => {
-    Alert.alert(
-      'Sign out',
-      "You'll be signed out of this device.",
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Sign out', style: 'destructive', onPress: signOut },
-      ],
-    );
-  };
+  const handleSignOut = () => setShowSignOutModal(true);
 
   const dismissPasswordModal = () => {
     setShowPasswordModal(false);
@@ -472,6 +467,17 @@ export default function VendorSettings() {
           </Pressable>
         </KeyboardAvoidingView>
       </Modal>
+
+      <ConfirmModal
+        visible={showSignOutModal}
+        title="Sign out"
+        body="You'll be signed out of this device."
+        confirmLabel="Sign out"
+        dismissLabel="Cancel"
+        destructive
+        onConfirm={() => { setShowSignOutModal(false); signOut(); }}
+        onDismiss={() => setShowSignOutModal(false)}
+      />
     </View>
   );
 }

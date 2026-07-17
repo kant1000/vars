@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
+import { ConfirmModal } from '@/components/ConfirmModal';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
@@ -57,6 +58,7 @@ export default function ProfileScreen() {
   const [phone, setPhone]             = useState('');
   const [saving, setSaving]           = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [showSignOutModal, setShowSignOutModal] = useState(false);
 
   const [bookings, setBookings]       = useState<ActiveBooking[]>([]);
   const [loadingBookings, setLoadingBookings] = useState(true);
@@ -129,12 +131,7 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleSignOut = () => {
-    Alert.alert('Sign out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign out', style: 'destructive', onPress: signOut },
-    ]);
-  };
+  const handleSignOut = () => setShowSignOutModal(true);
 
   if (!isAuthenticated) {
     return (
@@ -323,6 +320,17 @@ export default function ProfileScreen() {
           <Text style={s.versionText}>VARS v1.0</Text>
         </View>
       </ScrollView>
+
+      <ConfirmModal
+        visible={showSignOutModal}
+        title="Sign out"
+        body="Are you sure you want to sign out?"
+        confirmLabel="Sign out"
+        dismissLabel="Cancel"
+        destructive
+        onConfirm={() => { setShowSignOutModal(false); signOut(); }}
+        onDismiss={() => setShowSignOutModal(false)}
+      />
     </KeyboardAvoidingView>
   );
 }
