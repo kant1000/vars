@@ -265,49 +265,49 @@ Prop conventions:
 
 ### 3.3 Icon Mapping Table
 
-Preferred implementation path:
+**Status: implemented (Phase 6).** `VarsIcon`'s internal rendering is now platform-branched via Metro's `.ios.tsx`/`.android.tsx` file resolution — `VarsIconRenderer.ios.tsx`, `VarsIconRenderer.android.tsx`, and a base `VarsIconRenderer.tsx` (web/fallback) live in `apps/mobile/components/ui/`. Call sites did not change; `VarsIcon`'s `name`/`size`/`color`/`theme` API is identical to before.
 
-1. Short term: use `VarsIcon` with existing SVG fallback so the catalogue can compile now.
-2. Migration: install and test `expo-symbols` with the current Expo SDK/dev build, or use React Navigation native tab icon objects for tab icons only.
-3. Final: SF Symbols on iOS, Material Symbols on Android, with fallback SVG only where either system lacks a close match.
+What actually shipped, and why it differs from the original short/final-path plan above:
 
-Expo compatibility note: the current app is Expo SDK 52. The official Expo Symbols page currently recommends a newer package line and marks the library beta. Do a dev-build compatibility check before adding it to production.
+- **iOS: SF Symbols via `expo-symbols`.** The package version compatible with this app's Expo SDK 52 is `expo-symbols@~0.2.2` (confirmed via `expo/bundledNativeModules.json`), not the latest published version. That specific version's own description is "Provides access to the SF Symbols library on iOS" — **iOS only**. All 33 SF Symbol names in the table below were verified against the `sf-symbols-typescript` package's typed `SFSymbol` union bundled with `expo-symbols`; all 33 are valid, so no name needed changing from the original research pass. `SymbolView`'s `fallback` prop is wired to the existing SVG icon for that concept, so a bad symbol name can never render blank.
+- **Android: Material Icons via `@expo/vector-icons`, not Material Symbols.** Material Symbols (the variable-weight successor set) only ships in `expo-symbols` 55.x and later, which are pinned to Expo SDK 55+ — using it here would mean upgrading this app's Expo SDK, a large, high-risk undertaking far outside "icon system migration" scope, so it was not done. `@expo/vector-icons` is already bundled at this SDK with no version conflict, so Android uses its classic `MaterialIcons` font instead. All 33 concept names were checked against that font's actual glyph map (`@expo/vector-icons/build/vendor/react-native-vector-icons/glyphmaps/MaterialIcons.json`) — all 33 exist, but under **hyphenated** names (`arrow-upward`, not `arrow_upward`), which is why the Android column below differs from the original research pass's underscored Material Symbols-style names. Revisit this when/if the Expo SDK is upgraded past 55.
+- **Web:** unchanged — falls through to the original SVG set, no platform-specific file exists for web.
 
-Weight/style recommendation to test: SF Symbols regular/monochrome paired with Material Symbols outlined weight 400. If Material appears too light at 16px, test weight 500 only for Android.
+**Verification status — read before assuming this looks right.** `tsc` and `lint` are clean, and Metro's platform-file-split was directly verified by inspecting both compiled bundles: `expo-symbols`/`SymbolView` appears only in the iOS bundle (zero references in Android's), and `@expo/vector-icons`/`MaterialIcons` appears only in Android's (zero references in iOS's) — so neither platform can ever try to load the other's native module. That proves the code is structurally sound. **It does not prove the icons look right.** An attempt to build an Android dev client via EAS (`eas build --platform android --profile development`) to install on a physical device and actually look at the icons failed at the Gradle/`PREBUILD` stage — `Plugin [id: 'expo-module-gradle-plugin'] was not found` in `expo-haptics/android/build.gradle`, plus `Could not get unknown property 'release' for SoftwareComponent container` in `expo-modules-core`'s own gradle plugin. Confirmed via `yarn.lock` diff that installing `expo-symbols` changed no other package's resolved version — this is a **pre-existing Android native-toolchain issue** (Gradle/AGP version compatibility), unrelated to this icon work, that has apparently never been exercised by an actual EAS Android build before. It blocks *any* native Android build of this app right now, not just this branch. Fix separately before the founder's device QA checklist (section 6) can run on Android. iOS was never attempted in this pass — no Xcode/macOS available in the environment that did this work; that side needs a founder-run EAS iOS build and device install too.
 
-| Concept | SF Symbols | Material Symbols | Resolution |
+| Concept | iOS (SF Symbols, `expo-symbols`) | Android (Material Icons, `@expo/vector-icons`) | Resolution |
 |---|---|---|---|
-| add | `plus` | `add` | Replace text plus |
-| arrow up | `arrow.up` | `arrow_upward` | Payout/release |
+| add | `plus` | `add` | Now a real plus glyph on both platforms — the SVG fallback previously aliased `add` to the checkmark icon; fixed in Phase 0 |
+| arrow up | `arrow.up` | `arrow-upward` | Payout/release |
 | banknote | `banknote` | `payments` | Material has stronger payments metaphor |
 | bell | `bell` | `notifications` | Notifications |
 | briefcase | `briefcase` | `work` | Vendor jobs tab |
-| calendar | `calendar` | `calendar_month` | Schedule/bookings |
-| car | `car` | `directions_car` | On-way/travel |
+| calendar | `calendar` | `calendar-month` | Schedule/bookings |
+| car | `car` | `directions-car` | On-way/travel |
 | check | `checkmark` | `check` | Inline success |
-| check circle | `checkmark.circle` | `check_circle` | Status success |
-| chevron down | `chevron.down` | `keyboard_arrow_down` | Select affordance |
-| chevron right | `chevron.right` | `chevron_right` | Rows |
-| chevron up | `chevron.up` | `keyboard_arrow_up` | Expand/collapse |
+| check circle | `checkmark.circle` | `check-circle` | Status success |
+| chevron down | `chevron.down` | `keyboard-arrow-down` | Select affordance |
+| chevron right | `chevron.right` | `chevron-right` | Rows |
+| chevron up | `chevron.up` | `keyboard-arrow-up` | Expand/collapse |
 | clock | `clock` | `schedule` | Time/expiry |
 | close | `xmark` | `close` | Dismiss/remove |
-| credit card | `creditcard` | `credit_card` | Payment |
+| credit card | `creditcard` | `credit-card` | Payment |
 | edit | `square.and.pencil` | `edit` | Edit action |
 | eye | `eye` | `visibility` | Balance/password visible |
-| eye off | `eye.slash` | `visibility_off` | Hidden |
+| eye off | `eye.slash` | `visibility-off` | Hidden |
 | gear | `gearshape` | `settings` | Settings |
 | heart | `heart` | `favorite` | Favourite |
-| hourglass | `hourglass` | `hourglass_empty` | Pending |
+| hourglass | `hourglass` | `hourglass-empty` | Pending |
 | lightning | `bolt` | `bolt` | Auto-accept |
 | lock | `lock` | `lock` | Locked/read-only |
-| pen line | `pencil.line` | `edit_note` | Writing/edit note |
+| pen line | `pencil.line` | `edit-note` | Writing/edit note |
 | person | `person` | `person` | Profile |
-| pin | `mappin` | `location_on` | Location |
+| pin | `mappin` | `location-on` | Location |
 | search | `magnifyingglass` | `search` | Discover/search |
-| sparkle | `sparkles` | `auto_awesome` | Service complete |
+| sparkle | `sparkles` | `auto-awesome` | Service complete |
 | star | `star` | `star` | Rating |
 | star filled | `star.fill` | `star` | Filled rating |
-| star empty | `star` | `star_border` | Empty rating |
+| star empty | `star` | `star-border` | Empty rating |
 | warning | `exclamationmark.triangle` | `warning` | Needs attention |
 | x circle | `xmark.circle` | `cancel` | Cancelled/error |
 
@@ -338,7 +338,7 @@ Known implementation gaps:
 
 - No app-wide `ThemeProvider` has been added yet.
 - No settings override persistence has been added yet.
-- `VarsIcon` currently uses existing SVG icons as a safe fallback. Platform-native symbols require adding and validating `expo-symbols` or upgrading the navigation icon path.
+- `VarsIcon` platform-native rendering shipped in Phase 6 — see section 3.3. SVG remains the fallback for web and any symbol name a device can't resolve.
 - `VarsSkeleton` is pulse-only, not shimmer. This is deliberate for a monochrome trust product unless media-heavy screens need shimmer after device review.
 
 ## 5. Rollout Notes

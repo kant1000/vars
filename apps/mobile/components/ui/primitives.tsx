@@ -12,42 +12,10 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import {
-  ArrowUpIcon,
-  BanknoteIcon,
-  BellIcon,
-  BriefcaseIcon,
-  CalendarIcon,
-  CarIcon,
-  CheckCircleIcon,
-  CheckIcon,
-  ChevronDownIcon,
-  ChevronRightIcon,
-  ChevronUpIcon,
-  ClockIcon,
-  CloseIcon,
-  CreditCardIcon,
-  EditIcon,
-  EyeIcon,
-  EyeOffIcon,
-  GearIcon,
-  HeartIcon,
-  HourglassIcon,
-  LightningIcon,
-  LockIcon,
-  PenLineIcon,
-  PersonIcon,
-  PinIcon,
-  PlusIcon,
-  SearchIcon,
-  SparkleIcon,
-  StarEmptyIcon,
-  StarFilledIcon,
-  StarIcon,
-  WarningIcon,
-  XCircleIcon,
-} from '@/components/icons';
+import { CheckIcon } from '@/components/icons';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
+import { VarsIconRenderer } from './VarsIconRenderer';
+import { iconSystemNames, VarsIconName } from './iconMap';
 import {
   VARS_RADIUS,
   VarsElevation,
@@ -55,6 +23,9 @@ import {
   varsElevationStyle,
   varsLight,
 } from '@/constants/visualSystem';
+
+export { iconSystemNames };
+export type { VarsIconName };
 
 type Tone = 'neutral' | 'success' | 'warning' | 'danger' | 'info';
 type ButtonVariant = 'primary' | 'secondary' | 'ghost';
@@ -68,80 +39,6 @@ const TONE_ACCENT: Record<Tone, keyof VarsTheme['color']> = {
   info: 'accentBlue',
 };
 
-export const iconSystemNames = {
-  add: { ios: 'plus', android: 'add' },
-  arrowUp: { ios: 'arrow.up', android: 'arrow_upward' },
-  banknote: { ios: 'banknote', android: 'payments' },
-  bell: { ios: 'bell', android: 'notifications' },
-  briefcase: { ios: 'briefcase', android: 'work' },
-  calendar: { ios: 'calendar', android: 'calendar_month' },
-  car: { ios: 'car', android: 'directions_car' },
-  check: { ios: 'checkmark', android: 'check' },
-  checkCircle: { ios: 'checkmark.circle', android: 'check_circle' },
-  chevronDown: { ios: 'chevron.down', android: 'keyboard_arrow_down' },
-  chevronRight: { ios: 'chevron.right', android: 'chevron_right' },
-  chevronUp: { ios: 'chevron.up', android: 'keyboard_arrow_up' },
-  clock: { ios: 'clock', android: 'schedule' },
-  close: { ios: 'xmark', android: 'close' },
-  creditCard: { ios: 'creditcard', android: 'credit_card' },
-  edit: { ios: 'square.and.pencil', android: 'edit' },
-  eye: { ios: 'eye', android: 'visibility' },
-  eyeOff: { ios: 'eye.slash', android: 'visibility_off' },
-  gear: { ios: 'gearshape', android: 'settings' },
-  heart: { ios: 'heart', android: 'favorite' },
-  hourglass: { ios: 'hourglass', android: 'hourglass_empty' },
-  lightning: { ios: 'bolt', android: 'bolt' },
-  lock: { ios: 'lock', android: 'lock' },
-  penLine: { ios: 'pencil.line', android: 'edit_note' },
-  person: { ios: 'person', android: 'person' },
-  pin: { ios: 'mappin', android: 'location_on' },
-  search: { ios: 'magnifyingglass', android: 'search' },
-  sparkle: { ios: 'sparkles', android: 'auto_awesome' },
-  star: { ios: 'star', android: 'star' },
-  starFilled: { ios: 'star.fill', android: 'star' },
-  starEmpty: { ios: 'star', android: 'star_border' },
-  warning: { ios: 'exclamationmark.triangle', android: 'warning' },
-  xCircle: { ios: 'xmark.circle', android: 'cancel' },
-} as const;
-
-export type VarsIconName = keyof typeof iconSystemNames;
-
-const SvgIconByName: Record<VarsIconName, React.ComponentType<{ size?: number; color?: string }>> = {
-  add: PlusIcon,
-  arrowUp: ArrowUpIcon,
-  banknote: BanknoteIcon,
-  bell: BellIcon,
-  briefcase: BriefcaseIcon,
-  calendar: CalendarIcon,
-  car: CarIcon,
-  check: CheckIcon,
-  checkCircle: CheckCircleIcon,
-  chevronDown: ChevronDownIcon,
-  chevronRight: ChevronRightIcon,
-  chevronUp: ChevronUpIcon,
-  clock: ClockIcon,
-  close: CloseIcon,
-  creditCard: CreditCardIcon,
-  edit: EditIcon,
-  eye: EyeIcon,
-  eyeOff: EyeOffIcon,
-  gear: GearIcon,
-  heart: HeartIcon,
-  hourglass: HourglassIcon,
-  lightning: LightningIcon,
-  lock: LockIcon,
-  penLine: PenLineIcon,
-  person: PersonIcon,
-  pin: PinIcon,
-  search: SearchIcon,
-  sparkle: SparkleIcon,
-  star: StarIcon,
-  starFilled: StarFilledIcon,
-  starEmpty: StarEmptyIcon,
-  warning: WarningIcon,
-  xCircle: XCircleIcon,
-};
-
 export function VarsIcon({
   name,
   size = 18,
@@ -153,8 +50,7 @@ export function VarsIcon({
   color?: string;
   theme?: VarsTheme;
 }) {
-  const Icon = SvgIconByName[name];
-  return <Icon size={size} color={color ?? theme.color.ink} />;
+  return <VarsIconRenderer name={name} size={size} color={color ?? theme.color.ink} />;
 }
 
 export function VarsSurface({
