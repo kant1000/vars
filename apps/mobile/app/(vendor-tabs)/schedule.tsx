@@ -17,6 +17,7 @@ import * as Location from 'expo-location';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
+import { VarsTheme } from '@/constants/visualSystem';
 import { useVendorOnline } from '@/contexts/VendorOnlineContext';
 import { VarsButton, VarsSurface, VarsToast } from '@/components/ui';
 import { useVarsTheme } from '@/contexts/ThemeContext';
@@ -222,6 +223,7 @@ function BookingBottomSheet({
 }) {
   const bottomSheetRef = useRef<BottomSheetModal>(null);
   const { theme } = useVarsTheme();
+  const bs = useMemo(() => makeStylesBs(theme), [theme]);
 
   useEffect(() => {
     bottomSheetRef.current?.present();
@@ -386,7 +388,7 @@ function BookingBottomSheet({
                 </View>
               </View>
               <TouchableOpacity onPress={handleClose} style={bs.closeBtn}>
-                <CloseIcon size={18} color={Colors.textMuted} />
+                <CloseIcon size={18} color={theme.color.inkMuted} />
               </TouchableOpacity>
             </View>
 
@@ -413,19 +415,19 @@ function BookingBottomSheet({
 
             {booking.user_location_address ? (
               <VarsSurface theme={theme} style={bs.addressRow}>
-                <PinIcon size={14} color={Colors.textSecondary} />
+                <PinIcon size={14} color={theme.color.inkMuted} />
                 <Text style={bs.addressText}>{booking.user_location_address}</Text>
               </VarsSurface>
             ) : null}
 
             {/* Booking details */}
             <VarsSurface theme={theme} style={bs.card}>
-              <DetailRow label="Service"  value={booking.service_name} />
-              <DetailRow label="Date"     value={fmtDate(booking.scheduled_at)} />
-              <DetailRow label="Time"     value={fmtTime(booking.scheduled_at)} />
-              <DetailRow label="Duration" value={fmtDuration(booking.service_duration_blocks)} />
+              <DetailRow label="Service"  value={booking.service_name} bs={bs} />
+              <DetailRow label="Date"     value={fmtDate(booking.scheduled_at)} bs={bs} />
+              <DetailRow label="Time"     value={fmtTime(booking.scheduled_at)} bs={bs} />
+              <DetailRow label="Duration" value={fmtDuration(booking.service_duration_blocks)} bs={bs} />
               <View style={bs.divider} />
-              <DetailRow label="Earning"  value={fmtPrice(booking.service_price_kobo)} bold />
+              <DetailRow label="Earning"  value={fmtPrice(booking.service_price_kobo)} bold bs={bs} />
             </VarsSurface>
 
             {/* Access details */}
@@ -433,18 +435,18 @@ function BookingBottomSheet({
               <Text style={bs.sectionTitle}>Access details</Text>
               {accessRevealed ? (
                 <>
-                  {booking.client_phone && <DetailRow label="Phone" value={booking.client_phone} />}
-                  {booking.access_building && <DetailRow label="Building" value={booking.access_building} />}
-                  {booking.access_floor   && <DetailRow label="Floor"    value={booking.access_floor} />}
-                  {booking.access_flat    && <DetailRow label="Flat"     value={booking.access_flat} />}
-                  {booking.access_code    && <DetailRow label="Gate code" value={booking.access_code} />}
+                  {booking.client_phone && <DetailRow label="Phone" value={booking.client_phone} bs={bs} />}
+                  {booking.access_building && <DetailRow label="Building" value={booking.access_building} bs={bs} />}
+                  {booking.access_floor   && <DetailRow label="Floor"    value={booking.access_floor} bs={bs} />}
+                  {booking.access_flat    && <DetailRow label="Flat"     value={booking.access_flat} bs={bs} />}
+                  {booking.access_code    && <DetailRow label="Gate code" value={booking.access_code} bs={bs} />}
                   {!booking.client_phone && !booking.access_building && !booking.access_floor && !booking.access_flat && !booking.access_code && (
                     <Text style={bs.mutedText}>No access details provided.</Text>
                   )}
                 </>
               ) : (
                 <View style={bs.lockedRow}>
-                  <LockIcon size={16} color={Colors.textMuted} />
+                  <LockIcon size={16} color={theme.color.inkMuted} />
                   <Text style={bs.lockedText}>Access details are locked to protect customer privacy. They unlock automatically 15 minutes before your arrival.</Text>
                 </View>
               )}
@@ -538,7 +540,7 @@ function BookingBottomSheet({
                       style={{ marginTop: 10, alignItems: 'center' }}
                       onPress={() => { setShowReschedulePicker(false); setSuggestedSlot(null); }}
                     >
-                      <Text style={{ fontSize: 14, color: Colors.textMuted, fontWeight: '600' }}>Cancel</Text>
+                      <Text style={{ fontSize: 14, color: theme.color.inkMuted, fontWeight: '600' }}>Cancel</Text>
                     </TouchableOpacity>
                   </>
                 )}
@@ -591,7 +593,7 @@ function BookingBottomSheet({
   );
 }
 
-function DetailRow({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+function DetailRow({ label, value, bold, bs }: { label: string; value: string; bold?: boolean; bs: ReturnType<typeof makeStylesBs> }) {
   return (
     <View style={bs.detailRow}>
       <Text style={bs.detailLabel}>{label}</Text>
@@ -601,8 +603,8 @@ function DetailRow({ label, value, bold }: { label: string; value: string; bold?
 }
 
 // ── Sub-components ────────────────────────────────────────────
-function LegendDot({ borderColor, backgroundColor = 'transparent', label, icon, borderWidth = 1.5 }: {
-  borderColor: string; backgroundColor?: string; label: string; icon?: React.ReactNode; borderWidth?: number;
+function LegendDot({ borderColor, backgroundColor = 'transparent', label, icon, borderWidth = 1.5, s }: {
+  borderColor: string; backgroundColor?: string; label: string; icon?: React.ReactNode; borderWidth?: number; s: ReturnType<typeof makeStylesS>;
 }) {
   return (
     <View style={s.legendItem}>
@@ -627,6 +629,8 @@ function BlockRangeSheet({
   onSaved: (count: number, undo: UndoPayload) => void;
 }) {
   const sheetRef = useRef<BottomSheetModal>(null);
+  const { theme } = useVarsTheme();
+  const br = useMemo(() => makeStylesBr(theme), [theme]);
   useEffect(() => { sheetRef.current?.present(); }, []);
   const handleClose = () => sheetRef.current?.dismiss();
 
@@ -923,15 +927,15 @@ function BlockRangeSheet({
                 theme={{
                   itemDay: {
                     active: () => ({
-                      container: { backgroundColor: Colors.ink },
-                      content: { color: '#FFF' },
+                      container: { backgroundColor: theme.color.ink },
+                      content: { color: theme.color.inverseInk },
                     }),
                     today: () => ({
-                      content: { color: Colors.ink, fontWeight: '700' },
+                      content: { color: theme.color.ink, fontWeight: '700' },
                     }),
                   },
                   rowMonth: {
-                    content: { color: Colors.text, fontWeight: '700', fontSize: 15 },
+                    content: { color: theme.color.ink, fontWeight: '700', fontSize: 15 },
                   },
                 }}
               />
@@ -980,6 +984,8 @@ export default function ScheduleScreen() {
   const { session } = useAuth();
   const { isOnline } = useVendorOnline();
   const { theme } = useVarsTheme();
+  const s = useMemo(() => makeStylesS(theme), [theme]);
+  const cal = useMemo(() => makeStylesCal(theme), [theme]);
 
   const [vendorId, setVendorId] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState(() => getEffectiveToday());
@@ -1562,8 +1568,8 @@ export default function ScheduleScreen() {
             router.push('/vendor-zone-setup' as any);
           }}
         >
-          <LightningIcon size={13} color={autoAcceptLive ? Colors.success : Colors.textMuted} />
-          <Text style={[s.zoneBtnLabel, { color: autoAcceptLive ? Colors.ink : Colors.textMuted }]}>Auto-accept</Text>
+          <LightningIcon size={13} color={autoAcceptLive ? theme.color.accentGreen : theme.color.inkMuted} />
+          <Text style={[s.zoneBtnLabel, { color: autoAcceptLive ? theme.color.ink : theme.color.inkMuted }]}>Auto-accept</Text>
         </TouchableOpacity>
       </View>
 
@@ -1695,16 +1701,16 @@ export default function ScheduleScreen() {
                     <ScissorsLoader size="small" color="dark" />
                   ) : (
                     <>
-                      <Text style={[s.slotTime, { color: isPast ? Colors.inkMuted : Colors.ink }]}>
+                      <Text style={[s.slotTime, { color: isPast ? theme.color.inkMuted : theme.color.ink }]}>
                         {slot.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit', hour12: true })}
                       </Text>
                       <View style={s.slotGlyph}>
                         {(state === 'unavailable' || state === 'transport_buffer') ? (
-                          <CloseIcon size={16} color={Colors.accentRed} />
+                          <CloseIcon size={16} color={theme.color.accentRed} />
                         ) : autoAcceptActiveForDay && !isPast ? (
-                          <LightningIcon size={14} color={Colors.success} />
+                          <LightningIcon size={14} color={theme.color.accentGreen} />
                         ) : !isPast ? (
-                          <CheckIcon size={16} color={Colors.success} />
+                          <CheckIcon size={16} color={theme.color.accentGreen} />
                         ) : null}
                       </View>
                     </>
@@ -1775,7 +1781,7 @@ export default function ScheduleScreen() {
         const markedDates: Record<string, any> = {};
         // Red dots for fully-blocked days
         for (const [ds, blocked] of Object.entries(dayDots)) {
-          if (blocked) markedDates[ds] = { ...markedDates[ds], marked: true, dotColor: Colors.accentRed };
+          if (blocked) markedDates[ds] = { ...markedDates[ds], marked: true, dotColor: theme.color.accentRed };
         }
         // Range highlighting
         if (rangeStart) {
@@ -1790,8 +1796,8 @@ export default function ScheduleScreen() {
               ...(markedDates[ds] ?? {}),
               startingDay: isS,
               endingDay: isE,
-              color: isS || isE ? Colors.ink : 'rgba(0,0,0,0.10)',
-              textColor: isS || isE ? '#FFF' : Colors.text,
+              color: isS || isE ? theme.color.ink : 'rgba(0,0,0,0.10)',
+              textColor: isS || isE ? theme.color.inverseInk : theme.color.ink,
             };
             cur.setDate(cur.getDate() + 1);
           }
@@ -1845,8 +1851,8 @@ export default function ScheduleScreen() {
                     const isMiddle = !!periodColor && !isStart && !isEnd;
                     const isSingleSel = isStart && isEnd;
                     const textCol = !inWindow
-                      ? Colors.inkFaint
-                      : (isStart || isEnd) ? '#fff' : (isToday ? Colors.ink : Colors.text);
+                      ? theme.color.inkFaint
+                      : (isStart || isEnd) ? theme.color.inverseInk : theme.color.ink;
                     const BAND = 'rgba(0,0,0,0.09)';
                     return (
                       <TouchableOpacity
@@ -1887,7 +1893,7 @@ export default function ScheduleScreen() {
                           <View style={{ position: 'absolute', left: 0, right: '50%', top: 10, bottom: 10, backgroundColor: BAND }} />
                         )}
                         <View style={{ width: 26, height: 26, borderRadius: 13,
-                          backgroundColor: (isStart || isEnd) ? Colors.ink : 'transparent',
+                          backgroundColor: (isStart || isEnd) ? theme.color.ink : 'transparent',
                           alignItems: 'center', justifyContent: 'center' }}>
                           <Text style={{ fontSize: 13,
                             fontWeight: isToday ? '800' : '600',
@@ -1897,20 +1903,20 @@ export default function ScheduleScreen() {
                         </View>
                         {hasDot && inWindow && (
                           <View style={{ position: 'absolute', bottom: 3, width: 4, height: 4, borderRadius: 2,
-                            backgroundColor: Colors.accentRed }} />
+                            backgroundColor: theme.color.accentRed }} />
                         )}
                       </TouchableOpacity>
                     );
                   }}
                   theme={{
-                    todayTextColor: Colors.ink,
-                    arrowColor: Colors.ink,
-                    monthTextColor: Colors.text,
+                    todayTextColor: theme.color.ink,
+                    arrowColor: theme.color.ink,
+                    monthTextColor: theme.color.ink,
                     textMonthFontWeight: '800',
                     textDayFontWeight: '600',
                     textDayHeaderFontWeight: '700',
-                    backgroundColor: Colors.background,
-                    calendarBackground: Colors.background,
+                    backgroundColor: theme.color.bg,
+                    calendarBackground: theme.color.bg,
                   }}
                 />
                 {rangeStart ? (
@@ -1972,269 +1978,281 @@ export default function ScheduleScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  centered:  { flex: 1, alignItems: 'center', justifyContent: 'center' },
+function makeStylesS(theme: VarsTheme) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.color.bg },
+    centered:  { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: Colors.text },
-  zoneBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: 5, borderWidth: 1.5, borderColor: Colors.ink, backgroundColor: Colors.background,
-  },
-  zoneBtnLabel: { fontSize: 13, fontWeight: '700', color: Colors.ink },
-  zoneBtnDisabled: { opacity: 0.35, borderColor: Colors.inkFaint },
+    header: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 20, paddingVertical: 14,
+      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+    },
+    headerTitle: { fontSize: 24, fontWeight: '800', color: theme.color.ink },
+    zoneBtn: {
+      flexDirection: 'row', alignItems: 'center', gap: 5,
+      paddingHorizontal: 12, paddingVertical: 6,
+      borderRadius: 5, borderWidth: 1.5, borderColor: theme.color.ink, backgroundColor: theme.color.bg,
+    },
+    zoneBtnLabel: { fontSize: 13, fontWeight: '700', color: theme.color.ink },
+    zoneBtnDisabled: { opacity: 0.35, borderColor: theme.color.inkFaint },
 
-  // Day nav header
-  dayNavRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 10,
-  },
-  navArrowBtn: { width: 36, alignItems: 'center', justifyContent: 'center' },
-  navArrow: { fontSize: 28, fontWeight: '300', color: Colors.ink, lineHeight: 34 },
-  navArrowDisabled: { color: Colors.inkFaint },
-  dateLabelWrap: { alignItems: 'center', minWidth: 200 },
-  dateLabel: { fontSize: 17, fontWeight: '700', color: Colors.text, textAlign: 'center' },
+    // Day nav header
+    dayNavRow: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 16, paddingVertical: 10,
+    },
+    navArrowBtn: { width: 36, alignItems: 'center', justifyContent: 'center' },
+    navArrow: { fontSize: 28, fontWeight: '300', color: theme.color.ink, lineHeight: 34 },
+    navArrowDisabled: { color: theme.color.inkFaint },
+    dateLabelWrap: { alignItems: 'center', minWidth: 200 },
+    dateLabel: { fontSize: 17, fontWeight: '700', color: theme.color.ink, textAlign: 'center' },
 
-  // Block Day button + Today nav
-  blockDayRow: { paddingHorizontal: 16, paddingBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  blockDayBtn: {
-    paddingHorizontal: 14, paddingVertical: 7,
-    borderRadius: 5, borderWidth: 1.5, borderColor: Colors.ink,
-    minWidth: 110, alignItems: 'center',
-  },
-  blockDayBtnText: { fontSize: 13, fontWeight: '700', color: Colors.ink },
-  todayBtn: {
-    paddingHorizontal: 14, paddingVertical: 7,
-    borderRadius: 5, borderWidth: 1.5, borderColor: Colors.inkFaint,
-    alignItems: 'center',
-  },
-  todayBtnText: { fontSize: 13, fontWeight: '700', color: Colors.textMuted },
+    // Block Day button + Today nav
+    blockDayRow: { paddingHorizontal: 16, paddingBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 8 },
+    blockDayBtn: {
+      paddingHorizontal: 14, paddingVertical: 7,
+      borderRadius: 5, borderWidth: 1.5, borderColor: theme.color.ink,
+      minWidth: 110, alignItems: 'center',
+    },
+    blockDayBtnText: { fontSize: 13, fontWeight: '700', color: theme.color.ink },
+    todayBtn: {
+      paddingHorizontal: 14, paddingVertical: 7,
+      borderRadius: 5, borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      alignItems: 'center',
+    },
+    todayBtnText: { fontSize: 13, fontWeight: '700', color: theme.color.inkMuted },
 
-  grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, gap: 12 },
-  slot: {
-    width: SLOT_W, height: 60, borderRadius: 5,
-    borderWidth: 1.5, alignItems: 'center', justifyContent: 'center',
-  },
-  slotPast: { opacity: 0.35 },
-  slotTime: { fontSize: 11, fontWeight: '600' },
+    grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, gap: 12 },
+    slot: {
+      width: SLOT_W, height: 60, borderRadius: 5,
+      borderWidth: 1.5, alignItems: 'center', justifyContent: 'center',
+    },
+    slotPast: { opacity: 0.35 },
+    slotTime: { fontSize: 11, fontWeight: '600' },
 
-  // Booked slot — solid black fill with white text
-  slotBooked: {
-    borderColor: Colors.ink,
-    borderWidth: 2.5,
-    backgroundColor: Colors.ink,
-    justifyContent: 'center', alignItems: 'center',
-    paddingHorizontal: 3,
-  },
-  slotBookedName: { fontSize: 10, fontWeight: '700', color: '#FFF', textAlign: 'center' },
-  slotBookedService: { fontSize: 9, color: 'rgba(255,255,255,0.75)', textAlign: 'center', marginTop: 1 },
-  slotGlyph: { position: 'absolute', bottom: 7, right: 7 },
-  slotContinuation: {
-    width: '60%', height: 3, borderRadius: 5,
-    backgroundColor: 'rgba(0,0,0,0.15)',
-  },
+    // Booked slot — solid ink fill with inverse-ink text
+    slotBooked: {
+      borderColor: theme.color.ink,
+      borderWidth: 2.5,
+      backgroundColor: theme.color.ink,
+      justifyContent: 'center', alignItems: 'center',
+      paddingHorizontal: 3,
+    },
+    slotBookedName: { fontSize: 10, fontWeight: '700', color: theme.color.inverseInk, textAlign: 'center' },
+    slotBookedService: {
+      fontSize: 9,
+      color: theme.appearance === 'dark' ? 'rgba(0,0,0,0.75)' : 'rgba(255,255,255,0.75)',
+      textAlign: 'center', marginTop: 1,
+    },
+    slotGlyph: { position: 'absolute', bottom: 7, right: 7 },
+    slotContinuation: {
+      width: '60%', height: 3, borderRadius: 5,
+      backgroundColor: 'rgba(0,0,0,0.15)',
+    },
 
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  legendDot: {
-    width: 18, height: 18, borderRadius: 5,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  legendLabel: { fontSize: 12, color: Colors.textSecondary },
+    legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    legendDot: {
+      width: 18, height: 18, borderRadius: 5,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    legendLabel: { fontSize: 12, color: theme.color.inkMuted },
 
-  summary: { paddingHorizontal: 16, paddingTop: 12 },
-  summaryText: { fontSize: 13, color: Colors.textSecondary, fontWeight: '500' },
+    summary: { paddingHorizontal: 16, paddingTop: 12 },
+    summaryText: { fontSize: 13, color: theme.color.inkMuted, fontWeight: '500' },
 
-  savedToast: {
-    position: 'absolute', bottom: 80, alignSelf: 'center',
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    backgroundColor: Colors.ink, borderRadius: 5,
-    paddingHorizontal: 16, paddingVertical: 10,
-  },
-  savedToastWrap: { position: 'absolute', bottom: 80, alignSelf: 'center' },
-});
+    savedToast: {
+      position: 'absolute', bottom: 80, alignSelf: 'center',
+      flexDirection: 'row', alignItems: 'center', gap: 14,
+      backgroundColor: theme.color.ink, borderRadius: 5,
+      paddingHorizontal: 16, paddingVertical: 10,
+    },
+    savedToastWrap: { position: 'absolute', bottom: 80, alignSelf: 'center' },
+  });
+}
 
 // ── Bottom sheet styles ───────────────────────────────────────
-const bs = StyleSheet.create({
-  overlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: Colors.background,
-    borderTopLeftRadius: 5, borderTopRightRadius: 5,
-    maxHeight: '90%', paddingHorizontal: 20,
-  },
-  handle: {
-    width: 36, height: 4, borderRadius: 5, backgroundColor: Colors.inkFaint,
-    alignSelf: 'center', marginVertical: 12,
-  },
-  headerRow: {
-    flexDirection: 'row', alignItems: 'flex-start',
-    marginBottom: 16,
-  },
-  clientName: { fontSize: 20, fontWeight: '800', color: Colors.text, marginBottom: 6 },
-  statusPill: { alignSelf: 'flex-start', borderRadius: 5, paddingHorizontal: 8, paddingVertical: 3 },
-  statusText: { fontSize: 12, fontWeight: '700' },
-  closeBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
+function makeStylesBs(theme: VarsTheme) {
+  return StyleSheet.create({
+    overlay: {
+      flex: 1, backgroundColor: theme.color.overlay,
+      justifyContent: 'flex-end',
+    },
+    sheet: {
+      backgroundColor: theme.color.bg,
+      borderTopLeftRadius: 5, borderTopRightRadius: 5,
+      maxHeight: '90%', paddingHorizontal: 20,
+    },
+    handle: {
+      width: 36, height: 4, borderRadius: 5, backgroundColor: theme.color.inkFaint,
+      alignSelf: 'center', marginVertical: 12,
+    },
+    headerRow: {
+      flexDirection: 'row', alignItems: 'flex-start',
+      marginBottom: 16,
+    },
+    clientName: { fontSize: 20, fontWeight: '800', color: theme.color.ink, marginBottom: 6 },
+    statusPill: { alignSelf: 'flex-start', borderRadius: 5, paddingHorizontal: 8, paddingVertical: 3 },
+    statusText: { fontSize: 12, fontWeight: '700' },
+    closeBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
 
-  map: { width: '100%', height: 180, borderRadius: 5, marginBottom: 10, overflow: 'hidden' },
-  addressRow: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 6,
-    padding: 10, marginBottom: 12,
-  },
-  addressText: { flex: 1, fontSize: 13, color: Colors.text, lineHeight: 18 },
+    map: { width: '100%', height: 180, borderRadius: 5, marginBottom: 10, overflow: 'hidden' },
+    addressRow: {
+      flexDirection: 'row', alignItems: 'flex-start', gap: 6,
+      padding: 10, marginBottom: 12,
+    },
+    addressText: { flex: 1, fontSize: 13, color: theme.color.ink, lineHeight: 18 },
 
-  card: { padding: 14, marginBottom: 12, gap: 2 },
-  sectionTitle: {
-    fontSize: 12, fontWeight: '700', color: Colors.textMuted,
-    textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8,
-  },
-  detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
-  detailLabel: { fontSize: 14, color: Colors.textSecondary },
-  detailValue: { fontSize: 14, fontWeight: '600', color: Colors.text },
-  detailValueBold: { fontSize: 16, fontWeight: '800', color: Colors.ink },
-  divider: { height: 1, backgroundColor: Colors.border, marginVertical: 4 },
+    card: { padding: 14, marginBottom: 12, gap: 2 },
+    sectionTitle: {
+      fontSize: 12, fontWeight: '700', color: theme.color.inkMuted,
+      textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8,
+    },
+    detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
+    detailLabel: { fontSize: 14, color: theme.color.inkMuted },
+    detailValue: { fontSize: 14, fontWeight: '600', color: theme.color.ink },
+    detailValueBold: { fontSize: 16, fontWeight: '800', color: theme.color.ink },
+    divider: { height: 1, backgroundColor: theme.color.inkFaint, marginVertical: 4 },
 
-  lockedRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
-  lockedText: { fontSize: 13, color: Colors.textMuted, fontStyle: 'italic', flex: 1 },
-  mutedText: { fontSize: 13, color: Colors.textMuted },
+    lockedRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
+    lockedText: { fontSize: 13, color: theme.color.inkMuted, fontStyle: 'italic', flex: 1 },
+    mutedText: { fontSize: 13, color: theme.color.inkMuted },
 
-  errorBox: { backgroundColor: Colors.error + '15', borderRadius: 5, padding: 12, marginBottom: 12 },
-  errorText: { fontSize: 13, color: Colors.error, fontWeight: '500' },
+    errorBox: { backgroundColor: theme.color.accentRed + '15', borderRadius: 5, padding: 12, marginBottom: 12 },
+    errorText: { fontSize: 13, color: theme.color.accentRed, fontWeight: '500' },
 
-  actionRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
-  actionBtnFlex: { flex: 1 },
+    actionRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
+    actionBtnFlex: { flex: 1 },
 
-  primaryBtn: { marginTop: 4 },
+    primaryBtn: { marginTop: 4 },
 
-  waitingBox: { padding: 14, alignItems: 'center', marginTop: 4 },
-  waitingText: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
+    waitingBox: { padding: 14, alignItems: 'center', marginTop: 4 },
+    waitingText: { fontSize: 14, color: theme.color.inkMuted, textAlign: 'center', lineHeight: 20 },
 
-  // Reschedule suggestion UI
-  rescheduleBtn: { marginTop: 8 },
-  rescheduleWrap: { padding: 14, marginBottom: 12 },
-  rescheduleHeading: { fontSize: 14, fontWeight: '700', color: Colors.ink, marginBottom: 12 },
-  rescheduleDayLabel: {
-    fontSize: 12, fontWeight: '700', color: Colors.inkMuted,
-    textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6,
-  },
-  rescheduleChip: {
-    paddingHorizontal: 12, paddingVertical: 8,
-    borderRadius: 5, borderWidth: 1.5, borderColor: Colors.ink, alignItems: 'center',
-  },
-  rescheduleChipUnavailable: { borderColor: Colors.inkFaint, backgroundColor: 'transparent' },
-  rescheduleChipSelected: { backgroundColor: Colors.ink, borderColor: Colors.ink },
-  rescheduleChipText: { fontSize: 13, fontWeight: '700', color: Colors.ink },
-  rescheduleChipTextUnavailable: { color: Colors.inkMuted },
-  rescheduleChipTextSelected: { color: '#FFF' },
-});
+    // Reschedule suggestion UI
+    rescheduleBtn: { marginTop: 8 },
+    rescheduleWrap: { padding: 14, marginBottom: 12 },
+    rescheduleHeading: { fontSize: 14, fontWeight: '700', color: theme.color.ink, marginBottom: 12 },
+    rescheduleDayLabel: {
+      fontSize: 12, fontWeight: '700', color: theme.color.inkMuted,
+      textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6,
+    },
+    rescheduleChip: {
+      paddingHorizontal: 12, paddingVertical: 8,
+      borderRadius: 5, borderWidth: 1.5, borderColor: theme.color.ink, alignItems: 'center',
+    },
+    rescheduleChipUnavailable: { borderColor: theme.color.inkFaint, backgroundColor: 'transparent' },
+    rescheduleChipSelected: { backgroundColor: theme.color.ink, borderColor: theme.color.ink },
+    rescheduleChipText: { fontSize: 13, fontWeight: '700', color: theme.color.ink },
+    rescheduleChipTextUnavailable: { color: theme.color.inkMuted },
+    rescheduleChipTextSelected: { color: theme.color.inverseInk },
+  });
+}
 
 // ── Block-range sheet styles ──────────────────────────────────
-const br = StyleSheet.create({
-  scrollContent: { paddingHorizontal: 20, paddingBottom: 48 },
+function makeStylesBr(theme: VarsTheme) {
+  return StyleSheet.create({
+    scrollContent: { paddingHorizontal: 20, paddingBottom: 48 },
 
-  actionRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
-  actionBtn: {
-    flex: 1, paddingVertical: 10, borderRadius: 5,
-    borderWidth: 1.5, borderColor: Colors.inkFaint, alignItems: 'center',
-  },
-  actionBtnActive: { borderColor: Colors.ink, backgroundColor: Colors.ink },
-  actionBtnText: { fontSize: 14, fontWeight: '700', color: Colors.inkMuted },
-  actionBtnTextActive: { color: '#FFF' },
+    actionRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+    actionBtn: {
+      flex: 1, paddingVertical: 10, borderRadius: 5,
+      borderWidth: 1.5, borderColor: theme.color.inkFaint, alignItems: 'center',
+    },
+    actionBtnActive: { borderColor: theme.color.ink, backgroundColor: theme.color.ink },
+    actionBtnText: { fontSize: 14, fontWeight: '700', color: theme.color.inkMuted },
+    actionBtnTextActive: { color: theme.color.inverseInk },
 
-  heading: { fontSize: 20, fontWeight: '800', color: Colors.text, marginTop: 4, marginBottom: 20 },
-  fieldLabel: { fontSize: 12, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 },
+    heading: { fontSize: 20, fontWeight: '800', color: theme.color.ink, marginTop: 4, marginBottom: 20 },
+    fieldLabel: { fontSize: 12, fontWeight: '700', color: theme.color.inkMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 },
 
-  chipRow: { gap: 8 },
-  timeChip: {
-    paddingHorizontal: 12, paddingVertical: 8,
-    borderRadius: 5, borderWidth: 1.5, borderColor: Colors.inkFaint,
-  },
-  timeChipActive: { borderColor: Colors.ink, backgroundColor: Colors.ink },
-  timeChipText: { fontSize: 13, fontWeight: '600', color: Colors.ink },
-  timeChipTextActive: { color: '#FFF' },
+    chipRow: { gap: 8 },
+    timeChip: {
+      paddingHorizontal: 12, paddingVertical: 8,
+      borderRadius: 5, borderWidth: 1.5, borderColor: theme.color.inkFaint,
+    },
+    timeChipActive: { borderColor: theme.color.ink, backgroundColor: theme.color.ink },
+    timeChipText: { fontSize: 13, fontWeight: '600', color: theme.color.ink },
+    timeChipTextActive: { color: theme.color.inverseInk },
 
-  weekdayRow: { flexDirection: 'row', gap: 6 },
-  dayChip: {
-    flex: 1, paddingVertical: 9, borderRadius: 5,
-    borderWidth: 1.5, borderColor: Colors.inkFaint, alignItems: 'center',
-  },
-  dayChipActive: { borderColor: Colors.ink, backgroundColor: Colors.ink },
-  dayChipText: { fontSize: 11, fontWeight: '700', color: Colors.inkMuted },
-  dayChipTextActive: { color: '#FFF' },
+    weekdayRow: { flexDirection: 'row', gap: 6 },
+    dayChip: {
+      flex: 1, paddingVertical: 9, borderRadius: 5,
+      borderWidth: 1.5, borderColor: theme.color.inkFaint, alignItems: 'center',
+    },
+    dayChipActive: { borderColor: theme.color.ink, backgroundColor: theme.color.ink },
+    dayChipText: { fontSize: 11, fontWeight: '700', color: theme.color.inkMuted },
+    dayChipTextActive: { color: theme.color.inverseInk },
 
-  repeatRow: { flexDirection: 'row', gap: 10 },
-  repeatBtn: {
-    flex: 1, paddingVertical: 10, borderRadius: 5,
-    borderWidth: 1.5, borderColor: Colors.inkFaint, alignItems: 'center',
-  },
-  repeatBtnActive: { borderColor: Colors.ink, backgroundColor: Colors.ink },
-  repeatBtnText: { fontSize: 13, fontWeight: '700', color: Colors.inkMuted },
-  repeatBtnTextActive: { color: '#FFF' },
+    repeatRow: { flexDirection: 'row', gap: 10 },
+    repeatBtn: {
+      flex: 1, paddingVertical: 10, borderRadius: 5,
+      borderWidth: 1.5, borderColor: theme.color.inkFaint, alignItems: 'center',
+    },
+    repeatBtnActive: { borderColor: theme.color.ink, backgroundColor: theme.color.ink },
+    repeatBtnText: { fontSize: 13, fontWeight: '700', color: theme.color.inkMuted },
+    repeatBtnTextActive: { color: theme.color.inverseInk },
 
-  preview: {
-    marginTop: 20, paddingVertical: 12, paddingHorizontal: 14,
-    borderRadius: 5, borderWidth: 1, borderColor: Colors.inkFaint,
-  },
-  previewText: { fontSize: 14, color: Colors.text, fontWeight: '500' },
+    preview: {
+      marginTop: 20, paddingVertical: 12, paddingHorizontal: 14,
+      borderRadius: 5, borderWidth: 1, borderColor: theme.color.inkFaint,
+    },
+    previewText: { fontSize: 14, color: theme.color.ink, fontWeight: '500' },
 
-  errorBox: { marginTop: 12, backgroundColor: Colors.error + '15', borderRadius: 5, padding: 12 },
-  errorText: { fontSize: 13, color: Colors.error, fontWeight: '500' },
+    errorBox: { marginTop: 12, backgroundColor: theme.color.accentRed + '15', borderRadius: 5, padding: 12 },
+    errorText: { fontSize: 13, color: theme.color.accentRed, fontWeight: '500' },
 
-  confirmBtn: {
-    marginTop: 16, height: 54, backgroundColor: Colors.ink,
-    borderRadius: 5, alignItems: 'center', justifyContent: 'center',
-  },
-  confirmBtnDisabled: { opacity: 0.4 },
-  confirmBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
-});
+    confirmBtn: {
+      marginTop: 16, height: 54, backgroundColor: theme.color.ink,
+      borderRadius: 5, alignItems: 'center', justifyContent: 'center',
+    },
+    confirmBtnDisabled: { opacity: 0.4 },
+    confirmBtnText: { color: theme.color.inverseInk, fontSize: 16, fontWeight: '700' },
+  });
+}
 
 // ── Calendar modal styles ─────────────────────────────────────
-const cal = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  backdrop: { ...StyleSheet.absoluteFillObject },
-  sheet: {
-    backgroundColor: Colors.background,
-    borderTopLeftRadius: 5, borderTopRightRadius: 5,
-    paddingBottom: 28,
-  },
-  handleZone: { width: '100%', alignItems: 'center', paddingVertical: 14 },
-  handle: { width: 36, height: 4, borderRadius: 5, backgroundColor: Colors.inkFaint },
-  rangeBar: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingTop: 12,
-  },
-  rangeCancelText: { fontSize: 14, fontWeight: '600', color: Colors.textMuted },
-  rangeHint: { fontSize: 14, fontWeight: '600', color: Colors.text },
-  blockRangeBtn: {
-    backgroundColor: Colors.ink, borderRadius: 5,
-    paddingHorizontal: 18, paddingVertical: 9, minWidth: 80, alignItems: 'center',
-  },
-  blockRangeBtnText: { fontSize: 14, fontWeight: '700', color: '#FFF' },
-  hint: {
-    textAlign: 'center', fontSize: 12, color: Colors.textMuted,
-    paddingTop: 12, paddingBottom: 4,
-  },
-  recurringSection: {
-    paddingHorizontal: 20, paddingTop: 14, paddingBottom: 8,
-    borderTopWidth: 1, borderTopColor: Colors.border, marginTop: 10,
-  },
-  recurringSectionTitle: {
-    fontSize: 11, fontWeight: '700', color: Colors.textMuted,
-    letterSpacing: 0.5, marginBottom: 10,
-  },
-  recurringRow: { flexDirection: 'row', gap: 6 },
-  recurringChip: {
-    flex: 1, paddingVertical: 9, borderRadius: 5,
-    borderWidth: 1.5, borderColor: Colors.inkFaint, alignItems: 'center',
-  },
-  recurringChipActive: { borderColor: Colors.ink, backgroundColor: Colors.ink },
-  recurringChipText: { fontSize: 11, fontWeight: '700', color: Colors.inkMuted },
-  recurringChipTextActive: { color: '#FFF' },
-});
+function makeStylesCal(theme: VarsTheme) {
+  return StyleSheet.create({
+    overlay: { flex: 1, backgroundColor: theme.color.overlay, justifyContent: 'flex-end' },
+    backdrop: { ...StyleSheet.absoluteFillObject },
+    sheet: {
+      backgroundColor: theme.color.bg,
+      borderTopLeftRadius: 5, borderTopRightRadius: 5,
+      paddingBottom: 28,
+    },
+    handleZone: { width: '100%', alignItems: 'center', paddingVertical: 14 },
+    handle: { width: 36, height: 4, borderRadius: 5, backgroundColor: theme.color.inkFaint },
+    rangeBar: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 20, paddingTop: 12,
+    },
+    rangeCancelText: { fontSize: 14, fontWeight: '600', color: theme.color.inkMuted },
+    rangeHint: { fontSize: 14, fontWeight: '600', color: theme.color.ink },
+    blockRangeBtn: {
+      backgroundColor: theme.color.ink, borderRadius: 5,
+      paddingHorizontal: 18, paddingVertical: 9, minWidth: 80, alignItems: 'center',
+    },
+    blockRangeBtnText: { fontSize: 14, fontWeight: '700', color: theme.color.inverseInk },
+    hint: {
+      textAlign: 'center', fontSize: 12, color: theme.color.inkMuted,
+      paddingTop: 12, paddingBottom: 4,
+    },
+    recurringSection: {
+      paddingHorizontal: 20, paddingTop: 14, paddingBottom: 8,
+      borderTopWidth: 1, borderTopColor: theme.color.inkFaint, marginTop: 10,
+    },
+    recurringSectionTitle: {
+      fontSize: 11, fontWeight: '700', color: theme.color.inkMuted,
+      letterSpacing: 0.5, marginBottom: 10,
+    },
+    recurringRow: { flexDirection: 'row', gap: 6 },
+    recurringChip: {
+      flex: 1, paddingVertical: 9, borderRadius: 5,
+      borderWidth: 1.5, borderColor: theme.color.inkFaint, alignItems: 'center',
+    },
+    recurringChipActive: { borderColor: theme.color.ink, backgroundColor: theme.color.ink },
+    recurringChipText: { fontSize: 11, fontWeight: '700', color: theme.color.inkMuted },
+    recurringChipTextActive: { color: theme.color.inverseInk },
+  });
+}
