@@ -1,8 +1,8 @@
 # VARS Mobile Visual System Overhaul
 
-Status: research deliverable and reference implementation, not a live migration.
+Status: implemented. Phases 0–6 of `docs/VARS_Visual_System_Implementation_Plan.md` are shipped and founder-approved, 2026-07-17.
 
-Scope: `apps/mobile` only. This document preserves the existing navigation, screen order, component boundaries, business logic, payment logic, KYC logic, and V1/V2 scope. Visual confirmation on real iOS, Android, and OLED hardware is intentionally left out for founder review.
+Scope: `apps/mobile` only. This document preserves the existing navigation, screen order, component boundaries, business logic, payment logic, KYC logic, and V1/V2 scope. Visual confirmation on real iOS, Android, and OLED hardware has not happened yet — the Android native build currently fails on a pre-existing Gradle toolchain issue unrelated to this work (section 3.3), and no iOS device or build was available in the environment that shipped this work. Do that hardware pass before this reaches customers.
 
 Reference code added:
 
@@ -313,7 +313,7 @@ What actually shipped, and why it differs from the original short/final-path pla
 
 ## 4. Reference Implementation
 
-Implemented reference primitives live in `apps/mobile/components/ui/primitives.tsx`.
+Primitives live in `apps/mobile/components/ui/primitives.tsx`. Icon rendering (`VarsIcon`'s platform branch) lives alongside it in `apps/mobile/components/ui/iconMap.ts` and `VarsIconRenderer.{tsx,ios.tsx,android.tsx}`.
 
 What is included:
 
@@ -330,20 +330,18 @@ What is included:
 - `VarsIcon`
 - `iconSystemNames`
 
-Theme/elevation helpers live in `apps/mobile/constants/visualSystem.ts`.
+Theme/elevation helpers live in `apps/mobile/constants/visualSystem.ts`. The app-wide `ThemeProvider` (system appearance detection + persisted manual override) lives in `apps/mobile/contexts/ThemeContext.tsx`, wired into `apps/mobile/app/_layout.tsx`.
 
-The reference code intentionally does not migrate screens. It is meant to be reviewed, adjusted, and then applied screen-by-screen.
+Screens have been migrated: all five vendor onboarding steps, the booking flow, gate checkout, and the schedule screen's undo toast and booking bottom sheet (deliberately not its slot grid/range-select/recurring-chip UI — see `docs/VARS_Visual_System_Implementation_Plan.md` Phase 5 for why). Discovery, bookings, notifications, both profile screens, vendor public profile, and earnings have `VarsSkeleton` loading states but have not had their buttons/inputs/cards migrated to the primitive catalogue yet — that's the next bounded chunk of work, not a gap in the primitives themselves.
 
-Known implementation gaps:
+Remaining known gaps:
 
-- No app-wide `ThemeProvider` has been added yet.
-- No settings override persistence has been added yet.
-- `VarsIcon` platform-native rendering shipped in Phase 6 — see section 3.3. SVG remains the fallback for web and any symbol name a device can't resolve.
 - `VarsSkeleton` is pulse-only, not shimmer. This is deliberate for a monochrome trust product unless media-heavy screens need shimmer after device review.
+- Icon rendering (section 3.3) has not been visually confirmed on a real device on either platform. The Android build currently fails at the native Gradle/prebuild stage on a pre-existing toolchain issue unrelated to this work; iOS was never attempted (no Xcode/macOS available). Fix the Android build and run both device passes before this ships to customers.
 
 ## 5. Rollout Notes
 
-Recommended order:
+Order executed as `docs/VARS_Visual_System_Implementation_Plan.md` Phases 1–6:
 
 1. Add theme provider and appearance override in settings.
 2. Wire `SafeAreaProvider` with `initialWindowMetrics`.
@@ -361,6 +359,8 @@ Highest risk areas:
 - Dark mode maps/WebViews: third-party surfaces may not honor app theme; wrap them with fixed containers and explicit loading/empty states.
 
 ## 6. Visual QA Checklist For Founder Review
+
+**Status: not yet run.** This is the real-device pass gated behind fixing the Android Gradle build (section 3.3) and getting an iOS build/device in the loop. The decisions above are locked; this checklist is what catches implementation bugs in that locked design, not open questions.
 
 - Toggle system light/dark while app is running.
 - Check manual override: system, light, dark.
