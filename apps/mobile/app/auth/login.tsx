@@ -24,6 +24,7 @@ import {
 import Svg, { Path } from 'react-native-svg';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router, useLocalSearchParams } from 'expo-router';
+import { supabase } from '@/lib/supabase';
 import { BORDER_RADIUS } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { useVarsTheme } from '@/contexts/ThemeContext';
@@ -35,6 +36,7 @@ import {
 } from '@/lib/auth';
 
 type Mode = 'signin' | 'signup';
+type ForgotStep = 'otp' | 'reset';
 
 export default function LoginScreen() {
   const { theme } = useVarsTheme();
@@ -47,6 +49,12 @@ export default function LoginScreen() {
   const [phone, setPhone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
+
+  // ── Forgot password ──
+  const [forgotStep, setForgotStep] = useState<ForgotStep | null>(null);
+  const [otpCode, setOtpCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
 
   const handleSuccess = () => {
     // Return user to vendor profile they came from — momentum never broken (§4.4)
@@ -119,6 +127,90 @@ export default function LoginScreen() {
     }
   };
 
+  // ── Forgot password ──────────────────────────────────────────
+  // Email OTP re-auth, then set a new password — same mechanism vendor-login
+  // uses for OTP verification (auth.signInWithOtp / verifyOtp), but customers
+  // have no other screen to set a password, so this flow ends by setting one
+  // rather than just signing them in.
+
+  const sendForgotOtp = async () => {
+    if (!email.trim()) {
+      Alert.alert('Enter your email', 'Enter your email address above, then tap "Forgot password?" again.');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      // shouldCreateUser: false — this is a password reset, not sign-up; a
+      // mistyped email should fail loudly, not silently provision a new account.
+      const { error } = await supabase.auth.signInWithOtp({
+        email: email.trim().toLowerCase(),
+        options: { shouldCreateUser: false },
+      });
+      if (error) throw error;
+      setOtpCode('');
+      setForgotStep('otp');
+    } catch (err: any) {
+      Alert.alert(
+        'Error',
+        err.message?.includes('Signups not allowed')
+          ? "We don't have an account with that email."
+          : err.message ?? 'Could not send code. Please try again.',
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyForgotOtp = async () => {
+    if (otpCode.trim().length !== 6) {
+      return Alert.alert('Required', 'Enter the 6-digit code.');
+    }
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email: email.trim().toLowerCase(),
+        token: otpCode.trim(),
+        type: 'email',
+      });
+      if (error) throw error;
+      setForgotStep('reset');
+    } catch (err: any) {
+      Alert.alert('Incorrect code', err.message ?? 'The code was wrong or expired. Try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (newPassword.length < 8) {
+      return Alert.alert('Too short', 'Password must be at least 8 characters.');
+    }
+    if (newPassword !== confirmNewPassword) {
+      return Alert.alert('Mismatch', 'Passwords do not match.');
+    }
+    setIsLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        Alert.alert('Session expired', 'Please start over.');
+        setForgotStep(null);
+        return;
+      }
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      setForgotStep(null);
+      setOtpCode('');
+      setPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      handleSuccess();
+    } catch (err: any) {
+      Alert.alert('Error', err.message ?? 'Could not set password. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -136,6 +228,106 @@ export default function LoginScreen() {
           <Text style={styles.tagline}>Beauty at your door.</Text>
         </View>
 
+        {forgotStep && (
+          <TouchableOpacity
+            onPress={() => { setForgotStep(null); setOtpCode(''); }}
+            hitSlop={8}
+            style={styles.forgotBackBtn}
+            accessibilityLabel="Back to sign in"
+            accessibilityRole="button"
+          >
+            <Text style={styles.forgotBackText}>‹ Back to sign in</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* ── Forgot password: OTP step ── */}
+        {forgotStep === 'otp' && (
+          <>
+            <Text style={styles.title}>Check your email.</Text>
+            <Text style={styles.sub}>We sent a 6-digit code to{'\n'}{email.trim()}.</Text>
+
+            <TextInput
+              style={[styles.input, styles.otpInput]}
+              placeholder="000000"
+              placeholderTextColor={theme.color.inkMuted}
+              value={otpCode}
+              onChangeText={(t) => setOtpCode(t.replace(/\D/g, '').slice(0, 6))}
+              keyboardType="number-pad"
+              returnKeyType="done"
+              onSubmitEditing={handleVerifyForgotOtp}
+              autoFocus
+            />
+
+            <TouchableOpacity
+              style={[styles.submitButton, (otpCode.length !== 6 || isLoading) && styles.submitDisabled]}
+              onPress={handleVerifyForgotOtp}
+              disabled={otpCode.length !== 6 || isLoading}
+              activeOpacity={0.85}
+            >
+              {isLoading ? (
+                <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} />
+              ) : (
+                <Text style={styles.submitText}>Verify</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.forgotLink} onPress={sendForgotOtp} disabled={isLoading}>
+              <Text style={styles.forgotLinkText}>Resend code</Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        {/* ── Forgot password: set new password ── */}
+        {forgotStep === 'reset' && (
+          <>
+            <Text style={styles.title}>Set a new password.</Text>
+            <Text style={styles.sub}>Choose a new password for your account.</Text>
+
+            <View style={styles.form}>
+              <TextInput
+                style={styles.input}
+                placeholder="New password (min. 8 characters)"
+                placeholderTextColor={theme.color.inkMuted}
+                value={newPassword}
+                onChangeText={setNewPassword}
+                secureTextEntry
+                autoComplete="new-password"
+                returnKeyType="next"
+                autoFocus
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Confirm password"
+                placeholderTextColor={theme.color.inkMuted}
+                value={confirmNewPassword}
+                onChangeText={setConfirmNewPassword}
+                secureTextEntry
+                autoComplete="new-password"
+                returnKeyType="done"
+                onSubmitEditing={handleResetPassword}
+              />
+
+              <TouchableOpacity
+                style={[
+                  styles.submitButton,
+                  (newPassword.length < 8 || newPassword !== confirmNewPassword || isLoading) && styles.submitDisabled,
+                ]}
+                onPress={handleResetPassword}
+                disabled={newPassword.length < 8 || newPassword !== confirmNewPassword || isLoading}
+                activeOpacity={0.85}
+              >
+                {isLoading ? (
+                  <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} />
+                ) : (
+                  <Text style={styles.submitText}>Set new password</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+
+        {!forgotStep && (
+        <>
         {/* Mode toggle: Sign in / Sign up — same screen */}
         <View style={styles.modeToggle}>
           <TouchableOpacity
@@ -222,6 +414,12 @@ export default function LoginScreen() {
             onSubmitEditing={mode === 'signin' ? handleEmailSubmit : undefined}
           />
 
+          {mode === 'signin' && (
+            <TouchableOpacity style={styles.forgotLinkInline} onPress={sendForgotOtp} disabled={isLoading}>
+              <Text style={styles.forgotLinkText}>Forgot password?</Text>
+            </TouchableOpacity>
+          )}
+
           {/* Phone — required at sign-up for all methods (§4.4) */}
           {mode === 'signup' && (
             <>
@@ -266,6 +464,8 @@ export default function LoginScreen() {
         <TouchableOpacity onPress={() => router.push('/auth/vendor-login')} style={styles.vendorLink}>
           <Text style={styles.vendorLinkText}>STYLIST LOGIN  ›</Text>
         </TouchableOpacity>
+        </>
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -469,6 +669,46 @@ function makeStyles(theme: VarsTheme) {
       color: theme.color.inkMuted,
       marginTop: -4,
       marginLeft: 4,
+    },
+    title: {
+      fontSize: 26,
+      fontWeight: '700',
+      color: theme.color.ink,
+      marginBottom: 6,
+    },
+    sub: {
+      fontSize: 15,
+      color: theme.color.inkMuted,
+      marginBottom: 28,
+      lineHeight: 22,
+    },
+    otpInput: {
+      textAlign: 'center',
+      fontSize: 24,
+      fontWeight: '700',
+      letterSpacing: 6,
+      marginBottom: 14,
+    },
+    forgotBackBtn: {
+      marginBottom: 20,
+    },
+    forgotBackText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.color.ink,
+    },
+    forgotLinkInline: {
+      alignItems: 'flex-end',
+      marginTop: -4,
+    },
+    forgotLink: {
+      alignItems: 'center',
+      paddingVertical: 16,
+    },
+    forgotLinkText: {
+      fontSize: 14,
+      color: theme.color.ink,
+      fontWeight: '500',
     },
     submitButton: {
       height: 54,
