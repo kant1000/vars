@@ -16,7 +16,7 @@
 // This screen handles a live Paystack checkout — the checkout UI manages
 // any bank verification the card issuer requires (3DS, OTP, etc.).
 // ============================================================
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Modal, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
@@ -28,7 +28,7 @@ import { CloseIcon } from '@/components/icons';
 import { supabase } from '@/lib/supabase';
 import { VarsButton } from '@/components/ui';
 import { useVarsTheme } from '@/contexts/ThemeContext';
-import { Colors } from '@/constants/colors';
+import { VarsTheme } from '@/constants/visualSystem';
 import { fmtPrice } from '@/lib/format';
 import { BOOKING_STATUS } from '@vars/shared';
 
@@ -56,6 +56,7 @@ export default function GateCheckoutScreen() {
   const { bookingId } = useLocalSearchParams<{ bookingId: string }>();
   const insets = useSafeAreaInsets();
   const { theme } = useVarsTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
 
   const [phase, setPhase] = useState<Phase>('loading');
   const [accessCode, setAccessCode] = useState<string | null>(null);
@@ -256,12 +257,12 @@ export default function GateCheckoutScreen() {
           style={s.headerClose}
           onPress={() => setPhase('cancelled')}
         >
-          <CloseIcon size={18} color={Colors.text} />
+          <CloseIcon size={18} color={theme.color.ink} />
         </TouchableOpacity>
         <View style={{ flex: 1, alignItems: 'center' }}>
           <Text style={s.headerTitle}>Complete payment</Text>
           {expiresAt && (
-            <Text style={[s.headerTimer, countdownExpired && { color: Colors.error }]}>
+            <Text style={[s.headerTimer, countdownExpired && { color: theme.color.accentRed }]}>
               {countdownExpired ? 'Window closed' : `${countdown} remaining`}
             </Text>
           )}
@@ -294,54 +295,56 @@ export default function GateCheckoutScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  centered: { alignItems: 'center', justifyContent: 'center', gap: 12 },
+function makeStyles(theme: VarsTheme) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.color.bg },
+    centered: { alignItems: 'center', justifyContent: 'center', gap: 12 },
 
-  header: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  headerClose: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 16, fontWeight: '700', color: Colors.text },
-  headerTimer: { fontSize: 12, fontWeight: '600', color: Colors.warning, marginTop: 1 },
+    header: {
+      flexDirection: 'row', alignItems: 'center',
+      paddingHorizontal: 16, paddingVertical: 12,
+      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+    },
+    headerClose: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+    headerTitle: { fontSize: 16, fontWeight: '700', color: theme.color.ink },
+    headerTimer: { fontSize: 12, fontWeight: '600', color: theme.color.accentAmber, marginTop: 1 },
 
-  loadingText: { fontSize: 14, color: Colors.textSecondary, marginTop: 8 },
+    loadingText: { fontSize: 14, color: theme.color.inkMuted, marginTop: 8 },
 
-  confirmingTitle: {
-    fontSize: 20, fontWeight: '800', color: Colors.text,
-    marginTop: 20, textAlign: 'center',
-  },
-  confirmingBody: {
-    fontSize: 14, color: Colors.textSecondary, textAlign: 'center',
-    lineHeight: 20, paddingHorizontal: 32,
-  },
+    confirmingTitle: {
+      fontSize: 20, fontWeight: '800', color: theme.color.ink,
+      marginTop: 20, textAlign: 'center',
+    },
+    confirmingBody: {
+      fontSize: 14, color: theme.color.inkMuted, textAlign: 'center',
+      lineHeight: 20, paddingHorizontal: 32,
+    },
 
-  expiredTitle: {
-    fontSize: 22, fontWeight: '800', color: Colors.text,
-    textAlign: 'center', marginBottom: 8,
-  },
-  expiredBody: {
-    fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 22,
-  },
-  expiredBtn: { marginTop: 24, width: '100%' },
+    expiredTitle: {
+      fontSize: 22, fontWeight: '800', color: theme.color.ink,
+      textAlign: 'center', marginBottom: 8,
+    },
+    expiredBody: {
+      fontSize: 14, color: theme.color.inkMuted, textAlign: 'center', lineHeight: 22,
+    },
+    expiredBtn: { marginTop: 24, width: '100%' },
 
-  cancelledTitle: {
-    fontSize: 20, fontWeight: '800', color: Colors.text,
-    textAlign: 'center', marginBottom: 8,
-  },
-  cancelledBody: {
-    fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 22,
-  },
+    cancelledTitle: {
+      fontSize: 20, fontWeight: '800', color: theme.color.ink,
+      textAlign: 'center', marginBottom: 8,
+    },
+    cancelledBody: {
+      fontSize: 14, color: theme.color.inkMuted, textAlign: 'center', lineHeight: 22,
+    },
 
-  retryBtn: { marginTop: 16, width: '100%' },
+    retryBtn: { marginTop: 16, width: '100%' },
 
-  errorTitle: {
-    fontSize: 20, fontWeight: '800', color: Colors.error,
-    textAlign: 'center', marginBottom: 8,
-  },
-  errorBody: {
-    fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 22,
-  },
-});
+    errorTitle: {
+      fontSize: 20, fontWeight: '800', color: theme.color.accentRed,
+      textAlign: 'center', marginBottom: 8,
+    },
+    errorBody: {
+      fontSize: 14, color: theme.color.inkMuted, textAlign: 'center', lineHeight: 22,
+    },
+  });
+}

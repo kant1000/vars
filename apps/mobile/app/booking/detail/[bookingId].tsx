@@ -4,7 +4,7 @@
 // Deep-linked from all customer push notifications.
 // Shows full booking state, timeline, summary, and actions.
 // ============================================================
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Modal,
   Pressable, RefreshControl, ScrollView,
@@ -18,6 +18,8 @@ import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
+import { VarsTheme } from '@/constants/visualSystem';
+import { useVarsTheme } from '@/contexts/ThemeContext';
 import { fmtPrice, fmtDuration, fmtTime, fmtDate, fmtDateTime } from '@/lib/format';
 import { fetchWithRetry } from '@/lib/fetchWithRetry';
 import { useNetworkState } from '@/lib/useNetworkState';
@@ -143,6 +145,8 @@ function buildTimeline(b: BookingDetail): TimelineStep[] {
 }
 
 function Timeline({ booking }: { booking: BookingDetail }) {
+  const { theme } = useVarsTheme();
+  const tl = useMemo(() => makeStylesTl(theme), [theme]);
   const steps = buildTimeline(booking);
   return (
     <View style={tl.wrap}>
@@ -171,26 +175,30 @@ function Timeline({ booking }: { booking: BookingDetail }) {
   );
 }
 
-const tl = StyleSheet.create({
-  wrap: { paddingHorizontal: 20, paddingVertical: 8 },
-  row: { flexDirection: 'row', minHeight: 48 },
-  spineCol: { width: 24, alignItems: 'center', marginRight: 12 },
-  dot: {
-    width: 14, height: 14, borderRadius: 7,
-    borderWidth: 2, borderColor: Colors.border,
-    backgroundColor: Colors.background, marginTop: 3,
-  },
-  dotReached: { borderColor: Colors.primary, backgroundColor: Colors.primary },
-  line: { width: 2, flex: 1, backgroundColor: Colors.border, marginTop: 2 },
-  lineReached: { backgroundColor: Colors.primary },
-  content: { flex: 1, paddingBottom: 16 },
-  label: { fontSize: 14, fontWeight: '600', color: Colors.textMuted },
-  labelReached: { color: Colors.text },
-  ts: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
-});
+function makeStylesTl(theme: VarsTheme) {
+  return StyleSheet.create({
+    wrap: { paddingHorizontal: 20, paddingVertical: 8 },
+    row: { flexDirection: 'row', minHeight: 48 },
+    spineCol: { width: 24, alignItems: 'center', marginRight: 12 },
+    dot: {
+      width: 14, height: 14, borderRadius: 7,
+      borderWidth: 2, borderColor: theme.color.inkFaint,
+      backgroundColor: theme.color.bg, marginTop: 3,
+    },
+    dotReached: { borderColor: theme.color.accentBlue, backgroundColor: theme.color.accentBlue },
+    line: { width: 2, flex: 1, backgroundColor: theme.color.inkFaint, marginTop: 2 },
+    lineReached: { backgroundColor: theme.color.accentBlue },
+    content: { flex: 1, paddingBottom: 16 },
+    label: { fontSize: 14, fontWeight: '600', color: theme.color.inkMuted },
+    labelReached: { color: theme.color.ink },
+    ts: { fontSize: 12, color: theme.color.inkMuted, marginTop: 2 },
+  });
+}
 
 // ── Map thumbnail (non-interactive) ──────────────────────────
 function LocationMap({ lat, lng }: { lat: number; lng: number }) {
+  const { theme } = useVarsTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
   return (
     <MapView
       style={s.mapThumb}
@@ -212,6 +220,8 @@ function LiveTrackingMap({
   clientLat: number;
   clientLng: number;
 }) {
+  const { theme } = useVarsTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
   const mapRef = useRef<MapView>(null);
   const [vendorCoords, setVendorCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -272,14 +282,14 @@ function LiveTrackingMap({
         <Marker
           coordinate={{ latitude: clientLat, longitude: clientLng }}
           title="Your location"
-          pinColor={Colors.primary}
+          pinColor={theme.color.accentBlue}
         />
         {/* Vendor location */}
         {vendorCoords && (
           <Marker
             coordinate={{ latitude: vendorCoords.lat, longitude: vendorCoords.lng }}
             title="Your stylist"
-            pinColor="#22C55E"
+            pinColor={theme.color.accentGreen}
           />
         )}
       </MapView>
@@ -297,6 +307,8 @@ function LiveTrackingMap({
 export default function BookingDetailScreen() {
   const { bookingId } = useLocalSearchParams<{ bookingId: string }>();
   const insets = useSafeAreaInsets();
+  const { theme } = useVarsTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
   const { isOnline: isConnected } = useNetworkState();
 
   const [booking, setBooking] = useState<BookingDetail | null>(null);
@@ -543,7 +555,7 @@ export default function BookingDetailScreen() {
                 <LocationMap lat={booking.user_location_lat!} lng={booking.user_location_lng!} />
                 {booking.user_location_address ? (
                   <View style={s.addressRow}>
-                    <PinIcon size={16} color={Colors.text} />
+                    <PinIcon size={16} color={theme.color.ink} />
                     <Text style={s.addressText}>{booking.user_location_address}</Text>
                   </View>
                 ) : null}
@@ -758,7 +770,7 @@ export default function BookingDetailScreen() {
             <TextInput
               style={[s.disputeInput, { marginTop: 14 }]}
               placeholder={disputeCategory === 'other' ? 'Describe the issue… (required)' : 'Add more details (optional)'}
-              placeholderTextColor={Colors.textMuted}
+              placeholderTextColor={theme.color.inkMuted}
               value={disputeReason}
               onChangeText={(t) => setDisputeReason(sanitize(t, 500))}
               multiline
@@ -782,6 +794,8 @@ export default function BookingDetailScreen() {
 }
 
 function SummaryRow({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+  const { theme } = useVarsTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
   return (
     <View style={s.summaryRow}>
       <Text style={s.summaryLabel}>{label}</Text>
@@ -790,163 +804,165 @@ function SummaryRow({ label, value, bold }: { label: string; value: string; bold
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.background },
+function makeStyles(theme: VarsTheme) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.color.bg },
+    centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.color.bg },
 
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  headerBack: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  headerBackText: { fontSize: 28, color: Colors.ink, lineHeight: 32 },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: Colors.text },
+    header: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 16, paddingVertical: 12,
+      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+    },
+    headerBack: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+    headerBackText: { fontSize: 28, color: theme.color.ink, lineHeight: 32 },
+    headerTitle: { fontSize: 17, fontWeight: '700', color: theme.color.ink },
 
-  statusHero: {
-    paddingHorizontal: 20, paddingVertical: 20,
-    borderBottomWidth: 1, gap: 8,
-  },
-  statusPill: { alignSelf: 'flex-start', borderRadius: 5, paddingHorizontal: 8, paddingVertical: 3 },
-  statusPillText: { fontSize: 12, fontWeight: '700' },
-  statusDescription: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20 },
-  escrowNote: { fontSize: 13, color: Colors.textMuted, lineHeight: 18 },
+    statusHero: {
+      paddingHorizontal: 20, paddingVertical: 20,
+      borderBottomWidth: 1, gap: 8,
+    },
+    statusPill: { alignSelf: 'flex-start', borderRadius: 5, paddingHorizontal: 8, paddingVertical: 3 },
+    statusPillText: { fontSize: 12, fontWeight: '700' },
+    statusDescription: { fontSize: 14, color: theme.color.inkMuted, lineHeight: 20 },
+    escrowNote: { fontSize: 13, color: theme.color.inkMuted, lineHeight: 18 },
 
-  section: { paddingHorizontal: 16, paddingTop: 20 },
-  sectionTitle: {
-    fontSize: 12, fontWeight: '700', color: Colors.textMuted,
-    textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10,
-  },
+    section: { paddingHorizontal: 16, paddingTop: 20 },
+    sectionTitle: {
+      fontSize: 12, fontWeight: '700', color: theme.color.inkMuted,
+      textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10,
+    },
 
-  card: {
-    backgroundColor: Colors.surface, borderRadius: 5,
-    padding: 16, borderWidth: 1, borderColor: Colors.border, gap: 2,
-  },
-  cardDivider: { height: 1, backgroundColor: Colors.border, marginVertical: 6 },
-  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5 },
-  summaryLabel: { fontSize: 14, color: Colors.textSecondary },
-  summaryValue: { fontSize: 14, fontWeight: '600', color: Colors.text, maxWidth: '60%', textAlign: 'right' },
-  summaryValueBold: { fontSize: 16, fontWeight: '800', color: Colors.primary },
+    card: {
+      backgroundColor: theme.color.surface2, borderRadius: 5,
+      padding: 16, borderWidth: 1, borderColor: theme.color.inkFaint, gap: 2,
+    },
+    cardDivider: { height: 1, backgroundColor: theme.color.inkFaint, marginVertical: 6 },
+    summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5 },
+    summaryLabel: { fontSize: 14, color: theme.color.inkMuted },
+    summaryValue: { fontSize: 14, fontWeight: '600', color: theme.color.ink, maxWidth: '60%', textAlign: 'right' },
+    summaryValueBold: { fontSize: 16, fontWeight: '800', color: theme.color.accentBlue },
 
-  mapThumb: { width: '100%', height: 180, borderRadius: 5, overflow: 'hidden', marginBottom: 8 },
-  addressRow: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 6,
-    backgroundColor: Colors.surface, borderRadius: 5,
-    padding: 10, borderWidth: 1, borderColor: Colors.border,
-  },
-  addressText: { flex: 1, fontSize: 13, color: Colors.text, lineHeight: 18 },
+    mapThumb: { width: '100%', height: 180, borderRadius: 5, overflow: 'hidden', marginBottom: 8 },
+    addressRow: {
+      flexDirection: 'row', alignItems: 'flex-start', gap: 6,
+      backgroundColor: theme.color.surface2, borderRadius: 5,
+      padding: 10, borderWidth: 1, borderColor: theme.color.inkFaint,
+    },
+    addressText: { flex: 1, fontSize: 13, color: theme.color.ink, lineHeight: 18 },
 
-  errorBanner: { backgroundColor: Colors.error + '15', marginHorizontal: 16, marginTop: 16, borderRadius: 5, padding: 12 },
-  errorText: { fontSize: 13, color: Colors.error, fontWeight: '500' },
-  errorTitle: { fontSize: 18, fontWeight: '700', color: Colors.text, marginBottom: 12 },
-  backLink: { paddingHorizontal: 24, paddingVertical: 12, backgroundColor: Colors.ink, borderRadius: 5 },
-  backLinkText: { color: Colors.white, fontSize: 15, fontWeight: '700' },
+    errorBanner: { backgroundColor: theme.color.accentRed + '15', marginHorizontal: 16, marginTop: 16, borderRadius: 5, padding: 12 },
+    errorText: { fontSize: 13, color: theme.color.accentRed, fontWeight: '500' },
+    errorTitle: { fontSize: 18, fontWeight: '700', color: theme.color.ink, marginBottom: 12 },
+    backLink: { paddingHorizontal: 24, paddingVertical: 12, backgroundColor: theme.color.ink, borderRadius: 5 },
+    backLinkText: { color: theme.color.inverseInk, fontSize: 15, fontWeight: '700' },
 
-  // Action buttons
-  actionSection: { paddingHorizontal: 16, paddingTop: 16, gap: 10 },
-  primaryBtn: {
-    height: 56, backgroundColor: Colors.ink,
-    borderRadius: 5, alignItems: 'center', justifyContent: 'center',
-  },
-  primaryBtnText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
-  secondaryBtn: {
-    height: 44, borderRadius: 5, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: Colors.border,
-  },
-  secondaryBtnText: { fontSize: 15, fontWeight: '600', color: Colors.textSecondary },
-  cancelBtn: {
-    height: 50, borderRadius: 5, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: Colors.error + '60',
-  },
-  cancelBtnText: { fontSize: 15, fontWeight: '600', color: Colors.error },
-  btnDisabled: { opacity: 0.5 },
-  servicePhoto: { width: 160, height: 160, borderRadius: 5 },
-  reviewDisplay: {
-    borderWidth: 1, borderColor: Colors.border, borderRadius: 5,
-    paddingHorizontal: 16, paddingVertical: 14,
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-  },
-  reviewStars: { fontSize: 20, color: Colors.primary },
-  reviewLabel: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
+    // Action buttons
+    actionSection: { paddingHorizontal: 16, paddingTop: 16, gap: 10 },
+    primaryBtn: {
+      height: 56, backgroundColor: theme.color.ink,
+      borderRadius: 5, alignItems: 'center', justifyContent: 'center',
+    },
+    primaryBtnText: { color: theme.color.inverseInk, fontSize: 16, fontWeight: '700' },
+    secondaryBtn: {
+      height: 44, borderRadius: 5, alignItems: 'center', justifyContent: 'center',
+      borderWidth: 1.5, borderColor: theme.color.inkFaint,
+    },
+    secondaryBtnText: { fontSize: 15, fontWeight: '600', color: theme.color.inkMuted },
+    cancelBtn: {
+      height: 50, borderRadius: 5, alignItems: 'center', justifyContent: 'center',
+      borderWidth: 1.5, borderColor: theme.color.accentRed + '60',
+    },
+    cancelBtnText: { fontSize: 15, fontWeight: '600', color: theme.color.accentRed },
+    btnDisabled: { opacity: 0.5 },
+    servicePhoto: { width: 160, height: 160, borderRadius: 5 },
+    reviewDisplay: {
+      borderWidth: 1, borderColor: theme.color.inkFaint, borderRadius: 5,
+      paddingHorizontal: 16, paddingVertical: 14,
+      flexDirection: 'row', alignItems: 'center', gap: 12,
+    },
+    reviewStars: { fontSize: 20, color: theme.color.accentBlue },
+    reviewLabel: { fontSize: 14, fontWeight: '600', color: theme.color.inkMuted },
 
-  // Modals
-  modalOverlay: { flex: 1, backgroundColor: Colors.overlay, justifyContent: 'flex-end' },
-  modalSheet: {
-    backgroundColor: Colors.background,
-    borderTopLeftRadius: 5, borderTopRightRadius: 5,
-    padding: 24, paddingBottom: 40, gap: 12,
-  },
-  modalTitle: { fontSize: 20, fontWeight: '800', color: Colors.text },
-  modalBody: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20 },
-  modalBold: { fontWeight: '700', color: Colors.text },
-  modalActions: { flexDirection: 'row', gap: 10, marginTop: 4 },
-  modalKeepBtn: {
-    flex: 1, height: 52, borderRadius: 5, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
-  },
-  modalKeepText: { fontSize: 15, fontWeight: '700', color: Colors.text },
-  modalCancelBtn: {
-    flex: 1, height: 52, borderRadius: 5, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: Colors.ink,
-  },
-  modalCancelText: { fontSize: 15, fontWeight: '700', color: Colors.white },
-  disputeInput: {
-    backgroundColor: Colors.surface, borderRadius: 5,
-    borderWidth: 1, borderColor: Colors.border,
-    paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 15, color: Colors.text, minHeight: 80,
-  },
-  categoryRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingVertical: 12, paddingHorizontal: 14,
-    borderRadius: 5, borderWidth: 1.5, borderColor: Colors.border,
-    backgroundColor: Colors.surface,
-  },
-  categoryRowSelected: { borderColor: Colors.error, backgroundColor: Colors.error + '0D' },
-  radio: { width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: Colors.border },
-  radioSelected: { borderColor: Colors.error, backgroundColor: Colors.error },
-  categoryLabel: { fontSize: 14, color: Colors.text, flex: 1 },
-  categoryLabelSelected: { fontWeight: '600', color: Colors.error },
+    // Modals
+    modalOverlay: { flex: 1, backgroundColor: theme.color.overlay, justifyContent: 'flex-end' },
+    modalSheet: {
+      backgroundColor: theme.color.bg,
+      borderTopLeftRadius: 5, borderTopRightRadius: 5,
+      padding: 24, paddingBottom: 40, gap: 12,
+    },
+    modalTitle: { fontSize: 20, fontWeight: '800', color: theme.color.ink },
+    modalBody: { fontSize: 14, color: theme.color.inkMuted, lineHeight: 20 },
+    modalBold: { fontWeight: '700', color: theme.color.ink },
+    modalActions: { flexDirection: 'row', gap: 10, marginTop: 4 },
+    modalKeepBtn: {
+      flex: 1, height: 52, borderRadius: 5, alignItems: 'center', justifyContent: 'center',
+      backgroundColor: theme.color.surface2, borderWidth: 1, borderColor: theme.color.inkFaint,
+    },
+    modalKeepText: { fontSize: 15, fontWeight: '700', color: theme.color.ink },
+    modalCancelBtn: {
+      flex: 1, height: 52, borderRadius: 5, alignItems: 'center', justifyContent: 'center',
+      backgroundColor: theme.color.ink,
+    },
+    modalCancelText: { fontSize: 15, fontWeight: '700', color: theme.color.inverseInk },
+    disputeInput: {
+      backgroundColor: theme.color.surface2, borderRadius: 5,
+      borderWidth: 1, borderColor: theme.color.inkFaint,
+      paddingHorizontal: 14, paddingVertical: 12,
+      fontSize: 15, color: theme.color.ink, minHeight: 80,
+    },
+    categoryRow: {
+      flexDirection: 'row', alignItems: 'center', gap: 12,
+      paddingVertical: 12, paddingHorizontal: 14,
+      borderRadius: 5, borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      backgroundColor: theme.color.surface2,
+    },
+    categoryRowSelected: { borderColor: theme.color.accentRed, backgroundColor: theme.color.accentRed + '0D' },
+    radio: { width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: theme.color.inkFaint },
+    radioSelected: { borderColor: theme.color.accentRed, backgroundColor: theme.color.accentRed },
+    categoryLabel: { fontSize: 14, color: theme.color.ink, flex: 1 },
+    categoryLabelSelected: { fontWeight: '600', color: theme.color.accentRed },
 
-  // Reschedule modal
-  rescheduleOverlay: {
-    flex: 1, backgroundColor: Colors.overlay,
-    justifyContent: 'center', alignItems: 'center', padding: 24,
-  },
-  rescheduleSheet: {
-    backgroundColor: Colors.background, borderRadius: 5,
-    padding: 24, width: '100%', gap: 12, alignItems: 'center',
-  },
-  rescheduleVendorName: {
-    fontSize: 12, fontWeight: '700', color: Colors.textMuted,
-    textTransform: 'uppercase', letterSpacing: 0.5,
-  },
-  rescheduleHeading: {
-    fontSize: 22, fontWeight: '800', color: Colors.text, textAlign: 'center',
-  },
-  rescheduleTimeCard: {
-    backgroundColor: Colors.surface, borderRadius: 5,
-    padding: 20, borderWidth: 1, borderColor: Colors.border,
-    alignItems: 'center', width: '100%', marginVertical: 4,
-  },
-  rescheduleDateText: { fontSize: 15, fontWeight: '600', color: Colors.textSecondary },
-  rescheduleTimeText: { fontSize: 34, fontWeight: '800', color: Colors.text, marginTop: 4 },
+    // Reschedule modal
+    rescheduleOverlay: {
+      flex: 1, backgroundColor: theme.color.overlay,
+      justifyContent: 'center', alignItems: 'center', padding: 24,
+    },
+    rescheduleSheet: {
+      backgroundColor: theme.color.bg, borderRadius: 5,
+      padding: 24, width: '100%', gap: 12, alignItems: 'center',
+    },
+    rescheduleVendorName: {
+      fontSize: 12, fontWeight: '700', color: theme.color.inkMuted,
+      textTransform: 'uppercase', letterSpacing: 0.5,
+    },
+    rescheduleHeading: {
+      fontSize: 22, fontWeight: '800', color: theme.color.ink, textAlign: 'center',
+    },
+    rescheduleTimeCard: {
+      backgroundColor: theme.color.surface2, borderRadius: 5,
+      padding: 20, borderWidth: 1, borderColor: theme.color.inkFaint,
+      alignItems: 'center', width: '100%', marginVertical: 4,
+    },
+    rescheduleDateText: { fontSize: 15, fontWeight: '600', color: theme.color.inkMuted },
+    rescheduleTimeText: { fontSize: 34, fontWeight: '800', color: theme.color.ink, marginTop: 4 },
 
-  // Live tracking map
-  liveHeader: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    marginBottom: 8,
-  },
-  liveDot: {
-    width: 8, height: 8, borderRadius: 4,
-    backgroundColor: Colors.success,
-  },
-  liveLabel: { fontSize: 13, fontWeight: '600', color: Colors.success, flex: 1 },
-  liveUpdated: { fontSize: 12, color: Colors.textMuted },
-  liveMap: { width: '100%', height: 260, borderRadius: 5, overflow: 'hidden' },
-  liveLoadingOverlay: {
-    position: 'absolute', top: 32, left: 0, right: 0,
-    alignItems: 'center', gap: 8,
-  },
-  liveLoadingText: { fontSize: 13, color: Colors.textMuted, fontWeight: '500' },
-});
+    // Live tracking map
+    liveHeader: {
+      flexDirection: 'row', alignItems: 'center', gap: 6,
+      marginBottom: 8,
+    },
+    liveDot: {
+      width: 8, height: 8, borderRadius: 4,
+      backgroundColor: theme.color.accentGreen,
+    },
+    liveLabel: { fontSize: 13, fontWeight: '600', color: theme.color.accentGreen, flex: 1 },
+    liveUpdated: { fontSize: 12, color: theme.color.inkMuted },
+    liveMap: { width: '100%', height: 260, borderRadius: 5, overflow: 'hidden' },
+    liveLoadingOverlay: {
+      position: 'absolute', top: 32, left: 0, right: 0,
+      alignItems: 'center', gap: 8,
+    },
+    liveLoadingText: { fontSize: 13, color: theme.color.inkMuted, fontWeight: '500' },
+  });
+}

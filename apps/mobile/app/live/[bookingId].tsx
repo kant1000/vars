@@ -8,7 +8,7 @@
 // Phone reveal 15 min before scheduled_at once booking is accepted.
 // "Confirm service rendered" → calls paystack-settle edge fn.
 // ============================================================
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert, Linking, Modal,
   ScrollView, StyleSheet, Text, TextInput,
@@ -21,6 +21,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
+import { VarsTheme } from '@/constants/visualSystem';
+import { useVarsTheme } from '@/contexts/ThemeContext';
 import { fmtPrice, fmtTime, fmtDateTime } from '@/lib/format';
 import { CheckIcon, HourglassIcon, CheckCircleIcon, CarIcon, PinIcon, SparkleIcon, StarIcon, XCircleIcon, ClockIcon, WarningIcon } from '@/components/icons';
 import { fetchWithRetry } from '@/lib/fetchWithRetry';
@@ -82,6 +84,8 @@ function minutesUntil(iso: string) {
 
 // ── Status timeline ──────────────────────────────────────────
 function Timeline({ current }: { current: BookingStatus }) {
+  const { theme } = useVarsTheme();
+  const tl = useMemo(() => makeStylesTl(theme), [theme]);
   const idx = STATUS_ORDER.indexOf(current);
   if (idx === -1) return null;
   return (
@@ -94,8 +98,8 @@ function Timeline({ current }: { current: BookingStatus }) {
             <View style={tl.left}>
               <View style={[tl.dot, done && tl.dotDone, active && { backgroundColor: cfg.color, borderColor: cfg.color }]}>
                 {done
-                  ? <CheckIcon size={12} color="#FFF" />
-                  : <cfg.Icon size={12} color={(done || active) ? Colors.white : Colors.inkMuted} />
+                  ? <CheckIcon size={12} color={theme.color.inverseInk} />
+                  : <cfg.Icon size={12} color={active ? '#FFF' : theme.color.inkMuted} />
                 }
               </View>
               {i < STATUS_ORDER.length - 1 && (
@@ -111,22 +115,24 @@ function Timeline({ current }: { current: BookingStatus }) {
     </View>
   );
 }
-const tl = StyleSheet.create({
-  wrap: { paddingHorizontal: 20, paddingVertical: 12 },
-  row: { flexDirection: 'row', alignItems: 'flex-start', minHeight: 44 },
-  left: { alignItems: 'center', marginRight: 12, width: 28 },
-  dot: {
-    width: 28, height: 28, borderRadius: 14,
-    borderWidth: 2, borderColor: Colors.border,
-    backgroundColor: Colors.background,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  dotDone: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  connector: { width: 2, flex: 1, backgroundColor: Colors.border, minHeight: 16 },
-  connectorDone: { backgroundColor: Colors.primary },
-  label: { fontSize: 14, color: Colors.textMuted, paddingTop: 4 },
-  labelDone: { color: Colors.textSecondary },
-});
+function makeStylesTl(theme: VarsTheme) {
+  return StyleSheet.create({
+    wrap: { paddingHorizontal: 20, paddingVertical: 12 },
+    row: { flexDirection: 'row', alignItems: 'flex-start', minHeight: 44 },
+    left: { alignItems: 'center', marginRight: 12, width: 28 },
+    dot: {
+      width: 28, height: 28, borderRadius: 14,
+      borderWidth: 2, borderColor: theme.color.inkFaint,
+      backgroundColor: theme.color.bg,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    dotDone: { backgroundColor: theme.color.accentBlue, borderColor: theme.color.accentBlue },
+    connector: { width: 2, flex: 1, backgroundColor: theme.color.inkFaint, minHeight: 16 },
+    connectorDone: { backgroundColor: theme.color.accentBlue },
+    label: { fontSize: 14, color: theme.color.inkMuted, paddingTop: 4 },
+    labelDone: { color: theme.color.inkMuted },
+  });
+}
 
 // ── Dispute modal ────────────────────────────────────────────
 type DisputeCategory =
@@ -149,6 +155,8 @@ function DisputeModal({
   bookingId: string;
   onClose: () => void;
 }) {
+  const { theme } = useVarsTheme();
+  const dm = useMemo(() => makeStylesDm(theme), [theme]);
   const [category, setCategory] = useState<DisputeCategory | null>(null);
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -215,7 +223,7 @@ function DisputeModal({
             <TextInput
               style={[dm.input, { marginTop: 14 }]}
               placeholder={reasonRequired ? 'Describe the issue… (required)' : 'Add more details (optional)'}
-              placeholderTextColor={Colors.textMuted}
+              placeholderTextColor={theme.color.inkMuted}
               value={reason}
               onChangeText={setReason}
               multiline
@@ -238,42 +246,46 @@ function DisputeModal({
     </Modal>
   );
 }
-const dm = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: Colors.overlay, justifyContent: 'flex-end' },
-  sheet: { backgroundColor: Colors.background, borderTopLeftRadius: 5, borderTopRightRadius: 5, padding: 24 },
-  title: { fontSize: 20, fontWeight: '800', color: Colors.text, marginBottom: 8 },
-  body: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20, marginBottom: 16 },
-  categories: { gap: 8 },
-  categoryRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingVertical: 12, paddingHorizontal: 14,
-    borderRadius: 5, borderWidth: 1.5, borderColor: Colors.border,
-    backgroundColor: Colors.surface,
-  },
-  categoryRowSelected: { borderColor: Colors.error, backgroundColor: Colors.error + '0D' },
-  radio: {
-    width: 18, height: 18, borderRadius: 9,
-    borderWidth: 2, borderColor: Colors.border,
-  },
-  radioSelected: { borderColor: Colors.error, backgroundColor: Colors.error },
-  categoryLabel: { fontSize: 14, color: Colors.text, flex: 1 },
-  categoryLabelSelected: { fontWeight: '600', color: Colors.error },
-  input: {
-    backgroundColor: Colors.surface, borderRadius: 5, borderWidth: 1, borderColor: Colors.border,
-    paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, color: Colors.text, minHeight: 80,
-  },
-  btns: { flexDirection: 'row', gap: 12, marginTop: 16 },
-  cancel: { flex: 1, height: 48, borderRadius: 5, borderWidth: 1.5, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
-  cancelText: { fontSize: 15, fontWeight: '600', color: Colors.text },
-  submit: { flex: 2, height: 48, backgroundColor: Colors.ink, borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
-  submitDisabled: { opacity: 0.5 },
-  submitText: { fontSize: 15, fontWeight: '700', color: Colors.white },
-});
+function makeStylesDm(theme: VarsTheme) {
+  return StyleSheet.create({
+    overlay: { flex: 1, backgroundColor: theme.color.overlay, justifyContent: 'flex-end' },
+    sheet: { backgroundColor: theme.color.bg, borderTopLeftRadius: 5, borderTopRightRadius: 5, padding: 24 },
+    title: { fontSize: 20, fontWeight: '800', color: theme.color.ink, marginBottom: 8 },
+    body: { fontSize: 14, color: theme.color.inkMuted, lineHeight: 20, marginBottom: 16 },
+    categories: { gap: 8 },
+    categoryRow: {
+      flexDirection: 'row', alignItems: 'center', gap: 12,
+      paddingVertical: 12, paddingHorizontal: 14,
+      borderRadius: 5, borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      backgroundColor: theme.color.surface2,
+    },
+    categoryRowSelected: { borderColor: theme.color.accentRed, backgroundColor: theme.color.accentRed + '0D' },
+    radio: {
+      width: 18, height: 18, borderRadius: 9,
+      borderWidth: 2, borderColor: theme.color.inkFaint,
+    },
+    radioSelected: { borderColor: theme.color.accentRed, backgroundColor: theme.color.accentRed },
+    categoryLabel: { fontSize: 14, color: theme.color.ink, flex: 1 },
+    categoryLabelSelected: { fontWeight: '600', color: theme.color.accentRed },
+    input: {
+      backgroundColor: theme.color.surface2, borderRadius: 5, borderWidth: 1, borderColor: theme.color.inkFaint,
+      paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, color: theme.color.ink, minHeight: 80,
+    },
+    btns: { flexDirection: 'row', gap: 12, marginTop: 16 },
+    cancel: { flex: 1, height: 48, borderRadius: 5, borderWidth: 1.5, borderColor: theme.color.inkFaint, alignItems: 'center', justifyContent: 'center' },
+    cancelText: { fontSize: 15, fontWeight: '600', color: theme.color.ink },
+    submit: { flex: 2, height: 48, backgroundColor: theme.color.ink, borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
+    submitDisabled: { opacity: 0.5 },
+    submitText: { fontSize: 15, fontWeight: '700', color: theme.color.inverseInk },
+  });
+}
 
 // ── Root component ───────────────────────────────────────────
 export default function LiveScreen() {
   const { bookingId } = useLocalSearchParams<{ bookingId: string }>();
   const insets = useSafeAreaInsets();
+  const { theme } = useVarsTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
   const { session } = useAuth();
   const { isOnline: isConnected } = useNetworkState();
 
@@ -656,88 +668,90 @@ export default function LiveScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.background },
-  errorText: { fontSize: 16, color: Colors.text, marginBottom: 12 },
-  link: { fontSize: 15, color: Colors.primary, fontWeight: '600' },
+function makeStyles(theme: VarsTheme) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.color.bg },
+    centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.color.bg },
+    errorText: { fontSize: 16, color: theme.color.ink, marginBottom: 12 },
+    link: { fontSize: 15, color: theme.color.accentBlue, fontWeight: '600' },
 
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  backText: { fontSize: 28, color: Colors.ink, lineHeight: 32 },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: Colors.text },
+    header: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 16, paddingVertical: 12,
+      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+    },
+    backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+    backText: { fontSize: 28, color: theme.color.ink, lineHeight: 32 },
+    headerTitle: { fontSize: 17, fontWeight: '700', color: theme.color.ink },
 
-  statusPill: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    margin: 16, borderRadius: 5, padding: 14,
-  },
-  statusLabel: { fontSize: 17, fontWeight: '700' },
+    statusPill: {
+      flexDirection: 'row', alignItems: 'center', gap: 8,
+      margin: 16, borderRadius: 5, padding: 14,
+    },
+    statusLabel: { fontSize: 17, fontWeight: '700' },
 
-  card: {
-    marginHorizontal: 16, marginBottom: 12,
-    backgroundColor: Colors.surface, borderRadius: 5,
-    padding: 16, borderWidth: 1, borderColor: Colors.border, gap: 4,
-  },
-  cardTitle: { fontSize: 18, fontWeight: '800', color: Colors.text },
-  cardMeta: { fontSize: 13, color: Colors.textSecondary },
-  cardPrice: { fontSize: 15, fontWeight: '700', color: Colors.primary, marginTop: 4 },
+    card: {
+      marginHorizontal: 16, marginBottom: 12,
+      backgroundColor: theme.color.surface2, borderRadius: 5,
+      padding: 16, borderWidth: 1, borderColor: theme.color.inkFaint, gap: 4,
+    },
+    cardTitle: { fontSize: 18, fontWeight: '800', color: theme.color.ink },
+    cardMeta: { fontSize: 13, color: theme.color.inkMuted },
+    cardPrice: { fontSize: 15, fontWeight: '700', color: theme.color.accentBlue, marginTop: 4 },
 
-  mapWrap: { marginHorizontal: 16, marginBottom: 12, borderRadius: 5, overflow: 'hidden', height: 200 },
-  map: { flex: 1 },
+    mapWrap: { marginHorizontal: 16, marginBottom: 12, borderRadius: 5, overflow: 'hidden', height: 200 },
+    map: { flex: 1 },
 
-  phoneCard: {
-    marginHorizontal: 16, marginBottom: 12,
-    backgroundColor: Colors.success + '15', borderRadius: 5,
-    padding: 16, borderWidth: 1, borderColor: Colors.success + '40',
-  },
-  phoneLabel: { fontSize: 15, fontWeight: '700', color: Colors.success, marginBottom: 2 },
-  phoneNum: { fontSize: 18, fontWeight: '800', color: Colors.text },
-  phoneCountdown: {
-    marginHorizontal: 16, marginBottom: 12,
-    backgroundColor: Colors.warning + '15', borderRadius: 5, padding: 12,
-  },
-  phoneCountdownText: { fontSize: 13, color: Colors.warning, fontWeight: '500' },
+    phoneCard: {
+      marginHorizontal: 16, marginBottom: 12,
+      backgroundColor: Colors.success + '15', borderRadius: 5,
+      padding: 16, borderWidth: 1, borderColor: Colors.success + '40',
+    },
+    phoneLabel: { fontSize: 15, fontWeight: '700', color: Colors.success, marginBottom: 2 },
+    phoneNum: { fontSize: 18, fontWeight: '800', color: theme.color.ink },
+    phoneCountdown: {
+      marginHorizontal: 16, marginBottom: 12,
+      backgroundColor: Colors.warning + '15', borderRadius: 5, padding: 12,
+    },
+    phoneCountdownText: { fontSize: 13, color: Colors.warning, fontWeight: '500' },
 
-  autoReleaseBox: {
-    marginHorizontal: 16, marginBottom: 12,
-    backgroundColor: Colors.primaryLight, borderRadius: 5, padding: 12,
-  },
-  autoReleaseText: { fontSize: 13, color: Colors.primary, lineHeight: 18 },
+    autoReleaseBox: {
+      marginHorizontal: 16, marginBottom: 12,
+      backgroundColor: Colors.primaryLight, borderRadius: 5, padding: 12,
+    },
+    autoReleaseText: { fontSize: 13, color: Colors.primary, lineHeight: 18 },
 
-  staleLocBox: {
-    marginHorizontal: 16, marginBottom: 8,
-    backgroundColor: Colors.warning + '18', borderRadius: 5, padding: 10,
-    borderWidth: 1, borderColor: Colors.warning + '50',
-  },
-  staleLocText: { fontSize: 12, color: Colors.warning, fontWeight: '500' },
+    staleLocBox: {
+      marginHorizontal: 16, marginBottom: 8,
+      backgroundColor: Colors.warning + '18', borderRadius: 5, padding: 10,
+      borderWidth: 1, borderColor: Colors.warning + '50',
+    },
+    staleLocText: { fontSize: 12, color: Colors.warning, fontWeight: '500' },
 
-  inlineError: { fontSize: 12, color: Colors.error, textAlign: 'center', marginTop: 4 },
+    inlineError: { fontSize: 12, color: theme.color.accentRed, textAlign: 'center', marginTop: 4 },
 
-  sectionLabel: { fontSize: 13, fontWeight: '700', color: Colors.textMuted, marginHorizontal: 20, marginTop: 8, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
+    sectionLabel: { fontSize: 13, fontWeight: '700', color: theme.color.inkMuted, marginHorizontal: 20, marginTop: 8, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
 
-  actions: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: Colors.background,
-    borderTopWidth: 1, borderTopColor: Colors.border,
-    padding: 16, gap: 10,
-  },
-  confirmBtn: {
-    height: 56, backgroundColor: Colors.ink,
-    borderRadius: 5, alignItems: 'center', justifyContent: 'center',
-  },
-  confirmBtnText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
-  btnDisabled: { opacity: 0.5 },
-  cancelBtn: {
-    height: 44, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: Colors.error, borderRadius: 5,
-  },
-  cancelBtnText: { fontSize: 14, color: Colors.error, fontWeight: '700' },
-  disputeBtn: {
-    height: 44, alignItems: 'center', justifyContent: 'center',
-  },
-  disputeBtnText: { fontSize: 14, color: Colors.error, fontWeight: '600' },
-});
+    actions: {
+      position: 'absolute', bottom: 0, left: 0, right: 0,
+      backgroundColor: theme.color.bg,
+      borderTopWidth: 1, borderTopColor: theme.color.inkFaint,
+      padding: 16, gap: 10,
+    },
+    confirmBtn: {
+      height: 56, backgroundColor: theme.color.ink,
+      borderRadius: 5, alignItems: 'center', justifyContent: 'center',
+    },
+    confirmBtnText: { color: theme.color.inverseInk, fontSize: 16, fontWeight: '700' },
+    btnDisabled: { opacity: 0.5 },
+    cancelBtn: {
+      height: 44, alignItems: 'center', justifyContent: 'center',
+      borderWidth: 1.5, borderColor: theme.color.accentRed, borderRadius: 5,
+    },
+    cancelBtnText: { fontSize: 14, color: theme.color.accentRed, fontWeight: '700' },
+    disputeBtn: {
+      height: 44, alignItems: 'center', justifyContent: 'center',
+    },
+    disputeBtnText: { fontSize: 14, color: theme.color.accentRed, fontWeight: '600' },
+  });
+}

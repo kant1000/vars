@@ -9,7 +9,7 @@
 // are shown a one-time, non-refundable ₦50 card verification step before the
 // booking is created. Returning customers skip this entirely.
 // ============================================================
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dimensions,
   ScrollView, StyleSheet, Text, TouchableOpacity,
@@ -25,6 +25,7 @@ import { supabase } from '@/lib/supabase';
 import { VarsButton, VarsInput, VarsSurface } from '@/components/ui';
 import { useVarsTheme } from '@/contexts/ThemeContext';
 import { Colors } from '@/constants/colors';
+import { VarsTheme } from '@/constants/visualSystem';
 import { fmtPrice, fmtDuration, fmtTime, fmtDate } from '@/lib/format';
 import { LightningIcon, CheckIcon, PinIcon } from '@/components/icons';
 import { Calendar, toDateId, fromDateId } from '@marceloterreiro/flash-calendar';
@@ -86,6 +87,8 @@ function addMinutes(d: Date, m: number) {
 
 // ── Step indicator ────────────────────────────────────────────
 function StepBar({ step }: { step: number }) {
+  const { theme } = useVarsTheme();
+  const sb = useMemo(() => makeStylesSb(theme), [theme]);
   const labels = ['Schedule', 'Review'];
   return (
     <View style={sb.wrap}>
@@ -109,19 +112,21 @@ function StepBar({ step }: { step: number }) {
     </View>
   );
 }
-const sb = StyleSheet.create({
-  wrap: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16, backgroundColor: Colors.background, borderBottomWidth: 1, borderBottomColor: Colors.border },
-  item: { alignItems: 'center', gap: 4 },
-  dot: { width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.background },
-  dotDone: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  dotActive: { borderColor: Colors.primary },
-  dotText: { fontSize: 12, fontWeight: '700', color: Colors.textMuted },
-  dotTextActive: { color: Colors.primary },
-  label: { fontSize: 11, color: Colors.textMuted, fontWeight: '500' },
-  labelActive: { color: Colors.primary, fontWeight: '700' },
-  line: { flex: 1, height: 2, backgroundColor: Colors.border, marginBottom: 14 },
-  lineDone: { backgroundColor: Colors.primary },
-});
+function makeStylesSb(theme: VarsTheme) {
+  return StyleSheet.create({
+    wrap: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16, backgroundColor: theme.color.bg, borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint },
+    item: { alignItems: 'center', gap: 4 },
+    dot: { width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: theme.color.inkFaint, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.color.bg },
+    dotDone: { backgroundColor: theme.color.accentBlue, borderColor: theme.color.accentBlue },
+    dotActive: { borderColor: theme.color.accentBlue },
+    dotText: { fontSize: 12, fontWeight: '700', color: theme.color.inkMuted },
+    dotTextActive: { color: theme.color.accentBlue },
+    label: { fontSize: 11, color: theme.color.inkMuted, fontWeight: '500' },
+    labelActive: { color: theme.color.accentBlue, fontWeight: '700' },
+    line: { flex: 1, height: 2, backgroundColor: theme.color.inkFaint, marginBottom: 14 },
+    lineDone: { backgroundColor: theme.color.accentBlue },
+  });
+}
 
 // ── Step 1: Date + time picker ────────────────────────────────
 function Step1({
@@ -214,6 +219,7 @@ function Step1({
   useEffect(() => { loadSlots(selectedDay); }, [selectedDay, loadSlots]);
 
   const { theme } = useVarsTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
   const [selectedSlot, setSelectedSlot] = useState<Date | null>(null);
   const [selectedAutoAccept, setSelectedAutoAccept] = useState(false);
 
@@ -250,15 +256,15 @@ function Step1({
           theme={{
             itemDay: {
               active: () => ({
-                container: { backgroundColor: Colors.primary },
-                content: { color: Colors.white },
+                container: { backgroundColor: theme.color.accentBlue },
+                content: { color: theme.color.inverseInk },
               }),
               today: () => ({
-                content: { color: Colors.primary, fontWeight: '700' },
+                content: { color: theme.color.accentBlue, fontWeight: '700' },
               }),
             },
             rowMonth: {
-              content: { color: Colors.text, fontWeight: '700', fontSize: 15 },
+              content: { color: theme.color.ink, fontWeight: '700', fontSize: 15 },
             },
           }}
         />
@@ -291,7 +297,7 @@ function Step1({
                       activeOpacity={0.85}
                     >
                       <Text style={[s.slotText, s.slotTextSelected]}>{fmtTime(sl.time)}</Text>
-                      {sl.autoAccept && <LightningIcon size={9} color="#FFF" />}
+                      {sl.autoAccept && <LightningIcon size={9} color={theme.color.inverseInk} />}
                     </TouchableOpacity>
                   );
                   ci += span;
@@ -360,6 +366,7 @@ function Step2Review({
 }) {
   const floorSheetRef = useRef<BottomSheetModal>(null);
   const { theme } = useVarsTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
 
   return (
     <>
@@ -367,12 +374,12 @@ function Step2Review({
         <Text style={s.stepTitle}>Review your booking</Text>
 
         <VarsSurface theme={theme} elevation={1} style={s.summaryCard}>
-          <Row label="Service" value={serviceSummary} />
-          <Row label="Duration" value={fmtDuration(totalDurationBlocks)} />
-          <Row label="Date" value={fmtDate(slot)} />
-          <Row label="Time" value={`${fmtTime(slot)} – ${fmtTime(addMinutes(slot, totalDurationBlocks * BLOCK_MINS))}`} />
+          <Row label="Service" value={serviceSummary} s={s} />
+          <Row label="Duration" value={fmtDuration(totalDurationBlocks)} s={s} />
+          <Row label="Date" value={fmtDate(slot)} s={s} />
+          <Row label="Time" value={`${fmtTime(slot)} – ${fmtTime(addMinutes(slot, totalDurationBlocks * BLOCK_MINS))}`} s={s} />
           <View style={s.divider} />
-          <Row label="Total" value={fmtPrice(totalServiceKobo)} bold />
+          <Row label="Total" value={fmtPrice(totalServiceKobo)} bold s={s} />
         </VarsSurface>
 
         <Text style={s.sectionHeading}>Access details <Text style={s.optionalTag}>(optional)</Text></Text>
@@ -455,7 +462,7 @@ function Step2Review({
               <Text style={[s.pickerOptionText, access.floor === item && s.pickerOptionSelected]}>
                 {item}
               </Text>
-              {access.floor === item && <CheckIcon size={16} color={Colors.primary} />}
+              {access.floor === item && <CheckIcon size={16} color={theme.color.accentBlue} />}
             </TouchableOpacity>
           )}
         />
@@ -485,6 +492,7 @@ function Step2Location({
   paying: boolean;
 }) {
   const { theme } = useVarsTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
   const [mapReady, setMapReady] = useState(false);
 
   const hasAccess = access.building || access.floor || access.flat || access.gateCode;
@@ -519,26 +527,26 @@ function Step2Location({
 
         <View style={{ padding: 20, gap: 16 }}>
           <VarsSurface theme={theme} elevation={1} style={s.addressRow}>
-            <PinIcon size={16} color={Colors.text} />
+            <PinIcon size={16} color={theme.color.ink} />
             <Text style={s.addressText} numberOfLines={2}>{locAddress || 'Your current location'}</Text>
           </VarsSurface>
 
           {hasAccess && (
             <VarsSurface theme={theme} elevation={1} style={s.accessSummaryCard}>
               <Text style={s.accessSummaryTitle}>Access details</Text>
-              {access.building ? <AccessRow label="Building" value={access.building} /> : null}
-              {access.floor ? <AccessRow label="Floor" value={access.floor} /> : null}
-              {access.flat ? <AccessRow label="Flat/unit" value={access.flat} /> : null}
-              {access.gateCode ? <AccessRow label="Gate code" value={access.gateCode} /> : null}
+              {access.building ? <AccessRow label="Building" value={access.building} s={s} /> : null}
+              {access.floor ? <AccessRow label="Floor" value={access.floor} s={s} /> : null}
+              {access.flat ? <AccessRow label="Flat/unit" value={access.flat} s={s} /> : null}
+              {access.gateCode ? <AccessRow label="Gate code" value={access.gateCode} s={s} /> : null}
             </VarsSurface>
           )}
 
           <VarsSurface theme={theme} elevation={1} style={s.summaryCard}>
-            <Row label="Service" value={serviceSummary} />
-            <Row label="Date" value={fmtDate(slot)} />
-            <Row label="Time" value={`${fmtTime(slot)} – ${fmtTime(addMinutes(slot, totalDurationBlocks * BLOCK_MINS))}`} />
+            <Row label="Service" value={serviceSummary} s={s} />
+            <Row label="Date" value={fmtDate(slot)} s={s} />
+            <Row label="Time" value={`${fmtTime(slot)} – ${fmtTime(addMinutes(slot, totalDurationBlocks * BLOCK_MINS))}`} s={s} />
             <View style={s.divider} />
-            <Row label="Total" value={fmtPrice(totalKobo)} bold />
+            <Row label="Total" value={fmtPrice(totalKobo)} bold s={s} />
             {transportFeeKobo > 0 && (
               <Text style={s.transportNote}>
                 Your stylist is travelling further to reach you — this price reflects that.
@@ -590,17 +598,18 @@ function CardVerifyView({
   onRetry: () => void;
 }) {
   const { theme } = useVarsTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
 
   if (phase === 'disclosure') {
     return (
       <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 24, gap: 20, justifyContent: 'center' }}>
         <Text style={[s.stepTitle, { textAlign: 'center' }]}>Card verification</Text>
-        <Text style={{ fontSize: 15, color: Colors.textSecondary, lineHeight: 23, textAlign: 'center' }}>
+        <Text style={{ fontSize: 15, color: theme.color.inkMuted, lineHeight: 23, textAlign: 'center' }}>
           To protect you and your vendor, VARS requires a one-time, non-refundable{' '}
-          <Text style={{ fontWeight: '800', color: Colors.text }}>{fmtPrice(amountKobo)}</Text>{' '}
+          <Text style={{ fontWeight: '800', color: theme.color.ink }}>{fmtPrice(amountKobo)}</Text>{' '}
           card verification. This confirms your card is active before your vendor travels to you.
         </Text>
-        <Text style={{ fontSize: 13, color: Colors.textMuted, textAlign: 'center', lineHeight: 19 }}>
+        <Text style={{ fontSize: 13, color: theme.color.inkMuted, textAlign: 'center', lineHeight: 19 }}>
           This is charged once per account, not per booking. It is not refundable.
         </Text>
         <VarsButton
@@ -610,7 +619,7 @@ function CardVerifyView({
           style={{ marginTop: 8 }}
         />
         <TouchableOpacity onPress={onCancel} style={{ alignItems: 'center', paddingVertical: 12 }} activeOpacity={0.7}>
-          <Text style={{ fontSize: 14, color: Colors.textSecondary }}>Cancel</Text>
+          <Text style={{ fontSize: 14, color: theme.color.inkMuted }}>Cancel</Text>
         </TouchableOpacity>
       </ScrollView>
     );
@@ -637,7 +646,7 @@ function CardVerifyView({
     return (
       <View style={[{ flex: 1 }, s.centered]}>
         <ScissorsLoader size="large" color="dark" />
-        <Text style={{ fontSize: 14, color: Colors.textSecondary, marginTop: 20, textAlign: 'center', paddingHorizontal: 32 }}>
+        <Text style={{ fontSize: 14, color: theme.color.inkMuted, marginTop: 20, textAlign: 'center', paddingHorizontal: 32 }}>
           Verifying your card — this only takes a moment.
         </Text>
       </View>
@@ -647,21 +656,21 @@ function CardVerifyView({
   // failed
   return (
     <View style={[{ flex: 1, padding: 32 }, s.centered, { gap: 16 }]}>
-      <Text style={{ fontSize: 20, fontWeight: '800', color: Colors.text, textAlign: 'center' }}>
+      <Text style={{ fontSize: 20, fontWeight: '800', color: theme.color.ink, textAlign: 'center' }}>
         Verification timed out
       </Text>
-      <Text style={{ fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 21 }}>
+      <Text style={{ fontSize: 14, color: theme.color.inkMuted, textAlign: 'center', lineHeight: 21 }}>
         If you completed the payment, your verification should land shortly. Tap below to check.
       </Text>
       <VarsButton theme={theme} onPress={onRetry} label="Check again" />
       <TouchableOpacity onPress={onCancel} style={{ alignItems: 'center', paddingVertical: 12 }} activeOpacity={0.7}>
-        <Text style={{ fontSize: 14, color: Colors.textSecondary }}>Cancel</Text>
+        <Text style={{ fontSize: 14, color: theme.color.inkMuted }}>Cancel</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
-function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+function Row({ label, value, bold, s }: { label: string; value: string; bold?: boolean; s: ReturnType<typeof makeStyles> }) {
   return (
     <View style={s.summaryRow}>
       <Text style={s.summaryLabel}>{label}</Text>
@@ -670,7 +679,7 @@ function Row({ label, value, bold }: { label: string; value: string; bold?: bool
   );
 }
 
-function AccessRow({ label, value }: { label: string; value: string }) {
+function AccessRow({ label, value, s }: { label: string; value: string; s: ReturnType<typeof makeStyles> }) {
   return (
     <View style={s.accessDetailRow}>
       <Text style={s.accessDetailLabel}>{label}</Text>
@@ -687,6 +696,8 @@ export default function BookingFlow() {
     total_amount?: string;
   }>();
   const insets = useSafeAreaInsets();
+  const { theme } = useVarsTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
   const posthog = usePostHog();
 
   // Parse incoming params from vendor profile
@@ -1018,107 +1029,109 @@ export default function BookingFlow() {
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60 },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  headerBack: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  headerBackText: { fontSize: 28, color: Colors.ink, lineHeight: 32 },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: Colors.text },
-  stepTitle: { fontSize: 20, fontWeight: '800', color: Colors.text },
-  errorBanner: { backgroundColor: Colors.error + '15', paddingHorizontal: 16, paddingVertical: 10 },
-  errorText: { fontSize: 13, color: Colors.error, fontWeight: '500' },
+function makeStyles(theme: VarsTheme) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.color.bg },
+    centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60 },
+    header: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 16, paddingVertical: 12,
+      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+    },
+    headerBack: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+    headerBackText: { fontSize: 28, color: theme.color.ink, lineHeight: 32 },
+    headerTitle: { fontSize: 17, fontWeight: '700', color: theme.color.ink },
+    stepTitle: { fontSize: 20, fontWeight: '800', color: theme.color.ink },
+    errorBanner: { backgroundColor: theme.color.accentRed + '15', paddingHorizontal: 16, paddingVertical: 10 },
+    errorText: { fontSize: 13, color: theme.color.accentRed, fontWeight: '500' },
 
-  // Slots
-  slotGrid: { paddingHorizontal: 16, gap: 8, marginTop: 16 },
-  slotRow: { flexDirection: 'row', gap: 8 },
-  slot: {
-    paddingVertical: 10,
-    borderRadius: 5, borderWidth: 1.5, borderColor: Colors.primary,
-    alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 4,
-  },
-  slotUnavailable: { borderColor: Colors.border, backgroundColor: Colors.surface },
-  slotAutoAccept: { borderColor: Colors.pioneerGold, backgroundColor: Colors.pioneerGoldSurface },
-  slotSelected: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  slotCovered: { backgroundColor: Colors.primary + '22', borderColor: Colors.primary + '55' },
-  slotText: { fontSize: 13, fontWeight: '700', color: Colors.primary },
-  slotTextUnavailable: { color: Colors.textMuted },
-  slotTextAutoAccept: { color: Colors.pioneerGoldDark },
-  slotTextSelected: { color: Colors.white },
-  autoAcceptLegend: {
-    marginHorizontal: 16, marginBottom: 8, marginTop: 4,
-    backgroundColor: Colors.pioneerGoldSurface, borderRadius: 5, paddingHorizontal: 10, paddingVertical: 6,
-    borderWidth: 1, borderColor: Colors.pioneerGold + '30',
-  },
-  autoAcceptLegendText: { fontSize: 12, color: Colors.pioneerGoldDark, fontWeight: '600' },
+    // Slots
+    slotGrid: { paddingHorizontal: 16, gap: 8, marginTop: 16 },
+    slotRow: { flexDirection: 'row', gap: 8 },
+    slot: {
+      paddingVertical: 10,
+      borderRadius: 5, borderWidth: 1.5, borderColor: theme.color.accentBlue,
+      alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 4,
+    },
+    slotUnavailable: { borderColor: theme.color.inkFaint, backgroundColor: theme.color.surface2 },
+    slotAutoAccept: { borderColor: Colors.pioneerGold, backgroundColor: Colors.pioneerGoldSurface },
+    slotSelected: { backgroundColor: theme.color.accentBlue, borderColor: theme.color.accentBlue },
+    slotCovered: { backgroundColor: theme.color.accentBlue + '22', borderColor: theme.color.accentBlue + '55' },
+    slotText: { fontSize: 13, fontWeight: '700', color: theme.color.accentBlue },
+    slotTextUnavailable: { color: theme.color.inkMuted },
+    slotTextAutoAccept: { color: Colors.pioneerGoldDark },
+    slotTextSelected: { color: theme.color.inverseInk },
+    autoAcceptLegend: {
+      marginHorizontal: 16, marginBottom: 8, marginTop: 4,
+      backgroundColor: Colors.pioneerGoldSurface, borderRadius: 5, paddingHorizontal: 10, paddingVertical: 6,
+      borderWidth: 1, borderColor: Colors.pioneerGold + '30',
+    },
+    autoAcceptLegendText: { fontSize: 12, color: Colors.pioneerGoldDark, fontWeight: '600' },
 
-  // Review / summary
-  sectionHeading: { fontSize: 16, fontWeight: '700', color: Colors.text, marginBottom: -8 },
-  optionalTag: { fontSize: 13, fontWeight: '400', color: Colors.textMuted },
-  accessHint: { fontSize: 13, color: Colors.textSecondary, marginTop: -8 },
-  summaryCard: { padding: 16 },
-  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
-  summaryLabel: { fontSize: 14, color: Colors.textSecondary },
-  summaryValue: { fontSize: 14, fontWeight: '600', color: Colors.text },
-  summaryValueBold: { fontSize: 16, fontWeight: '800', color: Colors.primary },
-  divider: { height: 1, backgroundColor: Colors.border, marginVertical: 6 },
-  fieldLabel: { fontSize: 14, fontWeight: '600', color: Colors.text, marginBottom: 6 },
-  textInput: {
-    backgroundColor: Colors.surface, borderRadius: 5,
-    borderWidth: 1.5, borderColor: Colors.border,
-    paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 15, color: Colors.text,
-  },
-  pickerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  pickerValue: { fontSize: 15, color: Colors.text },
-  pickerPlaceholder: { fontSize: 15, color: Colors.textMuted },
-  pickerChevron: { fontSize: 20, color: Colors.textMuted },
-  accessPrivacyNote: { backgroundColor: Colors.primaryLight, borderRadius: 5, padding: 12 },
-  accessPrivacyText: { fontSize: 13, color: Colors.primary, lineHeight: 18 },
-  pickerTitle: {
-    fontSize: 16, fontWeight: '700', color: Colors.text,
-    marginBottom: 12, textAlign: 'center',
-  },
-  pickerOption: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  pickerOptionText: { fontSize: 16, color: Colors.text },
-  pickerOptionSelected: { color: Colors.primary, fontWeight: '700' },
+    // Review / summary
+    sectionHeading: { fontSize: 16, fontWeight: '700', color: theme.color.ink, marginBottom: -8 },
+    optionalTag: { fontSize: 13, fontWeight: '400', color: theme.color.inkMuted },
+    accessHint: { fontSize: 13, color: theme.color.inkMuted, marginTop: -8 },
+    summaryCard: { padding: 16 },
+    summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
+    summaryLabel: { fontSize: 14, color: theme.color.inkMuted },
+    summaryValue: { fontSize: 14, fontWeight: '600', color: theme.color.ink },
+    summaryValueBold: { fontSize: 16, fontWeight: '800', color: theme.color.accentBlue },
+    divider: { height: 1, backgroundColor: theme.color.inkFaint, marginVertical: 6 },
+    fieldLabel: { fontSize: 14, fontWeight: '600', color: theme.color.ink, marginBottom: 6 },
+    textInput: {
+      backgroundColor: theme.color.surface2, borderRadius: 5,
+      borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      paddingHorizontal: 14, paddingVertical: 12,
+      fontSize: 15, color: theme.color.ink,
+    },
+    pickerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    pickerValue: { fontSize: 15, color: theme.color.ink },
+    pickerPlaceholder: { fontSize: 15, color: theme.color.inkMuted },
+    pickerChevron: { fontSize: 20, color: theme.color.inkMuted },
+    accessPrivacyNote: { backgroundColor: Colors.primaryLight, borderRadius: 5, padding: 12 },
+    accessPrivacyText: { fontSize: 13, color: Colors.primary, lineHeight: 18 },
+    pickerTitle: {
+      fontSize: 16, fontWeight: '700', color: theme.color.ink,
+      marginBottom: 12, textAlign: 'center',
+    },
+    pickerOption: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+    },
+    pickerOptionText: { fontSize: 16, color: theme.color.ink },
+    pickerOptionSelected: { color: theme.color.accentBlue, fontWeight: '700' },
 
-  // Map + location
-  mapThumb: { width: SCREEN_W, height: 200 },
-  addressRow: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 12,
-  },
-  addressText: { flex: 1, fontSize: 14, color: Colors.text, lineHeight: 20, fontWeight: '500' },
-  accessSummaryCard: { padding: 14, gap: 4 },
-  accessSummaryTitle: { fontSize: 13, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 },
-  accessDetailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 },
-  accessDetailLabel: { fontSize: 13, color: Colors.textSecondary },
-  accessDetailValue: { fontSize: 13, fontWeight: '600', color: Colors.text },
-  transportNote: { fontSize: 12, color: Colors.textSecondary, marginTop: 6, lineHeight: 17 },
-  infoBox: { backgroundColor: Colors.primaryLight, borderRadius: 5, padding: 14 },
-  infoBoxAutoAccept: { backgroundColor: Colors.pioneerGoldSurface },
-  infoText: { fontSize: 13, color: Colors.primary, lineHeight: 19, fontWeight: '500' },
-  infoTextAutoAccept: { color: Colors.pioneerGoldDark },
+    // Map + location
+    mapThumb: { width: SCREEN_W, height: 200 },
+    addressRow: {
+      flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 12,
+    },
+    addressText: { flex: 1, fontSize: 14, color: theme.color.ink, lineHeight: 20, fontWeight: '500' },
+    accessSummaryCard: { padding: 14, gap: 4 },
+    accessSummaryTitle: { fontSize: 13, fontWeight: '700', color: theme.color.inkMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 },
+    accessDetailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 },
+    accessDetailLabel: { fontSize: 13, color: theme.color.inkMuted },
+    accessDetailValue: { fontSize: 13, fontWeight: '600', color: theme.color.ink },
+    transportNote: { fontSize: 12, color: theme.color.inkMuted, marginTop: 6, lineHeight: 17 },
+    infoBox: { backgroundColor: Colors.primaryLight, borderRadius: 5, padding: 14 },
+    infoBoxAutoAccept: { backgroundColor: Colors.pioneerGoldSurface },
+    infoText: { fontSize: 13, color: Colors.primary, lineHeight: 19, fontWeight: '500' },
+    infoTextAutoAccept: { color: Colors.pioneerGoldDark },
 
-  // Slot confirm bar
-  confirmBar: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: Colors.background,
-    borderTopWidth: 1, borderTopColor: Colors.border,
-    padding: 16,
-  },
-  // Pay button
-  payWrap: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: Colors.background,
-    borderTopWidth: 1, borderTopColor: Colors.border,
-    padding: 20,
-  },
-});
+    // Slot confirm bar
+    confirmBar: {
+      position: 'absolute', bottom: 0, left: 0, right: 0,
+      backgroundColor: theme.color.bg,
+      borderTopWidth: 1, borderTopColor: theme.color.inkFaint,
+      padding: 16,
+    },
+    // Pay button
+    payWrap: {
+      position: 'absolute', bottom: 0, left: 0, right: 0,
+      backgroundColor: theme.color.bg,
+      borderTopWidth: 1, borderTopColor: theme.color.inkFaint,
+      padding: 20,
+    },
+  });
+}

@@ -5,7 +5,7 @@
 // Star rating mandatory, comment optional (per spec §4.6).
 // DB trigger updates vendor.avg_rating + total_reviews on insert.
 // ============================================================
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert, KeyboardAvoidingView,
   Platform, ScrollView, StyleSheet, Text,
@@ -15,11 +15,13 @@ import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
-
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
+import { VarsTheme } from '@/constants/visualSystem';
+import { useVarsTheme } from '@/contexts/ThemeContext';
 import { StarFilledIcon, StarEmptyIcon } from '@/components/icons';
+
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
 interface BookingInfo {
   vendor_id: string;
@@ -31,6 +33,8 @@ export default function ReviewScreen() {
   const { bookingId } = useLocalSearchParams<{ bookingId: string }>();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { theme } = useVarsTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
 
   const [booking, setBooking] = useState<BookingInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -147,7 +151,7 @@ export default function ReviewScreen() {
           <TextInput
             style={s.commentInput}
             placeholder={`What did you love about ${booking.vendor_name.split(' ')[0]}'s work?`}
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={theme.color.inkMuted}
             value={comment}
             onChangeText={setComment}
             multiline
@@ -180,53 +184,55 @@ export default function ReviewScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.background },
-  errorText: { fontSize: 16, color: Colors.text, marginBottom: 12 },
-  link: { fontSize: 15, color: Colors.primary, fontWeight: '600' },
+function makeStyles(theme: VarsTheme) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.color.bg },
+    centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.color.bg },
+    errorText: { fontSize: 16, color: theme.color.ink, marginBottom: 12 },
+    link: { fontSize: 15, color: theme.color.accentBlue, fontWeight: '600' },
 
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  backText: { fontSize: 28, color: Colors.ink, lineHeight: 32 },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: Colors.text },
+    header: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 16, paddingVertical: 12,
+      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+    },
+    backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+    backText: { fontSize: 28, color: theme.color.ink, lineHeight: 32 },
+    headerTitle: { fontSize: 17, fontWeight: '700', color: theme.color.ink },
 
-  body: { padding: 20, gap: 16, paddingBottom: 60 },
+    body: { padding: 20, gap: 16, paddingBottom: 60 },
 
-  contextCard: {
-    backgroundColor: Colors.surface, borderRadius: 5,
-    padding: 16, borderWidth: 1, borderColor: Colors.border,
-    alignItems: 'center',
-  },
-  contextService: { fontSize: 18, fontWeight: '800', color: Colors.text, marginBottom: 4 },
-  contextVendor: { fontSize: 14, color: Colors.textSecondary },
+    contextCard: {
+      backgroundColor: theme.color.surface2, borderRadius: 5,
+      padding: 16, borderWidth: 1, borderColor: theme.color.inkFaint,
+      alignItems: 'center',
+    },
+    contextService: { fontSize: 18, fontWeight: '800', color: theme.color.ink, marginBottom: 4 },
+    contextVendor: { fontSize: 14, color: theme.color.inkMuted },
 
-  sectionLabel: { fontSize: 15, fontWeight: '700', color: Colors.text },
-  required: { color: Colors.error },
-  optional: { fontWeight: '400', color: Colors.textMuted },
+    sectionLabel: { fontSize: 15, fontWeight: '700', color: theme.color.ink },
+    required: { color: theme.color.accentRed },
+    optional: { fontWeight: '400', color: theme.color.inkMuted },
 
-  stars: { flexDirection: 'row', gap: 12, justifyContent: 'center', paddingVertical: 8 },
-  ratingLabel: { textAlign: 'center', fontSize: 15, fontWeight: '700', color: Colors.star },
+    stars: { flexDirection: 'row', gap: 12, justifyContent: 'center', paddingVertical: 8 },
+    ratingLabel: { textAlign: 'center', fontSize: 15, fontWeight: '700', color: Colors.star },
 
-  commentInput: {
-    backgroundColor: Colors.surface, borderRadius: 5,
-    borderWidth: 1, borderColor: Colors.border,
-    paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 15, color: Colors.text, minHeight: 100,
-  },
-  charCount: { fontSize: 12, color: Colors.textMuted, textAlign: 'right', marginTop: -10 },
+    commentInput: {
+      backgroundColor: theme.color.surface2, borderRadius: 5,
+      borderWidth: 1, borderColor: theme.color.inkFaint,
+      paddingHorizontal: 14, paddingVertical: 12,
+      fontSize: 15, color: theme.color.ink, minHeight: 100,
+    },
+    charCount: { fontSize: 12, color: theme.color.inkMuted, textAlign: 'right', marginTop: -10 },
 
-  note: { backgroundColor: Colors.primaryLight, borderRadius: 5, padding: 12 },
-  noteText: { fontSize: 13, color: Colors.primary, lineHeight: 18 },
+    note: { backgroundColor: Colors.primaryLight, borderRadius: 5, padding: 12 },
+    noteText: { fontSize: 13, color: Colors.primary, lineHeight: 18 },
 
-  submitBtn: {
-    height: 56, backgroundColor: Colors.ink,
-    borderRadius: 5, alignItems: 'center', justifyContent: 'center',
-  },
-  btnDisabled: { opacity: 0.5 },
-  submitBtnText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
-});
+    submitBtn: {
+      height: 56, backgroundColor: theme.color.ink,
+      borderRadius: 5, alignItems: 'center', justifyContent: 'center',
+    },
+    btnDisabled: { opacity: 0.5 },
+    submitBtnText: { color: theme.color.inverseInk, fontSize: 16, fontWeight: '700' },
+  });
+}
