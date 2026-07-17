@@ -3,7 +3,7 @@
 // Sections: Portfolio, My Services
 // Account/Security/Payout/Legal → /vendor-settings (root stack screen)
 // ============================================================
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   Alert, Dimensions, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
@@ -17,6 +17,7 @@ import { uploadSinglePortfolioPhoto, deletePortfolioPhoto } from '@/lib/storage'
 import { VarsSkeleton } from '@/components/ui';
 import { useVarsTheme } from '@/contexts/ThemeContext';
 import { Colors, BORDER_RADIUS } from '@/constants/colors';
+import { VarsTheme } from '@/constants/visualSystem';
 import { CheckIcon, CloseIcon, EditIcon, GearIcon } from '@/components/icons';
 import { CATEGORY_L2_LABELS, MAX_VENDOR_SERVICES } from '@vars/shared';
 import { useVendorOnline } from '@/contexts/VendorOnlineContext';
@@ -50,6 +51,7 @@ const CONSENT_LABEL: Record<string, { text: string; color: string }> = {
 export default function VendorProfileScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useVarsTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
   const { vendorStatus, isOnline, isBusy, togglingOnline, blockReason, toggleError, toggleOnline } = useVendorOnline();
   const [showStatusModal, setShowStatusModal] = useState(false);
 
@@ -150,10 +152,10 @@ export default function VendorProfileScreen() {
         <Text style={s.svcPrice}>₦{(Math.round(item.price_kobo * 0.8) / 100).toLocaleString('en-NG')}</Text>
       </View>
       <TouchableOpacity onPress={() => router.push({ pathname: '/vendor-services/edit', params: { id: item.id } } as any)} style={s.svcActionBtn} hitSlop={8}>
-        <EditIcon size={14} color={Colors.textMuted} />
+        <EditIcon size={14} color={theme.color.inkMuted} />
       </TouchableOpacity>
       <TouchableOpacity onPress={() => handleDeleteService(item.id)} style={s.svcActionBtn} hitSlop={8}>
-        <CloseIcon size={11} color={Colors.textMuted} />
+        <CloseIcon size={11} color={theme.color.inkMuted} />
       </TouchableOpacity>
       <View style={s.orderBtns}>
         <TouchableOpacity onPress={() => handleMove(index, 'up')} disabled={index === 0} hitSlop={6} style={s.orderBtn}>
@@ -372,13 +374,13 @@ export default function VendorProfileScreen() {
                 style={s.heroEditBtn}
                 activeOpacity={0.7}
               >
-                <GearIcon size={24} color={Colors.textMuted} />
+                <GearIcon size={24} color={theme.color.inkMuted} />
               </TouchableOpacity>
             </View>
 
             {kycLegalName ? (
               <View style={s.heroLegalRow}>
-                <CheckIcon size={10} color={Colors.textMuted} />
+                <CheckIcon size={10} color={theme.color.inkMuted} />
                 <Text style={s.heroLegalText}>{kycLegalName} · Verified by VARS</Text>
               </View>
             ) : null}
@@ -499,134 +501,140 @@ export default function VendorProfileScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+function makeStyles(theme: VarsTheme) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.color.bg },
 
-  nudgeOverlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end', paddingHorizontal: 16, paddingBottom: 40,
-  },
-  nudgeCard: {
-    backgroundColor: Colors.ink, borderRadius: BORDER_RADIUS, padding: 20,
-  },
-  nudgeTitle: { fontSize: 15, fontWeight: '700', color: '#FFF', marginBottom: 4 },
-  nudgeBody: { fontSize: 13, color: 'rgba(255,255,255,0.75)', lineHeight: 19, marginBottom: 14 },
-  nudgeActions: { flexDirection: 'row', alignItems: 'center', gap: 20 },
-  nudgeCta: {
-    backgroundColor: '#FFF', borderRadius: BORDER_RADIUS,
-    paddingHorizontal: 14, paddingVertical: 8,
-  },
-  nudgeCtaText: { fontSize: 13, fontWeight: '700', color: Colors.ink },
-  nudgeDismiss: { fontSize: 13, color: 'rgba(255,255,255,0.6)', fontWeight: '500' },
+    // Nudge card is an intentionally fixed-contrast "spotlight" overlay -
+    // stays dark-card/white-text in both app themes, not theme-reactive.
+    nudgeOverlay: {
+      flex: 1, backgroundColor: theme.color.overlay,
+      justifyContent: 'flex-end', paddingHorizontal: 16, paddingBottom: 40,
+    },
+    nudgeCard: {
+      backgroundColor: Colors.ink, borderRadius: BORDER_RADIUS, padding: 20,
+    },
+    nudgeTitle: { fontSize: 15, fontWeight: '700', color: '#FFF', marginBottom: 4 },
+    nudgeBody: { fontSize: 13, color: 'rgba(255,255,255,0.75)', lineHeight: 19, marginBottom: 14 },
+    nudgeActions: { flexDirection: 'row', alignItems: 'center', gap: 20 },
+    nudgeCta: {
+      backgroundColor: '#FFF', borderRadius: BORDER_RADIUS,
+      paddingHorizontal: 14, paddingVertical: 8,
+    },
+    nudgeCtaText: { fontSize: 13, fontWeight: '700', color: Colors.ink },
+    nudgeDismiss: { fontSize: 13, color: 'rgba(255,255,255,0.6)', fontWeight: '500' },
 
-  header: {
-    paddingHorizontal: 20, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: Colors.text },
+    header: {
+      paddingHorizontal: 20, paddingVertical: 14,
+      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+    },
+    headerTitle: { fontSize: 24, fontWeight: '800', color: theme.color.ink },
 
-  heroRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 20, paddingVertical: 20, gap: 14,
-  },
-  heroAvatarWrap: { width: 56, height: 56 },
-  heroAvatar: { width: 56, height: 56, borderRadius: 28 },
-  statusDotWrap: {
-    position: 'absolute', bottom: 0, right: 0,
-  },
-  heroAvatarFallback: { backgroundColor: Colors.ink, alignItems: 'center', justifyContent: 'center' },
-  heroAvatarText: { fontSize: 22, fontWeight: '800', color: Colors.white },
-  heroInfo: { flex: 1 },
-  heroNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  heroName: { fontSize: 18, fontWeight: '700', color: Colors.text, flex: 1 },
-  heroEditBtn: { padding: 8 },
-  heroLegalRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 5 },
-  heroLegalText: { fontSize: 12, color: Colors.textMuted },
+    heroRow: {
+      flexDirection: 'row', alignItems: 'center',
+      paddingHorizontal: 20, paddingVertical: 20, gap: 14,
+    },
+    heroAvatarWrap: { width: 56, height: 56 },
+    heroAvatar: { width: 56, height: 56, borderRadius: 28 },
+    statusDotWrap: {
+      position: 'absolute', bottom: 0, right: 0,
+    },
+    heroAvatarFallback: { backgroundColor: theme.color.ink, alignItems: 'center', justifyContent: 'center' },
+    heroAvatarText: { fontSize: 22, fontWeight: '800', color: theme.color.inverseInk },
+    heroInfo: { flex: 1 },
+    heroNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    heroName: { fontSize: 18, fontWeight: '700', color: theme.color.ink, flex: 1 },
+    heroEditBtn: { padding: 8 },
+    heroLegalRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 5 },
+    heroLegalText: { fontSize: 12, color: theme.color.inkMuted },
 
-  section: {
-    marginTop: 8, borderTopWidth: 1, borderTopColor: Colors.border,
-    paddingTop: 16, paddingHorizontal: 20,
-  },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  sectionTitle: {
-    fontSize: 12, fontWeight: '700', color: Colors.textMuted,
-    textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12,
-  },
-  photoCount: { fontSize: 12, color: Colors.textMuted, fontWeight: '600' },
+    section: {
+      marginTop: 8, borderTopWidth: 1, borderTopColor: theme.color.inkFaint,
+      paddingTop: 16, paddingHorizontal: 20,
+    },
+    sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+    sectionTitle: {
+      fontSize: 12, fontWeight: '700', color: theme.color.inkMuted,
+      textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12,
+    },
+    photoCount: { fontSize: 12, color: theme.color.inkMuted, fontWeight: '600' },
 
-  // My Services
-  svcRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 12, paddingHorizontal: 4,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-    backgroundColor: Colors.background,
-  },
-  svcInfo: { flex: 1 },
-  svcMeta: {
-    fontSize: 11, color: Colors.textMuted, fontWeight: '600',
-    textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 1,
-  },
-  svcName: { fontSize: 15, fontWeight: '600', color: Colors.text },
-  svcPrice: { fontSize: 13, color: Colors.textSecondary, marginTop: 1 },
-  svcActionBtn: { padding: 8 },
-  orderBtns: { flexDirection: 'column', paddingLeft: 4 },
-  orderBtn: { padding: 5 },
-  orderBtnText: { fontSize: 14, color: Colors.textMuted, lineHeight: 16 },
-  orderBtnDisabled: { opacity: 0.2 },
-  addSvcBtn: {
-    marginTop: 12, height: 42,
-    borderRadius: 5, borderWidth: 1.5, borderColor: Colors.border,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  addSvcText: { fontSize: 14, fontWeight: '600', color: Colors.text },
+    // My Services
+    svcRow: {
+      flexDirection: 'row', alignItems: 'center',
+      paddingVertical: 12, paddingHorizontal: 4,
+      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+      backgroundColor: theme.color.bg,
+    },
+    svcInfo: { flex: 1 },
+    svcMeta: {
+      fontSize: 11, color: theme.color.inkMuted, fontWeight: '600',
+      textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 1,
+    },
+    svcName: { fontSize: 15, fontWeight: '600', color: theme.color.ink },
+    svcPrice: { fontSize: 13, color: theme.color.inkMuted, marginTop: 1 },
+    svcActionBtn: { padding: 8 },
+    orderBtns: { flexDirection: 'column', paddingLeft: 4 },
+    orderBtn: { padding: 5 },
+    orderBtnText: { fontSize: 14, color: theme.color.inkMuted, lineHeight: 16 },
+    orderBtnDisabled: { opacity: 0.2 },
+    addSvcBtn: {
+      marginTop: 12, height: 42,
+      borderRadius: 5, borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    addSvcText: { fontSize: 14, fontWeight: '600', color: theme.color.ink },
 
-  // Portfolio scroll
-  photoScrollContent: { flexDirection: 'row', gap: 8, paddingBottom: 8 },
-  photoWrapper: { width: PHOTO_SIZE, position: 'relative' },
-  photo: { width: PHOTO_SIZE, height: PHOTO_SIZE, borderRadius: 5 },
-  photoBadge: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: 'rgba(255,255,255,0.88)',
-    borderBottomLeftRadius: 5, borderBottomRightRadius: 5,
-    paddingVertical: 3, alignItems: 'center',
-  },
-  photoBadgeText: { fontSize: 10, fontWeight: '700' },
-  photoDeleteBtn: {
-    position: 'absolute', top: 4, right: 4,
-    width: 22, height: 22, borderRadius: 11,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  addPhotoBtn: {
-    width: PHOTO_SIZE, height: PHOTO_SIZE, borderRadius: 5,
-    borderWidth: 1.5, borderColor: Colors.ink, borderStyle: 'dashed',
-    alignItems: 'center', justifyContent: 'center', gap: 4,
-  },
-  addPhotoIcon: { fontSize: 24, color: Colors.ink, fontWeight: '300' },
-  addPhotoLabel: { fontSize: 11, color: Colors.inkMuted, fontWeight: '500' },
-  photoHint: {
-    fontSize: 12, color: Colors.textMuted, marginTop: 4, marginBottom: 8, lineHeight: 17,
-  },
+    // Portfolio scroll
+    photoScrollContent: { flexDirection: 'row', gap: 8, paddingBottom: 8 },
+    photoWrapper: { width: PHOTO_SIZE, position: 'relative' },
+    photo: { width: PHOTO_SIZE, height: PHOTO_SIZE, borderRadius: 5 },
+    // Overlays sit on top of arbitrary photo content, not the app surface -
+    // stay fixed-contrast (white/black translucent) regardless of theme.
+    photoBadge: {
+      position: 'absolute', bottom: 0, left: 0, right: 0,
+      backgroundColor: 'rgba(255,255,255,0.88)',
+      borderBottomLeftRadius: 5, borderBottomRightRadius: 5,
+      paddingVertical: 3, alignItems: 'center',
+    },
+    photoBadgeText: { fontSize: 10, fontWeight: '700' },
+    photoDeleteBtn: {
+      position: 'absolute', top: 4, right: 4,
+      width: 22, height: 22, borderRadius: 11,
+      backgroundColor: 'rgba(0,0,0,0.55)',
+      alignItems: 'center', justifyContent: 'center',
+    },
+    addPhotoBtn: {
+      width: PHOTO_SIZE, height: PHOTO_SIZE, borderRadius: 5,
+      borderWidth: 1.5, borderColor: theme.color.ink, borderStyle: 'dashed',
+      alignItems: 'center', justifyContent: 'center', gap: 4,
+    },
+    addPhotoIcon: { fontSize: 24, color: theme.color.ink, fontWeight: '300' },
+    addPhotoLabel: { fontSize: 11, color: theme.color.inkMuted, fontWeight: '500' },
+    photoHint: {
+      fontSize: 12, color: theme.color.inkMuted, marginTop: 4, marginBottom: 8, lineHeight: 17,
+    },
 
-  statusOverlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'flex-end',
-  },
-  statusCard: {
-    backgroundColor: Colors.background, borderTopLeftRadius: 16, borderTopRightRadius: 16,
-    paddingHorizontal: 24, paddingTop: 24, paddingBottom: 40,
-  },
-  statusCardHeader: {
-    flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10,
-  },
-  statusCardTitle: { fontSize: 18, fontWeight: '700', color: Colors.text },
-  statusCardBody: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20, marginBottom: 20 },
-  statusError: { fontSize: 13, color: Colors.error, marginBottom: 12 },
-  statusToggleBtn: {
-    height: 50, borderRadius: BORDER_RADIUS, backgroundColor: Colors.ink,
-    alignItems: 'center', justifyContent: 'center', marginBottom: 4,
-  },
-  statusToggleBtnDisabled: { opacity: 0.4 },
-  statusToggleBtnText: { fontSize: 15, fontWeight: '700', color: '#FFF' },
-  statusDismiss: { fontSize: 14, color: Colors.textMuted, fontWeight: '500' },
-});
+    statusOverlay: {
+      flex: 1, backgroundColor: theme.color.overlay,
+      justifyContent: 'flex-end',
+    },
+    statusCard: {
+      backgroundColor: theme.color.bg, borderTopLeftRadius: 16, borderTopRightRadius: 16,
+      paddingHorizontal: 24, paddingTop: 24, paddingBottom: 40,
+    },
+    statusCardHeader: {
+      flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10,
+    },
+    statusCardTitle: { fontSize: 18, fontWeight: '700', color: theme.color.ink },
+    statusCardBody: { fontSize: 14, color: theme.color.inkMuted, lineHeight: 20, marginBottom: 20 },
+    statusError: { fontSize: 13, color: theme.color.accentRed, marginBottom: 12 },
+    statusToggleBtn: {
+      height: 50, borderRadius: BORDER_RADIUS, backgroundColor: theme.color.ink,
+      alignItems: 'center', justifyContent: 'center', marginBottom: 4,
+    },
+    statusToggleBtnDisabled: { opacity: 0.4 },
+    statusToggleBtnText: { fontSize: 15, fontWeight: '700', color: theme.color.inverseInk },
+    statusDismiss: { fontSize: 14, color: theme.color.inkMuted, fontWeight: '500' },
+  });
+}

@@ -9,7 +9,7 @@
 //   • Past jobs
 // Real-time updates via Supabase Realtime on bookings table.
 // ============================================================
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert, LayoutChangeEvent, Linking, Modal, RefreshControl,
   ScrollView, StyleSheet, Text, TouchableOpacity, View,
@@ -20,6 +20,8 @@ import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { Colors, BORDER_RADIUS } from '@/constants/colors';
+import { VarsTheme } from '@/constants/visualSystem';
+import { useVarsTheme } from '@/contexts/ThemeContext';
 import { uploadSinglePortfolioPhoto } from '@/lib/storage';
 import { fmtPrice, fmtDuration, fmtDateTime } from '@/lib/format';
 import { fetchWithRetry } from '@/lib/fetchWithRetry';
@@ -89,11 +91,12 @@ function useCountdown(expiresAt: string) {
 
 // ── Pending booking card ─────────────────────────────────────
 function PendingCard({
-  booking, onUpdated, isPioneer,
+  booking, onUpdated, isPioneer, c,
 }: {
   booking: VendorBooking;
   onUpdated: () => void;
   isPioneer: boolean;
+  c: ReturnType<typeof makeStylesC>;
 }) {
   const [acting, setActing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -178,10 +181,12 @@ const FLOW_ACTIONS: Partial<Record<BookingStatus, { label: string; next: Booking
 };
 
 function ActiveCard({
-  booking, onUpdated,
+  booking, onUpdated, c, theme,
 }: {
   booking: VendorBooking;
   onUpdated: () => void;
+  c: ReturnType<typeof makeStylesC>;
+  theme: VarsTheme;
 }) {
   const [acting, setActing] = useState(false);
   const [advanceError, setAdvanceError] = useState<string | null>(null);
@@ -417,6 +422,7 @@ function ActiveCard({
         onConfirm={handleGate}
         onDismiss={() => setGateStage(null)}
         onClose={() => { setGateStage(null); onUpdated(); }}
+        theme={theme}
       />
     </View>
   );
@@ -426,7 +432,7 @@ function ActiveCard({
 type GateStage = 'confirm' | 'charging' | 'success' | 'awaiting_payment' | 'error' | null;
 
 function GateModal({
-  stage, customerName, error, onConfirm, onDismiss, onClose,
+  stage, customerName, error, onConfirm, onDismiss, onClose, theme,
 }: {
   stage: GateStage;
   customerName: string;
@@ -434,7 +440,9 @@ function GateModal({
   onConfirm: () => void;
   onDismiss: () => void;
   onClose: () => void;
+  theme: VarsTheme;
 }) {
+  const gm = useMemo(() => makeStylesGm(theme), [theme]);
   if (!stage) return null;
   const firstName = customerName.split(' ')[0];
   return (
@@ -472,7 +480,7 @@ function GateModal({
           )}
           {stage === 'success' && (
             <>
-              <CheckCircleIcon size={36} color={Colors.success} />
+              <CheckCircleIcon size={36} color={theme.color.accentGreen} />
               <Text style={gm.successTitle}>Payment confirmed</Text>
               <Text style={gm.successBody}>{'You\'re on your way. '}{firstName} has been notified.</Text>
             </>
@@ -491,7 +499,7 @@ function GateModal({
           )}
           {stage === 'error' && (
             <>
-              <XCircleIcon size={32} color={Colors.error} />
+              <XCircleIcon size={32} color={theme.color.accentRed} />
               <Text style={gm.errorTitle}>Something went wrong</Text>
               <Text style={gm.errorBody}>{error}</Text>
               <TouchableOpacity style={gm.primaryBtn} onPress={onConfirm}>
@@ -515,12 +523,14 @@ function BookingRow({
   photoConsentState,
   onPhotoAdded,
   isPioneer,
+  c,
 }: {
   booking: VendorBooking;
   vendorPhotoCount?: number;
   photoConsentState?: 'pending' | 'approved' | null;
   onPhotoAdded?: () => void;
   isPioneer?: boolean;
+  c: ReturnType<typeof makeStylesC>;
 }) {
   const [addingPhoto, setAddingPhoto] = useState(false);
   const isCompleted = booking.status === 'completed';
@@ -615,13 +625,15 @@ function BookingRow({
 
 // ── Zone confirmation modal ──────────────────────────────────
 function ZoneConfirmModal({
-  visible, zone, onConfirmed, onDismiss,
+  visible, zone, onConfirmed, onDismiss, theme,
 }: {
   visible: boolean;
   zone: { lat: number; lng: number; radius_km: number } | null;
   onConfirmed: () => void;
   onDismiss: () => void;
+  theme: VarsTheme;
 }) {
+  const zm = useMemo(() => makeStylesZm(theme), [theme]);
   const [confirming, setConfirming] = useState(false);
 
   const handleConfirm = async () => {
@@ -683,6 +695,8 @@ function ZoneConfirmModal({
 // ── Root component ───────────────────────────────────────────
 export default function VendorJobsScreen() {
   const insets = useSafeAreaInsets();
+  const { theme } = useVarsTheme();
+  const c = useMemo(() => makeStylesC(theme), [theme]);
   const { isOnline: isConnected } = useNetworkState();
 
   const scrollViewRef = useRef<ScrollView>(null);
@@ -938,6 +952,7 @@ export default function VendorJobsScreen() {
           zone={zoneModal.zone}
           onConfirmed={() => setZoneModal(null)}
           onDismiss={() => setZoneModal(null)}
+          theme={theme}
         />
       )}
 
@@ -958,7 +973,7 @@ export default function VendorJobsScreen() {
                 <ScissorsLoader size="small" color="dark" />
               ) : isOnline ? (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.accentGreen }} />
+                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: theme.color.accentGreen }} />
                   <Text style={c.onlineToggleText}>Online</Text>
                 </View>
               ) : (
@@ -1004,7 +1019,7 @@ export default function VendorJobsScreen() {
             onLayout captures the section height so the scroll anchor knows where to jump. */}
         {history.length > 0 && (
           <View onLayout={(e: LayoutChangeEvent) => { historyHeightRef.current = e.nativeEvent.layout.height; }}>
-            <Section title="Recent history">
+            <Section title="Recent history" c={c}>
               {[...history].reverse().map((b) => (
                 <BookingRow
                   key={b.id}
@@ -1013,6 +1028,7 @@ export default function VendorJobsScreen() {
                   photoConsentState={bookingPhotoStates.get(b.id) ?? null}
                   onPhotoAdded={load}
                   isPioneer={isPioneer}
+                  c={c}
                 />
               ))}
             </Section>
@@ -1021,13 +1037,14 @@ export default function VendorJobsScreen() {
 
         {/* Incoming requests */}
         {pending.length > 0 && (
-          <Section title={`Incoming requests (${pending.length})`} urgent>
+          <Section title={`Incoming requests (${pending.length})`} urgent c={c}>
             {pending.map((b) => (
               <PendingCard
                 key={b.id}
                 booking={b}
                 isPioneer={isPioneer}
                 onUpdated={load}
+                c={c}
               />
             ))}
           </Section>
@@ -1035,9 +1052,9 @@ export default function VendorJobsScreen() {
 
         {/* Active jobs */}
         {todayActive.length > 0 && (
-          <Section title="Active today">
+          <Section title="Active today" c={c}>
             {todayActive.map((b) => (
-              <ActiveCard key={b.id} booking={b} onUpdated={load} />
+              <ActiveCard key={b.id} booking={b} onUpdated={load} c={c} theme={theme} />
             ))}
           </Section>
         )}
@@ -1047,10 +1064,10 @@ export default function VendorJobsScreen() {
           const d = new Date(b.scheduled_at);
           return d.toDateString() !== new Date().toDateString();
         }).length > 0 && (
-          <Section title="Upcoming">
+          <Section title="Upcoming" c={c}>
             {upcoming
               .filter((b) => new Date(b.scheduled_at).toDateString() !== new Date().toDateString())
-              .map((b) => <BookingRow key={b.id} booking={b} isPioneer={isPioneer} />)}
+              .map((b) => <BookingRow key={b.id} booking={b} isPioneer={isPioneer} c={c} />)}
           </Section>
         )}
 
@@ -1069,7 +1086,7 @@ export default function VendorJobsScreen() {
   );
 }
 
-function Section({ title, children, urgent }: { title: string; children: React.ReactNode; urgent?: boolean }) {
+function Section({ title, children, urgent, c }: { title: string; children: React.ReactNode; urgent?: boolean; c: ReturnType<typeof makeStylesC> }) {
   return (
     <View style={c.section}>
       <Text style={[c.sectionTitle, urgent && c.sectionTitleUrgent]}>{title}</Text>
@@ -1078,227 +1095,239 @@ function Section({ title, children, urgent }: { title: string; children: React.R
   );
 }
 
-const c = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.background },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: Colors.text },
-  onlineToggle: {
-    height: 34, paddingHorizontal: 14, borderRadius: 5,
-    borderWidth: 1.5, borderColor: Colors.ink, backgroundColor: 'transparent',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  onlineToggleOverlay: {
-    position: 'absolute', top: 0, bottom: 0, left: 0, right: 0,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  onlineOn:  {},
-  onlineOff: {},
-  onlineToggleText: { fontSize: 13, fontWeight: '700', color: Colors.ink },
-  onlineToggleTextOn: {},
+function makeStylesC(theme: VarsTheme) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.color.bg },
+    centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.color.bg },
+    header: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 20, paddingVertical: 14,
+      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+    },
+    headerTitle: { fontSize: 24, fontWeight: '800', color: theme.color.ink },
+    onlineToggle: {
+      height: 34, paddingHorizontal: 14, borderRadius: 5,
+      borderWidth: 1.5, borderColor: theme.color.ink, backgroundColor: 'transparent',
+      alignItems: 'center', justifyContent: 'center',
+    },
+    onlineToggleOverlay: {
+      position: 'absolute', top: 0, bottom: 0, left: 0, right: 0,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    onlineOn:  {},
+    onlineOff: {},
+    onlineToggleText: { fontSize: 13, fontWeight: '700', color: theme.color.ink },
+    onlineToggleTextOn: {},
 
-  section: { paddingTop: 20, paddingHorizontal: 16 },
-  sectionTitle: { fontSize: 13, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 },
-  sectionTitleUrgent: { color: Colors.statusPending },
+    section: { paddingTop: 20, paddingHorizontal: 16 },
+    sectionTitle: { fontSize: 13, fontWeight: '700', color: theme.color.inkMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 },
+    sectionTitleUrgent: { color: Colors.statusPending },
 
-  // Cards
-  card: {
-    backgroundColor: Colors.surface, borderRadius: 5,
-    padding: 16, borderWidth: 1, borderColor: Colors.border, marginBottom: 10, gap: 6,
-  },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },
-  statusDot: { width: 10, height: 10, borderRadius: 5 },
-  customerName: { flex: 1, fontSize: 15, fontWeight: '700', color: Colors.text },
-  countdown: { fontSize: 12, fontWeight: '700', color: Colors.statusPending, fontVariant: ['tabular-nums'] },
-  statusPill: { fontSize: 12, fontWeight: '700', textTransform: 'capitalize' },
-  serviceName: { fontSize: 16, fontWeight: '600', color: Colors.text },
-  meta: { fontSize: 13, color: Colors.textSecondary },
-  earningsBox: {
-    marginTop: 8, paddingTop: 10, borderTopWidth: 1, borderTopColor: Colors.border,
-  },
-  earningsLabel: {
-    fontSize: 10, fontWeight: '700', color: Colors.textMuted,
-    letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 2,
-  },
-  earningsAmount: { fontSize: 22, fontWeight: '800', color: Colors.text },
-  transportNote: { fontSize: 12, color: Colors.textSecondary, marginTop: 3, lineHeight: 16 },
-  phoneReveal: { fontSize: 14, fontWeight: '600', color: Colors.success },
+    // Cards
+    card: {
+      backgroundColor: theme.color.surface2, borderRadius: 5,
+      padding: 16, borderWidth: 1, borderColor: theme.color.inkFaint, marginBottom: 10, gap: 6,
+    },
+    cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },
+    statusDot: { width: 10, height: 10, borderRadius: 5 },
+    customerName: { flex: 1, fontSize: 15, fontWeight: '700', color: theme.color.ink },
+    countdown: { fontSize: 12, fontWeight: '700', color: Colors.statusPending, fontVariant: ['tabular-nums'] },
+    statusPill: { fontSize: 12, fontWeight: '700', textTransform: 'capitalize' },
+    serviceName: { fontSize: 16, fontWeight: '600', color: theme.color.ink },
+    meta: { fontSize: 13, color: theme.color.inkMuted },
+    earningsBox: {
+      marginTop: 8, paddingTop: 10, borderTopWidth: 1, borderTopColor: theme.color.inkFaint,
+    },
+    earningsLabel: {
+      fontSize: 10, fontWeight: '700', color: theme.color.inkMuted,
+      letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 2,
+    },
+    earningsAmount: { fontSize: 22, fontWeight: '800', color: theme.color.ink },
+    transportNote: { fontSize: 12, color: theme.color.inkMuted, marginTop: 3, lineHeight: 16 },
+    phoneReveal: { fontSize: 14, fontWeight: '600', color: theme.color.accentGreen },
 
-  btnRow: { flexDirection: 'row', gap: 10, marginTop: 8 },
-  declineBtn: {
-    flex: 1, height: 44, borderRadius: 5,
-    borderWidth: 1.5, borderColor: Colors.border,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  declineBtnText: { fontSize: 14, fontWeight: '700', color: Colors.textSecondary },
-  acceptBtn: {
-    flex: 2, height: 44, borderRadius: 5,
-    backgroundColor: Colors.primary,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  acceptBtnText: { fontSize: 14, fontWeight: '700', color: '#FFF' },
+    btnRow: { flexDirection: 'row', gap: 10, marginTop: 8 },
+    declineBtn: {
+      flex: 1, height: 44, borderRadius: 5,
+      borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    declineBtnText: { fontSize: 14, fontWeight: '700', color: theme.color.inkMuted },
+    acceptBtn: {
+      flex: 2, height: 44, borderRadius: 5,
+      backgroundColor: theme.color.accentBlue,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    acceptBtnText: { fontSize: 14, fontWeight: '700', color: theme.color.inverseInk },
 
-  flowBtn: {
-    height: 48, borderRadius: 5, marginTop: 8,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  flowBtnText: { fontSize: 15, fontWeight: '700', color: '#FFF' },
-  waitingBox: {
-    backgroundColor: Colors.primaryLight, borderRadius: 5, padding: 10, marginTop: 4,
-  },
-  waitingText: { fontSize: 12, color: Colors.primary, lineHeight: 17 },
+    flowBtn: {
+      height: 48, borderRadius: 5, marginTop: 8,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    // flowBtn's background is a per-status semantic color set inline (never theme-reactive) -
+    // white text stays fixed to match.
+    flowBtnText: { fontSize: 15, fontWeight: '700', color: '#FFF' },
+    // waitingBox/gateWindowBanner keep the static primary/primaryLight tint pair -
+    // no dark-mode-safe "tinted surface" token exists yet.
+    waitingBox: {
+      backgroundColor: Colors.primaryLight, borderRadius: 5, padding: 10, marginTop: 4,
+    },
+    waitingText: { fontSize: 12, color: Colors.primary, lineHeight: 17 },
 
-  btnDisabled: { opacity: 0.5 },
-  inlineError: { fontSize: 12, color: Colors.error, marginTop: 6, textAlign: 'center' },
+    btnDisabled: { opacity: 0.5 },
+    inlineError: { fontSize: 12, color: theme.color.accentRed, marginTop: 6, textAlign: 'center' },
 
-  // Service-rendered reminder banner
-  renderReminderBanner: {
-    backgroundColor: Colors.offlineText,
-    borderRadius: 5, padding: 10, marginTop: 4,
-    borderWidth: 1, borderColor: Colors.amberBorder,
-  },
-  renderReminderText: { fontSize: 13, color: Colors.offlineBg, fontWeight: '600', lineHeight: 18 },
+    // Service-rendered reminder banner — fixed amber-warning treatment, same as OfflineBanner.
+    renderReminderBanner: {
+      backgroundColor: Colors.offlineText,
+      borderRadius: 5, padding: 10, marginTop: 4,
+      borderWidth: 1, borderColor: Colors.amberBorder,
+    },
+    renderReminderText: { fontSize: 13, color: Colors.offlineBg, fontWeight: '600', lineHeight: 18 },
 
-  // Vendor cancel button on active cards
-  vendorCancelBtn: {
-    marginTop: 4, height: 38, borderRadius: 5,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  vendorCancelText: { fontSize: 13, fontWeight: '600', color: Colors.error },
-  vendorCancelTextGrace: { color: Colors.ink },
+    // Vendor cancel button on active cards
+    vendorCancelBtn: {
+      marginTop: 4, height: 38, borderRadius: 5,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    vendorCancelText: { fontSize: 13, fontWeight: '600', color: theme.color.accentRed },
+    vendorCancelTextGrace: { color: theme.color.ink },
 
-  // Auto-accept grace period banner
-  graceBanner: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: Colors.offlineText, borderRadius: BORDER_RADIUS,
-    borderWidth: 1, borderColor: Colors.amberBorder,
-    paddingHorizontal: 12, paddingVertical: 8, marginTop: 8,
-  },
-  graceText: { fontSize: 12, fontWeight: '600', color: Colors.offlineBg, flex: 1 },
-  graceCountdown: { fontSize: 13, fontWeight: '800', color: Colors.offlineBg, fontVariant: ['tabular-nums'] },
+    // Auto-accept grace period banner — fixed amber-warning treatment.
+    graceBanner: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      backgroundColor: Colors.offlineText, borderRadius: BORDER_RADIUS,
+      borderWidth: 1, borderColor: Colors.amberBorder,
+      paddingHorizontal: 12, paddingVertical: 8, marginTop: 8,
+    },
+    graceText: { fontSize: 12, fontWeight: '600', color: Colors.offlineBg, flex: 1 },
+    graceCountdown: { fontSize: 13, fontWeight: '800', color: Colors.offlineBg, fontVariant: ['tabular-nums'] },
 
-  // Gate fired — customer is completing checkout
-  gateConfirmingBanner: {
-    backgroundColor: Colors.warning + '15', borderRadius: BORDER_RADIUS,
-    borderWidth: 1, borderColor: Colors.warning + '40',
-    padding: 12, marginTop: 8, gap: 4,
-  },
-  gateConfirmingTitle: { fontSize: 13, fontWeight: '700', color: Colors.warning },
-  gateConfirmingBody: { fontSize: 12, color: Colors.textSecondary, lineHeight: 17 },
+    // Gate fired — customer is completing checkout
+    gateConfirmingBanner: {
+      backgroundColor: Colors.warning + '15', borderRadius: BORDER_RADIUS,
+      borderWidth: 1, borderColor: Colors.warning + '40',
+      padding: 12, marginTop: 8, gap: 4,
+    },
+    gateConfirmingTitle: { fontSize: 13, fontWeight: '700', color: Colors.warning },
+    gateConfirmingBody: { fontSize: 12, color: theme.color.inkMuted, lineHeight: 17 },
 
-  // Gate window banner (shown when booking is accepted but gate window not yet open)
-  gateWindowBanner: {
-    backgroundColor: Colors.primaryLight, borderRadius: BORDER_RADIUS,
-    padding: 10, marginTop: 8,
-  },
-  gateWindowText: { fontSize: 12, color: Colors.primary, lineHeight: 17 },
+    // Gate window banner (shown when booking is accepted but gate window not yet open)
+    gateWindowBanner: {
+      backgroundColor: Colors.primaryLight, borderRadius: BORDER_RADIUS,
+      padding: 10, marginTop: 8,
+    },
+    gateWindowText: { fontSize: 12, color: Colors.primary, lineHeight: 17 },
 
-  // Restriction wall
-  restrictTitle: { fontSize: 22, fontWeight: '800', color: Colors.error, marginBottom: 16, textAlign: 'center' },
-  restrictBody: { fontSize: 14, color: Colors.textSecondary, lineHeight: 22, textAlign: 'center', marginBottom: 28 },
-  restrictClaimBtn: {
-    width: '100%', height: 52, backgroundColor: Colors.primary,
-    borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center',
-  },
-  restrictClaimBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
-  restrictClaimedBox: {
-    backgroundColor: Colors.primaryLight, borderRadius: BORDER_RADIUS,
-    padding: 16, marginTop: 8,
-  },
-  restrictClaimedText: { fontSize: 14, color: Colors.primary, textAlign: 'center', lineHeight: 20 },
+    // Restriction wall
+    restrictTitle: { fontSize: 22, fontWeight: '800', color: theme.color.accentRed, marginBottom: 16, textAlign: 'center' },
+    restrictBody: { fontSize: 14, color: theme.color.inkMuted, lineHeight: 22, textAlign: 'center', marginBottom: 28 },
+    restrictClaimBtn: {
+      width: '100%', height: 52, backgroundColor: theme.color.accentBlue,
+      borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center',
+    },
+    restrictClaimBtnText: { color: theme.color.inverseInk, fontSize: 16, fontWeight: '800' },
+    restrictClaimedBox: {
+      backgroundColor: Colors.primaryLight, borderRadius: BORDER_RADIUS,
+      padding: 16, marginTop: 8,
+    },
+    restrictClaimedText: { fontSize: 14, color: Colors.primary, textAlign: 'center', lineHeight: 20 },
 
-  // Rows
-  row: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  rowService: { fontSize: 14, fontWeight: '600', color: Colors.text },
-  rowMeta: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
-  rowEarning: { fontSize: 14, fontWeight: '700', color: Colors.success },
-  rowEarningCancelled: { fontSize: 14, fontWeight: '700', color: Colors.error },
-  rowStatusLabel: { fontSize: 11, fontWeight: '500', color: Colors.textMuted, marginTop: 2, textTransform: 'capitalize' },
-  addPhotoBtn: { marginTop: 6, minHeight: 32, alignItems: 'center', justifyContent: 'center' },
-  addPhotoBtnText: { fontSize: 12, color: Colors.ink, fontWeight: '600' },
-  photoSent:     { fontSize: 12, color: Colors.textMuted, marginTop: 4 },
-  photoApproved: { fontSize: 12, color: Colors.success,   marginTop: 4, fontWeight: '600' },
-  photoFull:     { fontSize: 12, color: Colors.textMuted, marginTop: 4, fontStyle: 'italic' },
+    // Rows
+    row: {
+      flexDirection: 'row', alignItems: 'center',
+      paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+    },
+    rowService: { fontSize: 14, fontWeight: '600', color: theme.color.ink },
+    rowMeta: { fontSize: 12, color: theme.color.inkMuted, marginTop: 2 },
+    rowEarning: { fontSize: 14, fontWeight: '700', color: theme.color.accentGreen },
+    rowEarningCancelled: { fontSize: 14, fontWeight: '700', color: theme.color.accentRed },
+    rowStatusLabel: { fontSize: 11, fontWeight: '500', color: theme.color.inkMuted, marginTop: 2, textTransform: 'capitalize' },
+    addPhotoBtn: { marginTop: 6, minHeight: 32, alignItems: 'center', justifyContent: 'center' },
+    addPhotoBtnText: { fontSize: 12, color: theme.color.ink, fontWeight: '600' },
+    photoSent:     { fontSize: 12, color: theme.color.inkMuted, marginTop: 4 },
+    photoApproved: { fontSize: 12, color: theme.color.accentGreen, marginTop: 4, fontWeight: '600' },
+    photoFull:     { fontSize: 12, color: theme.color.inkMuted, marginTop: 4, fontStyle: 'italic' },
 
-  blockBanner: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: Colors.primaryLight, paddingHorizontal: 16, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: Colors.border, gap: 8,
-  },
-  blockBannerText: { flex: 1, fontSize: 13, color: Colors.primary, fontWeight: '500', lineHeight: 18 },
-  blockBannerLink: { fontSize: 13, fontWeight: '700', color: Colors.primary, textDecorationLine: 'underline' },
+    blockBanner: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      backgroundColor: Colors.primaryLight, paddingHorizontal: 16, paddingVertical: 10,
+      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint, gap: 8,
+    },
+    blockBannerText: { flex: 1, fontSize: 13, color: Colors.primary, fontWeight: '500', lineHeight: 18 },
+    blockBannerLink: { fontSize: 13, fontWeight: '700', color: Colors.primary, textDecorationLine: 'underline' },
 
-  empty: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 40 },
-  emptyTitle: { fontSize: 20, fontWeight: '700', color: Colors.text, marginBottom: 8 },
-  emptyBody: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
-});
+    empty: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 40 },
+    emptyTitle: { fontSize: 20, fontWeight: '700', color: theme.color.ink, marginBottom: 8 },
+    emptyBody: { fontSize: 14, color: theme.color.inkMuted, textAlign: 'center', lineHeight: 20 },
+  });
+}
 
 // Gate modal styles
-const gm = StyleSheet.create({
-  overlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
-    alignItems: 'center', justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: Colors.background,
-    borderTopLeftRadius: BORDER_RADIUS, borderTopRightRadius: BORDER_RADIUS,
-    padding: 28, width: '100%', alignItems: 'center', gap: 8,
-  },
-  title: { fontSize: 20, fontWeight: '800', color: Colors.text, textAlign: 'center', marginTop: 4 },
-  body: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 8 },
-  chargingTitle: { fontSize: 18, fontWeight: '800', color: Colors.text, textAlign: 'center', marginTop: 8 },
-  subText: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center' },
-  successTitle: { fontSize: 20, fontWeight: '800', color: Colors.success, textAlign: 'center', marginTop: 4 },
-  successBody: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
-  errorTitle: { fontSize: 20, fontWeight: '800', color: Colors.error, textAlign: 'center', marginTop: 4 },
-  errorBody: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 8 },
-  primaryBtn: {
-    width: '100%', height: 54, backgroundColor: Colors.statusOnWay,
-    borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center', marginTop: 8,
-  },
-  primaryBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
-  ghostBtn: {
-    width: '100%', height: 48,
-    borderWidth: 1.5, borderColor: Colors.border,
-    borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center',
-    marginTop: 4,
-  },
-  ghostBtnText: { fontSize: 15, fontWeight: '700', color: Colors.textSecondary },
-});
+function makeStylesGm(theme: VarsTheme) {
+  return StyleSheet.create({
+    overlay: {
+      flex: 1, backgroundColor: theme.color.overlay,
+      alignItems: 'center', justifyContent: 'flex-end',
+    },
+    sheet: {
+      backgroundColor: theme.color.bg,
+      borderTopLeftRadius: BORDER_RADIUS, borderTopRightRadius: BORDER_RADIUS,
+      padding: 28, width: '100%', alignItems: 'center', gap: 8,
+    },
+    title: { fontSize: 20, fontWeight: '800', color: theme.color.ink, textAlign: 'center', marginTop: 4 },
+    body: { fontSize: 14, color: theme.color.inkMuted, textAlign: 'center', lineHeight: 20, marginBottom: 8 },
+    chargingTitle: { fontSize: 18, fontWeight: '800', color: theme.color.ink, textAlign: 'center', marginTop: 8 },
+    subText: { fontSize: 13, color: theme.color.inkMuted, textAlign: 'center' },
+    successTitle: { fontSize: 20, fontWeight: '800', color: theme.color.accentGreen, textAlign: 'center', marginTop: 4 },
+    successBody: { fontSize: 14, color: theme.color.inkMuted, textAlign: 'center', lineHeight: 20 },
+    errorTitle: { fontSize: 20, fontWeight: '800', color: theme.color.accentRed, textAlign: 'center', marginTop: 4 },
+    errorBody: { fontSize: 14, color: theme.color.inkMuted, textAlign: 'center', lineHeight: 20, marginBottom: 8 },
+    // Fixed to the per-status "on my way" color, same as elsewhere in this file.
+    primaryBtn: {
+      width: '100%', height: 54, backgroundColor: Colors.statusOnWay,
+      borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center', marginTop: 8,
+    },
+    primaryBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
+    ghostBtn: {
+      width: '100%', height: 48,
+      borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center',
+      marginTop: 4,
+    },
+    ghostBtnText: { fontSize: 15, fontWeight: '700', color: theme.color.inkMuted },
+  });
+}
 
 // Zone modal styles
-const zm = StyleSheet.create({
-  overlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
-    alignItems: 'center', justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: Colors.background,
-    borderTopLeftRadius: 5, borderTopRightRadius: 5,
-    padding: 28, width: '100%', alignItems: 'center', gap: 8,
-  },
-  title: { fontSize: 20, fontWeight: '800', color: Colors.text, textAlign: 'center' },
-  body:  { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 8 },
-  confirmBtn: {
-    width: '100%', height: 54, backgroundColor: Colors.pioneerGold,
-    borderRadius: 5, alignItems: 'center', justifyContent: 'center',
-  },
-  btnDisabled: { opacity: 0.5 },
-  confirmBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
-  changeBtn: {
-    width: '100%', height: 48,
-    borderWidth: 1.5, borderColor: Colors.border,
-    borderRadius: 5, alignItems: 'center', justifyContent: 'center',
-    marginTop: 4,
-  },
-  changeBtnText: { fontSize: 15, fontWeight: '700', color: Colors.textSecondary },
-  dismissBtn: { paddingVertical: 12 },
-  dismissBtnText: { fontSize: 14, color: Colors.textMuted },
-});
+function makeStylesZm(theme: VarsTheme) {
+  return StyleSheet.create({
+    overlay: {
+      flex: 1, backgroundColor: theme.color.overlay,
+      alignItems: 'center', justifyContent: 'flex-end',
+    },
+    sheet: {
+      backgroundColor: theme.color.bg,
+      borderTopLeftRadius: 5, borderTopRightRadius: 5,
+      padding: 28, width: '100%', alignItems: 'center', gap: 8,
+    },
+    title: { fontSize: 20, fontWeight: '800', color: theme.color.ink, textAlign: 'center' },
+    body:  { fontSize: 14, color: theme.color.inkMuted, textAlign: 'center', lineHeight: 20, marginBottom: 8 },
+    // Fixed to the pioneer-gold brand accent, same as elsewhere in the app.
+    confirmBtn: {
+      width: '100%', height: 54, backgroundColor: Colors.pioneerGold,
+      borderRadius: 5, alignItems: 'center', justifyContent: 'center',
+    },
+    btnDisabled: { opacity: 0.5 },
+    confirmBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
+    changeBtn: {
+      width: '100%', height: 48,
+      borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      borderRadius: 5, alignItems: 'center', justifyContent: 'center',
+      marginTop: 4,
+    },
+    changeBtnText: { fontSize: 15, fontWeight: '700', color: theme.color.inkMuted },
+    dismissBtn: { paddingVertical: 12 },
+    dismissBtnText: { fontSize: 14, color: theme.color.inkMuted },
+  });
+}

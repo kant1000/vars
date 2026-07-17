@@ -6,7 +6,7 @@
 //   Under review (disputed)       — estimated 80% (no payout row yet)
 //   Confirming  (service_rendered) — estimated 80% (no payout row yet)
 // ============================================================
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FlatList, RefreshControl, ScrollView,
   StyleSheet, Text, TouchableOpacity, View,
@@ -16,7 +16,8 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { VarsSkeleton } from '@/components/ui';
 import { useVarsTheme } from '@/contexts/ThemeContext';
-import { Colors, BORDER_RADIUS } from '@/constants/colors';
+import { BORDER_RADIUS } from '@/constants/colors';
+import { VarsTheme } from '@/constants/visualSystem';
 import { fmtPrice, fmtDate, fmtTime } from '@/lib/format';
 import { EyeIcon, EyeOffIcon } from '@/components/icons';
 
@@ -63,6 +64,7 @@ function periodRange(p: Period): { from: string; to: string } | null {
 export default function EarningsScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useVarsTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
   const { session } = useAuth();
 
   const [vendorId, setVendorId] = useState<string | null>(null);
@@ -175,8 +177,8 @@ export default function EarningsScreen() {
               <Text style={s.heroLabel}>EARNINGS</Text>
               <TouchableOpacity onPress={() => setHidden((h) => !h)} hitSlop={10}>
                 {hidden
-                  ? <EyeOffIcon size={16} color={Colors.inkMuted} />
-                  : <EyeIcon    size={16} color={Colors.inkMuted} />}
+                  ? <EyeOffIcon size={16} color={theme.color.inkMuted} />
+                  : <EyeIcon    size={16} color={theme.color.inkMuted} />}
               </TouchableOpacity>
             </View>
             <Text style={s.heroAmount} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
@@ -184,11 +186,11 @@ export default function EarningsScreen() {
             </Text>
             <View style={s.heroSplit}>
               <View style={s.heroChip}>
-                <View style={[s.heroDot, { backgroundColor: Colors.warning }]} />
+                <View style={[s.heroDot, { backgroundColor: theme.color.accentAmber }]} />
                 <Text style={s.heroChipText}>Pending {hidden ? '···' : fmtPrice(confirmingKobo)}</Text>
               </View>
               <View style={s.heroChip}>
-                <View style={[s.heroDot, { backgroundColor: Colors.error }]} />
+                <View style={[s.heroDot, { backgroundColor: theme.color.accentRed }]} />
                 <Text style={s.heroChipText}>Under review {hidden ? '···' : fmtPrice(reviewKobo)}</Text>
               </View>
             </View>
@@ -237,9 +239,9 @@ export default function EarningsScreen() {
         }
         renderItem={({ item: r }) => {
           const pillColor =
-            r.status === 'completed' ? Colors.success :
-            r.status === 'disputed'  ? Colors.error   :
-            Colors.warning;
+            r.status === 'completed' ? theme.color.accentGreen :
+            r.status === 'disputed'  ? theme.color.accentRed   :
+            theme.color.accentAmber;
           const pillLabel =
             r.status === 'completed' ? 'Cleared'      :
             r.status === 'disputed'  ? 'Under review' :
@@ -269,76 +271,78 @@ export default function EarningsScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+function makeStyles(theme: VarsTheme) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.color.bg },
 
-  header: {
-    paddingHorizontal: 20, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: Colors.text },
+    header: {
+      paddingHorizontal: 20, paddingVertical: 14,
+      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+    },
+    headerTitle: { fontSize: 24, fontWeight: '800', color: theme.color.ink },
 
-  filterRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 16, paddingTop: 14, paddingBottom: 4, gap: 8,
-  },
-  filterPill: {
-    flex: 1, alignItems: 'center',
-    paddingVertical: 7,
-    borderRadius: BORDER_RADIUS, borderWidth: 1.5, borderColor: Colors.inkFaint,
-  },
-  filterPillActive: {
-    backgroundColor: Colors.ink, borderColor: Colors.ink,
-  },
-  filterPillText: { fontSize: 13, fontWeight: '600', color: Colors.inkMuted },
-  filterPillTextActive: { color: Colors.white },
+    filterRow: {
+      flexDirection: 'row',
+      paddingHorizontal: 16, paddingTop: 14, paddingBottom: 4, gap: 8,
+    },
+    filterPill: {
+      flex: 1, alignItems: 'center',
+      paddingVertical: 7,
+      borderRadius: BORDER_RADIUS, borderWidth: 1.5, borderColor: theme.color.inkFaint,
+    },
+    filterPillActive: {
+      backgroundColor: theme.color.ink, borderColor: theme.color.ink,
+    },
+    filterPillText: { fontSize: 13, fontWeight: '600', color: theme.color.inkMuted },
+    filterPillTextActive: { color: theme.color.inverseInk },
 
-  hero: {
-    margin: 16, marginTop: 12,
-    padding: 20,
-    borderRadius: BORDER_RADIUS, borderWidth: 1.5, borderColor: Colors.ink,
-  },
-  heroLabelRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    marginBottom: 6,
-  },
-  heroLabel: {
-    fontSize: 11, fontWeight: '700', color: Colors.inkMuted,
-    letterSpacing: 0.8,
-  },
-  heroAmount: {
-    fontSize: 40, fontWeight: '400', color: Colors.ink,
-    letterSpacing: -1, marginBottom: 12,
-  },
-  heroSplit: { flexDirection: 'column', gap: 6 },
-  heroChip:  { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  heroDot:   { width: 8, height: 8, borderRadius: 4 },
-  heroChipText: { fontSize: 13, fontWeight: '600', color: Colors.inkMuted },
-  heroEmpty: { fontSize: 13, color: Colors.inkMuted },
+    hero: {
+      margin: 16, marginTop: 12,
+      padding: 20,
+      borderRadius: BORDER_RADIUS, borderWidth: 1.5, borderColor: theme.color.ink,
+    },
+    heroLabelRow: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      marginBottom: 6,
+    },
+    heroLabel: {
+      fontSize: 11, fontWeight: '700', color: theme.color.inkMuted,
+      letterSpacing: 0.8,
+    },
+    heroAmount: {
+      fontSize: 40, fontWeight: '400', color: theme.color.ink,
+      letterSpacing: -1, marginBottom: 12,
+    },
+    heroSplit: { flexDirection: 'column', gap: 6 },
+    heroChip:  { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    heroDot:   { width: 8, height: 8, borderRadius: 4 },
+    heroChipText: { fontSize: 13, fontWeight: '600', color: theme.color.inkMuted },
+    heroEmpty: { fontSize: 13, color: theme.color.inkMuted },
 
-  sectionLabel: {
-    fontSize: 11, fontWeight: '700', color: Colors.textMuted,
-    letterSpacing: 0.8, paddingHorizontal: 20, paddingTop: 8, paddingBottom: 4,
-  },
+    sectionLabel: {
+      fontSize: 11, fontWeight: '700', color: theme.color.inkMuted,
+      letterSpacing: 0.8, paddingHorizontal: 20, paddingTop: 8, paddingBottom: 4,
+    },
 
-  row: {
-    flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between',
-    paddingVertical: 14, paddingHorizontal: 20,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  rowLeft:    { flex: 1, marginRight: 12, gap: 2 },
-  rowClient:  { fontSize: 15, fontWeight: '700', color: Colors.text },
-  rowService: { fontSize: 13, color: Colors.textSecondary },
-  rowDate:    { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
-  rowRight:   { alignItems: 'flex-end', gap: 5 },
-  rowAmount:  { fontSize: 16, fontWeight: '800', color: Colors.ink },
-  statusPill: {
-    borderRadius: BORDER_RADIUS, paddingHorizontal: 8, paddingVertical: 2,
-    borderWidth: 1,
-  },
-  statusText: { fontSize: 11, fontWeight: '700' },
+    row: {
+      flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between',
+      paddingVertical: 14, paddingHorizontal: 20,
+      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+    },
+    rowLeft:    { flex: 1, marginRight: 12, gap: 2 },
+    rowClient:  { fontSize: 15, fontWeight: '700', color: theme.color.ink },
+    rowService: { fontSize: 13, color: theme.color.inkMuted },
+    rowDate:    { fontSize: 12, color: theme.color.inkMuted, marginTop: 2 },
+    rowRight:   { alignItems: 'flex-end', gap: 5 },
+    rowAmount:  { fontSize: 16, fontWeight: '800', color: theme.color.ink },
+    statusPill: {
+      borderRadius: BORDER_RADIUS, paddingHorizontal: 8, paddingVertical: 2,
+      borderWidth: 1,
+    },
+    statusText: { fontSize: 11, fontWeight: '700' },
 
-  empty: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 40 },
-  emptyTitle: { fontSize: 17, fontWeight: '700', color: Colors.text, marginBottom: 6 },
-  emptyBody:  { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
-});
+    empty: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 40 },
+    emptyTitle: { fontSize: 17, fontWeight: '700', color: theme.color.ink, marginBottom: 6 },
+    emptyBody:  { fontSize: 14, color: theme.color.inkMuted, textAlign: 'center', lineHeight: 20 },
+  });
+}
