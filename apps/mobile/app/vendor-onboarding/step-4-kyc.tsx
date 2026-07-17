@@ -6,14 +6,15 @@
 // ============================================================
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, TextInput,
+  View, Text, StyleSheet, TouchableOpacity,
   ScrollView, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { WebView } from 'react-native-webview';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { VarsButton, VarsInput, VarsSurface } from '@/components/ui';
+import { useVarsTheme } from '@/contexts/ThemeContext';
 import { Colors, BORDER_RADIUS } from '@/constants/colors';
 // 'failed' covers in-session WebView failures and returning after a webhook rejection.
 // 'review' covers needs_review — KYC passed but data capture failed; admin resolves.
@@ -24,6 +25,7 @@ type SubStep = 'bank' | 'kyc';
 
 export default function Step4Kyc() {
   const { user } = useAuth();
+  const { theme } = useVarsTheme();
 
   // Sub-step navigation
   const [subStep, setSubStep] = useState<SubStep>('bank');
@@ -293,10 +295,9 @@ export default function Step4Kyc() {
               </View>
             )}
 
-            <TextInput
-              style={styles.textInput}
+            <VarsInput
+              theme={theme}
               placeholder="Account number"
-              placeholderTextColor={Colors.textMuted}
               value={accountNumber}
               onChangeText={(t) => { setAccountNumber(t); setBankVerified(false); setBankAlreadySaved(false); setAccountName(''); }}
               keyboardType="numeric"
@@ -308,26 +309,22 @@ export default function Step4Kyc() {
                 <Text style={styles.verifiedText}>✓ {accountName}</Text>
               </View>
             ) : (
-              <TouchableOpacity
-                style={[styles.verifyButton, isVerifyingBank && styles.buttonDisabled]}
+              <VarsButton
+                theme={theme}
+                variant="secondary"
+                size="md"
+                loading={isVerifyingBank}
                 onPress={handleVerifyAccount}
-                disabled={isVerifyingBank}
-                activeOpacity={0.85}
-              >
-                {isVerifyingBank
-                  ? <ScissorsLoader size="small" color="dark" />
-                  : <Text style={styles.verifyButtonText}>Verify account</Text>}
-              </TouchableOpacity>
+                label="Verify account"
+              />
             )}
 
-            <TouchableOpacity
-              style={[styles.button, !bankVerified && styles.buttonDisabled]}
+            <VarsButton
+              theme={theme}
               onPress={handleBankContinue}
               disabled={!bankVerified}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.buttonText}>Continue — Identity check</Text>
-            </TouchableOpacity>
+              label="Continue — Identity check"
+            />
           </View>
         )}
 
@@ -359,7 +356,7 @@ export default function Step4Kyc() {
 
             {/* Prep screen — shown before launching WebView */}
             {kycState === 'prep' && (
-              <View style={styles.prepCard}>
+              <VarsSurface theme={theme} elevation={1} style={styles.prepCard}>
                 <Text style={styles.prepTitle}>Before you start</Text>
                 <Text style={styles.prepItem}>· Your NIN, BVN, or a government-issued ID</Text>
                 <Text style={styles.prepItem}>· A clear selfie in good lighting — face the camera directly</Text>
@@ -368,17 +365,16 @@ export default function Step4Kyc() {
                 <Text style={styles.prepNote}>
                   Your identity is verified by Youverify, a licensed verification service. VARS does not store your raw ID documents.
                 </Text>
-                <TouchableOpacity
-                  style={styles.kycButton}
+                <VarsButton
+                  theme={theme}
+                  size="md"
                   onPress={launchKyc}
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.kycButtonText}>Start identity check →</Text>
-                </TouchableOpacity>
+                  label="Start identity check →"
+                />
                 <TouchableOpacity onPress={() => setKycState('idle')} style={styles.prepBack}>
                   <Text style={styles.prepBackText}>Go back</Text>
                 </TouchableOpacity>
-              </View>
+              </VarsSurface>
             )}
 
             {kycVerified ? (
@@ -386,31 +382,23 @@ export default function Step4Kyc() {
                 <Text style={styles.verifiedText}>✓ Identity verified</Text>
               </View>
             ) : kycState !== 'review' && kycState !== 'prep' ? (
-              <TouchableOpacity
-                style={[styles.kycButton, kycState === 'loading' && styles.buttonDisabled]}
+              <VarsButton
+                theme={theme}
+                size="md"
+                loading={kycState === 'loading'}
                 onPress={handleStartKyc}
-                disabled={kycState === 'loading'}
-                activeOpacity={0.85}
-              >
-                {kycState === 'loading'
-                  ? <ScissorsLoader size="small" color="light" />
-                  : <Text style={styles.kycButtonText}>
-                      {kycState === 'failed' ? 'Try again' : 'Start identity check'}
-                    </Text>}
-              </TouchableOpacity>
+                label={kycState === 'failed' ? 'Try again' : 'Start identity check'}
+              />
             ) : null}
 
             {kycVerified && (
-              <TouchableOpacity
-                style={[styles.button, (!kycVerified || !bankVerified || isSaving) && styles.buttonDisabled]}
+              <VarsButton
+                theme={theme}
+                loading={isSaving}
                 onPress={handleSaveBankAndContinue}
                 disabled={!kycVerified || !bankVerified || isSaving}
-                activeOpacity={0.85}
-              >
-                {isSaving
-                  ? <ScissorsLoader size="small" color="light" />
-                  : <Text style={styles.buttonText}>Submit for review</Text>}
-              </TouchableOpacity>
+                label="Submit for review"
+              />
             )}
           </View>
         )}
@@ -450,11 +438,7 @@ const styles = StyleSheet.create({
   reviewCalloutTitle: { fontSize: 15, fontWeight: '700', color: Colors.text },
   reviewCalloutBody: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20 },
 
-  prepCard: {
-    backgroundColor: Colors.surface, borderRadius: BORDER_RADIUS,
-    borderWidth: 1, borderColor: Colors.border,
-    padding: 20, gap: 10,
-  },
+  prepCard: { padding: 20, gap: 10 },
   prepTitle: { fontSize: 16, fontWeight: '700', color: Colors.text, marginBottom: 4 },
   prepItem: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20 },
   prepDivider: { height: 1, backgroundColor: Colors.border, marginVertical: 6 },
@@ -462,26 +446,16 @@ const styles = StyleSheet.create({
   prepBack: { alignItems: 'center', paddingVertical: 8 },
   prepBackText: { fontSize: 14, color: Colors.textMuted },
 
-  kycButton: { height: 50, backgroundColor: Colors.ink, borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center' },
-  kycButtonText: { color: Colors.white, fontSize: 15, fontWeight: '700' },
   verifiedBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0FDF4', borderRadius: BORDER_RADIUS, padding: 12 },
   verifiedText: { color: Colors.success, fontSize: 15, fontWeight: '600' },
 
   input: { height: 50, borderWidth: 1.5, borderColor: Colors.border, borderRadius: BORDER_RADIUS, paddingHorizontal: 14, justifyContent: 'center' },
   inputText: { fontSize: 16, color: Colors.text },
   inputPlaceholder: { fontSize: 16, color: Colors.textMuted },
-  textInput: { height: 50, borderWidth: 1.5, borderColor: Colors.border, borderRadius: BORDER_RADIUS, paddingHorizontal: 14, fontSize: 16, color: Colors.text },
 
   bankPicker: { borderWidth: 1.5, borderColor: Colors.border, borderRadius: BORDER_RADIUS, overflow: 'hidden', backgroundColor: Colors.background },
   bankOption: { padding: 14, borderBottomWidth: 1, borderBottomColor: Colors.border },
   bankOptionText: { fontSize: 15, color: Colors.text },
-
-  verifyButton: { height: 46, borderWidth: 1.5, borderColor: Colors.ink, borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center' },
-  verifyButtonText: { color: Colors.ink, fontSize: 15, fontWeight: '600' },
-
-  button: { height: 56, backgroundColor: Colors.ink, borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center' },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
 
   cancelKyc: { position: 'absolute', top: 50, right: 16, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: BORDER_RADIUS, paddingHorizontal: 14, paddingVertical: 8 },
   cancelKycText: { color: Colors.white, fontWeight: '600' },

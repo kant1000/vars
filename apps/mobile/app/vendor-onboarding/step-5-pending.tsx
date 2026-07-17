@@ -5,13 +5,15 @@
 // ============================================================
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity,
+  View, Text, StyleSheet,
   Animated, Easing,
 } from 'react-native';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import { Colors, BORDER_RADIUS } from '@/constants/colors';
+import { VarsButton, VarsSurface } from '@/components/ui';
+import { useVarsTheme } from '@/contexts/ThemeContext';
+import { Colors } from '@/constants/colors';
 import { hasAcceptedCurrentTerms } from '@/lib/termsGate';
 
 const POLL_INTERVAL_MS = 8000;
@@ -20,6 +22,7 @@ type KycStatus = 'pending' | 'needs_review' | 'verified' | 'rejected';
 
 export default function Step5Pending() {
   const { user } = useAuth();
+  const { theme } = useVarsTheme();
   const pulse = useRef(new Animated.Value(1)).current;
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [status, setStatus] = useState<KycStatus>('pending');
@@ -82,13 +85,13 @@ export default function Step5Pending() {
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.body}>{body}</Text>
 
-      <View style={styles.checklist}>
+      <VarsSurface theme={theme} elevation={1} style={styles.checklist}>
         <CheckRow label="Profile submitted" done />
         <CheckRow label="Services set" done />
         <CheckRow label="Portfolio uploaded" done />
         <CheckRow label="Identity & bank verified" done />
         <CheckRow label={isLive ? 'You\'re live on VARS' : 'Going live on VARS...'} done={isLive} pulse={!isLive} />
-      </View>
+      </VarsSurface>
 
       {!isReview && !isLive && (
         <Text style={styles.note}>
@@ -102,7 +105,8 @@ export default function Step5Pending() {
         </Text>
       )}
 
-      <TouchableOpacity
+      <VarsButton
+        theme={theme}
         style={styles.button}
         onPress={async () => {
           if (!isLive) { router.replace('/'); return; }
@@ -120,10 +124,8 @@ export default function Step5Pending() {
           }
           router.replace('/(vendor-tabs)/profile');
         }}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.buttonText}>{isLive ? 'Let\'s go' : 'Back to home'}</Text>
-      </TouchableOpacity>
+        label={isLive ? 'Let\'s go' : 'Back to home'}
+      />
     </View>
   );
 }
@@ -171,19 +173,13 @@ const styles = StyleSheet.create({
   title: { fontSize: 28, fontWeight: '800', color: Colors.text, marginBottom: 12, textAlign: 'center' },
   body: { fontSize: 15, color: Colors.textSecondary, textAlign: 'center', lineHeight: 22, marginBottom: 32 },
   checklist: {
-    width: '100%', backgroundColor: Colors.surface,
-    borderRadius: BORDER_RADIUS, padding: 20, gap: 16, marginBottom: 24,
+    width: '100%', padding: 20, gap: 16, marginBottom: 24,
   },
   note: {
     fontSize: 13, color: Colors.textSecondary,
     textAlign: 'center', lineHeight: 19, marginBottom: 32,
   },
-  button: {
-    height: 56, backgroundColor: Colors.ink, borderRadius: BORDER_RADIUS,
-    alignItems: 'center', justifyContent: 'center',
-    paddingHorizontal: 40, width: '100%',
-  },
-  buttonText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
+  button: { width: '100%' },
 });
 
 const rowStyles = StyleSheet.create({

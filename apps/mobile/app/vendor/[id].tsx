@@ -13,11 +13,12 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import ImageViewing from 'react-native-image-viewing';
-import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets, EdgeInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { VarsSkeleton } from '@/components/ui';
+import { useVarsTheme } from '@/contexts/ThemeContext';
 import { Colors, BORDER_RADIUS } from '@/constants/colors';
 import { CheckIcon, StarFilledIcon, StarEmptyIcon } from '@/components/icons';
 import { CATEGORY_L2_LABELS } from '@vars/shared';
@@ -114,11 +115,49 @@ function Badge({ label, color }: { label: string; color: string }) {
   );
 }
 
+function VendorProfileSkeleton({
+  theme, insets,
+}: {
+  theme: ReturnType<typeof useVarsTheme>['theme'];
+  insets: EdgeInsets;
+}) {
+  return (
+    <View style={styles.container}>
+      <View style={[styles.profileRow, { paddingTop: insets.top + 52 }]}>
+        <VarsSkeleton theme={theme} width={AVATAR_SIZE} height={AVATAR_SIZE} radius={AVATAR_SIZE / 2} />
+        <View style={styles.skeletonInfo}>
+          <VarsSkeleton theme={theme} height={20} width="70%" />
+          <VarsSkeleton theme={theme} height={13} width="50%" />
+          <VarsSkeleton theme={theme} height={13} width="40%" />
+        </View>
+      </View>
+      <VarsSkeleton theme={theme} width={SCREEN_W} height={CAROUSEL_H} radius={0} />
+      <View style={styles.tabRow}>
+        <View style={styles.sectionTab}><VarsSkeleton theme={theme} height={16} width={60} /></View>
+        <View style={styles.sectionTab}><VarsSkeleton theme={theme} height={16} width={60} /></View>
+      </View>
+      <View style={styles.section}>
+        {Array.from({ length: 3 }).map((_, i) => (
+          <View key={i} style={styles.serviceCard}>
+            <View style={styles.serviceCardLeft}>
+              <VarsSkeleton theme={theme} height={11} width="30%" />
+              <VarsSkeleton theme={theme} height={15} width="60%" style={{ marginTop: 6 }} />
+              <VarsSkeleton theme={theme} height={12} width="40%" style={{ marginTop: 6 }} />
+            </View>
+            <VarsSkeleton theme={theme} height={16} width={50} />
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 // ── Main component ───────────────────────────────────────────
 export default function VendorProfileScreen() {
   const { id, returnTo } = useLocalSearchParams<{ id: string; returnTo?: string }>();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { theme } = useVarsTheme();
 
   const [vendor, setVendor] = useState<VendorProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -232,11 +271,7 @@ export default function VendorProfileScreen() {
   ).current;
 
   if (loading) {
-    return (
-      <View style={styles.loadingWrap}>
-        <ScissorsLoader size="large" color="dark" />
-      </View>
-    );
+    return <VendorProfileSkeleton theme={theme} insets={insets} />;
   }
 
   if (!vendor) {
@@ -519,6 +554,7 @@ const styles = StyleSheet.create({
   avatarFallback: { backgroundColor: Colors.ink, alignItems: 'center', justifyContent: 'center' },
   avatarInitial: { fontSize: 28, fontWeight: '800', color: Colors.white },
   profileInfo: { flex: 1, paddingTop: 2 },
+  skeletonInfo: { flex: 1, paddingTop: 2, gap: 8 },
   name: { fontSize: 20, fontWeight: '800', color: Colors.text, marginBottom: 2 },
   legalNameRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 },
   legalNameText: { fontSize: 12, color: Colors.textMuted },

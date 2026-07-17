@@ -6,19 +6,21 @@
 // ============================================================
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, TextInput, TouchableOpacity,
+  View, Text, StyleSheet,
   ScrollView, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { ScissorsLoader } from '@/components/ScissorsLoader';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { VarsButton, VarsInput, VarsSurface } from '@/components/ui';
+import { useVarsTheme } from '@/contexts/ThemeContext';
 import { Colors, BORDER_RADIUS } from '@/constants/colors';
 import { sanitizeContent } from '@/lib/format';
 
 export default function Step1Profile() {
   const { user } = useAuth();
+  const { theme } = useVarsTheme();
   const [displayName, setDisplayName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -110,10 +112,9 @@ export default function Step1Profile() {
         <View style={styles.form}>
           {/* Display name — editable */}
           <View>
-            <TextInput
-              style={styles.input}
+            <VarsInput
+              theme={theme}
               placeholder="Display name"
-              placeholderTextColor={Colors.textMuted}
               value={displayName}
               onChangeText={setDisplayName}
               autoCapitalize="words"
@@ -126,12 +127,12 @@ export default function Step1Profile() {
 
           {/* Phone — read-only */}
           <View>
-            <View style={[styles.input, styles.lockedField]}>
+            <VarsSurface theme={theme} elevation={1} style={styles.lockedField}>
               <Text style={phone ? styles.lockedText : styles.lockedPlaceholder}>
                 {phone || 'Phone number'}
               </Text>
               <Text style={styles.lockBadge}>Locked</Text>
-            </View>
+            </VarsSurface>
             <Text style={styles.fieldCaption}>
               Phone used to sign in — contact us if this needs updating.
             </Text>
@@ -139,59 +140,53 @@ export default function Step1Profile() {
 
           {/* Email — read-only */}
           <View>
-            <View style={[styles.input, styles.lockedField]}>
+            <VarsSurface theme={theme} elevation={1} style={styles.lockedField}>
               <Text style={email ? styles.lockedText : styles.lockedPlaceholder}>
                 {email || 'Email'}
               </Text>
               <Text style={styles.lockBadge}>Locked</Text>
-            </View>
+            </VarsSurface>
             <Text style={styles.fieldCaption}>
               Email from your registration — contact us if this needs updating.
             </Text>
           </View>
 
           {/* Base location */}
-          <TouchableOpacity style={styles.locationButton} onPress={handleDetectLocation} disabled={isLocating} activeOpacity={0.85}>
-            {isLocating ? (
-              <ScissorsLoader size="small" color="dark" />
-            ) : (
-              <Text style={locationCoords ? styles.locationSet : styles.locationUnset}>
-                {locationCoords ? `📍 ${locationLabel}` : 'Set your base location'}
-              </Text>
-            )}
-          </TouchableOpacity>
+          <VarsButton
+            theme={theme}
+            variant="secondary"
+            size="lg"
+            loading={isLocating}
+            onPress={handleDetectLocation}
+            label={locationCoords ? `📍 ${locationLabel}` : 'Set your base location'}
+          />
           <Text style={styles.locationHelper}>
             Your primary operating area. Clients nearby will discover you.
           </Text>
 
           {/* Bio — optional, 150 char max per spec §4.3 */}
           <View>
-            <Text style={styles.fieldLabel}>
-              Bio <Text style={styles.optional}>(optional)</Text>
-            </Text>
-            <TextInput
-              style={[styles.input, styles.bioInput]}
+            <VarsInput
+              theme={theme}
+              label="Bio (optional)"
               placeholder="What makes you great?"
-              placeholderTextColor={Colors.textMuted}
               value={bio}
               onChangeText={(t) => setBio(sanitizeContent(t, 150))}
               multiline
               maxLength={150}
+              style={styles.bioInput}
             />
             <Text style={styles.charCount}>{bio.length}/150</Text>
           </View>
         </View>
 
-        <TouchableOpacity
-          style={[styles.button, isLoading && styles.buttonDisabled]}
+        <VarsButton
+          theme={theme}
+          size="lg"
+          loading={isLoading}
           onPress={handleNext}
-          disabled={isLoading}
-          activeOpacity={0.85}
-        >
-          {isLoading
-            ? <ScissorsLoader size="small" color="light" />
-            : <Text style={styles.buttonText}>Continue</Text>}
-        </TouchableOpacity>
+          label="Continue"
+        />
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -203,17 +198,9 @@ const styles = StyleSheet.create({
   title: { fontSize: 26, fontWeight: '700', color: Colors.text, marginBottom: 6 },
   sub: { fontSize: 15, color: Colors.textSecondary, marginBottom: 28 },
   form: { gap: 12, marginBottom: 28 },
-  fieldLabel: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary, marginBottom: 6 },
-  optional: { fontWeight: '400', color: Colors.textMuted },
-  input: {
-    height: 54, borderWidth: 1.5, borderColor: Colors.border,
-    borderRadius: BORDER_RADIUS, paddingHorizontal: 16, fontSize: 16, color: Colors.text,
-  },
   lockedField: {
-    backgroundColor: Colors.surface,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    height: 54, paddingHorizontal: 16,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
   },
   lockedText: { fontSize: 16, color: Colors.text, flex: 1 },
   lockedPlaceholder: { fontSize: 16, color: Colors.textMuted, flex: 1 },
@@ -225,17 +212,5 @@ const styles = StyleSheet.create({
   fieldCaption: { fontSize: 12, color: Colors.textMuted, marginTop: 6, lineHeight: 16 },
   bioInput: { height: 90, paddingTop: 14, textAlignVertical: 'top' },
   charCount: { fontSize: 12, color: Colors.textMuted, textAlign: 'right', marginTop: 4 },
-  locationButton: {
-    height: 54, borderWidth: 1.5, borderColor: Colors.border,
-    borderRadius: BORDER_RADIUS, paddingHorizontal: 16, justifyContent: 'center',
-  },
-  locationSet: { fontSize: 16, color: Colors.text, fontWeight: '500' },
-  locationUnset: { fontSize: 16, color: Colors.ink, fontWeight: '500' },
   locationHelper: { fontSize: 13, color: Colors.textSecondary, marginTop: -4, marginLeft: 4 },
-  button: {
-    height: 56, backgroundColor: Colors.ink, borderRadius: BORDER_RADIUS,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
 });

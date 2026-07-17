@@ -5,13 +5,15 @@
 // ============================================================
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, TextInput,
+  View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert,
 } from 'react-native';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { VendorPriceInput } from '@/components/VendorPriceInput';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { VarsButton, VarsInput, VarsSurface } from '@/components/ui';
+import { useVarsTheme } from '@/contexts/ThemeContext';
 import { Colors, BORDER_RADIUS } from '@/constants/colors';
 import { CloseIcon } from '@/components/icons';
 import {
@@ -58,6 +60,7 @@ const BRAIDS_DURATIONS = [...BASE_DURATIONS, ...BRAIDS_EXTRA];
 
 export default function Step2Services() {
   const { user } = useAuth();
+  const { theme } = useVarsTheme();
 
   const [formL1, setFormL1] = useState<string>(CATEGORY_L1.HAIR);
   const [formL2, setFormL2] = useState<string>(CATEGORY_L2_MAP[CATEGORY_L1.HAIR][0]);
@@ -227,31 +230,29 @@ export default function Step2Services() {
       </ScrollView>
 
       {/* Service name */}
-      <Text style={styles.fieldLabel}>Service name</Text>
-      <TextInput
-        style={styles.textInput}
+      <VarsInput
+        theme={theme}
+        label="Service name"
         value={formName}
         onChangeText={(t) => setFormName(sanitizeContent(t, SERVICE_NAME_MAX_CHARS))}
         placeholder={NAME_PLACEHOLDER[formL1] ?? 'e.g. Service name'}
-        placeholderTextColor={Colors.textMuted}
         maxLength={SERVICE_NAME_MAX_CHARS}
         returnKeyType="next"
+        containerStyle={styles.fieldGap}
       />
 
       {/* Description */}
-      <Text style={styles.fieldLabel}>
-        Description <Text style={styles.optional}>(optional)</Text>
-      </Text>
-      <TextInput
-        style={[styles.textInput, styles.textArea]}
+      <VarsInput
+        theme={theme}
+        label="Description (optional)"
         value={formDesc}
         onChangeText={(t) => setFormDesc(sanitizeContent(t, SERVICE_DESC_MAX_CHARS))}
         placeholder={DESC_PLACEHOLDER[formL1] ?? 'Briefly describe the service...'}
-        placeholderTextColor={Colors.textMuted}
         maxLength={SERVICE_DESC_MAX_CHARS}
         multiline
         numberOfLines={3}
-        textAlignVertical="top"
+        style={styles.textArea}
+        containerStyle={styles.fieldGap}
       />
 
       {/* Price */}
@@ -285,14 +286,15 @@ export default function Step2Services() {
       </ScrollView>
 
       {/* Add service */}
-      <TouchableOpacity
-        style={[styles.addBtn, draftServices.length >= MAX_VENDOR_SERVICES && styles.addBtnDisabled]}
+      <VarsButton
+        theme={theme}
+        variant="secondary"
+        size="md"
         onPress={handleAddService}
         disabled={draftServices.length >= MAX_VENDOR_SERVICES}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.addBtnText}>+ Add service</Text>
-      </TouchableOpacity>
+        label="+ Add service"
+        style={styles.addBtn}
+      />
 
       {/* Draft list */}
       {draftServices.length > 0 && (
@@ -301,7 +303,7 @@ export default function Step2Services() {
             Your services ({draftServices.length}/{MAX_VENDOR_SERVICES})
           </Text>
           {draftServices.map((svc) => (
-            <View key={svc.tempId} style={styles.draftRow}>
+            <VarsSurface key={svc.tempId} theme={theme} elevation={1} style={styles.draftRow}>
               <View style={styles.draftInfo}>
                 <Text style={styles.draftMeta}>
                   {CATEGORY_L2_LABELS[svc.category_l2]} · {CATEGORY_L1_LABELS[svc.category_l1]}
@@ -314,22 +316,20 @@ export default function Step2Services() {
               <TouchableOpacity style={styles.draftRemove} onPress={() => handleRemove(svc.tempId)}>
                 <CloseIcon size={12} color={Colors.textMuted} />
               </TouchableOpacity>
-            </View>
+            </VarsSurface>
           ))}
         </View>
       )}
 
       {/* Next */}
-      <TouchableOpacity
-        style={[styles.nextBtn, (isSaving || draftServices.length === 0) && styles.nextBtnDisabled]}
+      <VarsButton
+        theme={theme}
+        loading={isSaving}
         onPress={handleNext}
         disabled={isSaving || draftServices.length === 0}
-        activeOpacity={0.85}
-      >
-        {isSaving
-          ? <ScissorsLoader size="small" color="light" />
-          : <Text style={styles.nextBtnText}>Next — Add portfolio photos</Text>}
-      </TouchableOpacity>
+        label="Next — Add portfolio photos"
+        style={styles.nextBtnSpacing}
+      />
     </ScrollView>
   );
 }
@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
   sub: { fontSize: 15, color: Colors.textSecondary, marginBottom: 24 },
 
   fieldLabel: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary, marginBottom: 8 },
-  optional: { fontWeight: '400', color: Colors.textMuted },
+  fieldGap: { marginBottom: 16 },
 
   pillRow: { marginBottom: 16 },
   pillRowInner: { flexDirection: 'row', gap: 8, paddingRight: 24 },
@@ -355,12 +355,7 @@ const styles = StyleSheet.create({
   pillText: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
   pillTextActive: { color: Colors.white },
 
-  textInput: {
-    height: 44, borderWidth: 1.5, borderColor: Colors.border, borderRadius: BORDER_RADIUS,
-    paddingHorizontal: 12, fontSize: 15, color: Colors.text, marginBottom: 16,
-    backgroundColor: Colors.surface,
-  },
-  textArea: { height: 80, paddingTop: 10, lineHeight: 20, marginBottom: 16 },
+  textArea: { height: 80, paddingTop: 10, lineHeight: 20 },
   priceHint: { fontSize: 12, color: Colors.textMuted, marginTop: 6, marginBottom: 16 },
 
   durationRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
@@ -372,12 +367,7 @@ const styles = StyleSheet.create({
   durationChipText: { fontSize: 13, color: Colors.textSecondary, fontWeight: '500' },
   durationChipTextActive: { color: Colors.white },
 
-  addBtn: {
-    height: 48, borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: Colors.ink, marginBottom: 24,
-  },
-  addBtnDisabled: { opacity: 0.4 },
-  addBtnText: { fontSize: 15, fontWeight: '700', color: Colors.ink },
+  addBtn: { marginBottom: 24 },
 
   draftSection: { marginBottom: 8 },
   draftHeading: {
@@ -385,9 +375,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10,
   },
   draftRow: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: Colors.surface, borderRadius: BORDER_RADIUS, padding: 14, marginBottom: 8,
-    borderWidth: 1, borderColor: Colors.border,
+    flexDirection: 'row', alignItems: 'center', padding: 14, marginBottom: 8,
   },
   draftInfo: { flex: 1 },
   draftMeta: {
@@ -398,10 +386,5 @@ const styles = StyleSheet.create({
   draftDetail: { fontSize: 13, color: Colors.textSecondary },
   draftRemove: { padding: 8 },
 
-  nextBtn: {
-    height: 56, backgroundColor: Colors.ink, borderRadius: BORDER_RADIUS,
-    alignItems: 'center', justifyContent: 'center', marginTop: 16,
-  },
-  nextBtnDisabled: { opacity: 0.4 },
-  nextBtnText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
+  nextBtnSpacing: { marginTop: 16 },
 });

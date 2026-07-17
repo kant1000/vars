@@ -17,9 +17,10 @@ import * as Linking from 'expo-linking';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { ThemeProvider, useVarsTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/lib/supabase';
 import { hasAcceptedCurrentTerms } from '@/lib/termsGate';
 
@@ -97,6 +98,7 @@ function getVendorOnboardingStep(vendor: {
 
 function RootNavigator() {
   const { isLoading, isAuthenticated, needsPhone } = useAuth();
+  const { appearance, ready: themeReady } = useVarsTheme();
   const segments = useSegments();
 
   const [onboardingReady, setOnboardingReady] = useState(false);
@@ -110,7 +112,7 @@ function RootNavigator() {
     });
   }, []);
 
-  const appReady = !isLoading && onboardingReady;
+  const appReady = !isLoading && onboardingReady && themeReady;
 
   // Initial routing — fires once when auth + onboarding state are both known.
   // Splash stays up until this runs, so the user never sees a blank frame.
@@ -246,6 +248,8 @@ function RootNavigator() {
   }, []);
 
   return (
+    <>
+    <StatusBar style={appearance === 'dark' ? 'light' : 'dark'} />
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="onboarding" />
       <Stack.Screen name="(tabs)" />
@@ -265,6 +269,7 @@ function RootNavigator() {
       <Stack.Screen name="privacy-data" />
       <Stack.Screen name="+not-found" />
     </Stack>
+    </>
   );
 }
 
@@ -277,11 +282,12 @@ function RootLayout() {
     >
     <GestureHandlerRootView style={{ flex: 1 }}>
       <BottomSheetModalProvider>
-        <SafeAreaProvider>
-          <AuthProvider>
-            <StatusBar style="auto" />
-            <RootNavigator />
-          </AuthProvider>
+        <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+          <ThemeProvider>
+            <AuthProvider>
+              <RootNavigator />
+            </AuthProvider>
+          </ThemeProvider>
         </SafeAreaProvider>
       </BottomSheetModalProvider>
     </GestureHandlerRootView>

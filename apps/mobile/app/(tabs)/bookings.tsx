@@ -13,9 +13,29 @@ import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { VarsSkeleton } from '@/components/ui';
+import { useVarsTheme } from '@/contexts/ThemeContext';
 import { Colors, BORDER_RADIUS } from '@/constants/colors';
 import { fmtPrice, fmtDateTime } from '@/lib/format';
 import { BookingStatus, BOOKING_STATUS } from '@vars/shared';
+
+const SKELETON_ROWS = 4;
+
+function BookingCardSkeleton({ theme }: { theme: ReturnType<typeof useVarsTheme>['theme'] }) {
+  return (
+    <View style={st.card}>
+      <View style={st.cardTop}>
+        <VarsSkeleton theme={theme} height={15} width="45%" />
+        <VarsSkeleton theme={theme} height={20} width={70} radius={BORDER_RADIUS} />
+      </View>
+      <VarsSkeleton theme={theme} height={14} width="60%" style={{ marginTop: 6 }} />
+      <View style={[st.cardBottom, { marginTop: 10 }]}>
+        <VarsSkeleton theme={theme} height={12} width="35%" />
+        <VarsSkeleton theme={theme} height={14} width="20%" />
+      </View>
+    </View>
+  );
+}
 
 interface BookingSummary {
   id: string;
@@ -56,6 +76,7 @@ type ListItem =
 export default function BookingsScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { theme } = useVarsTheme();
   // Set by gate-checkout when poll times out — keeps us from showing "Complete payment"
   // to a customer who just paid while we wait for the webhook to flip status to on_way.
   const { confirming_booking_id } = useLocalSearchParams<{ confirming_booking_id?: string }>();
@@ -112,21 +133,6 @@ export default function BookingsScreen() {
     }
   }, [bookings, confirming_booking_id]);
 
-  if (loading) {
-    return <View style={st.centered}><ScissorsLoader size="large" color="dark" /></View>;
-  }
-
-  if (!user) {
-    return (
-      <View style={st.centered}>
-        <Text style={st.emptyTitle}>Sign in to see your bookings</Text>
-        <TouchableOpacity style={st.cta} onPress={() => router.push('/auth/login')}>
-          <Text style={st.ctaText}>Sign in</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
   const active = bookings.filter((b) => ACTIVE.includes(b.status));
   const past   = bookings.filter((b) => !ACTIVE.includes(b.status));
 
@@ -142,6 +148,20 @@ export default function BookingsScreen() {
         <Text style={st.headerTitle}>My Bookings</Text>
       </View>
 
+      {loading ? (
+        <View style={{ paddingTop: 4 }}>
+          {Array.from({ length: SKELETON_ROWS }).map((_, i) => (
+            <BookingCardSkeleton key={i} theme={theme} />
+          ))}
+        </View>
+      ) : !user ? (
+        <View style={st.centered}>
+          <Text style={st.emptyTitle}>Sign in to see your bookings</Text>
+          <TouchableOpacity style={st.cta} onPress={() => router.push('/auth/login')}>
+            <Text style={st.ctaText}>Sign in</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
       <FlatList
         data={sections}
         keyExtractor={(item, i) => item.type + ((item as any).id ?? '') + i}
@@ -250,6 +270,7 @@ export default function BookingsScreen() {
           );
         }}
       />
+      )}
     </View>
   );
 }

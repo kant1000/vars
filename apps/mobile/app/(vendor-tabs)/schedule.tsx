@@ -18,6 +18,8 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 import { useVendorOnline } from '@/contexts/VendorOnlineContext';
+import { VarsButton, VarsSurface, VarsToast } from '@/components/ui';
+import { useVarsTheme } from '@/contexts/ThemeContext';
 import { fmtPrice, fmtDuration, fmtTime, fmtDate } from '@/lib/format';
 import { CheckIcon, CloseIcon, PinIcon, LockIcon, LightningIcon } from '@/components/icons';
 import * as Haptics from 'expo-haptics';
@@ -219,6 +221,7 @@ function BookingBottomSheet({
   onAction: () => void;
 }) {
   const bottomSheetRef = useRef<BottomSheetModal>(null);
+  const { theme } = useVarsTheme();
 
   useEffect(() => {
     bottomSheetRef.current?.present();
@@ -409,24 +412,24 @@ function BookingBottomSheet({
             )}
 
             {booking.user_location_address ? (
-              <View style={bs.addressRow}>
+              <VarsSurface theme={theme} style={bs.addressRow}>
                 <PinIcon size={14} color={Colors.textSecondary} />
                 <Text style={bs.addressText}>{booking.user_location_address}</Text>
-              </View>
+              </VarsSurface>
             ) : null}
 
             {/* Booking details */}
-            <View style={bs.card}>
+            <VarsSurface theme={theme} style={bs.card}>
               <DetailRow label="Service"  value={booking.service_name} />
               <DetailRow label="Date"     value={fmtDate(booking.scheduled_at)} />
               <DetailRow label="Time"     value={fmtTime(booking.scheduled_at)} />
               <DetailRow label="Duration" value={fmtDuration(booking.service_duration_blocks)} />
               <View style={bs.divider} />
               <DetailRow label="Earning"  value={fmtPrice(booking.service_price_kobo)} bold />
-            </View>
+            </VarsSurface>
 
             {/* Access details */}
-            <View style={bs.card}>
+            <VarsSurface theme={theme} style={bs.card}>
               <Text style={bs.sectionTitle}>Access details</Text>
               {accessRevealed ? (
                 <>
@@ -445,7 +448,7 @@ function BookingBottomSheet({
                   <Text style={bs.lockedText}>Access details are locked to protect customer privacy. They unlock automatically 15 minutes before your arrival.</Text>
                 </View>
               )}
-            </View>
+            </VarsSurface>
 
             {actionError && (
               <View style={bs.errorBox}>
@@ -457,34 +460,36 @@ function BookingBottomSheet({
             {booking.status === BOOKING_STATUS.PENDING && !showReschedulePicker && (
               <>
                 <View style={bs.actionRow}>
-                  <TouchableOpacity
-                    style={[bs.actionBtn, bs.actionBtnDecline, acting && bs.actionBtnDisabled]}
+                  <VarsButton
+                    theme={theme}
+                    variant="secondary"
+                    loading={acting}
                     onPress={() => handleAction('decline')}
-                    disabled={acting}
-                  >
-                    {acting ? <ScissorsLoader size="small" color="dark" /> : <Text style={bs.actionBtnDeclineText}>Decline</Text>}
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[bs.actionBtn, bs.actionBtnAccept, acting && bs.actionBtnDisabled]}
+                    label="Decline"
+                    style={bs.actionBtnFlex}
+                  />
+                  <VarsButton
+                    theme={theme}
+                    loading={acting}
                     onPress={() => handleAction('accept')}
-                    disabled={acting}
-                  >
-                    {acting ? <ScissorsLoader size="small" color="light" /> : <Text style={bs.actionBtnAcceptText}>Accept</Text>}
-                  </TouchableOpacity>
+                    label="Accept"
+                    style={bs.actionBtnFlex}
+                  />
                 </View>
-                <TouchableOpacity
-                  style={[bs.rescheduleBtn, acting && bs.actionBtnDisabled]}
-                  onPress={() => { setShowReschedulePicker(true); loadRescheduleSlots(); }}
+                <VarsButton
+                  theme={theme}
+                  variant="secondary"
                   disabled={acting}
-                >
-                  <Text style={bs.rescheduleBtnText}>Suggest another time</Text>
-                </TouchableOpacity>
+                  onPress={() => { setShowReschedulePicker(true); loadRescheduleSlots(); }}
+                  label="Suggest another time"
+                  style={bs.rescheduleBtn}
+                />
               </>
             )}
 
             {/* Inline reschedule picker */}
             {booking.status === BOOKING_STATUS.PENDING && showReschedulePicker && (
-              <View style={bs.rescheduleWrap}>
+              <VarsSurface theme={theme} style={bs.rescheduleWrap}>
                 <Text style={bs.rescheduleHeading}>Suggest another time</Text>
                 {loadingRescheduleSlots ? (
                   <View style={{ alignItems: 'center', paddingVertical: 20 }}>
@@ -521,15 +526,13 @@ function BookingBottomSheet({
                       </View>
                     ))}
                     {suggestedSlot && (
-                      <TouchableOpacity
-                        style={[bs.primaryBtn, submittingReschedule && bs.actionBtnDisabled]}
+                      <VarsButton
+                        theme={theme}
+                        loading={submittingReschedule}
                         onPress={handleSuggestReschedule}
-                        disabled={submittingReschedule}
-                      >
-                        {submittingReschedule
-                          ? <ScissorsLoader size="small" color="light" />
-                          : <Text style={bs.primaryBtnText}>Send — {fmtDate(suggestedSlot)} at {fmtTime(suggestedSlot)}</Text>}
-                      </TouchableOpacity>
+                        label={`Send — ${fmtDate(suggestedSlot)} at ${fmtTime(suggestedSlot)}`}
+                        style={bs.primaryBtn}
+                      />
                     )}
                     <TouchableOpacity
                       style={{ marginTop: 10, alignItems: 'center' }}
@@ -539,43 +542,43 @@ function BookingBottomSheet({
                     </TouchableOpacity>
                   </>
                 )}
-              </View>
+              </VarsSurface>
             )}
 
             {booking.status === BOOKING_STATUS.RESCHEDULED_PENDING && (
-              <View style={bs.waitingBox}>
+              <VarsSurface theme={theme} style={bs.waitingBox}>
                 <Text style={bs.waitingText}>Reschedule suggestion sent — waiting for customer response</Text>
-              </View>
+              </VarsSurface>
             )}
 
             {booking.status === BOOKING_STATUS.ACCEPTED && (
-              <TouchableOpacity
-                style={[bs.primaryBtn, acting && bs.actionBtnDisabled]}
+              <VarsButton
+                theme={theme}
+                loading={acting}
                 onPress={() => handleAction('on_way')}
-                disabled={acting}
-              >
-                {acting ? <ScissorsLoader size="small" color="light" /> : <Text style={bs.primaryBtnText}>Mark on my way</Text>}
-              </TouchableOpacity>
+                label="Mark on my way"
+                style={bs.primaryBtn}
+              />
             )}
 
             {booking.status === BOOKING_STATUS.ON_WAY && (
-              <TouchableOpacity
-                style={[bs.primaryBtn, acting && bs.actionBtnDisabled]}
+              <VarsButton
+                theme={theme}
+                loading={acting}
                 onPress={() => handleAction('arrived')}
-                disabled={acting}
-              >
-                {acting ? <ScissorsLoader size="small" color="light" /> : <Text style={bs.primaryBtnText}>Mark arrived</Text>}
-              </TouchableOpacity>
+                label="Mark arrived"
+                style={bs.primaryBtn}
+              />
             )}
 
             {booking.status === BOOKING_STATUS.ARRIVED && (
-              <TouchableOpacity
-                style={[bs.primaryBtn, acting && bs.actionBtnDisabled]}
+              <VarsButton
+                theme={theme}
+                loading={acting}
                 onPress={() => handleAction('service_rendered')}
-                disabled={acting}
-              >
-                {acting ? <ScissorsLoader size="small" color="light" /> : <Text style={bs.primaryBtnText}>Mark service complete</Text>}
-              </TouchableOpacity>
+                label="Mark service complete"
+                style={bs.primaryBtn}
+              />
             )}
 
             {booking.status === BOOKING_STATUS.SERVICE_RENDERED && (
@@ -976,6 +979,7 @@ export default function ScheduleScreen() {
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
   const { isOnline } = useVendorOnline();
+  const { theme } = useVarsTheme();
 
   const [vendorId, setVendorId] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState(() => getEffectiveToday());
@@ -1723,18 +1727,19 @@ export default function ScheduleScreen() {
           </ScrollView>
 
       {/* Saved toast */}
-      {(savedInfo != null || undoing) && (
+      {undoing && (
         <View style={s.savedToast}>
-          {undoing ? (
-            <ScissorsLoader size="small" color="light" />
-          ) : (
-            <>
-              <Text style={s.savedToastText}>{savedInfo!.msg}</Text>
-              <TouchableOpacity onPress={() => handleUndo(savedInfo!.undo)} hitSlop={8}>
-                <Text style={s.savedToastUndo}>Undo</Text>
-              </TouchableOpacity>
-            </>
-          )}
+          <ScissorsLoader size="small" color="light" />
+        </View>
+      )}
+      {savedInfo != null && !undoing && (
+        <View style={s.savedToastWrap}>
+          <VarsToast
+            theme={theme}
+            message={savedInfo.msg}
+            actionLabel="Undo"
+            onAction={() => handleUndo(savedInfo.undo)}
+          />
         </View>
       )}
 
@@ -2051,8 +2056,7 @@ const s = StyleSheet.create({
     backgroundColor: Colors.ink, borderRadius: 5,
     paddingHorizontal: 16, paddingVertical: 10,
   },
-  savedToastText: { fontSize: 13, fontWeight: '700', color: '#FFF' },
-  savedToastUndo: { fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.65)', textDecorationLine: 'underline' },
+  savedToastWrap: { position: 'absolute', bottom: 80, alignSelf: 'center' },
 });
 
 // ── Bottom sheet styles ───────────────────────────────────────
@@ -2082,17 +2086,11 @@ const bs = StyleSheet.create({
   map: { width: '100%', height: 180, borderRadius: 5, marginBottom: 10, overflow: 'hidden' },
   addressRow: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 6,
-    backgroundColor: 'transparent', borderRadius: 5,
-    padding: 10, borderWidth: 1, borderColor: Colors.inkFaint,
-    marginBottom: 12,
+    padding: 10, marginBottom: 12,
   },
   addressText: { flex: 1, fontSize: 13, color: Colors.text, lineHeight: 18 },
 
-  card: {
-    backgroundColor: 'transparent', borderRadius: 5,
-    padding: 14, borderWidth: 1, borderColor: Colors.ink,
-    marginBottom: 12, gap: 2,
-  },
+  card: { padding: 14, marginBottom: 12, gap: 2 },
   sectionTitle: {
     fontSize: 12, fontWeight: '700', color: Colors.textMuted,
     textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8,
@@ -2111,40 +2109,16 @@ const bs = StyleSheet.create({
   errorText: { fontSize: 13, color: Colors.error, fontWeight: '500' },
 
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
-  actionBtn: {
-    flex: 1, height: 52, borderRadius: 5,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  actionBtnDisabled: { opacity: 0.5 },
-  actionBtnAccept: { backgroundColor: Colors.ink },
-  actionBtnAcceptText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
-  actionBtnDecline: { borderWidth: 1.5, borderColor: Colors.ink },
-  actionBtnDeclineText: { color: Colors.ink, fontSize: 16, fontWeight: '700' },
+  actionBtnFlex: { flex: 1 },
 
-  primaryBtn: {
-    height: 54, backgroundColor: Colors.ink,
-    borderRadius: 5, alignItems: 'center', justifyContent: 'center',
-    marginTop: 4,
-  },
-  primaryBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+  primaryBtn: { marginTop: 4 },
 
-  waitingBox: {
-    backgroundColor: 'transparent', borderRadius: 5,
-    padding: 14, borderWidth: 1, borderColor: Colors.inkFaint,
-    alignItems: 'center', marginTop: 4,
-  },
+  waitingBox: { padding: 14, alignItems: 'center', marginTop: 4 },
   waitingText: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
 
   // Reschedule suggestion UI
-  rescheduleBtn: {
-    height: 48, borderRadius: 5, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: Colors.ink, marginTop: 8,
-  },
-  rescheduleBtnText: { fontSize: 15, fontWeight: '600', color: Colors.ink },
-  rescheduleWrap: {
-    backgroundColor: 'transparent', borderRadius: 5,
-    padding: 14, borderWidth: 1, borderColor: Colors.inkFaint, marginBottom: 12,
-  },
+  rescheduleBtn: { marginTop: 8 },
+  rescheduleWrap: { padding: 14, marginBottom: 12 },
   rescheduleHeading: { fontSize: 14, fontWeight: '700', color: Colors.ink, marginBottom: 12 },
   rescheduleDayLabel: {
     fontSize: 12, fontWeight: '700', color: Colors.inkMuted,

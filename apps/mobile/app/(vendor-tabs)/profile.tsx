@@ -14,6 +14,8 @@ import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { uploadSinglePortfolioPhoto, deletePortfolioPhoto } from '@/lib/storage';
+import { VarsSkeleton } from '@/components/ui';
+import { useVarsTheme } from '@/contexts/ThemeContext';
 import { Colors, BORDER_RADIUS } from '@/constants/colors';
 import { CheckIcon, CloseIcon, EditIcon, GearIcon } from '@/components/icons';
 import { CATEGORY_L2_LABELS, MAX_VENDOR_SERVICES } from '@vars/shared';
@@ -47,6 +49,7 @@ const CONSENT_LABEL: Record<string, { text: string; color: string }> = {
 
 export default function VendorProfileScreen() {
   const insets = useSafeAreaInsets();
+  const { theme } = useVarsTheme();
   const { vendorStatus, isOnline, isBusy, togglingOnline, blockReason, toggleError, toggleOnline } = useVendorOnline();
   const [showStatusModal, setShowStatusModal] = useState(false);
 
@@ -390,7 +393,11 @@ export default function VendorProfileScreen() {
           </View>
 
           {photosLoading ? (
-            <View style={{ margin: 16, alignItems: 'center' }}><ScissorsLoader size="small" color="dark" /></View>
+            <View style={s.photoScrollContent}>
+              {Array.from({ length: 3 }).map((_, i) => (
+                <VarsSkeleton key={i} theme={theme} width={PHOTO_SIZE} height={PHOTO_SIZE} radius={5} />
+              ))}
+            </View>
           ) : (
             <>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.photoScrollContent}>
@@ -457,7 +464,17 @@ export default function VendorProfileScreen() {
           </View>
 
           {servicesLoading ? (
-            <View style={{ margin: 16, alignItems: 'center' }}><ScissorsLoader size="small" color="dark" /></View>
+            <View>
+              {Array.from({ length: 3 }).map((_, i) => (
+                <View key={i} style={s.svcRow}>
+                  <View style={s.svcInfo}>
+                    <VarsSkeleton theme={theme} height={11} width="35%" />
+                    <VarsSkeleton theme={theme} height={15} width="55%" style={{ marginTop: 6 }} />
+                    <VarsSkeleton theme={theme} height={13} width="25%" style={{ marginTop: 4 }} />
+                  </View>
+                </View>
+              ))}
+            </View>
           ) : (
             <>
               {services.map((item, i) => renderServiceItem(item, i))}

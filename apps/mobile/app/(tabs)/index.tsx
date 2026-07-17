@@ -16,7 +16,24 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { VendorCard, VendorCardData } from '@/components/VendorCard';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
+import { VarsSkeleton } from '@/components/ui';
+import { useVarsTheme } from '@/contexts/ThemeContext';
 import { Colors } from '@/constants/colors';
+
+const SKELETON_ROWS = 6;
+
+function VendorCardSkeleton({ theme }: { theme: ReturnType<typeof useVarsTheme>['theme'] }) {
+  return (
+    <View style={styles.skeletonCard}>
+      <VarsSkeleton theme={theme} width={68} height={68} radius={34} />
+      <View style={styles.skeletonInfo}>
+        <VarsSkeleton theme={theme} height={16} width="55%" />
+        <VarsSkeleton theme={theme} height={12} width="40%" />
+        <VarsSkeleton theme={theme} height={12} width="30%" />
+      </View>
+    </View>
+  );
+}
 
 // ── Category tabs (taxonomy V2 L1) ─────────────────────────
 const CATEGORIES: { label: string; slug: string }[] = [
@@ -61,6 +78,7 @@ function useLocation() {
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { profile } = useAuth();
+  const { theme } = useVarsTheme();
   const { coords, permissionDenied } = useLocation();
 
   const [activeCategory, setActiveCategory] = useState<string>('hair');
@@ -194,8 +212,10 @@ export default function HomeScreen() {
 
       {/* ── Vendor list ── */}
       {isLoadingInitial ? (
-        <View style={styles.loadingWrap}>
-          <ScissorsLoader size="large" color="dark" />
+        <View style={styles.list}>
+          {Array.from({ length: SKELETON_ROWS }).map((_, i) => (
+            <VendorCardSkeleton key={i} theme={theme} />
+          ))}
         </View>
       ) : (
         <FlatList
@@ -261,7 +281,6 @@ const styles = StyleSheet.create({
     borderRadius: 5, borderWidth: 1.5, borderColor: Colors.border,
     backgroundColor: Colors.background,
   },
-  loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   tabActive: { backgroundColor: Colors.ink, borderColor: Colors.ink },
   tabText: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
   tabTextActive: { color: Colors.white },
@@ -270,6 +289,14 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.warning + '15',
     borderRadius: 5, padding: 10,
   },
+  skeletonCard: {
+    flexDirection: 'row', gap: 14,
+    backgroundColor: Colors.background,
+    borderRadius: 5, padding: 14,
+    borderWidth: 1, borderColor: Colors.border,
+    marginHorizontal: 16, marginBottom: 12,
+  },
+  skeletonInfo: { flex: 1, justifyContent: 'center', gap: 8 },
   locBannerText: { fontSize: 12, color: Colors.warning, fontWeight: '500' },
   list: { paddingTop: 4, paddingBottom: 40 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60, gap: 10 },

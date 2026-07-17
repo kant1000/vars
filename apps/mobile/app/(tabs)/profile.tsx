@@ -15,6 +15,8 @@ import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { useVarsTheme } from '@/contexts/ThemeContext';
+import { VarsSkeleton, VarsSwitch } from '@/components/ui';
 import { signOut } from '@/lib/auth';
 import { pickAndUploadImage } from '@/lib/storage';
 import { Colors, BORDER_RADIUS } from '@/constants/colors';
@@ -46,6 +48,7 @@ const STATUS_COLOR: Partial<Record<BookingStatus, string>> = {
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { user, profile, refreshProfile, isAuthenticated } = useAuth();
+  const { theme, appearance, override, setOverride } = useVarsTheme();
 
   const [editing, setEditing]         = useState(false);
   const [name, setName]               = useState('');
@@ -223,7 +226,22 @@ export default function ProfileScreen() {
         </View>
 
         {/* ── Active bookings ── */}
-        {activeBookings.length > 0 && (
+        {loadingBookings ? (
+          <Section title="Active bookings">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <View key={i} style={s.bookingRow}>
+                <View style={{ flex: 1, gap: 6 }}>
+                  <VarsSkeleton theme={theme} height={14} width="55%" />
+                  <VarsSkeleton theme={theme} height={12} width="70%" />
+                </View>
+                <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                  <VarsSkeleton theme={theme} height={14} width={50} />
+                  <VarsSkeleton theme={theme} height={18} width={70} radius={BORDER_RADIUS} />
+                </View>
+              </View>
+            ))}
+          </Section>
+        ) : activeBookings.length > 0 && (
           <Section title="Active bookings">
             {activeBookings.map((b) => (
               <TouchableOpacity
@@ -265,6 +283,28 @@ export default function ProfileScreen() {
             label="Privacy and data"
             onPress={() => router.push('/privacy-data' as any)}
           />
+        </Section>
+
+        {/* ── Appearance ── */}
+        <Section title="Appearance">
+          <View style={[s.switchRow, override === 'system' && s.switchRowLast]}>
+            <VarsSwitch
+              value={override === 'system'}
+              onChange={(on) => setOverride(on ? 'system' : appearance)}
+              label="Match system appearance"
+              theme={theme}
+            />
+          </View>
+          {override !== 'system' && (
+            <View style={[s.switchRow, s.switchRowLast]}>
+              <VarsSwitch
+                value={override === 'dark'}
+                onChange={(on) => setOverride(on ? 'dark' : 'light')}
+                label="Dark mode"
+                theme={theme}
+              />
+            </View>
+          )}
         </Section>
 
         {/* ── Sign out ── */}
@@ -387,6 +427,11 @@ const s = StyleSheet.create({
   },
   settingsIcon: { width: 24, alignItems: 'center' as const, justifyContent: 'center' as const },
   settingsLabel: { flex: 1, fontSize: 14, fontWeight: '600', color: Colors.text },
+  switchRow: {
+    paddingHorizontal: 14, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
+  switchRowLast: { borderBottomWidth: 0 },
 
   // Sign out
   signOutWrap: { alignItems: 'center', paddingTop: 32, paddingBottom: 8, gap: 12 },

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Easing } from 'react-native';
+import { AccessibilityInfo, Animated, Easing } from 'react-native';
 import Svg, { G, Path } from 'react-native-svg';
 
 const AnimatedG = Animated.createAnimatedComponent(G);
@@ -55,8 +55,23 @@ interface Props {
 
 export function ScissorsLoader({ size = 'small', color = 'dark' }: Props) {
   const angle = useRef(new Animated.Value(0)).current;
+  const [reduceMotion, setReduceMotion] = React.useState(false);
 
   useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then(setReduceMotion)
+      .catch(() => {});
+
+    const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    if (reduceMotion) {
+      angle.setValue(0);
+      return;
+    }
+
     const anim = Animated.loop(
       Animated.sequence([
         Animated.timing(angle, {
@@ -75,7 +90,7 @@ export function ScissorsLoader({ size = 'small', color = 'dark' }: Props) {
     );
     anim.start();
     return () => anim.stop();
-  }, []);
+  }, [angle, reduceMotion]);
 
   const rightAngle = angle.interpolate({
     inputRange:  [0, CLOSE_DEG],

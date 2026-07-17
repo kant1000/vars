@@ -15,6 +15,8 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { VarsSkeleton } from '@/components/ui';
+import { useVarsTheme } from '@/contexts/ThemeContext';
 import { Colors, BORDER_RADIUS } from '@/constants/colors';
 import { BellIcon, HourglassIcon, CheckCircleIcon, XCircleIcon, CreditCardIcon, BanknoteIcon, ArrowUpIcon, CarIcon, PinIcon, StarIcon, WarningIcon, ClockIcon, SparkleIcon } from '@/components/icons';
 
@@ -110,10 +112,26 @@ function NotifRow({
   );
 }
 
+const SKELETON_ROWS = 5;
+
+function NotifRowSkeleton({ theme }: { theme: ReturnType<typeof useVarsTheme>['theme'] }) {
+  return (
+    <View style={s.row}>
+      <VarsSkeleton theme={theme} width={44} height={44} radius={22} />
+      <View style={s.content}>
+        <VarsSkeleton theme={theme} height={14} width="50%" />
+        <VarsSkeleton theme={theme} height={12} width="85%" style={{ marginTop: 8 }} />
+        <VarsSkeleton theme={theme} height={12} width="60%" style={{ marginTop: 6 }} />
+      </View>
+    </View>
+  );
+}
+
 // ── Root component ───────────────────────────────────────────
 export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { theme } = useVarsTheme();
 
   const [notifs, setNotifs]     = useState<AppNotification[]>([]);
   const [loading, setLoading]   = useState(true);
@@ -187,8 +205,6 @@ export default function NotificationsScreen() {
     else { groups.push({ label, items: [n] }); }
   }
 
-  if (loading) return <View style={s.centered}><ScissorsLoader size="large" color="dark" /></View>;
-
   return (
     <View style={[s.container, { paddingTop: insets.top }]}>
       {/* Header */}
@@ -220,7 +236,13 @@ export default function NotificationsScreen() {
             <ScissorsLoader size="small" color="dark" />
           </View>
         )}
-        {notifs.length === 0 ? (
+        {loading ? (
+          <View>
+            {Array.from({ length: SKELETON_ROWS }).map((_, i) => (
+              <NotifRowSkeleton key={i} theme={theme} />
+            ))}
+          </View>
+        ) : notifs.length === 0 ? (
           <View style={s.empty}>
             <Text style={s.emptyTitle}>All clear</Text>
             <Text style={s.emptyBody}>You're up to date. Booking updates, payment confirmations and more will appear here.</Text>
@@ -242,7 +264,6 @@ export default function NotificationsScreen() {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  centered:  { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.background },
 
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',

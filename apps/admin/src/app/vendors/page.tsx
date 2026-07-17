@@ -43,7 +43,7 @@ async function getVendors(status: string, page: number, q: string) {
       .from('vendor-identity-raw')
       .createSignedUrls(rawPaths, 3600);
     for (const entry of signed ?? []) {
-      if (entry.signedUrl) signedUrlMap[entry.path] = entry.signedUrl;
+      if (entry.path && entry.signedUrl) signedUrlMap[entry.path] = entry.signedUrl;
     }
   }
 

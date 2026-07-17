@@ -11,10 +11,11 @@ import {
   FlatList, RefreshControl, ScrollView,
   StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
-import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { VarsSkeleton } from '@/components/ui';
+import { useVarsTheme } from '@/contexts/ThemeContext';
 import { Colors, BORDER_RADIUS } from '@/constants/colors';
 import { fmtPrice, fmtDate, fmtTime } from '@/lib/format';
 import { EyeIcon, EyeOffIcon } from '@/components/icons';
@@ -61,6 +62,7 @@ function periodRange(p: Period): { from: string; to: string } | null {
 
 export default function EarningsScreen() {
   const insets = useSafeAreaInsets();
+  const { theme } = useVarsTheme();
   const { session } = useAuth();
 
   const [vendorId, setVendorId] = useState<string | null>(null);
@@ -122,13 +124,9 @@ export default function EarningsScreen() {
 
   const fmt = (k: number) => hidden ? '₦ · · ·' : fmtPrice(k);
 
-  if (loading) {
-    return <View style={s.centered}><ScissorsLoader size="small" color="dark" /></View>;
-  }
-
   const ListHeader = (
     <>
-      {/* Period filter */}
+      {/* Period filter — static chrome, shown immediately regardless of load state */}
       <View style={s.filterRow}>
         {PERIODS.map(({ key, label }) => (
           <TouchableOpacity
@@ -143,33 +141,63 @@ export default function EarningsScreen() {
         ))}
       </View>
 
-      {/* Hero card */}
-      <View style={s.hero}>
-        <View style={s.heroLabelRow}>
-          <Text style={s.heroLabel}>EARNINGS</Text>
-          <TouchableOpacity onPress={() => setHidden((h) => !h)} hitSlop={10}>
-            {hidden
-              ? <EyeOffIcon size={16} color={Colors.inkMuted} />
-              : <EyeIcon    size={16} color={Colors.inkMuted} />}
-          </TouchableOpacity>
-        </View>
-        <Text style={s.heroAmount} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
-          {fmt(totalKobo)}
-        </Text>
-        <View style={s.heroSplit}>
-          <View style={s.heroChip}>
-            <View style={[s.heroDot, { backgroundColor: Colors.warning }]} />
-            <Text style={s.heroChipText}>Pending {hidden ? '···' : fmtPrice(confirmingKobo)}</Text>
+      {loading ? (
+        <>
+          <View style={s.hero}>
+            <View style={s.heroLabelRow}>
+              <Text style={s.heroLabel}>EARNINGS</Text>
+            </View>
+            <VarsSkeleton theme={theme} height={40} width="60%" style={{ marginBottom: 12 }} />
+            <View style={s.heroSplit}>
+              <VarsSkeleton theme={theme} height={13} width="50%" />
+              <VarsSkeleton theme={theme} height={13} width="55%" />
+            </View>
           </View>
-          <View style={s.heroChip}>
-            <View style={[s.heroDot, { backgroundColor: Colors.error }]} />
-            <Text style={s.heroChipText}>Under review {hidden ? '···' : fmtPrice(reviewKobo)}</Text>
+          {Array.from({ length: 3 }).map((_, i) => (
+            <View key={i} style={s.row}>
+              <View style={s.rowLeft}>
+                <VarsSkeleton theme={theme} height={15} width="50%" />
+                <VarsSkeleton theme={theme} height={13} width="65%" style={{ marginTop: 4 }} />
+                <VarsSkeleton theme={theme} height={12} width="40%" style={{ marginTop: 4 }} />
+              </View>
+              <View style={s.rowRight}>
+                <VarsSkeleton theme={theme} height={16} width={60} />
+                <VarsSkeleton theme={theme} height={18} width={70} radius={BORDER_RADIUS} />
+              </View>
+            </View>
+          ))}
+        </>
+      ) : (
+        <>
+          {/* Hero card */}
+          <View style={s.hero}>
+            <View style={s.heroLabelRow}>
+              <Text style={s.heroLabel}>EARNINGS</Text>
+              <TouchableOpacity onPress={() => setHidden((h) => !h)} hitSlop={10}>
+                {hidden
+                  ? <EyeOffIcon size={16} color={Colors.inkMuted} />
+                  : <EyeIcon    size={16} color={Colors.inkMuted} />}
+              </TouchableOpacity>
+            </View>
+            <Text style={s.heroAmount} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
+              {fmt(totalKobo)}
+            </Text>
+            <View style={s.heroSplit}>
+              <View style={s.heroChip}>
+                <View style={[s.heroDot, { backgroundColor: Colors.warning }]} />
+                <Text style={s.heroChipText}>Pending {hidden ? '···' : fmtPrice(confirmingKobo)}</Text>
+              </View>
+              <View style={s.heroChip}>
+                <View style={[s.heroDot, { backgroundColor: Colors.error }]} />
+                <Text style={s.heroChipText}>Under review {hidden ? '···' : fmtPrice(reviewKobo)}</Text>
+              </View>
+            </View>
           </View>
-        </View>
-      </View>
 
-      {rows.length > 0 && (
-        <Text style={s.sectionLabel}>BOOKINGS</Text>
+          {rows.length > 0 && (
+            <Text style={s.sectionLabel}>BOOKINGS</Text>
+          )}
+        </>
       )}
     </>
   );
@@ -182,7 +210,7 @@ export default function EarningsScreen() {
       </View>
 
       <FlatList
-        data={rows}
+        data={loading ? [] : rows}
         keyExtractor={(r) => r.id}
         contentContainerStyle={{ paddingBottom: 60 }}
         showsVerticalScrollIndicator={false}
@@ -196,14 +224,16 @@ export default function EarningsScreen() {
           />
         }
         ListEmptyComponent={
-          <View style={s.empty}>
-            <Text style={s.emptyTitle}>Nothing here yet</Text>
-            <Text style={s.emptyBody}>
-              {period === 'today'
-                ? "Complete a booking today to see it here."
-                : "Completed bookings will appear here."}
-            </Text>
-          </View>
+          loading ? null : (
+            <View style={s.empty}>
+              <Text style={s.emptyTitle}>Nothing here yet</Text>
+              <Text style={s.emptyBody}>
+                {period === 'today'
+                  ? "Complete a booking today to see it here."
+                  : "Completed bookings will appear here."}
+              </Text>
+            </View>
+          )
         }
         renderItem={({ item: r }) => {
           const pillColor =
@@ -241,7 +271,6 @@ export default function EarningsScreen() {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  centered:  { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   header: {
     paddingHorizontal: 20, paddingVertical: 14,
