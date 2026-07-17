@@ -19,10 +19,11 @@ import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { VarsSkeleton } from '@/components/ui';
 import { useVarsTheme } from '@/contexts/ThemeContext';
 import { Colors } from '@/constants/colors';
+import { VarsTheme } from '@/constants/visualSystem';
 
 const SKELETON_ROWS = 6;
 
-function VendorCardSkeleton({ theme }: { theme: ReturnType<typeof useVarsTheme>['theme'] }) {
+function VendorCardSkeleton({ theme, styles }: { theme: VarsTheme; styles: ReturnType<typeof makeStyles> }) {
   return (
     <View style={styles.skeletonCard}>
       <VarsSkeleton theme={theme} width={68} height={68} radius={34} />
@@ -79,6 +80,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { profile } = useAuth();
   const { theme } = useVarsTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const { coords, permissionDenied } = useLocation();
 
   const [activeCategory, setActiveCategory] = useState<string>('hair');
@@ -176,7 +178,7 @@ export default function HomeScreen() {
         <TextInput
           style={styles.searchInput}
           placeholder="Search stylists..."
-          placeholderTextColor={Colors.textMuted}
+          placeholderTextColor={theme.color.inkMuted}
           value={search}
           onChangeText={setSearch}
           returnKeyType="search"
@@ -214,7 +216,7 @@ export default function HomeScreen() {
       {isLoadingInitial ? (
         <View style={styles.list}>
           {Array.from({ length: SKELETON_ROWS }).map((_, i) => (
-            <VendorCardSkeleton key={i} theme={theme} />
+            <VendorCardSkeleton key={i} theme={theme} styles={styles} />
           ))}
         </View>
       ) : (
@@ -260,47 +262,49 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  header: {
-    paddingHorizontal: 20, paddingTop: 8, paddingBottom: 4,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
-  },
-  greeting: { fontSize: 22, fontWeight: '800', color: Colors.text },
-  subGreeting: { fontSize: 14, color: Colors.textSecondary, marginTop: 2 },
-  searchWrap: { paddingHorizontal: 16, paddingVertical: 10 },
-  searchInput: {
-    backgroundColor: Colors.surface, borderRadius: 5,
-    paddingHorizontal: 16, paddingVertical: 11,
-    fontSize: 15, color: Colors.text,
-    borderWidth: 1.5, borderColor: Colors.border,
-  },
-  tabs: { flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 12, gap: 8 },
-  tab: {
-    flex: 1, paddingVertical: 8, alignItems: 'center',
-    borderRadius: 5, borderWidth: 1.5, borderColor: Colors.border,
-    backgroundColor: Colors.background,
-  },
-  tabActive: { backgroundColor: Colors.ink, borderColor: Colors.ink },
-  tabText: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
-  tabTextActive: { color: Colors.white },
-  locBanner: {
-    marginHorizontal: 16, marginBottom: 8,
-    backgroundColor: Colors.warning + '15',
-    borderRadius: 5, padding: 10,
-  },
-  skeletonCard: {
-    flexDirection: 'row', gap: 14,
-    backgroundColor: Colors.background,
-    borderRadius: 5, padding: 14,
-    borderWidth: 1, borderColor: Colors.border,
-    marginHorizontal: 16, marginBottom: 12,
-  },
-  skeletonInfo: { flex: 1, justifyContent: 'center', gap: 8 },
-  locBannerText: { fontSize: 12, color: Colors.warning, fontWeight: '500' },
-  list: { paddingTop: 4, paddingBottom: 40 },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60, gap: 10 },
-  empty: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 40 },
-  emptyTitle: { fontSize: 20, fontWeight: '700', color: Colors.text, marginBottom: 8 },
-  emptyBody: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
-});
+function makeStyles(theme: VarsTheme) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.color.bg },
+    header: {
+      paddingHorizontal: 20, paddingTop: 8, paddingBottom: 4,
+      flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
+    },
+    greeting: { fontSize: 22, fontWeight: '800', color: theme.color.ink },
+    subGreeting: { fontSize: 14, color: theme.color.inkMuted, marginTop: 2 },
+    searchWrap: { paddingHorizontal: 16, paddingVertical: 10 },
+    searchInput: {
+      backgroundColor: theme.color.surface2, borderRadius: 5,
+      paddingHorizontal: 16, paddingVertical: 11,
+      fontSize: 15, color: theme.color.ink,
+      borderWidth: 1.5, borderColor: theme.color.inkFaint,
+    },
+    tabs: { flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 12, gap: 8 },
+    tab: {
+      flex: 1, paddingVertical: 8, alignItems: 'center',
+      borderRadius: 5, borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      backgroundColor: theme.color.bg,
+    },
+    tabActive: { backgroundColor: theme.color.ink, borderColor: theme.color.ink },
+    tabText: { fontSize: 14, fontWeight: '600', color: theme.color.inkMuted },
+    tabTextActive: { color: theme.color.inverseInk },
+    locBanner: {
+      marginHorizontal: 16, marginBottom: 8,
+      backgroundColor: Colors.warning + '15',
+      borderRadius: 5, padding: 10,
+    },
+    skeletonCard: {
+      flexDirection: 'row', gap: 14,
+      backgroundColor: theme.color.bg,
+      borderRadius: 5, padding: 14,
+      borderWidth: 1, borderColor: theme.color.inkFaint,
+      marginHorizontal: 16, marginBottom: 12,
+    },
+    skeletonInfo: { flex: 1, justifyContent: 'center', gap: 8 },
+    locBannerText: { fontSize: 12, color: Colors.warning, fontWeight: '500' },
+    list: { paddingTop: 4, paddingBottom: 40 },
+    centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60, gap: 10 },
+    empty: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 40 },
+    emptyTitle: { fontSize: 20, fontWeight: '700', color: theme.color.ink, marginBottom: 8 },
+    emptyBody: { fontSize: 14, color: theme.color.inkMuted, textAlign: 'center', lineHeight: 20 },
+  });
+}

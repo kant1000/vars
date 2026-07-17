@@ -3,7 +3,7 @@
 // All customer bookings, newest first. Active at top, past below.
 // Each card taps through to /booking/detail/[bookingId].
 // ============================================================
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FlatList, RefreshControl,
   StyleSheet, Text, TouchableOpacity, View,
@@ -16,12 +16,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { VarsSkeleton } from '@/components/ui';
 import { useVarsTheme } from '@/contexts/ThemeContext';
 import { Colors, BORDER_RADIUS } from '@/constants/colors';
+import { VarsTheme } from '@/constants/visualSystem';
 import { fmtPrice, fmtDateTime } from '@/lib/format';
 import { BookingStatus, BOOKING_STATUS } from '@vars/shared';
 
 const SKELETON_ROWS = 4;
 
-function BookingCardSkeleton({ theme }: { theme: ReturnType<typeof useVarsTheme>['theme'] }) {
+function BookingCardSkeleton({ theme, st }: { theme: VarsTheme; st: ReturnType<typeof makeStyles> }) {
   return (
     <View style={st.card}>
       <View style={st.cardTop}>
@@ -77,6 +78,7 @@ export default function BookingsScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { theme } = useVarsTheme();
+  const st = useMemo(() => makeStyles(theme), [theme]);
   // Set by gate-checkout when poll times out — keeps us from showing "Complete payment"
   // to a customer who just paid while we wait for the webhook to flip status to on_way.
   const { confirming_booking_id } = useLocalSearchParams<{ confirming_booking_id?: string }>();
@@ -151,7 +153,7 @@ export default function BookingsScreen() {
       {loading ? (
         <View style={{ paddingTop: 4 }}>
           {Array.from({ length: SKELETON_ROWS }).map((_, i) => (
-            <BookingCardSkeleton key={i} theme={theme} />
+            <BookingCardSkeleton key={i} theme={theme} st={st} />
           ))}
         </View>
       ) : !user ? (
@@ -196,7 +198,7 @@ export default function BookingsScreen() {
           }
 
           const booking = item as BookingSummary;
-          const sl = STATUS_LABEL[booking.status] ?? { text: booking.status, color: Colors.textMuted };
+          const sl = STATUS_LABEL[booking.status] ?? { text: booking.status, color: theme.color.inkMuted };
 
           // Gate has fired but charge hasn't completed yet.
           const gateAwaitingPayment =
@@ -275,74 +277,76 @@ export default function BookingsScreen() {
   );
 }
 
-const st = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  centered: {
-    flex: 1, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: Colors.background, paddingHorizontal: 32,
-  },
-  header: {
-    paddingHorizontal: 20, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: Colors.text },
-  sectionLabel: {
-    fontSize: 12, fontWeight: '700', color: Colors.textMuted,
-    textTransform: 'uppercase', letterSpacing: 0.5,
-    paddingHorizontal: 16, paddingTop: 20, paddingBottom: 8,
-  },
-  card: {
-    marginHorizontal: 16, marginBottom: 10,
-    backgroundColor: Colors.surface, borderRadius: BORDER_RADIUS,
-    padding: 16, borderWidth: 1, borderColor: Colors.border, gap: 4,
-  },
-  cardPaymentNeeded: {
-    borderColor: Colors.warning, borderWidth: 2,
-  },
-  confirmingBanner: {
-    marginTop: 8, backgroundColor: Colors.warning + '18',
-    borderRadius: BORDER_RADIUS, paddingVertical: 8, paddingHorizontal: 12,
-  },
-  confirmingBannerText: { fontSize: 13, fontWeight: '600', color: Colors.warning },
-  paymentNeededBtn: {
-    marginTop: 8, backgroundColor: Colors.ink,
-    borderRadius: BORDER_RADIUS, paddingVertical: 10, paddingHorizontal: 14,
-    alignItems: 'center',
-  },
-  paymentNeededBtnText: {
-    color: Colors.white, fontSize: 13, fontWeight: '700',
-  },
-  cardTop: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', marginBottom: 4,
-  },
-  vendorName: { fontSize: 15, fontWeight: '700', color: Colors.text },
-  statusPill: { borderRadius: BORDER_RADIUS, paddingHorizontal: 8, paddingVertical: 3 },
-  statusText: { fontSize: 12, fontWeight: '700' },
-  serviceName: { fontSize: 14, color: Colors.textSecondary },
-  cardBottom: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', marginTop: 6,
-  },
-  dateTime: { fontSize: 12, color: Colors.textMuted },
-  price: { fontSize: 14, fontWeight: '700', color: Colors.text },
-  reviewBtn: {
-    marginTop: 10, borderTopWidth: 1, borderTopColor: Colors.border,
-    paddingTop: 10, alignItems: 'flex-start',
-  },
-  reviewBtnText: { fontSize: 13, fontWeight: '700', color: Colors.primary },
-  reviewedRow: {
-    marginTop: 10, borderTopWidth: 1, borderTopColor: Colors.border,
-    paddingTop: 10, flexDirection: 'row', alignItems: 'center', gap: 8,
-  },
-  reviewedStars: { fontSize: 14, color: Colors.primary },
-  reviewedLabel: { fontSize: 12, color: Colors.textMuted, fontWeight: '600' },
-  emptyWrap: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 40 },
-  emptyTitle: { fontSize: 20, fontWeight: '700', color: Colors.text, marginBottom: 8 },
-  emptyBody: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
-  cta: {
-    marginTop: 16, backgroundColor: Colors.ink, borderRadius: BORDER_RADIUS,
-    paddingHorizontal: 32, paddingVertical: 14,
-  },
-  ctaText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
-});
+function makeStyles(theme: VarsTheme) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.color.bg },
+    centered: {
+      flex: 1, alignItems: 'center', justifyContent: 'center',
+      backgroundColor: theme.color.bg, paddingHorizontal: 32,
+    },
+    header: {
+      paddingHorizontal: 20, paddingVertical: 14,
+      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+    },
+    headerTitle: { fontSize: 24, fontWeight: '800', color: theme.color.ink },
+    sectionLabel: {
+      fontSize: 12, fontWeight: '700', color: theme.color.inkMuted,
+      textTransform: 'uppercase', letterSpacing: 0.5,
+      paddingHorizontal: 16, paddingTop: 20, paddingBottom: 8,
+    },
+    card: {
+      marginHorizontal: 16, marginBottom: 10,
+      backgroundColor: theme.color.surface2, borderRadius: BORDER_RADIUS,
+      padding: 16, borderWidth: 1, borderColor: theme.color.inkFaint, gap: 4,
+    },
+    cardPaymentNeeded: {
+      borderColor: Colors.warning, borderWidth: 2,
+    },
+    confirmingBanner: {
+      marginTop: 8, backgroundColor: Colors.warning + '18',
+      borderRadius: BORDER_RADIUS, paddingVertical: 8, paddingHorizontal: 12,
+    },
+    confirmingBannerText: { fontSize: 13, fontWeight: '600', color: Colors.warning },
+    paymentNeededBtn: {
+      marginTop: 8, backgroundColor: theme.color.ink,
+      borderRadius: BORDER_RADIUS, paddingVertical: 10, paddingHorizontal: 14,
+      alignItems: 'center',
+    },
+    paymentNeededBtnText: {
+      color: theme.color.inverseInk, fontSize: 13, fontWeight: '700',
+    },
+    cardTop: {
+      flexDirection: 'row', justifyContent: 'space-between',
+      alignItems: 'center', marginBottom: 4,
+    },
+    vendorName: { fontSize: 15, fontWeight: '700', color: theme.color.ink },
+    statusPill: { borderRadius: BORDER_RADIUS, paddingHorizontal: 8, paddingVertical: 3 },
+    statusText: { fontSize: 12, fontWeight: '700' },
+    serviceName: { fontSize: 14, color: theme.color.inkMuted },
+    cardBottom: {
+      flexDirection: 'row', justifyContent: 'space-between',
+      alignItems: 'center', marginTop: 6,
+    },
+    dateTime: { fontSize: 12, color: theme.color.inkMuted },
+    price: { fontSize: 14, fontWeight: '700', color: theme.color.ink },
+    reviewBtn: {
+      marginTop: 10, borderTopWidth: 1, borderTopColor: theme.color.inkFaint,
+      paddingTop: 10, alignItems: 'flex-start',
+    },
+    reviewBtnText: { fontSize: 13, fontWeight: '700', color: theme.color.accentBlue },
+    reviewedRow: {
+      marginTop: 10, borderTopWidth: 1, borderTopColor: theme.color.inkFaint,
+      paddingTop: 10, flexDirection: 'row', alignItems: 'center', gap: 8,
+    },
+    reviewedStars: { fontSize: 14, color: theme.color.accentBlue },
+    reviewedLabel: { fontSize: 12, color: theme.color.inkMuted, fontWeight: '600' },
+    emptyWrap: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 40 },
+    emptyTitle: { fontSize: 20, fontWeight: '700', color: theme.color.ink, marginBottom: 8 },
+    emptyBody: { fontSize: 14, color: theme.color.inkMuted, textAlign: 'center', lineHeight: 20 },
+    cta: {
+      marginTop: 16, backgroundColor: theme.color.ink, borderRadius: BORDER_RADIUS,
+      paddingHorizontal: 32, paddingVertical: 14,
+    },
+    ctaText: { color: theme.color.inverseInk, fontSize: 16, fontWeight: '700' },
+  });
+}

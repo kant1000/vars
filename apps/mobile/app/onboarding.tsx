@@ -5,7 +5,7 @@
 // Shows once on first launch, never again
 // ============================================================
 
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -20,7 +20,8 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Colors } from '@/constants/colors';
+import { VarsTheme } from '@/constants/visualSystem';
+import { useVarsTheme } from '@/contexts/ThemeContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -47,6 +48,8 @@ const SLIDES = [
 ] as const;
 
 export default function OnboardingScreen() {
+  const { theme } = useVarsTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [starting, setStarting] = useState(false);
   const flatListRef = useRef<FlatList>(null);
@@ -79,7 +82,10 @@ export default function OnboardingScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar
+        barStyle={theme.appearance === 'dark' ? 'light-content' : 'dark-content'}
+        backgroundColor={theme.color.bg}
+      />
       <FlatList
         ref={flatListRef}
         data={SLIDES}
@@ -150,93 +156,95 @@ export default function OnboardingScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  slide: {
-    width,
-    height,
-    backgroundColor: Colors.background,
-  },
-  illustration: {
-    width,
-    height: height * 0.62,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 32,
-    paddingTop: 32,
-    paddingBottom: 48,
-    backgroundColor: Colors.background,
-    justifyContent: 'space-between',
-  },
-  headline: {
-    fontSize: 30,
-    fontWeight: '700',
-    color: Colors.text,
-    lineHeight: 38,
-    letterSpacing: -0.5,
-  },
-  sub: {
-    fontSize: 16,
-    color: Colors.textSecondary,
-    lineHeight: 24,
-    marginTop: 8,
-  },
-  ctaButton: {
-    backgroundColor: Colors.ink,
-    borderRadius: 5,
-    paddingVertical: 18,
-    alignItems: 'center',
-    marginTop: 24,
-  },
-  ctaText: {
-    color: Colors.white,
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  nextButton: {
-    borderWidth: 1.5,
-    borderColor: Colors.ink,
-    borderRadius: 5,
-    paddingVertical: 18,
-    alignItems: 'center',
-    marginTop: 24,
-  },
-  nextText: {
-    color: Colors.ink,
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  stylistLink: {
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  stylistLinkText: {
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 1.2,
-    color: Colors.ink,
-  },
-  dots: {
-    position: 'absolute',
-    bottom: 24,
-    alignSelf: 'center',
-    flexDirection: 'row',
-    gap: 8,
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  dotActive: {
-    backgroundColor: Colors.ink,
-    width: 20,
-  },
-  dotInactive: {
-    backgroundColor: Colors.dotInactive,
-  },
-});
+function makeStyles(theme: VarsTheme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.color.bg,
+    },
+    slide: {
+      width,
+      height,
+      backgroundColor: theme.color.bg,
+    },
+    illustration: {
+      width,
+      height: height * 0.62,
+    },
+    content: {
+      flex: 1,
+      paddingHorizontal: 32,
+      paddingTop: 32,
+      paddingBottom: 48,
+      backgroundColor: theme.color.bg,
+      justifyContent: 'space-between',
+    },
+    headline: {
+      fontSize: 30,
+      fontWeight: '700',
+      color: theme.color.ink,
+      lineHeight: 38,
+      letterSpacing: -0.5,
+    },
+    sub: {
+      fontSize: 16,
+      color: theme.color.inkMuted,
+      lineHeight: 24,
+      marginTop: 8,
+    },
+    ctaButton: {
+      backgroundColor: theme.color.ink,
+      borderRadius: 5,
+      paddingVertical: 18,
+      alignItems: 'center',
+      marginTop: 24,
+    },
+    ctaText: {
+      color: theme.color.inverseInk,
+      fontSize: 17,
+      fontWeight: '700',
+    },
+    nextButton: {
+      borderWidth: 1.5,
+      borderColor: theme.color.ink,
+      borderRadius: 5,
+      paddingVertical: 18,
+      alignItems: 'center',
+      marginTop: 24,
+    },
+    nextText: {
+      color: theme.color.ink,
+      fontSize: 17,
+      fontWeight: '700',
+    },
+    stylistLink: {
+      alignItems: 'center',
+      marginTop: 20,
+    },
+    stylistLinkText: {
+      fontSize: 13,
+      fontWeight: '700',
+      letterSpacing: 1.2,
+      color: theme.color.ink,
+    },
+    dots: {
+      position: 'absolute',
+      bottom: 24,
+      alignSelf: 'center',
+      flexDirection: 'row',
+      gap: 8,
+    },
+    dot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+    },
+    dotActive: {
+      backgroundColor: theme.color.ink,
+      width: 20,
+    },
+    dotInactive: {
+      backgroundColor: theme.color.inkFaint,
+    },
+  });
+}

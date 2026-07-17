@@ -8,7 +8,7 @@
 // Design: VARS logo prominent, everything else minimal
 // ============================================================
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -24,7 +24,9 @@ import {
 import Svg, { Path } from 'react-native-svg';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Colors, BORDER_RADIUS } from '@/constants/colors';
+import { BORDER_RADIUS } from '@/constants/colors';
+import { VarsTheme } from '@/constants/visualSystem';
+import { useVarsTheme } from '@/contexts/ThemeContext';
 import {
   signInWithGoogle,
   signInWithFacebook,
@@ -35,6 +37,8 @@ import {
 type Mode = 'signin' | 'signup';
 
 export default function LoginScreen() {
+  const { theme } = useVarsTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
   const [mode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState('');
@@ -120,7 +124,7 @@ export default function LoginScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={theme.appearance === 'dark' ? 'light-content' : 'dark-content'} />
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
@@ -160,6 +164,7 @@ export default function LoginScreen() {
             onPress={handleGoogle}
             isLoading={loadingProvider === 'google'}
             disabled={!!loadingProvider || isLoading}
+            styles={styles}
           />
           <SocialButton
             provider="facebook"
@@ -167,6 +172,7 @@ export default function LoginScreen() {
             onPress={handleFacebook}
             isLoading={loadingProvider === 'facebook'}
             disabled={!!loadingProvider || isLoading}
+            styles={styles}
           />
         </View>
 
@@ -183,7 +189,7 @@ export default function LoginScreen() {
             <TextInput
               style={styles.input}
               placeholder="Full name"
-              placeholderTextColor={Colors.textMuted}
+              placeholderTextColor={theme.color.inkMuted}
               value={fullName}
               onChangeText={setFullName}
               autoCapitalize="words"
@@ -195,7 +201,7 @@ export default function LoginScreen() {
           <TextInput
             style={styles.input}
             placeholder="Email"
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={theme.color.inkMuted}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -207,7 +213,7 @@ export default function LoginScreen() {
           <TextInput
             style={styles.input}
             placeholder="Password"
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={theme.color.inkMuted}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -222,7 +228,7 @@ export default function LoginScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Phone number"
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor={theme.color.inkMuted}
                 value={phone}
                 onChangeText={setPhone}
                 keyboardType="phone-pad"
@@ -302,12 +308,14 @@ function SocialButton({
   onPress,
   isLoading,
   disabled,
+  styles,
 }: {
   provider: 'google' | 'facebook';
   label: string;
   onPress: () => void;
   isLoading: boolean;
   disabled: boolean;
+  styles: ReturnType<typeof makeStyles>;
 }) {
   const isGoogle = provider === 'google';
   return (
@@ -335,161 +343,165 @@ function SocialButton({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  scroll: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingTop: 80,
-    paddingBottom: 40,
-  },
-  header: {
-    marginBottom: 40,
-  },
-  wordmark: {
-    fontSize: 40,
-    fontWeight: '800',
-    color: Colors.ink,
-    letterSpacing: -1,
-    marginBottom: 4,
-  },
-  tagline: {
-    fontSize: 16,
-    color: Colors.textSecondary,
-  },
-  modeToggle: {
-    flexDirection: 'row',
-    backgroundColor: Colors.surface,
-    borderRadius: BORDER_RADIUS,
-    padding: 4,
-    marginBottom: 28,
-  },
-  modeButton: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: BORDER_RADIUS,
-    alignItems: 'center',
-  },
-  modeButtonActive: {
-    backgroundColor: Colors.background,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  modeText: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: Colors.textSecondary,
-  },
-  modeTextActive: {
-    color: Colors.text,
-    fontWeight: '600',
-  },
-  socialButtons: {
-    gap: 12,
-    marginBottom: 28,
-  },
-  socialButton: {
-    height: 54,
-    borderRadius: BORDER_RADIUS,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  socialButtonGoogle: {
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#dadce0',
-  },
-  socialButtonFacebook: {
-    backgroundColor: '#1877F2',
-  },
-  socialButtonDisabled: {
-    opacity: 0.5,
-  },
-  socialButtonInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  socialButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#3c4043',
-  },
-  socialButtonTextLight: {
-    color: '#ffffff',
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 24,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: Colors.border,
-  },
-  dividerText: {
-    fontSize: 13,
-    color: Colors.textMuted,
-  },
-  form: {
-    gap: 12,
-    marginBottom: 20,
-  },
-  input: {
-    height: 54,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    borderRadius: BORDER_RADIUS,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    color: Colors.text,
-    backgroundColor: Colors.background,
-  },
-  phoneHelper: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    marginTop: -4,
-    marginLeft: 4,
-  },
-  submitButton: {
-    height: 54,
-    backgroundColor: Colors.ink,
-    borderRadius: BORDER_RADIUS,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 4,
-  },
-  submitDisabled: {
-    opacity: 0.6,
-  },
-  submitText: {
-    color: Colors.white,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  terms: {
-    fontSize: 12,
-    color: Colors.textMuted,
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-  vendorLink: {
-    alignItems: 'center',
-    marginTop: 28,
-    paddingVertical: 14,
-  },
-  vendorLinkText: {
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 1.2,
-    color: Colors.text,
-  },
-});
+function makeStyles(theme: VarsTheme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.color.bg,
+    },
+    scroll: {
+      flexGrow: 1,
+      paddingHorizontal: 24,
+      paddingTop: 80,
+      paddingBottom: 40,
+    },
+    header: {
+      marginBottom: 40,
+    },
+    wordmark: {
+      fontSize: 40,
+      fontWeight: '800',
+      color: theme.color.ink,
+      letterSpacing: -1,
+      marginBottom: 4,
+    },
+    tagline: {
+      fontSize: 16,
+      color: theme.color.inkMuted,
+    },
+    modeToggle: {
+      flexDirection: 'row',
+      backgroundColor: theme.color.surface2,
+      borderRadius: BORDER_RADIUS,
+      padding: 4,
+      marginBottom: 28,
+    },
+    modeButton: {
+      flex: 1,
+      paddingVertical: 10,
+      borderRadius: BORDER_RADIUS,
+      alignItems: 'center',
+    },
+    modeButtonActive: {
+      backgroundColor: theme.color.bg,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.06,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    modeText: {
+      fontSize: 15,
+      fontWeight: '500',
+      color: theme.color.inkMuted,
+    },
+    modeTextActive: {
+      color: theme.color.ink,
+      fontWeight: '600',
+    },
+    socialButtons: {
+      gap: 12,
+      marginBottom: 28,
+    },
+    socialButton: {
+      height: 54,
+      borderRadius: BORDER_RADIUS,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    // Mandatory third-party brand colours (Google Identity Branding Guidelines,
+    // Meta Brand Resources) — never replace with VARS design tokens, light or dark.
+    socialButtonGoogle: {
+      backgroundColor: '#ffffff',
+      borderWidth: 1,
+      borderColor: '#dadce0',
+    },
+    socialButtonFacebook: {
+      backgroundColor: '#1877F2',
+    },
+    socialButtonDisabled: {
+      opacity: 0.5,
+    },
+    socialButtonInner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    socialButtonText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: '#3c4043',
+    },
+    socialButtonTextLight: {
+      color: '#ffffff',
+    },
+    divider: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      marginBottom: 24,
+    },
+    dividerLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: theme.color.inkFaint,
+    },
+    dividerText: {
+      fontSize: 13,
+      color: theme.color.inkMuted,
+    },
+    form: {
+      gap: 12,
+      marginBottom: 20,
+    },
+    input: {
+      height: 54,
+      borderWidth: 1.5,
+      borderColor: theme.color.inkFaint,
+      borderRadius: BORDER_RADIUS,
+      paddingHorizontal: 16,
+      fontSize: 16,
+      color: theme.color.ink,
+      backgroundColor: theme.color.bg,
+    },
+    phoneHelper: {
+      fontSize: 13,
+      color: theme.color.inkMuted,
+      marginTop: -4,
+      marginLeft: 4,
+    },
+    submitButton: {
+      height: 54,
+      backgroundColor: theme.color.ink,
+      borderRadius: BORDER_RADIUS,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 4,
+    },
+    submitDisabled: {
+      opacity: 0.6,
+    },
+    submitText: {
+      color: theme.color.inverseInk,
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    terms: {
+      fontSize: 12,
+      color: theme.color.inkMuted,
+      textAlign: 'center',
+      lineHeight: 18,
+    },
+    vendorLink: {
+      alignItems: 'center',
+      marginTop: 28,
+      paddingVertical: 14,
+    },
+    vendorLinkText: {
+      fontSize: 13,
+      fontWeight: '700',
+      letterSpacing: 1.2,
+      color: theme.color.ink,
+    },
+  });
+}

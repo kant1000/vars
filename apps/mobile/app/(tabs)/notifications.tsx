@@ -5,7 +5,7 @@
 // Deep-links to booking screen via data.screen or booking_id.
 // Realtime subscription for live badge updates.
 // ============================================================
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   RefreshControl, ScrollView,
   StyleSheet, Text, TouchableOpacity, View,
@@ -17,7 +17,8 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { VarsSkeleton } from '@/components/ui';
 import { useVarsTheme } from '@/contexts/ThemeContext';
-import { Colors, BORDER_RADIUS } from '@/constants/colors';
+import { BORDER_RADIUS } from '@/constants/colors';
+import { VarsTheme } from '@/constants/visualSystem';
 import { BellIcon, HourglassIcon, CheckCircleIcon, XCircleIcon, CreditCardIcon, BanknoteIcon, ArrowUpIcon, CarIcon, PinIcon, StarIcon, WarningIcon, ClockIcon, SparkleIcon } from '@/components/icons';
 
 // ── Types ───────────────────────────────────────────────────
@@ -60,9 +61,9 @@ const TYPE_ICON: Record<string, IconComp> = {
   vendor_declines:        XCircleIcon,
 };
 
-function typeIcon(type: string): React.ReactElement {
+function typeIcon(type: string, theme: VarsTheme): React.ReactElement {
   const Icon = TYPE_ICON[type] ?? BellIcon;
-  return <Icon size={20} color={Colors.inkMuted} />;
+  return <Icon size={20} color={theme.color.inkMuted} />;
 }
 
 function timeAgo(iso: string): string {
@@ -86,10 +87,12 @@ function resolveDeepLink(notif: AppNotification): string | null {
 
 // ── Notification row ─────────────────────────────────────────
 function NotifRow({
-  notif, onPress,
+  notif, onPress, theme, s,
 }: {
   notif: AppNotification;
   onPress: (n: AppNotification) => void;
+  theme: VarsTheme;
+  s: ReturnType<typeof makeStyles>;
 }) {
   return (
     <TouchableOpacity
@@ -98,7 +101,7 @@ function NotifRow({
       activeOpacity={0.75}
     >
       <View style={[s.iconWrap, !notif.is_read && s.iconWrapUnread]}>
-        {typeIcon(notif.type)}
+        {typeIcon(notif.type, theme)}
       </View>
       <View style={s.content}>
         <View style={s.topRow}>
@@ -114,7 +117,7 @@ function NotifRow({
 
 const SKELETON_ROWS = 5;
 
-function NotifRowSkeleton({ theme }: { theme: ReturnType<typeof useVarsTheme>['theme'] }) {
+function NotifRowSkeleton({ theme, s }: { theme: VarsTheme; s: ReturnType<typeof makeStyles> }) {
   return (
     <View style={s.row}>
       <VarsSkeleton theme={theme} width={44} height={44} radius={22} />
@@ -132,6 +135,7 @@ export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { theme } = useVarsTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
 
   const [notifs, setNotifs]     = useState<AppNotification[]>([]);
   const [loading, setLoading]   = useState(true);
@@ -239,7 +243,7 @@ export default function NotificationsScreen() {
         {loading ? (
           <View>
             {Array.from({ length: SKELETON_ROWS }).map((_, i) => (
-              <NotifRowSkeleton key={i} theme={theme} />
+              <NotifRowSkeleton key={i} theme={theme} s={s} />
             ))}
           </View>
         ) : notifs.length === 0 ? (
@@ -252,7 +256,7 @@ export default function NotificationsScreen() {
             <View key={g.label}>
               <Text style={s.groupLabel}>{g.label}</Text>
               {g.items.map((n) => (
-                <NotifRow key={n.id} notif={n} onPress={markRead} />
+                <NotifRow key={n.id} notif={n} onPress={markRead} theme={theme} s={s} />
               ))}
             </View>
           ))
@@ -262,60 +266,62 @@ export default function NotificationsScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+function makeStyles(theme: VarsTheme) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.color.bg },
 
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: Colors.text },
-  badge: {
-    backgroundColor: Colors.error, borderRadius: BORDER_RADIUS,
-    paddingHorizontal: 7, paddingVertical: 2, minWidth: 20, alignItems: 'center',
-  },
-  badgeText: { fontSize: 11, fontWeight: '800', color: Colors.white },
-  markAllText: { fontSize: 14, fontWeight: '600', color: Colors.primary },
+    header: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 20, paddingVertical: 14,
+      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+    },
+    headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    headerTitle: { fontSize: 24, fontWeight: '800', color: theme.color.ink },
+    badge: {
+      backgroundColor: theme.color.accentRed, borderRadius: BORDER_RADIUS,
+      paddingHorizontal: 7, paddingVertical: 2, minWidth: 20, alignItems: 'center',
+    },
+    badgeText: { fontSize: 11, fontWeight: '800', color: theme.color.inverseInk },
+    markAllText: { fontSize: 14, fontWeight: '600', color: theme.color.accentBlue },
 
-  groupLabel: {
-    fontSize: 12, fontWeight: '700', color: Colors.textMuted,
-    textTransform: 'uppercase', letterSpacing: 0.5,
-    paddingHorizontal: 20, paddingTop: 20, paddingBottom: 6,
-  },
+    groupLabel: {
+      fontSize: 12, fontWeight: '700', color: theme.color.inkMuted,
+      textTransform: 'uppercase', letterSpacing: 0.5,
+      paddingHorizontal: 20, paddingTop: 20, paddingBottom: 6,
+    },
 
-  row: {
-    flexDirection: 'row', alignItems: 'flex-start',
-    paddingHorizontal: 16, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-    backgroundColor: Colors.background,
-    gap: 12,
-  },
-  rowUnread: { backgroundColor: Colors.surface },
+    row: {
+      flexDirection: 'row', alignItems: 'flex-start',
+      paddingHorizontal: 16, paddingVertical: 14,
+      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+      backgroundColor: theme.color.bg,
+      gap: 12,
+    },
+    rowUnread: { backgroundColor: theme.color.surface2 },
 
-  iconWrap: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: Colors.surface,
-    alignItems: 'center', justifyContent: 'center',
-    flexShrink: 0,
-  },
-  iconWrapUnread: { backgroundColor: Colors.surface },
+    iconWrap: {
+      width: 44, height: 44, borderRadius: 22,
+      backgroundColor: theme.color.surface2,
+      alignItems: 'center', justifyContent: 'center',
+      flexShrink: 0,
+    },
+    iconWrapUnread: { backgroundColor: theme.color.surface2 },
 
-  content: { flex: 1 },
-  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 3 },
-  title: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary, flex: 1, marginRight: 8 },
-  titleUnread: { fontWeight: '800', color: Colors.text },
-  time: { fontSize: 11, color: Colors.textMuted, marginTop: 1, flexShrink: 0 },
-  body: { fontSize: 13, color: Colors.textSecondary, lineHeight: 18 },
+    content: { flex: 1 },
+    topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 3 },
+    title: { fontSize: 14, fontWeight: '600', color: theme.color.inkMuted, flex: 1, marginRight: 8 },
+    titleUnread: { fontWeight: '800', color: theme.color.ink },
+    time: { fontSize: 11, color: theme.color.inkMuted, marginTop: 1, flexShrink: 0 },
+    body: { fontSize: 13, color: theme.color.inkMuted, lineHeight: 18 },
 
-  unreadDot: {
-    width: 8, height: 8, borderRadius: 4,
-    backgroundColor: Colors.primary,
-    marginTop: 4, flexShrink: 0,
-  },
+    unreadDot: {
+      width: 8, height: 8, borderRadius: 4,
+      backgroundColor: theme.color.accentBlue,
+      marginTop: 4, flexShrink: 0,
+    },
 
-  empty: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 40 },
-  emptyTitle: { fontSize: 20, fontWeight: '700', color: Colors.text, marginBottom: 8 },
-  emptyBody: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
-});
+    empty: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 40 },
+    emptyTitle: { fontSize: 20, fontWeight: '700', color: theme.color.ink, marginBottom: 8 },
+    emptyBody: { fontSize: 14, color: theme.color.inkMuted, textAlign: 'center', lineHeight: 20 },
+  });
+}

@@ -3,7 +3,7 @@
 // Sections: avatar + name header, edit name/phone,
 //   booking history, favourites shortcut, sign out.
 // ============================================================
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert, KeyboardAvoidingView,
   Platform, RefreshControl, ScrollView, StyleSheet,
@@ -20,6 +20,7 @@ import { VarsSkeleton, VarsSwitch } from '@/components/ui';
 import { signOut } from '@/lib/auth';
 import { pickAndUploadImage } from '@/lib/storage';
 import { Colors, BORDER_RADIUS } from '@/constants/colors';
+import { VarsTheme } from '@/constants/visualSystem';
 import { fmtPrice, fmtLongDate } from '@/lib/format';
 import { HeartIcon, BellIcon, EditIcon, ChevronRightIcon } from '@/components/icons';
 import { BookingStatus } from '@vars/shared';
@@ -49,6 +50,7 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { user, profile, refreshProfile, isAuthenticated } = useAuth();
   const { theme, appearance, override, setOverride } = useVarsTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
 
   const [editing, setEditing]         = useState(false);
   const [name, setName]               = useState('');
@@ -175,7 +177,7 @@ export default function ProfileScreen() {
             <View style={s.editPhotoBadge}>
               {uploadingPhoto
                 ? <ScissorsLoader size="small" color="light" />
-                : <EditIcon size={12} color="#FFF" />
+                : <EditIcon size={12} color={theme.color.inverseInk} />
               }
             </View>
           </TouchableOpacity>
@@ -193,7 +195,7 @@ export default function ProfileScreen() {
               <TextInput
                 style={s.input}
                 placeholder="Full name"
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor={theme.color.inkMuted}
                 value={name}
                 onChangeText={setName}
                 autoFocus
@@ -201,7 +203,7 @@ export default function ProfileScreen() {
               <TextInput
                 style={s.input}
                 placeholder="Phone number"
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor={theme.color.inkMuted}
                 value={phone}
                 onChangeText={setPhone}
                 keyboardType="phone-pad"
@@ -227,7 +229,7 @@ export default function ProfileScreen() {
 
         {/* ── Active bookings ── */}
         {loadingBookings ? (
-          <Section title="Active bookings">
+          <Section title="Active bookings" s={s}>
             {Array.from({ length: 2 }).map((_, i) => (
               <View key={i} style={s.bookingRow}>
                 <View style={{ flex: 1, gap: 6 }}>
@@ -242,7 +244,7 @@ export default function ProfileScreen() {
             ))}
           </Section>
         ) : activeBookings.length > 0 && (
-          <Section title="Active bookings">
+          <Section title="Active bookings" s={s}>
             {activeBookings.map((b) => (
               <TouchableOpacity
                 key={b.id}
@@ -255,8 +257,8 @@ export default function ProfileScreen() {
                 </View>
                 <View style={{ alignItems: 'flex-end', gap: 4 }}>
                   <Text style={s.bookingPrice}>{fmtPrice(b.service_price_kobo)}</Text>
-                  <View style={[s.statusPill, { backgroundColor: (STATUS_COLOR[b.status] ?? Colors.textMuted) + '18' }]}>
-                    <Text style={[s.statusText, { color: STATUS_COLOR[b.status] ?? Colors.textMuted }]}>
+                  <View style={[s.statusPill, { backgroundColor: (STATUS_COLOR[b.status] ?? theme.color.inkMuted) + '18' }]}>
+                    <Text style={[s.statusText, { color: STATUS_COLOR[b.status] ?? theme.color.inkMuted }]}>
                       {b.status.replace(/_/g, ' ')}
                     </Text>
                   </View>
@@ -267,26 +269,32 @@ export default function ProfileScreen() {
         )}
 
         {/* ── Settings rows ── */}
-        <Section title="Account">
+        <Section title="Account" s={s}>
           <SettingsRow
-            icon={<HeartIcon size={18} color={Colors.text} />}
+            icon={<HeartIcon size={18} color={theme.color.ink} />}
             label="My favourites"
             onPress={() => Alert.alert('Coming soon', 'Save your favourite stylists — launching soon.')}
+            s={s}
+            theme={theme}
           />
           <SettingsRow
-            icon={<BellIcon size={18} color={Colors.text} />}
+            icon={<BellIcon size={18} color={theme.color.ink} />}
             label="Notification preferences"
             onPress={() => Alert.alert('Coming soon', 'Notification controls are on the way.')}
+            s={s}
+            theme={theme}
           />
           <SettingsRow
             icon={<Text style={{ fontSize: 16 }}>🔒</Text>}
             label="Privacy and data"
             onPress={() => router.push('/privacy-data' as any)}
+            s={s}
+            theme={theme}
           />
         </Section>
 
         {/* ── Appearance ── */}
-        <Section title="Appearance">
+        <Section title="Appearance" s={s}>
           <View style={[s.switchRow, override === 'system' && s.switchRowLast]}>
             <VarsSwitch
               value={override === 'system'}
@@ -319,7 +327,7 @@ export default function ProfileScreen() {
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children, s }: { title: string; children: React.ReactNode; s: ReturnType<typeof makeStyles> }) {
   return (
     <View style={s.section}>
       <Text style={s.sectionTitle}>{title}</Text>
@@ -328,114 +336,116 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function SettingsRow({ icon, label, onPress }: { icon: React.ReactNode; label: string; onPress: () => void }) {
+function SettingsRow({ icon, label, onPress, s, theme }: { icon: React.ReactNode; label: string; onPress: () => void; s: ReturnType<typeof makeStyles>; theme: VarsTheme }) {
   return (
     <TouchableOpacity style={s.settingsRow} onPress={onPress} activeOpacity={0.7}>
       <View style={s.settingsIcon}>{icon}</View>
       <Text style={s.settingsLabel}>{label}</Text>
-      <ChevronRightIcon size={18} color={Colors.textMuted} />
+      <ChevronRightIcon size={18} color={theme.color.inkMuted} />
     </TouchableOpacity>
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.background },
-  unauthText: { fontSize: 16, color: Colors.textSecondary, marginBottom: 20 },
-  signInBtn: { paddingHorizontal: 32, paddingVertical: 14, backgroundColor: Colors.ink, borderRadius: BORDER_RADIUS },
-  signInBtnText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
+function makeStyles(theme: VarsTheme) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.color.bg },
+    centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.color.bg },
+    unauthText: { fontSize: 16, color: theme.color.inkMuted, marginBottom: 20 },
+    signInBtn: { paddingHorizontal: 32, paddingVertical: 14, backgroundColor: theme.color.ink, borderRadius: BORDER_RADIUS },
+    signInBtnText: { color: theme.color.inverseInk, fontSize: 16, fontWeight: '700' },
 
-  // Header
-  header: {
-    alignItems: 'center', paddingHorizontal: 20, paddingBottom: 28,
-    backgroundColor: Colors.background, borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  avatarWrap: { position: 'relative', marginBottom: 14 },
-  avatar: { width: 88, height: 88, borderRadius: 44 },
-  avatarFallback: { backgroundColor: Colors.ink, alignItems: 'center', justifyContent: 'center' },
-  avatarInitial: { fontSize: 36, fontWeight: '800', color: Colors.white },
-  editPhotoBadge: {
-    position: 'absolute', bottom: 0, right: 0,
-    width: 26, height: 26, borderRadius: 13,
-    backgroundColor: Colors.ink,
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: Colors.background,
-  },
-  name: { fontSize: 22, fontWeight: '800', color: Colors.text, marginBottom: 4 },
-  phoneDisplay: { fontSize: 14, color: Colors.textSecondary, marginBottom: 12 },
-  editBtn: { paddingHorizontal: 20, paddingVertical: 8, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 5 },
-  editBtnText: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
+    // Header
+    header: {
+      alignItems: 'center', paddingHorizontal: 20, paddingBottom: 28,
+      backgroundColor: theme.color.bg, borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+    },
+    avatarWrap: { position: 'relative', marginBottom: 14 },
+    avatar: { width: 88, height: 88, borderRadius: 44 },
+    avatarFallback: { backgroundColor: theme.color.ink, alignItems: 'center', justifyContent: 'center' },
+    avatarInitial: { fontSize: 36, fontWeight: '800', color: theme.color.inverseInk },
+    editPhotoBadge: {
+      position: 'absolute', bottom: 0, right: 0,
+      width: 26, height: 26, borderRadius: 13,
+      backgroundColor: theme.color.ink,
+      alignItems: 'center', justifyContent: 'center',
+      borderWidth: 2, borderColor: theme.color.bg,
+    },
+    name: { fontSize: 22, fontWeight: '800', color: theme.color.ink, marginBottom: 4 },
+    phoneDisplay: { fontSize: 14, color: theme.color.inkMuted, marginBottom: 12 },
+    editBtn: { paddingHorizontal: 20, paddingVertical: 8, borderWidth: 1.5, borderColor: theme.color.inkFaint, borderRadius: 5 },
+    editBtnText: { fontSize: 13, fontWeight: '600', color: theme.color.inkMuted },
 
-  // Edit form
-  editForm: { width: '100%', gap: 10, marginTop: 4 },
-  input: {
-    backgroundColor: Colors.surface, borderRadius: BORDER_RADIUS,
-    borderWidth: 1.5, borderColor: Colors.border,
-    paddingHorizontal: 14, paddingVertical: 11,
-    fontSize: 15, color: Colors.text,
-  },
-  editActions: { flexDirection: 'row', gap: 10 },
-  cancelBtn: {
-    flex: 1, height: 46, borderRadius: 5,
-    borderWidth: 1.5, borderColor: Colors.border,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  cancelBtnText: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
-  saveBtn: {
-    flex: 2, height: 46, borderRadius: BORDER_RADIUS,
-    backgroundColor: Colors.ink,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  saveBtnText: { fontSize: 14, fontWeight: '700', color: Colors.white },
-  btnDisabled: { opacity: 0.5 },
+    // Edit form
+    editForm: { width: '100%', gap: 10, marginTop: 4 },
+    input: {
+      backgroundColor: theme.color.surface2, borderRadius: BORDER_RADIUS,
+      borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      paddingHorizontal: 14, paddingVertical: 11,
+      fontSize: 15, color: theme.color.ink,
+    },
+    editActions: { flexDirection: 'row', gap: 10 },
+    cancelBtn: {
+      flex: 1, height: 46, borderRadius: 5,
+      borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    cancelBtnText: { fontSize: 14, fontWeight: '600', color: theme.color.inkMuted },
+    saveBtn: {
+      flex: 2, height: 46, borderRadius: BORDER_RADIUS,
+      backgroundColor: theme.color.ink,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    saveBtnText: { fontSize: 14, fontWeight: '700', color: theme.color.inverseInk },
+    btnDisabled: { opacity: 0.5 },
 
-  // Section
-  section: { paddingTop: 24, paddingHorizontal: 16 },
-  sectionTitle: {
-    fontSize: 12, fontWeight: '700', color: Colors.textMuted,
-    textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8,
-  },
-  sectionBody: {
-    backgroundColor: Colors.background,
-    borderRadius: 5, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden',
-  },
+    // Section
+    section: { paddingTop: 24, paddingHorizontal: 16 },
+    sectionTitle: {
+      fontSize: 12, fontWeight: '700', color: theme.color.inkMuted,
+      textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8,
+    },
+    sectionBody: {
+      backgroundColor: theme.color.bg,
+      borderRadius: 5, borderWidth: 1, borderColor: theme.color.inkFaint, overflow: 'hidden',
+    },
 
-  // Booking rows
-  bookingRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 14, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  bookingService: { fontSize: 14, fontWeight: '700', color: Colors.text },
-  bookingMeta: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
-  bookingPrice: { fontSize: 14, fontWeight: '700', color: Colors.text },
-  statusPill: { borderRadius: BORDER_RADIUS, paddingHorizontal: 7, paddingVertical: 2 },
-  statusText: { fontSize: 11, fontWeight: '700', textTransform: 'capitalize' },
-  reviewBtn: {
-    borderWidth: 1, borderColor: Colors.border, borderRadius: BORDER_RADIUS,
-    paddingHorizontal: 8, paddingVertical: 3,
-  },
-  reviewBtnText: { fontSize: 11, fontWeight: '700', color: Colors.textSecondary },
-  reviewedText: { fontSize: 11, color: Colors.textMuted, fontWeight: '600' },
-  emptyText: { fontSize: 13, color: Colors.textMuted, padding: 16, textAlign: 'center' },
+    // Booking rows
+    bookingRow: {
+      flexDirection: 'row', alignItems: 'center',
+      paddingHorizontal: 14, paddingVertical: 12,
+      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+    },
+    bookingService: { fontSize: 14, fontWeight: '700', color: theme.color.ink },
+    bookingMeta: { fontSize: 12, color: theme.color.inkMuted, marginTop: 2 },
+    bookingPrice: { fontSize: 14, fontWeight: '700', color: theme.color.ink },
+    statusPill: { borderRadius: BORDER_RADIUS, paddingHorizontal: 7, paddingVertical: 2 },
+    statusText: { fontSize: 11, fontWeight: '700', textTransform: 'capitalize' },
+    reviewBtn: {
+      borderWidth: 1, borderColor: theme.color.inkFaint, borderRadius: BORDER_RADIUS,
+      paddingHorizontal: 8, paddingVertical: 3,
+    },
+    reviewBtnText: { fontSize: 11, fontWeight: '700', color: theme.color.inkMuted },
+    reviewedText: { fontSize: 11, color: theme.color.inkMuted, fontWeight: '600' },
+    emptyText: { fontSize: 13, color: theme.color.inkMuted, padding: 16, textAlign: 'center' },
 
-  // Settings
-  settingsRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: 14, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  settingsIcon: { width: 24, alignItems: 'center' as const, justifyContent: 'center' as const },
-  settingsLabel: { flex: 1, fontSize: 14, fontWeight: '600', color: Colors.text },
-  switchRow: {
-    paddingHorizontal: 14, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  switchRowLast: { borderBottomWidth: 0 },
+    // Settings
+    settingsRow: {
+      flexDirection: 'row', alignItems: 'center', gap: 12,
+      paddingHorizontal: 14, paddingVertical: 14,
+      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+    },
+    settingsIcon: { width: 24, alignItems: 'center' as const, justifyContent: 'center' as const },
+    settingsLabel: { flex: 1, fontSize: 14, fontWeight: '600', color: theme.color.ink },
+    switchRow: {
+      paddingHorizontal: 14, paddingVertical: 10,
+      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+    },
+    switchRowLast: { borderBottomWidth: 0 },
 
-  // Sign out
-  signOutWrap: { alignItems: 'center', paddingTop: 32, paddingBottom: 8, gap: 12 },
-  signOutBtn: { paddingHorizontal: 32, paddingVertical: 12, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 5 },
-  signOutText: { fontSize: 15, fontWeight: '600', color: Colors.error },
-  versionText: { fontSize: 12, color: Colors.textMuted },
-});
+    // Sign out
+    signOutWrap: { alignItems: 'center', paddingTop: 32, paddingBottom: 8, gap: 12 },
+    signOutBtn: { paddingHorizontal: 32, paddingVertical: 12, borderWidth: 1.5, borderColor: theme.color.inkFaint, borderRadius: 5 },
+    signOutText: { fontSize: 15, fontWeight: '600', color: theme.color.accentRed },
+    versionText: { fontSize: 12, color: theme.color.inkMuted },
+  });
+}

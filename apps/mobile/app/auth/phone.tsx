@@ -5,7 +5,7 @@
 // Helper text: "So your stylist can reach you on the day"
 // ============================================================
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -19,12 +19,15 @@ import {
 } from 'react-native';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router } from 'expo-router';
-import { Colors } from '@/constants/colors';
+import { VarsTheme } from '@/constants/visualSystem';
+import { useVarsTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { savePhoneNumber } from '@/lib/auth';
 import { hasAcceptedCurrentTerms } from '@/lib/termsGate';
 
 export default function PhoneScreen() {
+  const { theme } = useVarsTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const { user, refreshProfile } = useAuth();
   const [phone, setPhone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -64,7 +67,7 @@ export default function PhoneScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={theme.appearance === 'dark' ? 'light-content' : 'dark-content'} />
       <View style={styles.inner}>
         <Text style={styles.wordmark}>VARS</Text>
 
@@ -78,7 +81,7 @@ export default function PhoneScreen() {
         <TextInput
           style={styles.input}
           placeholder="+234 800 000 0000"
-          placeholderTextColor={Colors.textMuted}
+          placeholderTextColor={theme.color.inkMuted}
           value={phone}
           onChangeText={setPhone}
           keyboardType="phone-pad"
@@ -105,63 +108,65 @@ export default function PhoneScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  inner: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 100,
-  },
-  wordmark: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: Colors.primary,
-    letterSpacing: -1,
-    marginBottom: 40,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: Colors.text,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 18,
-    fontWeight: '500',
-    color: Colors.text,
-    marginBottom: 6,
-  },
-  helper: {
-    fontSize: 15,
-    color: Colors.textSecondary,
-    marginBottom: 32,
-  },
-  input: {
-    height: 58,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    borderRadius: 5,
-    paddingHorizontal: 16,
-    fontSize: 18,
-    color: Colors.text,
-    marginBottom: 16,
-  },
-  button: {
-    height: 56,
-    backgroundColor: Colors.primary,
-    borderRadius: 5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-});
+function makeStyles(theme: VarsTheme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.color.bg,
+    },
+    inner: {
+      flex: 1,
+      paddingHorizontal: 24,
+      paddingTop: 100,
+    },
+    wordmark: {
+      fontSize: 32,
+      fontWeight: '800',
+      color: theme.color.accentBlue,
+      letterSpacing: -1,
+      marginBottom: 40,
+    },
+    title: {
+      fontSize: 28,
+      fontWeight: '700',
+      color: theme.color.ink,
+      marginBottom: 8,
+    },
+    subtitle: {
+      fontSize: 18,
+      fontWeight: '500',
+      color: theme.color.ink,
+      marginBottom: 6,
+    },
+    helper: {
+      fontSize: 15,
+      color: theme.color.inkMuted,
+      marginBottom: 32,
+    },
+    input: {
+      height: 58,
+      borderWidth: 1.5,
+      borderColor: theme.color.inkFaint,
+      borderRadius: 5,
+      paddingHorizontal: 16,
+      fontSize: 18,
+      color: theme.color.ink,
+      marginBottom: 16,
+    },
+    button: {
+      height: 56,
+      backgroundColor: theme.color.accentBlue,
+      borderRadius: 5,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    buttonDisabled: {
+      opacity: 0.5,
+    },
+    buttonText: {
+      color: theme.color.inverseInk,
+      fontSize: 16,
+      fontWeight: '700',
+    },
+  });
+}

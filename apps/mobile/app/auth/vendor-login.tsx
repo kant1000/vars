@@ -13,7 +13,7 @@
 // OTP delivery: email (via Resend) + WhatsApp (via 360dialog hook)
 // ============================================================
 
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -31,7 +31,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
-import { Colors, BORDER_RADIUS } from '@/constants/colors';
+import { BORDER_RADIUS } from '@/constants/colors';
+import { VarsTheme } from '@/constants/visualSystem';
+import { useVarsTheme } from '@/contexts/ThemeContext';
 
 type Screen = 'entry' | 'password' | 'otp_input' | 'create_password' | 'not_found';
 type IdentifierType = 'email' | 'phone';
@@ -50,6 +52,8 @@ function normalizePhone(raw: string): string {
 }
 
 export default function VendorLoginScreen() {
+  const { theme } = useVarsTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [screen, setScreen] = useState<Screen>('entry');
   const [identifierType, setIdentifierType] = useState<IdentifierType>('email');
   const [identifier, setIdentifier] = useState('');
@@ -276,7 +280,7 @@ export default function VendorLoginScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={theme.appearance === 'dark' ? 'light-content' : 'dark-content'} />
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
@@ -324,7 +328,7 @@ export default function VendorLoginScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Email address"
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor={theme.color.inkMuted}
                 value={identifier}
                 onChangeText={setIdentifier}
                 keyboardType="email-address"
@@ -337,7 +341,7 @@ export default function VendorLoginScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Phone number (e.g. 08012345678)"
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor={theme.color.inkMuted}
                 value={identifier}
                 onChangeText={setIdentifier}
                 keyboardType="phone-pad"
@@ -371,7 +375,7 @@ export default function VendorLoginScreen() {
             <TextInput
               style={styles.input}
               placeholder="Password"
-              placeholderTextColor={Colors.textMuted}
+              placeholderTextColor={theme.color.inkMuted}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -417,7 +421,7 @@ export default function VendorLoginScreen() {
             <TextInput
               style={[styles.input, styles.otpInput]}
               placeholder="000000"
-              placeholderTextColor={Colors.textMuted}
+              placeholderTextColor={theme.color.inkMuted}
               value={otpCode}
               onChangeText={(t) => setOtpCode(t.replace(/\D/g, '').slice(0, 6))}
               keyboardType="number-pad"
@@ -458,7 +462,7 @@ export default function VendorLoginScreen() {
             <TextInput
               style={styles.input}
               placeholder="New password (min. 8 characters)"
-              placeholderTextColor={Colors.textMuted}
+              placeholderTextColor={theme.color.inkMuted}
               value={newPassword}
               onChangeText={setNewPassword}
               secureTextEntry
@@ -469,7 +473,7 @@ export default function VendorLoginScreen() {
             <TextInput
               style={styles.input}
               placeholder="Confirm password"
-              placeholderTextColor={Colors.textMuted}
+              placeholderTextColor={theme.color.inkMuted}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               secureTextEntry
@@ -525,58 +529,60 @@ export default function VendorLoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  scroll: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 60, paddingBottom: 40 },
+function makeStyles(theme: VarsTheme) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.color.bg },
+    scroll: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 60, paddingBottom: 40 },
 
-  topRow: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', marginBottom: 32,
-  },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  backText: { fontSize: 28, color: Colors.ink, lineHeight: 32 },
-  customerLinkText: { fontSize: 13, fontWeight: '700', letterSpacing: 1.2, color: Colors.text },
+    topRow: {
+      flexDirection: 'row', justifyContent: 'space-between',
+      alignItems: 'center', marginBottom: 32,
+    },
+    backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+    backText: { fontSize: 28, color: theme.color.ink, lineHeight: 32 },
+    customerLinkText: { fontSize: 13, fontWeight: '700', letterSpacing: 1.2, color: theme.color.ink },
 
-  wordmark: {
-    fontSize: 36, fontWeight: '800', color: Colors.ink,
-    letterSpacing: -1, marginBottom: 12,
-  },
-  title: { fontSize: 26, fontWeight: '700', color: Colors.text, marginBottom: 6 },
-  sub: { fontSize: 15, color: Colors.textSecondary, marginBottom: 28, lineHeight: 22 },
+    wordmark: {
+      fontSize: 36, fontWeight: '800', color: theme.color.ink,
+      letterSpacing: -1, marginBottom: 12,
+    },
+    title: { fontSize: 26, fontWeight: '700', color: theme.color.ink, marginBottom: 6 },
+    sub: { fontSize: 15, color: theme.color.inkMuted, marginBottom: 28, lineHeight: 22 },
 
-  tabRow: {
-    flexDirection: 'row', backgroundColor: Colors.surface,
-    borderRadius: BORDER_RADIUS, padding: 4, marginBottom: 20,
-  },
-  tab: {
-    flex: 1, paddingVertical: 10, borderRadius: BORDER_RADIUS,
-    alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6,
-  },
-  tabActive: {
-    backgroundColor: Colors.background,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
-  },
-  tabText: { fontSize: 15, fontWeight: '500', color: Colors.textSecondary },
-  tabTextActive: { color: Colors.text, fontWeight: '600' },
+    tabRow: {
+      flexDirection: 'row', backgroundColor: theme.color.surface2,
+      borderRadius: BORDER_RADIUS, padding: 4, marginBottom: 20,
+    },
+    tab: {
+      flex: 1, paddingVertical: 10, borderRadius: BORDER_RADIUS,
+      alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6,
+    },
+    tabActive: {
+      backgroundColor: theme.color.bg,
+      shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
+    },
+    tabText: { fontSize: 15, fontWeight: '500', color: theme.color.inkMuted },
+    tabTextActive: { color: theme.color.ink, fontWeight: '600' },
 
-  input: {
-    height: 54, borderWidth: 1.5, borderColor: Colors.border,
-    borderRadius: BORDER_RADIUS, paddingHorizontal: 16,
-    fontSize: 16, color: Colors.text, marginBottom: 14,
-    backgroundColor: Colors.background,
-  },
-  inputDisabled: { backgroundColor: Colors.surface, color: Colors.textMuted },
-  otpInput: { textAlign: 'center', fontSize: 24, fontWeight: '700', letterSpacing: 6 },
+    input: {
+      height: 54, borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      borderRadius: BORDER_RADIUS, paddingHorizontal: 16,
+      fontSize: 16, color: theme.color.ink, marginBottom: 14,
+      backgroundColor: theme.color.bg,
+    },
+    inputDisabled: { backgroundColor: theme.color.surface2, color: theme.color.inkMuted },
+    otpInput: { textAlign: 'center', fontSize: 24, fontWeight: '700', letterSpacing: 6 },
 
-  button: {
-    height: 54, backgroundColor: Colors.ink,
-    borderRadius: BORDER_RADIUS, alignItems: 'center',
-    justifyContent: 'center', marginTop: 4,
-  },
-  buttonDisabled: { opacity: 0.4 },
-  buttonText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
+    button: {
+      height: 54, backgroundColor: theme.color.ink,
+      borderRadius: BORDER_RADIUS, alignItems: 'center',
+      justifyContent: 'center', marginTop: 4,
+    },
+    buttonDisabled: { opacity: 0.4 },
+    buttonText: { color: theme.color.inverseInk, fontSize: 16, fontWeight: '700' },
 
-  secondaryAction: { alignItems: 'center', paddingVertical: 16 },
-  secondaryActionText: { fontSize: 14, color: Colors.ink, fontWeight: '500' },
-});
+    secondaryAction: { alignItems: 'center', paddingVertical: 16 },
+    secondaryActionText: { fontSize: 14, color: theme.color.ink, fontWeight: '500' },
+  });
+}
