@@ -38,7 +38,7 @@ import {
 // ios: verified against sf-symbols-typescript's SFSymbol union (all 33 present).
 // android: verified against @expo/vector-icons MaterialIcons glyph map (all 33 present,
 // hyphenated names — this is the classic Material Icons font, not Material Symbols;
-// see docs/MOBILE_VISUAL_SYSTEM_OVERHAUL.md section 3.3 for why).
+// see the Icon system row in docs/VARS_PROJECT_CONTEXT.md for why).
 export const iconSystemNames = {
   add: { ios: 'plus', android: 'add' },
   arrowUp: { ios: 'arrow.up', android: 'arrow-upward' },

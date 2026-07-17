@@ -23,7 +23,7 @@ export const varsLight = {
     accentBlue: '#0A7AFF',
     accentAmber: '#F59E0B',
     accentGreen: '#22C55E',
-    accentRed: '#EF4444',
+    accentRed: '#DC2626',
   },
 };
 

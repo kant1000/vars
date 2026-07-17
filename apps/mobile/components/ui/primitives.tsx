@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import {
+  AccessibilityInfo,
   Animated,
   Easing,
   Modal,
@@ -38,6 +39,21 @@ const TONE_ACCENT: Record<Tone, keyof VarsTheme['color']> = {
   danger: 'accentRed',
   info: 'accentBlue',
 };
+
+function useReduceMotion() {
+  const [reduceMotion, setReduceMotion] = React.useState(false);
+
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then(setReduceMotion)
+      .catch(() => {});
+
+    const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
+    return () => subscription.remove();
+  }, []);
+
+  return reduceMotion;
+}
 
 export function VarsIcon({
   name,
@@ -97,6 +113,7 @@ export function VarsButton({
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={label}
       accessibilityState={{ disabled: disabled || loading, busy: loading }}
       disabled={disabled || loading}
       onPress={onPress}
@@ -138,11 +155,14 @@ export function VarsInput({
   theme?: VarsTheme;
   containerStyle?: StyleProp<ViewStyle>;
 }) {
+  const accessibilityLabel = props.accessibilityLabel ?? label ?? props.placeholder;
+
   return (
     <View style={containerStyle}>
       {label ? <Text style={[styles.label, { color: theme.color.inkMuted }]}>{label}</Text> : null}
       <TextInput
         {...props}
+        accessibilityLabel={accessibilityLabel}
         placeholderTextColor={theme.color.inkMuted}
         style={[
           styles.input,
@@ -216,15 +236,21 @@ export function VarsSwitch({
   disabled?: boolean;
 }) {
   const thumbPosition = useRef(new Animated.Value(value ? 1 : 0)).current;
+  const reduceMotion = useReduceMotion();
 
   useEffect(() => {
+    if (reduceMotion) {
+      thumbPosition.setValue(value ? 1 : 0);
+      return;
+    }
+
     Animated.timing(thumbPosition, {
       toValue: value ? 1 : 0,
       duration: 160,
       easing: Easing.inOut(Easing.ease),
       useNativeDriver: true,
     }).start();
-  }, [value, thumbPosition]);
+  }, [value, thumbPosition, reduceMotion]);
 
   const translateX = thumbPosition.interpolate({
     inputRange: [0, 1],
@@ -339,8 +365,14 @@ export function VarsSkeleton({
   style?: StyleProp<ViewStyle>;
 }) {
   const pulse = useRef(new Animated.Value(0.45)).current;
+  const reduceMotion = useReduceMotion();
 
   useEffect(() => {
+    if (reduceMotion) {
+      pulse.setValue(0.7);
+      return;
+    }
+
     const animation = Animated.loop(
       Animated.sequence([
         Animated.timing(pulse, { toValue: 1, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
@@ -349,7 +381,7 @@ export function VarsSkeleton({
     );
     animation.start();
     return () => animation.stop();
-  }, [pulse]);
+  }, [pulse, reduceMotion]);
 
   return (
     <Animated.View
@@ -384,7 +416,11 @@ export function VarsToast({
 }) {
   const accent = theme.color[TONE_ACCENT[tone]];
   return (
-    <View style={[styles.toast, { backgroundColor: theme.color.ink }]}>
+    <View
+      accessibilityLabel={actionLabel ? `${message}. ${actionLabel}` : message}
+      accessibilityLiveRegion="polite"
+      style={[styles.toast, { backgroundColor: theme.color.ink }]}
+    >
       <View style={[styles.toastDot, { backgroundColor: accent }]} />
       <Text style={[styles.toastText, { color: theme.color.inverseInk }]} numberOfLines={2}>
         {message}
@@ -425,7 +461,12 @@ export function VarsDialog({
   return (
     <Modal transparent visible={visible} animationType="fade" onRequestClose={onDismiss}>
       <Pressable style={[styles.dialogOverlay, { backgroundColor: theme.color.overlay }]} onPress={onDismiss}>
-        <Pressable style={[styles.dialog, panelStyle]}>
+        <Pressable
+          accessibilityLabel={title}
+          accessibilityViewIsModal
+          importantForAccessibility="yes"
+          style={[styles.dialog, panelStyle]}
+        >
           <View style={[styles.dialogRail, { backgroundColor: accent }]} />
           <Text style={[styles.dialogTitle, { color: theme.color.ink }]}>{title}</Text>
           <Text style={[styles.dialogBody, { color: theme.color.inkMuted }]}>{body}</Text>
