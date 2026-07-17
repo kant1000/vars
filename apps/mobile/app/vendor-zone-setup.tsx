@@ -165,7 +165,7 @@ export default function VendorZoneSetup() {
   if (loading) {
     return (
       <View style={s.centered}>
-        <ScissorsLoader size="medium" color="dark" />
+        <ScissorsLoader size="medium" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
       </View>
     );
   }
@@ -304,7 +304,7 @@ export default function VendorZoneSetup() {
 function makeStyles(theme: VarsTheme) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.color.bg },
-    centered:  { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    centered:  { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.color.bg },
 
     header: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',

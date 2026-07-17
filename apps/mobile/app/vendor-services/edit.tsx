@@ -146,7 +146,7 @@ export default function EditServiceScreen() {
   };
 
   if (isLoading) {
-    return <View style={styles.center}><ScissorsLoader size="small" color="dark" /></View>;
+    return <View style={styles.center}><ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'light' : 'dark'} /></View>;
   }
 
   const l2Options = CATEGORY_L2_MAP[formL1] ?? [];
@@ -284,7 +284,7 @@ function makeStyles(theme: VarsTheme) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.color.bg },
     scroll: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 60 },
-    center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.color.bg },
 
     headerRow: { marginBottom: 12 },
     backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
