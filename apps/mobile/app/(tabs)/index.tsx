@@ -237,7 +237,7 @@ export default function HomeScreen() {
           ListHeaderComponent={
             refreshing ? (
               <View style={{ alignItems: 'center', paddingVertical: 12 }}>
-                <ScissorsLoader size="small" color="dark" />
+                <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
               </View>
             ) : null
           }
@@ -253,7 +253,7 @@ export default function HomeScreen() {
           }
           ListFooterComponent={
             hasMore && renderedVendors.length > 0 ? (
-              <View style={styles.centered}><ScissorsLoader size="small" color="dark" /></View>
+              <View style={styles.centered}><ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'light' : 'dark'} /></View>
             ) : null
           }
         />

@@ -98,7 +98,7 @@ export default function PhoneScreen() {
           activeOpacity={0.85}
         >
           {isLoading ? (
-            <ScissorsLoader size="small" color="light" />
+            <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} />
           ) : (
             <Text style={styles.buttonText}>Continue</Text>
           )}

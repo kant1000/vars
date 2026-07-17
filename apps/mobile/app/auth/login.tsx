@@ -248,7 +248,7 @@ export default function LoginScreen() {
             activeOpacity={0.85}
           >
             {isLoading ? (
-              <ScissorsLoader size="small" color="light" />
+              <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} />
             ) : (
               <Text style={styles.submitText}>
                 {mode === 'signin' ? 'Sign in' : 'Create account'}

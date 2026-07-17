@@ -237,7 +237,7 @@ export default function NotificationsScreen() {
       >
         {refreshing && (
           <View style={{ alignItems: 'center', paddingTop: 8, paddingBottom: 4 }}>
-            <ScissorsLoader size="small" color="dark" />
+            <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
           </View>
         )}
         {loading ? (

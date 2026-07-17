@@ -467,7 +467,7 @@ export default function BookingDetailScreen() {
   };
 
   if (loading && !booking) {
-    return <View style={s.centered}><ScissorsLoader size="large" color="dark" /></View>;
+    return <View style={s.centered}><ScissorsLoader size="large" color={theme.appearance === 'dark' ? 'light' : 'dark'} /></View>;
   }
 
   if (!booking) {
@@ -508,7 +508,7 @@ export default function BookingDetailScreen() {
       >
         {refreshing && (
           <View style={{ alignItems: 'center', paddingTop: 8, paddingBottom: 4 }}>
-            <ScissorsLoader size="small" color="dark" />
+            <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
           </View>
         )}
         {/* Status hero */}
@@ -601,7 +601,7 @@ export default function BookingDetailScreen() {
               disabled={actionLoading}
             >
               {actionLoading
-                ? <ScissorsLoader size="small" color="light" />
+                ? <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} />
                 : <Text style={s.primaryBtnText}>Confirm service complete</Text>
               }
             </TouchableOpacity>
@@ -624,7 +624,7 @@ export default function BookingDetailScreen() {
               disabled={actionLoading}
             >
               {actionLoading
-                ? <ScissorsLoader size="small" color="dark" />
+                ? <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
                 : <Text style={s.cancelBtnText}>Cancel booking</Text>
               }
             </TouchableOpacity>
@@ -726,7 +726,7 @@ export default function BookingDetailScreen() {
                 disabled={actionLoading}
               >
                 {actionLoading
-                  ? <ScissorsLoader size="small" color="light" />
+                  ? <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} />
                   : <Text style={s.primaryBtnText}>Accept new time</Text>}
               </TouchableOpacity>
               <TouchableOpacity

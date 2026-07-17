@@ -270,7 +270,7 @@ export default function EditServiceScreen() {
         activeOpacity={0.85}
       >
         {isSaving
-          ? <ScissorsLoader size="small" color="light" />
+          ? <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} />
           : <Text style={styles.saveBtnText}>Save changes</Text>}
       </TouchableOpacity>
       <TouchableOpacity onPress={() => router.back()} style={styles.cancelBtn} activeOpacity={0.7}>

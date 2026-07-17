@@ -276,7 +276,7 @@ function Step1({
         )}
 
         {loadingSlots ? (
-          <View style={s.centered}><ScissorsLoader size="small" color="dark" /></View>
+          <View style={s.centered}><ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'light' : 'dark'} /></View>
         ) : (
           <View style={s.slotGrid}>
             {slotRows.map((row, ri) => {
@@ -634,7 +634,7 @@ function CardVerifyView({
           startInLoadingState
           renderLoading={() => (
             <View style={[{ flex: 1 }, s.centered]}>
-              <ScissorsLoader size="large" color="dark" />
+              <ScissorsLoader size="large" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
             </View>
           )}
         />
@@ -645,7 +645,7 @@ function CardVerifyView({
   if (phase === 'polling') {
     return (
       <View style={[{ flex: 1 }, s.centered]}>
-        <ScissorsLoader size="large" color="dark" />
+        <ScissorsLoader size="large" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
         <Text style={{ fontSize: 14, color: theme.color.inkMuted, marginTop: 20, textAlign: 'center', paddingHorizontal: 32 }}>
           Verifying your card — this only takes a moment.
         </Text>
@@ -948,7 +948,7 @@ export default function BookingFlow() {
   if (loadingServices) {
     return (
       <View style={[s.container, { paddingTop: insets.top }]}>
-        <View style={s.centered}><ScissorsLoader size="large" color="dark" /></View>
+        <View style={s.centered}><ScissorsLoader size="large" color={theme.appearance === 'dark' ? 'light' : 'dark'} /></View>
       </View>
     );
   }
@@ -1032,7 +1032,7 @@ export default function BookingFlow() {
 function makeStyles(theme: VarsTheme) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.color.bg },
-    centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60 },
+    centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60, backgroundColor: theme.color.bg },
     header: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       paddingHorizontal: 16, paddingVertical: 12,

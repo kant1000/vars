@@ -110,7 +110,7 @@ export default function Step3Portfolio() {
             activeOpacity={0.8}
           >
             {isUploading ? (
-              <ScissorsLoader size="small" color="dark" />
+              <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
             ) : (
               <>
                 <Text style={styles.addIcon}>+</Text>

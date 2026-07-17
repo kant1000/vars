@@ -253,7 +253,7 @@ export default function AddServiceScreen() {
         activeOpacity={0.85}
       >
         {isSaving
-          ? <ScissorsLoader size="small" color="light" />
+          ? <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} />
           : <Text style={styles.saveBtnText}>Save service</Text>}
       </TouchableOpacity>
     </ScrollView>

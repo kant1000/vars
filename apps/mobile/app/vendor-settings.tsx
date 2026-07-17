@@ -236,7 +236,7 @@ export default function VendorSettings() {
                 accessibilityRole="button"
               >
                 {savingName
-                  ? <ScissorsLoader size="small" color="light" />
+                  ? <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} />
                   : <CheckIcon size={18} color={theme.color.inverseInk} />}
               </TouchableOpacity>
             )}
@@ -470,7 +470,7 @@ export default function VendorSettings() {
                 activeOpacity={0.85}
               >
                 {savingPassword
-                  ? <ScissorsLoader size="small" color="light" />
+                  ? <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} />
                   : <Text style={s.saveBtnText}>Update password</Text>}
               </TouchableOpacity>
             </View>

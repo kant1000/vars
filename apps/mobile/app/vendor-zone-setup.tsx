@@ -279,7 +279,7 @@ export default function VendorZoneSetup() {
             disabled={saving}
           >
             {saving
-              ? <ScissorsLoader size="small" color="light" />
+              ? <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} />
               : <Text style={s.saveBtnText}>Save zone settings</Text>
             }
           </TouchableOpacity>

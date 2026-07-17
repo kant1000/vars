@@ -98,6 +98,7 @@ function PendingCard({
   isPioneer: boolean;
   c: ReturnType<typeof makeStylesC>;
 }) {
+  const { theme } = useVarsTheme();
   const [acting, setActing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   // 1-hour window from booking creation (server enforces this via paystack-capture)
@@ -163,7 +164,7 @@ function PendingCard({
           onPress={() => handle('accept')}
           disabled={acting}
         >
-          {acting ? <ScissorsLoader size="small" color="light" />
+          {acting ? <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} />
             : <Text style={c.acceptBtnText}>Accept</Text>}
         </TouchableOpacity>
       </View>
@@ -407,7 +408,7 @@ function ActiveCard({
           disabled={cancelling}
         >
           {cancelling
-            ? <ScissorsLoader size="small" color="dark" />
+            ? <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
             : <Text style={[c.vendorCancelText, isInGracePeriod && c.vendorCancelTextGrace]}>
                 {isInGracePeriod ? 'Cancel penalty-free' : 'Cancel booking'}
               </Text>
@@ -473,7 +474,7 @@ function GateModal({
           )}
           {stage === 'charging' && (
             <>
-              <ScissorsLoader size="large" color="dark" />
+              <ScissorsLoader size="large" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
               <Text style={gm.chargingTitle}>Securing payment...</Text>
               <Text style={gm.subText}>Hang tight, this takes a second.</Text>
             </>
@@ -532,6 +533,7 @@ function BookingRow({
   isPioneer?: boolean;
   c: ReturnType<typeof makeStylesC>;
 }) {
+  const { theme } = useVarsTheme();
   const [addingPhoto, setAddingPhoto] = useState(false);
   const isCompleted = booking.status === 'completed';
   const profileFull = (vendorPhotoCount ?? 0) >= 10;
@@ -597,7 +599,7 @@ function BookingRow({
               style={c.addPhotoBtn}
             >
               {addingPhoto
-                ? <ScissorsLoader size="small" color="dark" />
+                ? <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
                 : <Text style={c.addPhotoBtnText}>+ Add a photo from this job</Text>}
             </TouchableOpacity>
           )
@@ -888,7 +890,7 @@ export default function VendorJobsScreen() {
   const history  = bookings.filter((b) => HISTORY_STATUSES.includes(b.status));
 
   // Show spinner only when there's genuinely nothing to display yet (cache not yet seeded)
-  if (loading && bookings.length === 0) return <View style={c.centered}><ScissorsLoader size="large" color="dark" /></View>;
+  if (loading && bookings.length === 0) return <View style={c.centered}><ScissorsLoader size="large" color={theme.appearance === 'dark' ? 'light' : 'dark'} /></View>;
 
   // Restriction blocking wall — full-screen, no navigation out until admin lifts restriction
   if (isRestricted) {
@@ -927,7 +929,7 @@ export default function VendorJobsScreen() {
             }}
           >
             {repaymentClaiming
-              ? <ScissorsLoader size="small" color="light" />
+              ? <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} />
               : <Text style={c.restrictClaimBtnText}>I've paid</Text>}
           </TouchableOpacity>
         ) : (
@@ -970,7 +972,7 @@ export default function VendorJobsScreen() {
             {/* Actual content centred absolutely so it never affects layout */}
             <View style={c.onlineToggleOverlay}>
               {togglingOnline ? (
-                <ScissorsLoader size="small" color="dark" />
+                <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
               ) : isOnline ? (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                   <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: theme.color.accentGreen }} />
@@ -1011,7 +1013,7 @@ export default function VendorJobsScreen() {
       >
         {refreshing && (
           <View style={{ alignItems: 'center', paddingTop: 8, paddingBottom: 4 }}>
-            <ScissorsLoader size="small" color="dark" />
+            <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
           </View>
         )}
 

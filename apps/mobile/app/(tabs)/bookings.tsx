@@ -180,7 +180,7 @@ export default function BookingsScreen() {
         ListHeaderComponent={
           refreshing ? (
             <View style={{ alignItems: 'center', paddingVertical: 12 }}>
-              <ScissorsLoader size="small" color="dark" />
+              <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
             </View>
           ) : null
         }

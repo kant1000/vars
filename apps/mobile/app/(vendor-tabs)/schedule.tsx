@@ -495,7 +495,7 @@ function BookingBottomSheet({
                 <Text style={bs.rescheduleHeading}>Suggest another time</Text>
                 {loadingRescheduleSlots ? (
                   <View style={{ alignItems: 'center', paddingVertical: 20 }}>
-                    <ScissorsLoader size="small" color="dark" />
+                    <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
                   </View>
                 ) : (
                   <>
@@ -966,7 +966,7 @@ function BlockRangeSheet({
           activeOpacity={0.85}
         >
           {saving
-            ? <ScissorsLoader size="small" color="light" />
+            ? <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} />
             : <Text style={br.confirmBtnText}>
                 {slotCount > 0
                   ? `${isBlock ? 'Block' : 'Unblock'} ${slotCount} slot${slotCount !== 1 ? 's' : ''}`
@@ -1537,7 +1537,7 @@ export default function ScheduleScreen() {
   };
 
   if (loading) {
-    return <View style={s.centered}><ScissorsLoader size="small" color="dark" /></View>;
+    return <View style={s.centered}><ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'light' : 'dark'} /></View>;
   }
 
   // Show ⚡ on available slots only when the vendor has confirmed their zone
@@ -1632,7 +1632,7 @@ export default function ScheduleScreen() {
                     activeOpacity={0.75}
                   >
                     {blockingDay
-                      ? <ScissorsLoader size="small" color="dark" />
+                      ? <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
                       : <Text style={s.blockDayBtnText}>{allBlocked ? 'Unblock day' : 'Block day'}</Text>
                     }
                   </TouchableOpacity>
@@ -1698,7 +1698,7 @@ export default function ScheduleScreen() {
                   activeOpacity={0.7}
                 >
                   {isToggling ? (
-                    <ScissorsLoader size="small" color="dark" />
+                    <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
                   ) : (
                     <>
                       <Text style={[s.slotTime, { color: isPast ? theme.color.inkMuted : theme.color.ink }]}>
@@ -1735,7 +1735,7 @@ export default function ScheduleScreen() {
       {/* Saved toast */}
       {undoing && (
         <View style={s.savedToast}>
-          <ScissorsLoader size="small" color="light" />
+          <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} />
         </View>
       )}
       {savedInfo != null && !undoing && (
@@ -1938,7 +1938,7 @@ export default function ScheduleScreen() {
                       disabled={blockingRange}
                     >
                       {blockingRange
-                        ? <ScissorsLoader size="small" color="light" />
+                        ? <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} />
                         : <Text style={cal.blockRangeBtnText}>{rangeAllBlocked ? 'Unblock' : 'Block'}</Text>
                       }
                     </TouchableOpacity>
@@ -1981,7 +1981,7 @@ export default function ScheduleScreen() {
 function makeStylesS(theme: VarsTheme) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.color.bg },
-    centered:  { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    centered:  { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.color.bg },
 
     header: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',

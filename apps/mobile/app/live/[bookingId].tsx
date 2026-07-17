@@ -238,7 +238,7 @@ function DisputeModal({
               onPress={submit}
               disabled={!canSubmit}
             >
-              {submitting ? <ScissorsLoader size="small" color="light" /> : <Text style={dm.submitText}>Submit</Text>}
+              {submitting ? <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} /> : <Text style={dm.submitText}>Submit</Text>}
             </TouchableOpacity>
           </View>
         </View>
@@ -486,7 +486,7 @@ export default function LiveScreen() {
   };
 
   if (loading && !booking) {
-    return <View style={s.centered}><ScissorsLoader size="large" color="dark" /></View>;
+    return <View style={s.centered}><ScissorsLoader size="large" color={theme.appearance === 'dark' ? 'light' : 'dark'} /></View>;
   }
   if (!booking) {
     return (
@@ -617,7 +617,7 @@ export default function LiveScreen() {
                 activeOpacity={0.88}
               >
                 {confirming
-                  ? <ScissorsLoader size="small" color="light" />
+                  ? <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} />
                   : <Text style={s.confirmBtnText}>Confirm service done</Text>
                 }
               </TouchableOpacity>
@@ -631,7 +631,7 @@ export default function LiveScreen() {
               disabled={cancelling}
             >
               {cancelling
-                ? <ScissorsLoader size="small" color="dark" />
+                ? <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
                 : <Text style={s.cancelBtnText}>Cancel booking</Text>
               }
             </TouchableOpacity>

@@ -96,7 +96,7 @@ export default function ReviewScreen() {
   };
 
   if (loading) {
-    return <View style={s.centered}><ScissorsLoader size="large" color="dark" /></View>;
+    return <View style={s.centered}><ScissorsLoader size="large" color={theme.appearance === 'dark' ? 'light' : 'dark'} /></View>;
   }
   if (!booking) {
     return (
@@ -174,7 +174,7 @@ export default function ReviewScreen() {
             activeOpacity={0.88}
           >
             {submitting
-              ? <ScissorsLoader size="small" color="light" />
+              ? <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} />
               : <Text style={s.submitBtnText}>Submit review</Text>
             }
           </TouchableOpacity>

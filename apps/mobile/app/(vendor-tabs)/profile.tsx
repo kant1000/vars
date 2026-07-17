@@ -410,7 +410,7 @@ export default function VendorProfileScreen() {
                     disabled={addingPhoto}
                   >
                     {addingPhoto ? (
-                      <ScissorsLoader size="small" color="dark" />
+                      <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
                     ) : (
                       <>
                         <Text style={s.addPhotoIcon}>+</Text>

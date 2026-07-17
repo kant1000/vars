@@ -360,7 +360,7 @@ export default function VendorLoginScreen() {
               activeOpacity={0.85}
             >
               {isLoading
-                ? <ScissorsLoader size="small" color="light" />
+                ? <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} />
                 : <Text style={styles.buttonText}>Continue</Text>}
             </TouchableOpacity>
           </>
@@ -392,7 +392,7 @@ export default function VendorLoginScreen() {
               activeOpacity={0.85}
             >
               {isLoading
-                ? <ScissorsLoader size="small" color="light" />
+                ? <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} />
                 : <Text style={styles.buttonText}>Sign in</Text>}
             </TouchableOpacity>
 
@@ -437,7 +437,7 @@ export default function VendorLoginScreen() {
               activeOpacity={0.85}
             >
               {isLoading
-                ? <ScissorsLoader size="small" color="light" />
+                ? <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} />
                 : <Text style={styles.buttonText}>Verify</Text>}
             </TouchableOpacity>
 
@@ -492,7 +492,7 @@ export default function VendorLoginScreen() {
               activeOpacity={0.85}
             >
               {isLoading
-                ? <ScissorsLoader size="small" color="light" />
+                ? <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} />
                 : <Text style={styles.buttonText}>Set password and continue</Text>}
             </TouchableOpacity>
           </>

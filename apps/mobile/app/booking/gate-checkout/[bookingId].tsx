@@ -166,7 +166,7 @@ export default function GateCheckoutScreen() {
   if (phase === 'confirming') {
     return (
       <View style={[s.container, s.centered, { paddingTop: insets.top }]}>
-        <ScissorsLoader size="large" color="dark" />
+        <ScissorsLoader size="large" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
         <Text style={s.confirmingTitle}>Confirming payment</Text>
         <Text style={s.confirmingBody}>
           Verifying with your bank — this only takes a moment.
@@ -216,7 +216,7 @@ export default function GateCheckoutScreen() {
   if (phase === 'loading') {
     return (
       <View style={[s.container, s.centered, { paddingTop: insets.top }]}>
-        <ScissorsLoader size="large" color="dark" />
+        <ScissorsLoader size="large" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
         <Text style={s.loadingText}>Loading your checkout…</Text>
       </View>
     );
@@ -286,7 +286,7 @@ export default function GateCheckoutScreen() {
           startInLoadingState
           renderLoading={() => (
             <View style={[s.container, s.centered]}>
-              <ScissorsLoader size="large" color="dark" />
+              <ScissorsLoader size="large" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
             </View>
           )}
         />

@@ -161,7 +161,7 @@ export default function ProfileScreen() {
       >
         {refreshing && (
           <View style={{ alignItems: 'center', paddingTop: 8, paddingBottom: 4 }}>
-            <ScissorsLoader size="small" color="dark" />
+            <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
           </View>
         )}
         {/* ── Avatar + name header ── */}
@@ -176,7 +176,7 @@ export default function ProfileScreen() {
             )}
             <View style={s.editPhotoBadge}>
               {uploadingPhoto
-                ? <ScissorsLoader size="small" color="light" />
+                ? <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} />
                 : <EditIcon size={12} color={theme.color.inverseInk} />
               }
             </View>
@@ -218,7 +218,7 @@ export default function ProfileScreen() {
                   disabled={!name.trim() || saving}
                 >
                   {saving
-                    ? <ScissorsLoader size="small" color="light" />
+                    ? <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} />
                     : <Text style={s.saveBtnText}>Save</Text>
                   }
                 </TouchableOpacity>

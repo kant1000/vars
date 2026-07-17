@@ -102,7 +102,7 @@ export default function ConsentScreen() {
   if (loading) {
     return (
       <View style={[styles.centered, { paddingTop: insets.top }]}>
-        <ScissorsLoader size="large" color="dark" />
+        <ScissorsLoader size="large" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
       </View>
     );
   }
@@ -181,7 +181,7 @@ export default function ConsentScreen() {
           disabled={responding}
         >
           {responding
-            ? <ScissorsLoader size="small" color="dark" />
+            ? <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
             : <Text style={styles.declineBtnText}>Decline</Text>}
         </TouchableOpacity>
 
@@ -191,7 +191,7 @@ export default function ConsentScreen() {
           disabled={responding}
         >
           {responding
-            ? <ScissorsLoader size="small" color="light" />
+            ? <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} />
             : <Text style={styles.approveBtnText}>Approve</Text>}
         </TouchableOpacity>
       </View>
