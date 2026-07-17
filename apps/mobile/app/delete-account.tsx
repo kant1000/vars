@@ -3,7 +3,7 @@
 // Two-step: info screen → type DELETE confirmation.
 // Calls delete-user-account edge function, then signs out.
 // ============================================================
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -17,7 +17,9 @@ import {
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
-import { Colors, BORDER_RADIUS } from '@/constants/colors';
+import { BORDER_RADIUS } from '@/constants/colors';
+import { VarsTheme } from '@/constants/visualSystem';
+import { useVarsTheme } from '@/contexts/ThemeContext';
 import { signOut } from '@/lib/auth';
 
 const EDGE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL
@@ -28,6 +30,8 @@ type Step = 'info' | 'confirm';
 
 export default function DeleteAccountScreen() {
   const insets = useSafeAreaInsets();
+  const { theme } = useVarsTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
   const [step,    setStep]    = useState<Step>('info');
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
@@ -117,7 +121,7 @@ export default function DeleteAccountScreen() {
         <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
           <Text style={s.confirmPrompt}>
             Type{' '}
-            <Text style={{ fontWeight: '800', color: Colors.text }}>DELETE</Text>
+            <Text style={{ fontWeight: '800', color: theme.color.ink }}>DELETE</Text>
             {' '}to permanently delete your account.
           </Text>
 
@@ -126,7 +130,7 @@ export default function DeleteAccountScreen() {
             value={confirm}
             onChangeText={setConfirm}
             placeholder="Type DELETE here"
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={theme.color.inkMuted}
             autoCapitalize="characters"
             autoCorrect={false}
             autoFocus
@@ -139,7 +143,7 @@ export default function DeleteAccountScreen() {
             activeOpacity={0.85}
           >
             {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color={theme.color.inverseInk} />
             ) : (
               <Text style={s.deleteBtnText}>Delete my account permanently</Text>
             )}
@@ -154,86 +158,88 @@ export default function DeleteAccountScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  backText: { fontSize: 28, color: Colors.ink, lineHeight: 32 },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: Colors.text },
-  scroll: { paddingHorizontal: 24, paddingTop: 28, paddingBottom: 60 },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: Colors.text,
-    marginBottom: 12,
-    marginTop: 8,
-  },
-  infoBlock: {
-    backgroundColor: Colors.surface,
-    borderRadius: BORDER_RADIUS,
-    padding: 16,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  infoItem: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    lineHeight: 22,
-    marginBottom: 8,
-  },
-  note: {
-    fontSize: 13,
-    color: Colors.textMuted,
-    lineHeight: 20,
-    marginBottom: 16,
-  },
-  continueBtn: {
-    marginTop: 8,
-    height: 52,
-    borderWidth: 1.5,
-    borderColor: '#dc2626',
-    borderRadius: BORDER_RADIUS,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  continueBtnText: { fontSize: 15, fontWeight: '700', color: '#dc2626' },
-  confirmPrompt: {
-    fontSize: 16,
-    color: Colors.textSecondary,
-    lineHeight: 24,
-    marginBottom: 20,
-  },
-  confirmInput: {
-    height: 56,
-    borderWidth: 1.5,
-    borderColor: '#dc2626',
-    borderRadius: BORDER_RADIUS,
-    paddingHorizontal: 16,
-    fontSize: 18,
-    fontWeight: '700',
-    color: Colors.text,
-    marginBottom: 20,
-    letterSpacing: 2,
-  },
-  deleteBtn: {
-    height: 56,
-    backgroundColor: '#dc2626',
-    borderRadius: BORDER_RADIUS,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  deleteBtnDisabled: { opacity: 0.4 },
-  deleteBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
-  cancelLink: { alignItems: 'center', paddingVertical: 12 },
-  cancelLinkText: { fontSize: 14, color: Colors.textMuted, textDecorationLine: 'underline' },
-});
+function makeStyles(theme: VarsTheme) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.color.bg },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.color.inkFaint,
+    },
+    backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+    backText: { fontSize: 28, color: theme.color.ink, lineHeight: 32 },
+    headerTitle: { fontSize: 17, fontWeight: '700', color: theme.color.ink },
+    scroll: { paddingHorizontal: 24, paddingTop: 28, paddingBottom: 60 },
+    sectionTitle: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: theme.color.ink,
+      marginBottom: 12,
+      marginTop: 8,
+    },
+    infoBlock: {
+      backgroundColor: theme.color.surface2,
+      borderRadius: BORDER_RADIUS,
+      padding: 16,
+      marginBottom: 24,
+      borderWidth: 1,
+      borderColor: theme.color.inkFaint,
+    },
+    infoItem: {
+      fontSize: 14,
+      color: theme.color.inkMuted,
+      lineHeight: 22,
+      marginBottom: 8,
+    },
+    note: {
+      fontSize: 13,
+      color: theme.color.inkMuted,
+      lineHeight: 20,
+      marginBottom: 16,
+    },
+    continueBtn: {
+      marginTop: 8,
+      height: 52,
+      borderWidth: 1.5,
+      borderColor: theme.color.accentRed,
+      borderRadius: BORDER_RADIUS,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    continueBtnText: { fontSize: 15, fontWeight: '700', color: theme.color.accentRed },
+    confirmPrompt: {
+      fontSize: 16,
+      color: theme.color.inkMuted,
+      lineHeight: 24,
+      marginBottom: 20,
+    },
+    confirmInput: {
+      height: 56,
+      borderWidth: 1.5,
+      borderColor: theme.color.accentRed,
+      borderRadius: BORDER_RADIUS,
+      paddingHorizontal: 16,
+      fontSize: 18,
+      fontWeight: '700',
+      color: theme.color.ink,
+      marginBottom: 20,
+      letterSpacing: 2,
+    },
+    deleteBtn: {
+      height: 56,
+      backgroundColor: theme.color.accentRed,
+      borderRadius: BORDER_RADIUS,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 16,
+    },
+    deleteBtnDisabled: { opacity: 0.4 },
+    deleteBtnText: { color: theme.color.inverseInk, fontSize: 15, fontWeight: '700' },
+    cancelLink: { alignItems: 'center', paddingVertical: 12 },
+    cancelLinkText: { fontSize: 14, color: theme.color.inkMuted, textDecorationLine: 'underline' },
+  });
+}

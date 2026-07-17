@@ -4,7 +4,7 @@
 // Calls accept-terms edge function then routes to destination.
 // Offline: shows error — acceptance must be recorded to proceed.
 // ============================================================
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -18,7 +18,9 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
-import { Colors, BORDER_RADIUS } from '@/constants/colors';
+import { BORDER_RADIUS } from '@/constants/colors';
+import { VarsTheme } from '@/constants/visualSystem';
+import { useVarsTheme } from '@/contexts/ThemeContext';
 import {
   DOCUMENT_VERSIONS,
   CUSTOMER_REQUIRED_DOCS,
@@ -32,6 +34,8 @@ const EDGE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL
 
 export default function TermsAcceptanceScreen() {
   const insets = useSafeAreaInsets();
+  const { theme } = useVarsTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
   const { userType, destination } = useLocalSearchParams<{
     userType: 'customer' | 'vendor';
     destination: string;
@@ -109,11 +113,13 @@ export default function TermsAcceptanceScreen() {
                 title="Vendor Terms and Conditions"
                 version={DOCUMENT_VERSIONS.vendor_terms}
                 onPress={() => router.push('/vendor-terms' as any)}
+                styles={s}
               />
               <DocItem
                 title="Privacy Policy"
                 version={DOCUMENT_VERSIONS.vendor_privacy_policy}
                 onPress={() => router.push('/vendor-privacy' as any)}
+                styles={s}
               />
             </>
           ) : (
@@ -122,11 +128,13 @@ export default function TermsAcceptanceScreen() {
                 title="Terms of Use"
                 version={DOCUMENT_VERSIONS.customer_terms}
                 onPress={() => Linking.openURL('https://www.bookwithvars.com/terms')}
+                styles={s}
               />
               <DocItem
                 title="Privacy Policy"
                 version={DOCUMENT_VERSIONS.privacy_policy}
                 onPress={() => Linking.openURL('https://www.bookwithvars.com/privacy')}
+                styles={s}
               />
             </>
           )}
@@ -157,7 +165,7 @@ export default function TermsAcceptanceScreen() {
           activeOpacity={0.85}
         >
           {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator color={theme.color.inverseInk} />
           ) : (
             <Text style={s.agreeBtnText}>Agree and continue</Text>
           )}
@@ -171,83 +179,87 @@ function DocItem({
   title,
   version,
   onPress,
+  styles,
 }: {
   title: string;
   version: string;
   onPress: () => void;
+  styles: ReturnType<typeof makeStyles>;
 }) {
   return (
-    <TouchableOpacity style={s.docRow} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity style={styles.docRow} onPress={onPress} activeOpacity={0.7}>
       <View style={{ flex: 1 }}>
-        <Text style={s.docTitle}>{title}</Text>
-        <Text style={s.docVersion}>Version {version}</Text>
+        <Text style={styles.docTitle}>{title}</Text>
+        <Text style={styles.docVersion}>Version {version}</Text>
       </View>
-      <Text style={s.docArrow}>›</Text>
+      <Text style={styles.docArrow}>›</Text>
     </TouchableOpacity>
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  header: {
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  wordmark: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: Colors.primary,
-    letterSpacing: -0.5,
-    marginBottom: 4,
-  },
-  headerSub: { fontSize: 20, fontWeight: '700', color: Colors.text },
-  scroll: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 40 },
-  intro: {
-    fontSize: 15,
-    color: Colors.textSecondary,
-    lineHeight: 22,
-    marginBottom: 28,
-  },
-  docList: { marginBottom: 28 },
-  docRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: BORDER_RADIUS,
-    marginBottom: 10,
-    backgroundColor: Colors.surface,
-  },
-  docTitle: { fontSize: 15, fontWeight: '600', color: Colors.text, marginBottom: 2 },
-  docVersion: { fontSize: 12, color: Colors.textMuted },
-  docArrow: { fontSize: 20, color: Colors.textMuted, marginLeft: 8 },
-  consent: {
-    fontSize: 13,
-    color: Colors.textMuted,
-    lineHeight: 20,
-    marginBottom: 16,
-  },
-  contact: { fontSize: 13, color: Colors.textMuted, lineHeight: 20 },
-  link: { color: Colors.ink, textDecorationLine: 'underline' },
-  footer: {
-    paddingHorizontal: 24,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    backgroundColor: Colors.background,
-  },
-  agreeBtn: {
-    height: 56,
-    backgroundColor: Colors.primary,
-    borderRadius: BORDER_RADIUS,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  agreeBtnDisabled: { opacity: 0.5 },
-  agreeBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
-});
+function makeStyles(theme: VarsTheme) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.color.bg },
+    header: {
+      paddingHorizontal: 24,
+      paddingTop: 24,
+      paddingBottom: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.color.inkFaint,
+    },
+    wordmark: {
+      fontSize: 24,
+      fontWeight: '800',
+      color: theme.color.accentBlue,
+      letterSpacing: -0.5,
+      marginBottom: 4,
+    },
+    headerSub: { fontSize: 20, fontWeight: '700', color: theme.color.ink },
+    scroll: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 40 },
+    intro: {
+      fontSize: 15,
+      color: theme.color.inkMuted,
+      lineHeight: 22,
+      marginBottom: 28,
+    },
+    docList: { marginBottom: 28 },
+    docRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      borderWidth: 1,
+      borderColor: theme.color.inkFaint,
+      borderRadius: BORDER_RADIUS,
+      marginBottom: 10,
+      backgroundColor: theme.color.surface2,
+    },
+    docTitle: { fontSize: 15, fontWeight: '600', color: theme.color.ink, marginBottom: 2 },
+    docVersion: { fontSize: 12, color: theme.color.inkMuted },
+    docArrow: { fontSize: 20, color: theme.color.inkMuted, marginLeft: 8 },
+    consent: {
+      fontSize: 13,
+      color: theme.color.inkMuted,
+      lineHeight: 20,
+      marginBottom: 16,
+    },
+    contact: { fontSize: 13, color: theme.color.inkMuted, lineHeight: 20 },
+    link: { color: theme.color.ink, textDecorationLine: 'underline' },
+    footer: {
+      paddingHorizontal: 24,
+      paddingTop: 12,
+      borderTopWidth: 1,
+      borderTopColor: theme.color.inkFaint,
+      backgroundColor: theme.color.bg,
+    },
+    agreeBtn: {
+      height: 56,
+      backgroundColor: theme.color.accentBlue,
+      borderRadius: BORDER_RADIUS,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    agreeBtnDisabled: { opacity: 0.5 },
+    agreeBtnText: { color: theme.color.inverseInk, fontSize: 16, fontWeight: '700' },
+  });
+}

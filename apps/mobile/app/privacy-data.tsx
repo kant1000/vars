@@ -4,7 +4,7 @@
 // marketing info (static), vendor KYC retention notice.
 // Entry from: customer profile and vendor settings.
 // ============================================================
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -19,7 +19,9 @@ import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import { Colors, BORDER_RADIUS } from '@/constants/colors';
+import { BORDER_RADIUS } from '@/constants/colors';
+import { VarsTheme } from '@/constants/visualSystem';
+import { useVarsTheme } from '@/contexts/ThemeContext';
 import { ChevronRightIcon } from '@/components/icons';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 
@@ -43,6 +45,8 @@ const DOC_LABEL: Record<string, string> = {
 export default function PrivacyDataScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { theme } = useVarsTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
 
   const [acceptances, setAcceptances] = useState<Acceptance[]>([]);
   const [isVendor,    setIsVendor]    = useState(false);
@@ -183,8 +187,8 @@ export default function PrivacyDataScreen() {
             >
               <Text style={s.rowLabel}>Download my data</Text>
               {exporting
-                ? <ActivityIndicator size="small" color={Colors.textMuted} />
-                : <ChevronRightIcon size={16} color={Colors.textMuted} />
+                ? <ActivityIndicator size="small" color={theme.color.inkMuted} />
+                : <ChevronRightIcon size={16} color={theme.color.inkMuted} />
               }
             </TouchableOpacity>
 
@@ -193,8 +197,8 @@ export default function PrivacyDataScreen() {
               onPress={() => router.push('/delete-account' as any)}
               activeOpacity={0.7}
             >
-              <Text style={[s.rowLabel, { color: '#dc2626' }]}>Delete my account</Text>
-              <ChevronRightIcon size={16} color={Colors.textMuted} />
+              <Text style={[s.rowLabel, { color: theme.color.accentRed }]}>Delete my account</Text>
+              <ChevronRightIcon size={16} color={theme.color.inkMuted} />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -206,7 +210,7 @@ export default function PrivacyDataScreen() {
                 <Text style={s.rowLabel}>Contact our DPO</Text>
                 <Text style={s.rowSub}>hello@bookwithvars.com</Text>
               </View>
-              <ChevronRightIcon size={16} color={Colors.textMuted} />
+              <ChevronRightIcon size={16} color={theme.color.inkMuted} />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -218,7 +222,7 @@ export default function PrivacyDataScreen() {
                 <Text style={s.rowLabel}>File a complaint with NDPC</Text>
                 <Text style={s.rowSub}>Nigeria Data Protection Commission</Text>
               </View>
-              <ChevronRightIcon size={16} color={Colors.textMuted} />
+              <ChevronRightIcon size={16} color={theme.color.inkMuted} />
             </TouchableOpacity>
           </View>
 
@@ -231,7 +235,7 @@ export default function PrivacyDataScreen() {
               activeOpacity={0.7}
             >
               <Text style={s.rowLabel}>Privacy Policy</Text>
-              <ChevronRightIcon size={16} color={Colors.textMuted} />
+              <ChevronRightIcon size={16} color={theme.color.inkMuted} />
             </TouchableOpacity>
             <TouchableOpacity
               style={s.row}
@@ -239,7 +243,7 @@ export default function PrivacyDataScreen() {
               activeOpacity={0.7}
             >
               <Text style={s.rowLabel}>Cookie and Tracking Policy</Text>
-              <ChevronRightIcon size={16} color={Colors.textMuted} />
+              <ChevronRightIcon size={16} color={theme.color.inkMuted} />
             </TouchableOpacity>
           </View>
 
@@ -269,46 +273,48 @@ export default function PrivacyDataScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  container:    { flex: 1, backgroundColor: Colors.background },
-  centered:     { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  backBtn:      { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  backText:     { fontSize: 28, color: Colors.ink, lineHeight: 32 },
-  headerTitle:  { fontSize: 17, fontWeight: '700', color: Colors.text },
-  scroll:       { padding: 16, paddingBottom: 60 },
-  sectionLabel: {
-    fontSize: 12, fontWeight: '700', color: Colors.textMuted,
-    textTransform: 'uppercase', letterSpacing: 0.5,
-    marginBottom: 8, marginTop: 20, paddingHorizontal: 4,
-  },
-  card: {
-    backgroundColor: Colors.background,
-    borderRadius: BORDER_RADIUS, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden',
-  },
-  row: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 14, paddingVertical: 14, gap: 10,
-  },
-  rowBorder:    { borderBottomWidth: 1, borderBottomColor: Colors.border },
-  rowLabel:     { fontSize: 14, fontWeight: '600', color: Colors.text },
-  rowSub:       { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
-  statusOn:     { fontSize: 12, fontWeight: '700', color: Colors.success },
-  statusOff:    { fontSize: 12, fontWeight: '700', color: Colors.textMuted },
-  emptyText:    { fontSize: 13, color: Colors.textMuted, padding: 16 },
-  infoBox: {
-    backgroundColor: Colors.surface,
-    borderRadius: BORDER_RADIUS, borderWidth: 1, borderColor: Colors.border,
-    padding: 16,
-  },
-  infoText:     { fontSize: 13, color: Colors.textSecondary, lineHeight: 20 },
-  footer: {
-    marginTop: 24, marginBottom: 8,
-    fontSize: 12, color: Colors.textMuted, lineHeight: 18, textAlign: 'center',
-    paddingHorizontal: 8,
-  },
-});
+function makeStyles(theme: VarsTheme) {
+  return StyleSheet.create({
+    container:    { flex: 1, backgroundColor: theme.color.bg },
+    centered:     { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    header: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 16, paddingVertical: 12,
+      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+    },
+    backBtn:      { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+    backText:     { fontSize: 28, color: theme.color.ink, lineHeight: 32 },
+    headerTitle:  { fontSize: 17, fontWeight: '700', color: theme.color.ink },
+    scroll:       { padding: 16, paddingBottom: 60 },
+    sectionLabel: {
+      fontSize: 12, fontWeight: '700', color: theme.color.inkMuted,
+      textTransform: 'uppercase', letterSpacing: 0.5,
+      marginBottom: 8, marginTop: 20, paddingHorizontal: 4,
+    },
+    card: {
+      backgroundColor: theme.color.bg,
+      borderRadius: BORDER_RADIUS, borderWidth: 1, borderColor: theme.color.inkFaint, overflow: 'hidden',
+    },
+    row: {
+      flexDirection: 'row', alignItems: 'center',
+      paddingHorizontal: 14, paddingVertical: 14, gap: 10,
+    },
+    rowBorder:    { borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint },
+    rowLabel:     { fontSize: 14, fontWeight: '600', color: theme.color.ink },
+    rowSub:       { fontSize: 12, color: theme.color.inkMuted, marginTop: 2 },
+    statusOn:     { fontSize: 12, fontWeight: '700', color: theme.color.accentGreen },
+    statusOff:    { fontSize: 12, fontWeight: '700', color: theme.color.inkMuted },
+    emptyText:    { fontSize: 13, color: theme.color.inkMuted, padding: 16 },
+    infoBox: {
+      backgroundColor: theme.color.surface2,
+      borderRadius: BORDER_RADIUS, borderWidth: 1, borderColor: theme.color.inkFaint,
+      padding: 16,
+    },
+    infoText:     { fontSize: 13, color: theme.color.inkMuted, lineHeight: 20 },
+    footer: {
+      marginTop: 24, marginBottom: 8,
+      fontSize: 12, color: theme.color.inkMuted, lineHeight: 18, textAlign: 'center',
+      paddingHorizontal: 8,
+    },
+  });
+}

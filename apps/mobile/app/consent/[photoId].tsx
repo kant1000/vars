@@ -3,7 +3,7 @@
 // Client approves or declines a vendor's photo consent request.
 // Deep-linked from push notification: /consent/[photoId]
 // ============================================================
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert, StyleSheet,
   Text, TouchableOpacity, View,
@@ -13,7 +13,9 @@ import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
-import { Colors, BORDER_RADIUS } from '@/constants/colors';
+import { BORDER_RADIUS } from '@/constants/colors';
+import { VarsTheme } from '@/constants/visualSystem';
+import { useVarsTheme } from '@/contexts/ThemeContext';
 import { CheckIcon, CloseIcon } from '@/components/icons';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
@@ -28,6 +30,8 @@ interface ConsentPhoto {
 export default function ConsentScreen() {
   const { photoId } = useLocalSearchParams<{ photoId: string }>();
   const insets = useSafeAreaInsets();
+  const { theme } = useVarsTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
 
   const [photo, setPhoto] = useState<ConsentPhoto | null>(null);
   const [loading, setLoading] = useState(true);
@@ -119,8 +123,8 @@ export default function ConsentScreen() {
       <View style={[styles.centered, { paddingTop: insets.top }]}>
         <View style={styles.doneIcon}>
           {done === 'approved'
-            ? <CheckIcon size={48} color={Colors.success} />
-            : <CloseIcon size={48} color={Colors.error} />
+            ? <CheckIcon size={48} color={theme.color.accentGreen} />
+            : <CloseIcon size={48} color={theme.color.accentRed} />
           }
         </View>
         <Text style={styles.doneTitle}>
@@ -199,42 +203,44 @@ export default function ConsentScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1, backgroundColor: Colors.background, paddingHorizontal: 24,
-  },
-  centered: {
-    flex: 1, backgroundColor: Colors.background,
-    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32,
-  },
-  navBack: { marginTop: 8, marginBottom: 20, width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  navBackText: { fontSize: 28, color: Colors.ink, lineHeight: 32 },
-  title: { fontSize: 24, fontWeight: '800', color: Colors.text, marginBottom: 10 },
-  body: { fontSize: 15, color: Colors.textSecondary, lineHeight: 22, marginBottom: 24 },
-  vendorName: { fontWeight: '700', color: Colors.text },
-  photo: {
-    width: '100%', aspectRatio: 1, borderRadius: 5, marginBottom: 28,
-  },
-  actions: { flexDirection: 'row', gap: 12, marginBottom: 16 },
-  declineBtn: {
-    flex: 1, height: 56, borderWidth: 1.5, borderColor: Colors.error,
-    borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center',
-  },
-  declineBtnText: { color: Colors.error, fontSize: 16, fontWeight: '700' },
-  approveBtn: {
-    flex: 1, height: 56, backgroundColor: Colors.ink,
-    borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center',
-  },
-  approveBtnText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
-  btnDisabled: { opacity: 0.5 },
-  hint: { fontSize: 12, color: Colors.textMuted, textAlign: 'center', lineHeight: 17 },
-  errorText: { fontSize: 16, color: Colors.text, textAlign: 'center', marginBottom: 20 },
-  backBtn: {
-    height: 56, backgroundColor: Colors.ink, borderRadius: BORDER_RADIUS,
-    paddingHorizontal: 32, alignItems: 'center', justifyContent: 'center', marginTop: 8,
-  },
-  backBtnText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
-  doneIcon: { marginBottom: 16, alignItems: 'center' as const },
-  doneTitle: { fontSize: 24, fontWeight: '800', color: Colors.text, marginBottom: 10, textAlign: 'center' },
-  doneBody: { fontSize: 15, color: Colors.textSecondary, textAlign: 'center', lineHeight: 22, marginBottom: 28 },
-});
+function makeStyles(theme: VarsTheme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1, backgroundColor: theme.color.bg, paddingHorizontal: 24,
+    },
+    centered: {
+      flex: 1, backgroundColor: theme.color.bg,
+      alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32,
+    },
+    navBack: { marginTop: 8, marginBottom: 20, width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+    navBackText: { fontSize: 28, color: theme.color.ink, lineHeight: 32 },
+    title: { fontSize: 24, fontWeight: '800', color: theme.color.ink, marginBottom: 10 },
+    body: { fontSize: 15, color: theme.color.inkMuted, lineHeight: 22, marginBottom: 24 },
+    vendorName: { fontWeight: '700', color: theme.color.ink },
+    photo: {
+      width: '100%', aspectRatio: 1, borderRadius: 5, marginBottom: 28,
+    },
+    actions: { flexDirection: 'row', gap: 12, marginBottom: 16 },
+    declineBtn: {
+      flex: 1, height: 56, borderWidth: 1.5, borderColor: theme.color.accentRed,
+      borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center',
+    },
+    declineBtnText: { color: theme.color.accentRed, fontSize: 16, fontWeight: '700' },
+    approveBtn: {
+      flex: 1, height: 56, backgroundColor: theme.color.ink,
+      borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center',
+    },
+    approveBtnText: { color: theme.color.inverseInk, fontSize: 16, fontWeight: '700' },
+    btnDisabled: { opacity: 0.5 },
+    hint: { fontSize: 12, color: theme.color.inkMuted, textAlign: 'center', lineHeight: 17 },
+    errorText: { fontSize: 16, color: theme.color.ink, textAlign: 'center', marginBottom: 20 },
+    backBtn: {
+      height: 56, backgroundColor: theme.color.ink, borderRadius: BORDER_RADIUS,
+      paddingHorizontal: 32, alignItems: 'center', justifyContent: 'center', marginTop: 8,
+    },
+    backBtnText: { color: theme.color.inverseInk, fontSize: 16, fontWeight: '700' },
+    doneIcon: { marginBottom: 16, alignItems: 'center' as const },
+    doneTitle: { fontSize: 24, fontWeight: '800', color: theme.color.ink, marginBottom: 10, textAlign: 'center' },
+    doneBody: { fontSize: 15, color: theme.color.inkMuted, textAlign: 'center', lineHeight: 22, marginBottom: 28 },
+  });
+}

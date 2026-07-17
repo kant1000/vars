@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, ScrollView, StyleSheet, Linking, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors } from '@/constants/colors';
+import { VarsTheme } from '@/constants/visualSystem';
+import { useVarsTheme } from '@/contexts/ThemeContext';
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  const { theme } = useVarsTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
   return (
     <View style={s.section}>
       <Text style={s.sectionTitle}>{title}</Text>
@@ -14,15 +17,21 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function Body({ children }: { children: React.ReactNode }) {
+  const { theme } = useVarsTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
   return <Text style={s.body}>{children}</Text>;
 }
 
 function Bold({ children }: { children: string }) {
+  const { theme } = useVarsTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
   return <Text style={s.bold}>{children}</Text>;
 }
 
 export default function PrivacyScreen() {
   const insets = useSafeAreaInsets();
+  const { theme } = useVarsTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
   return (
     <View style={[s.container, { paddingTop: insets.top }]}>
       <View style={s.header}>
@@ -170,21 +179,23 @@ export default function PrivacyScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  backText: { fontSize: 28, color: Colors.ink, lineHeight: 32 },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: Colors.text },
-  updated: { fontSize: 12, color: Colors.textMuted, marginBottom: 16 },
-  scroll: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 60 },
-  section: { marginTop: 24 },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: Colors.text, marginBottom: 8 },
-  body: { fontSize: 14, color: Colors.textSecondary, lineHeight: 22, marginBottom: 8 },
-  bold: { fontWeight: '700', color: Colors.text },
-  link: { color: Colors.ink, textDecorationLine: 'underline' },
-});
+function makeStyles(theme: VarsTheme) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.color.bg },
+    header: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 16, paddingVertical: 12,
+      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+    },
+    backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+    backText: { fontSize: 28, color: theme.color.ink, lineHeight: 32 },
+    headerTitle: { fontSize: 17, fontWeight: '700', color: theme.color.ink },
+    updated: { fontSize: 12, color: theme.color.inkMuted, marginBottom: 16 },
+    scroll: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 60 },
+    section: { marginTop: 24 },
+    sectionTitle: { fontSize: 15, fontWeight: '700', color: theme.color.ink, marginBottom: 8 },
+    body: { fontSize: 14, color: theme.color.inkMuted, lineHeight: 22, marginBottom: 8 },
+    bold: { fontWeight: '700', color: theme.color.ink },
+    link: { color: theme.color.ink, textDecorationLine: 'underline' },
+  });
+}
