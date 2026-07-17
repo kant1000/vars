@@ -3,7 +3,7 @@
 // Shown after KYC + bank submission. Polls kyc_status on mount
 // and every 8s. Copy is split by status: pending / needs_review / verified.
 // ============================================================
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet,
   Animated, Easing,
@@ -13,7 +13,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { VarsButton, VarsSurface } from '@/components/ui';
 import { useVarsTheme } from '@/contexts/ThemeContext';
-import { Colors } from '@/constants/colors';
+import { VarsTheme } from '@/constants/visualSystem';
 import { hasAcceptedCurrentTerms } from '@/lib/termsGate';
 
 const POLL_INTERVAL_MS = 8000;
@@ -23,6 +23,7 @@ type KycStatus = 'pending' | 'needs_review' | 'verified' | 'rejected';
 export default function Step5Pending() {
   const { user } = useAuth();
   const { theme } = useVarsTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const pulse = useRef(new Animated.Value(1)).current;
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [status, setStatus] = useState<KycStatus>('pending');
@@ -131,6 +132,8 @@ export default function Step5Pending() {
 }
 
 function CheckRow({ label, done, pulse: shouldPulse }: { label: string; done?: boolean; pulse?: boolean }) {
+  const { theme } = useVarsTheme();
+  const rowStyles = useMemo(() => makeRowStyles(theme), [theme]);
   const scale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -159,34 +162,38 @@ function CheckRow({ label, done, pulse: shouldPulse }: { label: string; done?: b
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1, backgroundColor: Colors.background,
-    paddingHorizontal: 28, alignItems: 'center', justifyContent: 'center',
-    paddingBottom: 40,
-  },
-  orb: {
-    width: 80, height: 80, borderRadius: 40,
-    backgroundColor: Colors.ink, opacity: 0.15,
-    marginBottom: 28,
-  },
-  title: { fontSize: 28, fontWeight: '800', color: Colors.text, marginBottom: 12, textAlign: 'center' },
-  body: { fontSize: 15, color: Colors.textSecondary, textAlign: 'center', lineHeight: 22, marginBottom: 32 },
-  checklist: {
-    width: '100%', padding: 20, gap: 16, marginBottom: 24,
-  },
-  note: {
-    fontSize: 13, color: Colors.textSecondary,
-    textAlign: 'center', lineHeight: 19, marginBottom: 32,
-  },
-  button: { width: '100%' },
-});
+function makeStyles(theme: VarsTheme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1, backgroundColor: theme.color.bg,
+      paddingHorizontal: 28, alignItems: 'center', justifyContent: 'center',
+      paddingBottom: 40,
+    },
+    orb: {
+      width: 80, height: 80, borderRadius: 40,
+      backgroundColor: theme.color.ink, opacity: 0.15,
+      marginBottom: 28,
+    },
+    title: { fontSize: 28, fontWeight: '800', color: theme.color.ink, marginBottom: 12, textAlign: 'center' },
+    body: { fontSize: 15, color: theme.color.inkMuted, textAlign: 'center', lineHeight: 22, marginBottom: 32 },
+    checklist: {
+      width: '100%', padding: 20, gap: 16, marginBottom: 24,
+    },
+    note: {
+      fontSize: 13, color: theme.color.inkMuted,
+      textAlign: 'center', lineHeight: 19, marginBottom: 32,
+    },
+    button: { width: '100%' },
+  });
+}
 
-const rowStyles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  dot: { width: 14, height: 14, borderRadius: 7 },
-  dotDone: { backgroundColor: Colors.success },
-  dotPending: { borderWidth: 2, borderColor: Colors.border, backgroundColor: 'transparent' },
-  label: { fontSize: 15, color: Colors.textMuted, fontWeight: '500', flex: 1 },
-  labelDone: { color: Colors.text },
-});
+function makeRowStyles(theme: VarsTheme) {
+  return StyleSheet.create({
+    row: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+    dot: { width: 14, height: 14, borderRadius: 7 },
+    dotDone: { backgroundColor: theme.color.accentGreen },
+    dotPending: { borderWidth: 2, borderColor: theme.color.inkFaint, backgroundColor: 'transparent' },
+    label: { fontSize: 15, color: theme.color.inkMuted, fontWeight: '500', flex: 1 },
+    labelDone: { color: theme.color.ink },
+  });
+}

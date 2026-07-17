@@ -4,7 +4,7 @@
 // Sub-step B (KYC second): Youverify hosted WebView.
 // VARS never stores raw ID data — Youverify handles it.
 // ============================================================
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   ScrollView, Alert, KeyboardAvoidingView, Platform,
@@ -15,7 +15,8 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { VarsButton, VarsInput, VarsSurface } from '@/components/ui';
 import { useVarsTheme } from '@/contexts/ThemeContext';
-import { Colors, BORDER_RADIUS } from '@/constants/colors';
+import { BORDER_RADIUS } from '@/constants/colors';
+import { VarsTheme } from '@/constants/visualSystem';
 // 'failed' covers in-session WebView failures and returning after a webhook rejection.
 // 'review' covers needs_review — KYC passed but data capture failed; admin resolves.
 type KycState = 'idle' | 'loading' | 'prep' | 'webview' | 'failed' | 'review' | 'done';
@@ -26,6 +27,7 @@ type SubStep = 'bank' | 'kyc';
 export default function Step4Kyc() {
   const { user } = useAuth();
   const { theme } = useVarsTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
 
   // Sub-step navigation
   const [subStep, setSubStep] = useState<SubStep>('bank');
@@ -408,55 +410,59 @@ export default function Step4Kyc() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  scroll: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 40 },
-  title: { fontSize: 26, fontWeight: '700', color: Colors.text, marginBottom: 20 },
+function makeStyles(theme: VarsTheme) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.color.bg },
+    scroll: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 40 },
+    title: { fontSize: 26, fontWeight: '700', color: theme.color.ink, marginBottom: 20 },
 
-  subStepRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-  subStepDot: {
-    width: 10, height: 10, borderRadius: 5,
-    backgroundColor: Colors.border,
-  },
-  subStepDotActive: { backgroundColor: Colors.ink },
-  subStepDotDone: { backgroundColor: Colors.success },
-  subStepLine: { flex: 1, height: 2, backgroundColor: Colors.border, marginHorizontal: 6 },
-  subStepLabels: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 28 },
-  subStepLabel: { fontSize: 12, color: Colors.textMuted, fontWeight: '500' },
-  subStepLabelActive: { color: Colors.ink, fontWeight: '700' },
+    subStepRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+    subStepDot: {
+      width: 10, height: 10, borderRadius: 5,
+      backgroundColor: theme.color.inkFaint,
+    },
+    subStepDotActive: { backgroundColor: theme.color.ink },
+    subStepDotDone: { backgroundColor: theme.color.accentGreen },
+    subStepLine: { flex: 1, height: 2, backgroundColor: theme.color.inkFaint, marginHorizontal: 6 },
+    subStepLabels: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 28 },
+    subStepLabel: { fontSize: 12, color: theme.color.inkMuted, fontWeight: '500' },
+    subStepLabelActive: { color: theme.color.ink, fontWeight: '700' },
 
-  section: { gap: 12 },
-  sectionTitle: { fontSize: 17, fontWeight: '700', color: Colors.text },
-  sectionSub: { fontSize: 14, color: Colors.textSecondary },
+    section: { gap: 12 },
+    sectionTitle: { fontSize: 17, fontWeight: '700', color: theme.color.ink },
+    sectionSub: { fontSize: 14, color: theme.color.inkMuted },
 
-  errorCallout: { backgroundColor: '#FEF2F2', borderRadius: BORDER_RADIUS, padding: 14, gap: 6 },
-  errorCalloutTitle: { fontSize: 15, fontWeight: '700', color: Colors.error },
-  errorCalloutBody: { fontSize: 14, color: Colors.error, opacity: 0.85 },
-  errorCalloutHint: { fontSize: 13, color: Colors.textSecondary, lineHeight: 18 },
+    // Pale semantic-tint callouts — no dark-mode-safe tint token exists yet, stay fixed.
+    errorCallout: { backgroundColor: '#FEF2F2', borderRadius: BORDER_RADIUS, padding: 14, gap: 6 },
+    errorCalloutTitle: { fontSize: 15, fontWeight: '700', color: theme.color.accentRed },
+    errorCalloutBody: { fontSize: 14, color: theme.color.accentRed, opacity: 0.85 },
+    errorCalloutHint: { fontSize: 13, color: theme.color.inkMuted, lineHeight: 18 },
 
-  reviewCallout: { backgroundColor: '#F0F9FF', borderRadius: BORDER_RADIUS, padding: 14, gap: 6 },
-  reviewCalloutTitle: { fontSize: 15, fontWeight: '700', color: Colors.text },
-  reviewCalloutBody: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20 },
+    reviewCallout: { backgroundColor: '#F0F9FF', borderRadius: BORDER_RADIUS, padding: 14, gap: 6 },
+    reviewCalloutTitle: { fontSize: 15, fontWeight: '700', color: theme.color.ink },
+    reviewCalloutBody: { fontSize: 14, color: theme.color.inkMuted, lineHeight: 20 },
 
-  prepCard: { padding: 20, gap: 10 },
-  prepTitle: { fontSize: 16, fontWeight: '700', color: Colors.text, marginBottom: 4 },
-  prepItem: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20 },
-  prepDivider: { height: 1, backgroundColor: Colors.border, marginVertical: 6 },
-  prepNote: { fontSize: 13, color: Colors.textMuted, lineHeight: 18 },
-  prepBack: { alignItems: 'center', paddingVertical: 8 },
-  prepBackText: { fontSize: 14, color: Colors.textMuted },
+    prepCard: { padding: 20, gap: 10 },
+    prepTitle: { fontSize: 16, fontWeight: '700', color: theme.color.ink, marginBottom: 4 },
+    prepItem: { fontSize: 14, color: theme.color.inkMuted, lineHeight: 20 },
+    prepDivider: { height: 1, backgroundColor: theme.color.inkFaint, marginVertical: 6 },
+    prepNote: { fontSize: 13, color: theme.color.inkMuted, lineHeight: 18 },
+    prepBack: { alignItems: 'center', paddingVertical: 8 },
+    prepBackText: { fontSize: 14, color: theme.color.inkMuted },
 
-  verifiedBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0FDF4', borderRadius: BORDER_RADIUS, padding: 12 },
-  verifiedText: { color: Colors.success, fontSize: 15, fontWeight: '600' },
+    verifiedBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0FDF4', borderRadius: BORDER_RADIUS, padding: 12 },
+    verifiedText: { color: theme.color.accentGreen, fontSize: 15, fontWeight: '600' },
 
-  input: { height: 50, borderWidth: 1.5, borderColor: Colors.border, borderRadius: BORDER_RADIUS, paddingHorizontal: 14, justifyContent: 'center' },
-  inputText: { fontSize: 16, color: Colors.text },
-  inputPlaceholder: { fontSize: 16, color: Colors.textMuted },
+    input: { height: 50, borderWidth: 1.5, borderColor: theme.color.inkFaint, borderRadius: BORDER_RADIUS, paddingHorizontal: 14, justifyContent: 'center' },
+    inputText: { fontSize: 16, color: theme.color.ink },
+    inputPlaceholder: { fontSize: 16, color: theme.color.inkMuted },
 
-  bankPicker: { borderWidth: 1.5, borderColor: Colors.border, borderRadius: BORDER_RADIUS, overflow: 'hidden', backgroundColor: Colors.background },
-  bankOption: { padding: 14, borderBottomWidth: 1, borderBottomColor: Colors.border },
-  bankOptionText: { fontSize: 15, color: Colors.text },
+    bankPicker: { borderWidth: 1.5, borderColor: theme.color.inkFaint, borderRadius: BORDER_RADIUS, overflow: 'hidden', backgroundColor: theme.color.bg },
+    bankOption: { padding: 14, borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint },
+    bankOptionText: { fontSize: 15, color: theme.color.ink },
 
-  cancelKyc: { position: 'absolute', top: 50, right: 16, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: BORDER_RADIUS, paddingHorizontal: 14, paddingVertical: 8 },
-  cancelKycText: { color: Colors.white, fontWeight: '600' },
-});
+    // Floats over the KYC WebView, not app chrome — stays fixed-contrast.
+    cancelKyc: { position: 'absolute', top: 50, right: 16, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: BORDER_RADIUS, paddingHorizontal: 14, paddingVertical: 8 },
+    cancelKycText: { color: '#FFF', fontWeight: '600' },
+  });
+}

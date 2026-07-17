@@ -3,7 +3,7 @@
 // Free-name form with L1/L2 taxonomy. Vendors add up to 10
 // services (name, subcategory, price, duration) then continue.
 // ============================================================
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert,
 } from 'react-native';
@@ -14,7 +14,8 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { VarsButton, VarsInput, VarsSurface } from '@/components/ui';
 import { useVarsTheme } from '@/contexts/ThemeContext';
-import { Colors, BORDER_RADIUS } from '@/constants/colors';
+import { BORDER_RADIUS } from '@/constants/colors';
+import { VarsTheme } from '@/constants/visualSystem';
 import { CloseIcon } from '@/components/icons';
 import {
   CATEGORY_L1, CATEGORY_L1_LABELS, CATEGORY_L2_MAP, CATEGORY_L2_LABELS,
@@ -61,6 +62,7 @@ const BRAIDS_DURATIONS = [...BASE_DURATIONS, ...BRAIDS_EXTRA];
 export default function Step2Services() {
   const { user } = useAuth();
   const { theme } = useVarsTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
 
   const [formL1, setFormL1] = useState<string>(CATEGORY_L1.HAIR);
   const [formL2, setFormL2] = useState<string>(CATEGORY_L2_MAP[CATEGORY_L1.HAIR][0]);
@@ -314,7 +316,7 @@ export default function Step2Services() {
                 </Text>
               </View>
               <TouchableOpacity style={styles.draftRemove} onPress={() => handleRemove(svc.tempId)}>
-                <CloseIcon size={12} color={Colors.textMuted} />
+                <CloseIcon size={12} color={theme.color.inkMuted} />
               </TouchableOpacity>
             </VarsSurface>
           ))}
@@ -334,57 +336,59 @@ export default function Step2Services() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  scroll: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 60 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 26, fontWeight: '700', color: Colors.text, marginBottom: 6 },
-  sub: { fontSize: 15, color: Colors.textSecondary, marginBottom: 24 },
+function makeStyles(theme: VarsTheme) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.color.bg },
+    scroll: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 60 },
+    center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    title: { fontSize: 26, fontWeight: '700', color: theme.color.ink, marginBottom: 6 },
+    sub: { fontSize: 15, color: theme.color.inkMuted, marginBottom: 24 },
 
-  fieldLabel: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary, marginBottom: 8 },
-  fieldGap: { marginBottom: 16 },
+    fieldLabel: { fontSize: 13, fontWeight: '600', color: theme.color.inkMuted, marginBottom: 8 },
+    fieldGap: { marginBottom: 16 },
 
-  pillRow: { marginBottom: 16 },
-  pillRowInner: { flexDirection: 'row', gap: 8, paddingRight: 24 },
-  pill: {
-    paddingVertical: 8, paddingHorizontal: 16,
-    borderRadius: BORDER_RADIUS, borderWidth: 1.5, borderColor: Colors.border,
-    backgroundColor: Colors.background,
-  },
-  pillActive: { backgroundColor: Colors.ink, borderColor: Colors.ink },
-  pillText: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
-  pillTextActive: { color: Colors.white },
+    pillRow: { marginBottom: 16 },
+    pillRowInner: { flexDirection: 'row', gap: 8, paddingRight: 24 },
+    pill: {
+      paddingVertical: 8, paddingHorizontal: 16,
+      borderRadius: BORDER_RADIUS, borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      backgroundColor: theme.color.bg,
+    },
+    pillActive: { backgroundColor: theme.color.ink, borderColor: theme.color.ink },
+    pillText: { fontSize: 14, fontWeight: '600', color: theme.color.inkMuted },
+    pillTextActive: { color: theme.color.inverseInk },
 
-  textArea: { height: 80, paddingTop: 10, lineHeight: 20 },
-  priceHint: { fontSize: 12, color: Colors.textMuted, marginTop: 6, marginBottom: 16 },
+    textArea: { height: 80, paddingTop: 10, lineHeight: 20 },
+    priceHint: { fontSize: 12, color: theme.color.inkMuted, marginTop: 6, marginBottom: 16 },
 
-  durationRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
-  durationChip: {
-    paddingVertical: 8, paddingHorizontal: 16,
-    borderRadius: BORDER_RADIUS, borderWidth: 1.5, borderColor: Colors.border,
-  },
-  durationChipActive: { backgroundColor: Colors.ink, borderColor: Colors.ink },
-  durationChipText: { fontSize: 13, color: Colors.textSecondary, fontWeight: '500' },
-  durationChipTextActive: { color: Colors.white },
+    durationRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
+    durationChip: {
+      paddingVertical: 8, paddingHorizontal: 16,
+      borderRadius: BORDER_RADIUS, borderWidth: 1.5, borderColor: theme.color.inkFaint,
+    },
+    durationChipActive: { backgroundColor: theme.color.ink, borderColor: theme.color.ink },
+    durationChipText: { fontSize: 13, color: theme.color.inkMuted, fontWeight: '500' },
+    durationChipTextActive: { color: theme.color.inverseInk },
 
-  addBtn: { marginBottom: 24 },
+    addBtn: { marginBottom: 24 },
 
-  draftSection: { marginBottom: 8 },
-  draftHeading: {
-    fontSize: 12, fontWeight: '700', color: Colors.textMuted,
-    textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10,
-  },
-  draftRow: {
-    flexDirection: 'row', alignItems: 'center', padding: 14, marginBottom: 8,
-  },
-  draftInfo: { flex: 1 },
-  draftMeta: {
-    fontSize: 11, color: Colors.textMuted, fontWeight: '600',
-    textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 2,
-  },
-  draftName: { fontSize: 15, fontWeight: '600', color: Colors.text, marginBottom: 2 },
-  draftDetail: { fontSize: 13, color: Colors.textSecondary },
-  draftRemove: { padding: 8 },
+    draftSection: { marginBottom: 8 },
+    draftHeading: {
+      fontSize: 12, fontWeight: '700', color: theme.color.inkMuted,
+      textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10,
+    },
+    draftRow: {
+      flexDirection: 'row', alignItems: 'center', padding: 14, marginBottom: 8,
+    },
+    draftInfo: { flex: 1 },
+    draftMeta: {
+      fontSize: 11, color: theme.color.inkMuted, fontWeight: '600',
+      textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 2,
+    },
+    draftName: { fontSize: 15, fontWeight: '600', color: theme.color.ink, marginBottom: 2 },
+    draftDetail: { fontSize: 13, color: theme.color.inkMuted },
+    draftRemove: { padding: 8 },
 
-  nextBtnSpacing: { marginTop: 16 },
-});
+    nextBtnSpacing: { marginTop: 16 },
+  });
+}

@@ -4,7 +4,7 @@
 // Phone and email are pre-filled and read-only — sourced from
 // the vendor_leads registration and cannot be changed here.
 // ============================================================
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View, Text, StyleSheet,
   ScrollView, Alert, KeyboardAvoidingView, Platform,
@@ -15,12 +15,14 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { VarsButton, VarsInput, VarsSurface } from '@/components/ui';
 import { useVarsTheme } from '@/contexts/ThemeContext';
-import { Colors, BORDER_RADIUS } from '@/constants/colors';
+import { BORDER_RADIUS } from '@/constants/colors';
+import { VarsTheme } from '@/constants/visualSystem';
 import { sanitizeContent } from '@/lib/format';
 
 export default function Step1Profile() {
   const { user } = useAuth();
   const { theme } = useVarsTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [displayName, setDisplayName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -192,25 +194,27 @@ export default function Step1Profile() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  scroll: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 40 },
-  title: { fontSize: 26, fontWeight: '700', color: Colors.text, marginBottom: 6 },
-  sub: { fontSize: 15, color: Colors.textSecondary, marginBottom: 28 },
-  form: { gap: 12, marginBottom: 28 },
-  lockedField: {
-    height: 54, paddingHorizontal: 16,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-  },
-  lockedText: { fontSize: 16, color: Colors.text, flex: 1 },
-  lockedPlaceholder: { fontSize: 16, color: Colors.textMuted, flex: 1 },
-  lockBadge: {
-    fontSize: 11, fontWeight: '600', color: Colors.textMuted,
-    borderWidth: 1, borderColor: Colors.border, borderRadius: BORDER_RADIUS,
-    paddingHorizontal: 6, paddingVertical: 2,
-  },
-  fieldCaption: { fontSize: 12, color: Colors.textMuted, marginTop: 6, lineHeight: 16 },
-  bioInput: { height: 90, paddingTop: 14, textAlignVertical: 'top' },
-  charCount: { fontSize: 12, color: Colors.textMuted, textAlign: 'right', marginTop: 4 },
-  locationHelper: { fontSize: 13, color: Colors.textSecondary, marginTop: -4, marginLeft: 4 },
-});
+function makeStyles(theme: VarsTheme) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.color.bg },
+    scroll: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 40 },
+    title: { fontSize: 26, fontWeight: '700', color: theme.color.ink, marginBottom: 6 },
+    sub: { fontSize: 15, color: theme.color.inkMuted, marginBottom: 28 },
+    form: { gap: 12, marginBottom: 28 },
+    lockedField: {
+      height: 54, paddingHorizontal: 16,
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    },
+    lockedText: { fontSize: 16, color: theme.color.ink, flex: 1 },
+    lockedPlaceholder: { fontSize: 16, color: theme.color.inkMuted, flex: 1 },
+    lockBadge: {
+      fontSize: 11, fontWeight: '600', color: theme.color.inkMuted,
+      borderWidth: 1, borderColor: theme.color.inkFaint, borderRadius: BORDER_RADIUS,
+      paddingHorizontal: 6, paddingVertical: 2,
+    },
+    fieldCaption: { fontSize: 12, color: theme.color.inkMuted, marginTop: 6, lineHeight: 16 },
+    bioInput: { height: 90, paddingTop: 14, textAlignVertical: 'top' },
+    charCount: { fontSize: 12, color: theme.color.inkMuted, textAlign: 'right', marginTop: 4 },
+    locationHelper: { fontSize: 13, color: theme.color.inkMuted, marginTop: -4, marginLeft: 4 },
+  });
+}

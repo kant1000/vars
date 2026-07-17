@@ -3,7 +3,7 @@
 // Min 1 photo required. Max 3 unverified photos at onboarding.
 // Photos stored in 'portfolio' bucket; DB record has storage_path + consent_state='unverified'.
 // ============================================================
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   ScrollView, Alert,
@@ -16,7 +16,8 @@ import { uploadSinglePortfolioPhoto, PortfolioUpload } from '@/lib/storage';
 import { useAuth } from '@/contexts/AuthContext';
 import { VarsButton, VarsCheckbox, VarsSurface } from '@/components/ui';
 import { useVarsTheme } from '@/contexts/ThemeContext';
-import { Colors, BORDER_RADIUS } from '@/constants/colors';
+import { BORDER_RADIUS } from '@/constants/colors';
+import { VarsTheme } from '@/constants/visualSystem';
 import { CloseIcon } from '@/components/icons';
 
 const MAX_UNVERIFIED = 3;
@@ -24,6 +25,7 @@ const MAX_UNVERIFIED = 3;
 export default function Step3Portfolio() {
   const { user } = useAuth();
   const { theme } = useVarsTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [photos, setPhotos] = useState<PortfolioUpload[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -145,34 +147,37 @@ export default function Step3Portfolio() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  scroll: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 40 },
-  title: { fontSize: 26, fontWeight: '700', color: Colors.text, marginBottom: 6 },
-  sub: { fontSize: 15, color: Colors.textSecondary, marginBottom: 16 },
+function makeStyles(theme: VarsTheme) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.color.bg },
+    scroll: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 40 },
+    title: { fontSize: 26, fontWeight: '700', color: theme.color.ink, marginBottom: 6 },
+    sub: { fontSize: 15, color: theme.color.inkMuted, marginBottom: 16 },
 
-  guidanceCard: { padding: 14, marginBottom: 20 },
-  guidanceText: { fontSize: 13, color: Colors.textSecondary, lineHeight: 19 },
+    guidanceCard: { padding: 14, marginBottom: 20 },
+    guidanceText: { fontSize: 13, color: theme.color.inkMuted, lineHeight: 19 },
 
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
-  photoWrapper: { position: 'relative', width: '30%', aspectRatio: 1 },
-  photo: { width: '100%', height: '100%', borderRadius: BORDER_RADIUS },
-  removeButton: {
-    position: 'absolute', top: 4, right: 4,
-    width: 22, height: 22, borderRadius: 11,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  addButton: {
-    width: '30%', aspectRatio: 1, borderRadius: BORDER_RADIUS,
-    borderWidth: 1.5, borderColor: Colors.border, borderStyle: 'dashed',
-    alignItems: 'center', justifyContent: 'center', gap: 4,
-  },
-  addIcon: { fontSize: 28, color: Colors.ink, fontWeight: '300' },
-  addLabel: { fontSize: 12, color: Colors.textSecondary, fontWeight: '500' },
+    grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
+    photoWrapper: { position: 'relative', width: '30%', aspectRatio: 1 },
+    photo: { width: '100%', height: '100%', borderRadius: BORDER_RADIUS },
+    // Overlay sits on top of arbitrary photo content — stays fixed-contrast.
+    removeButton: {
+      position: 'absolute', top: 4, right: 4,
+      width: 22, height: 22, borderRadius: 11,
+      backgroundColor: 'rgba(0,0,0,0.55)',
+      alignItems: 'center', justifyContent: 'center',
+    },
+    addButton: {
+      width: '30%', aspectRatio: 1, borderRadius: BORDER_RADIUS,
+      borderWidth: 1.5, borderColor: theme.color.inkFaint, borderStyle: 'dashed',
+      alignItems: 'center', justifyContent: 'center', gap: 4,
+    },
+    addIcon: { fontSize: 28, color: theme.color.ink, fontWeight: '300' },
+    addLabel: { fontSize: 12, color: theme.color.inkMuted, fontWeight: '500' },
 
-  note: { padding: 14, marginBottom: 20 },
-  noteText: { fontSize: 13, color: Colors.textSecondary, lineHeight: 18 },
+    note: { padding: 14, marginBottom: 20 },
+    noteText: { fontSize: 13, color: theme.color.inkMuted, lineHeight: 18 },
 
-  buttonSpacing: { marginTop: 28 },
-});
+    buttonSpacing: { marginTop: 28 },
+  });
+}
