@@ -1,7 +1,9 @@
 // ============================================================
 // VARS — Privacy and Data Dashboard (Item 12)
 // Shows: terms acceptance history, data rights actions,
-// marketing info (static), vendor KYC retention notice.
+// transactional-messages status, vendor KYC retention notice.
+// Privacy Policy link is customer-only — vendors already have it
+// in-app via Settings > Legal (vendor-privacy.tsx).
 // Entry from: customer profile and vendor settings.
 // ============================================================
 import React, { useState, useCallback, useMemo } from 'react';
@@ -160,19 +162,12 @@ export default function PrivacyDataScreen() {
           {/* Marketing */}
           <Text style={s.sectionLabel}>Marketing</Text>
           <View style={s.card}>
-            <View style={[s.row, s.rowBorder]}>
+            <View style={s.row}>
               <View style={{ flex: 1 }}>
                 <Text style={s.rowLabel}>Transactional messages</Text>
                 <Text style={s.rowSub}>Booking alerts and payment updates via WhatsApp and push</Text>
               </View>
               <Text style={s.statusOn}>On</Text>
-            </View>
-            <View style={s.row}>
-              <View style={{ flex: 1 }}>
-                <Text style={s.rowLabel}>Marketing messages</Text>
-                <Text style={s.rowSub}>Promotional content from VARS</Text>
-              </View>
-              <Text style={s.statusOff}>Off</Text>
             </View>
           </View>
 
@@ -226,26 +221,22 @@ export default function PrivacyDataScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Policy links */}
-          <Text style={s.sectionLabel}>Policies</Text>
-          <View style={s.card}>
-            <TouchableOpacity
-              style={[s.row, s.rowBorder]}
-              onPress={() => Linking.openURL('https://www.bookwithvars.com/privacy')}
-              activeOpacity={0.7}
-            >
-              <Text style={s.rowLabel}>Privacy Policy</Text>
-              <ChevronRightIcon size={16} color={theme.color.inkMuted} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={s.row}
-              onPress={() => Linking.openURL('https://www.bookwithvars.com/cookie-policy')}
-              activeOpacity={0.7}
-            >
-              <Text style={s.rowLabel}>Cookie and Tracking Policy</Text>
-              <ChevronRightIcon size={16} color={theme.color.inkMuted} />
-            </TouchableOpacity>
-          </View>
+          {/* Policy links — vendors already have Privacy policy in Settings > Legal (in-app, matches what they accepted) */}
+          {!isVendor && (
+            <>
+              <Text style={s.sectionLabel}>Policies</Text>
+              <View style={s.card}>
+                <TouchableOpacity
+                  style={s.row}
+                  onPress={() => Linking.openURL('https://www.bookwithvars.com/privacy')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={s.rowLabel}>Privacy Policy</Text>
+                  <ChevronRightIcon size={16} color={theme.color.inkMuted} />
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
 
           {/* Vendor-only: KYC retention notice */}
           {isVendor && (
@@ -303,7 +294,6 @@ function makeStyles(theme: VarsTheme) {
     rowLabel:     { fontSize: 14, fontWeight: '600', color: theme.color.ink },
     rowSub:       { fontSize: 12, color: theme.color.inkMuted, marginTop: 2 },
     statusOn:     { fontSize: 12, fontWeight: '700', color: theme.color.accentGreen },
-    statusOff:    { fontSize: 12, fontWeight: '700', color: theme.color.inkMuted },
     emptyText:    { fontSize: 13, color: theme.color.inkMuted, padding: 16 },
     infoBox: {
       backgroundColor: theme.color.surface2,
