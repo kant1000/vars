@@ -3,7 +3,7 @@
 // Reached from the vendor profile "My Services" section.
 // Pre-fills an existing service; on save updates in-place.
 // ============================================================
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, TextInput,
 } from 'react-native';
@@ -12,7 +12,8 @@ import { VendorPriceInput } from '@/components/VendorPriceInput';
 import { router, useLocalSearchParams } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import { Colors } from '@/constants/colors';
+import { VarsTheme } from '@/constants/visualSystem';
+import { useVarsTheme } from '@/contexts/ThemeContext';
 import {
   CATEGORY_L1, CATEGORY_L1_LABELS, CATEGORY_L2_MAP, CATEGORY_L2_LABELS,
   MIN_SERVICE_PRICE_KOBO, SERVICE_NAME_MAX_CHARS, SERVICE_DESC_MAX_CHARS,
@@ -48,6 +49,8 @@ const BRAIDS_DURATIONS = [...BASE_DURATIONS, ...BRAIDS_EXTRA];
 export default function EditServiceScreen() {
   const { user } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { theme } = useVarsTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
 
   const [formL1, setFormL1] = useState<string>(CATEGORY_L1.HAIR);
   const [formL2, setFormL2] = useState<string>('');
@@ -208,7 +211,7 @@ export default function EditServiceScreen() {
         value={formName}
         onChangeText={(t) => setFormName(sanitizeContent(t, SERVICE_NAME_MAX_CHARS))}
         placeholder={NAME_PLACEHOLDER[formL1] ?? 'e.g. Service name'}
-        placeholderTextColor={Colors.textMuted}
+        placeholderTextColor={theme.color.inkMuted}
         maxLength={SERVICE_NAME_MAX_CHARS}
         returnKeyType="next"
       />
@@ -222,7 +225,7 @@ export default function EditServiceScreen() {
         value={formDesc}
         onChangeText={(t) => setFormDesc(sanitizeContent(t, SERVICE_DESC_MAX_CHARS))}
         placeholder={DESC_PLACEHOLDER[formL1] ?? 'Briefly describe the service...'}
-        placeholderTextColor={Colors.textMuted}
+        placeholderTextColor={theme.color.inkMuted}
         maxLength={SERVICE_DESC_MAX_CHARS}
         multiline
         numberOfLines={3}
@@ -277,55 +280,57 @@ export default function EditServiceScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  scroll: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 60 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+function makeStyles(theme: VarsTheme) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.color.bg },
+    scroll: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 60 },
+    center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
-  headerRow: { marginBottom: 12 },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  back: { fontSize: 28, color: Colors.ink, lineHeight: 32 },
-  title: { fontSize: 26, fontWeight: '700', color: Colors.text, marginBottom: 24 },
+    headerRow: { marginBottom: 12 },
+    backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+    back: { fontSize: 28, color: theme.color.ink, lineHeight: 32 },
+    title: { fontSize: 26, fontWeight: '700', color: theme.color.ink, marginBottom: 24 },
 
-  fieldLabel: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary, marginBottom: 8 },
-  optional: { fontWeight: '400', color: Colors.textMuted },
-  required: { color: Colors.error, fontWeight: '700' },
+    fieldLabel: { fontSize: 13, fontWeight: '600', color: theme.color.inkMuted, marginBottom: 8 },
+    optional: { fontWeight: '400', color: theme.color.inkMuted },
+    required: { color: theme.color.accentRed, fontWeight: '700' },
 
-  pillRow: { marginBottom: 16 },
-  pillRowInner: { flexDirection: 'row', gap: 8, paddingRight: 24 },
-  pill: {
-    paddingVertical: 8, paddingHorizontal: 16,
-    borderRadius: 5, borderWidth: 1.5, borderColor: Colors.border,
-    backgroundColor: Colors.background,
-  },
-  pillActive: { backgroundColor: Colors.ink, borderColor: Colors.ink },
-  pillText: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
-  pillTextActive: { color: '#FFF' },
+    pillRow: { marginBottom: 16 },
+    pillRowInner: { flexDirection: 'row', gap: 8, paddingRight: 24 },
+    pill: {
+      paddingVertical: 8, paddingHorizontal: 16,
+      borderRadius: 5, borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      backgroundColor: theme.color.bg,
+    },
+    pillActive: { backgroundColor: theme.color.ink, borderColor: theme.color.ink },
+    pillText: { fontSize: 14, fontWeight: '600', color: theme.color.inkMuted },
+    pillTextActive: { color: theme.color.inverseInk },
 
-  textInput: {
-    height: 44, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 5,
-    paddingHorizontal: 12, fontSize: 15, color: Colors.text, marginBottom: 16,
-    backgroundColor: Colors.surface,
-  },
-  textArea: { height: 80, paddingTop: 10, lineHeight: 20 },
-  priceHint: { fontSize: 12, color: Colors.textMuted, marginTop: 6, marginBottom: 16 },
+    textInput: {
+      height: 44, borderWidth: 1.5, borderColor: theme.color.inkFaint, borderRadius: 5,
+      paddingHorizontal: 12, fontSize: 15, color: theme.color.ink, marginBottom: 16,
+      backgroundColor: theme.color.surface2,
+    },
+    textArea: { height: 80, paddingTop: 10, lineHeight: 20 },
+    priceHint: { fontSize: 12, color: theme.color.inkMuted, marginTop: 6, marginBottom: 16 },
 
-  durationRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
-  durationChip: {
-    paddingVertical: 8, paddingHorizontal: 16,
-    borderRadius: 5, borderWidth: 1.5, borderColor: Colors.border,
-  },
-  durationChipActive: { backgroundColor: Colors.ink, borderColor: Colors.ink },
-  durationChipText: { fontSize: 13, color: Colors.textSecondary, fontWeight: '500' },
-  durationChipTextActive: { color: '#FFF' },
+    durationRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
+    durationChip: {
+      paddingVertical: 8, paddingHorizontal: 16,
+      borderRadius: 5, borderWidth: 1.5, borderColor: theme.color.inkFaint,
+    },
+    durationChipActive: { backgroundColor: theme.color.ink, borderColor: theme.color.ink },
+    durationChipText: { fontSize: 13, color: theme.color.inkMuted, fontWeight: '500' },
+    durationChipTextActive: { color: theme.color.inverseInk },
 
-  saveBtn: {
-    height: 56, backgroundColor: Colors.ink, borderRadius: 5,
-    alignItems: 'center', justifyContent: 'center', marginTop: 16,
-  },
-  saveBtnDisabled: { opacity: 0.6 },
-  saveBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+    saveBtn: {
+      height: 56, backgroundColor: theme.color.ink, borderRadius: 5,
+      alignItems: 'center', justifyContent: 'center', marginTop: 16,
+    },
+    saveBtnDisabled: { opacity: 0.6 },
+    saveBtnText: { color: theme.color.inverseInk, fontSize: 16, fontWeight: '700' },
 
-  cancelBtn: { alignItems: 'center', paddingVertical: 16 },
-  cancelBtnText: { fontSize: 15, color: Colors.textMuted, fontWeight: '500' },
-});
+    cancelBtn: { alignItems: 'center', paddingVertical: 16 },
+    cancelBtnText: { fontSize: 15, color: theme.color.inkMuted, fontWeight: '500' },
+  });
+}

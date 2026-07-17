@@ -5,7 +5,7 @@
 // tabs (Services | Reviews) — services visible by default.
 // Swipe left/right on content to switch tabs.
 // ============================================================
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dimensions, FlatList, PanResponder,
   ScrollView, StyleSheet, Text,
@@ -20,6 +20,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { VarsSkeleton } from '@/components/ui';
 import { useVarsTheme } from '@/contexts/ThemeContext';
 import { Colors, BORDER_RADIUS } from '@/constants/colors';
+import { VarsTheme } from '@/constants/visualSystem';
 import { CheckIcon, StarFilledIcon, StarEmptyIcon } from '@/components/icons';
 import { CATEGORY_L2_LABELS } from '@vars/shared';
 import { sanitizeContent } from '@/lib/format';
@@ -107,7 +108,7 @@ function formatAcceptTime(mins: number | null): string {
   return 'Typically accepts within 1 hour';
 }
 
-function Badge({ label, color }: { label: string; color: string }) {
+function Badge({ label, color, styles }: { label: string; color: string; styles: ReturnType<typeof makeStyles> }) {
   return (
     <View style={[styles.badge, { backgroundColor: color + '1A' }]}>
       <Text style={[styles.badgeText, { color }]}>{label}</Text>
@@ -118,9 +119,10 @@ function Badge({ label, color }: { label: string; color: string }) {
 function VendorProfileSkeleton({
   theme, insets,
 }: {
-  theme: ReturnType<typeof useVarsTheme>['theme'];
+  theme: VarsTheme;
   insets: EdgeInsets;
 }) {
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <View style={styles.container}>
       <View style={[styles.profileRow, { paddingTop: insets.top + 52 }]}>
@@ -158,6 +160,7 @@ export default function VendorProfileScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { theme } = useVarsTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
 
   const [vendor, setVendor] = useState<VendorProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -340,7 +343,7 @@ export default function VendorProfileScreen() {
             <Text style={styles.name} numberOfLines={1}>{vendor.full_name}</Text>
             {vendor.kyc_legal_name ? (
               <View style={styles.legalNameRow}>
-                <CheckIcon size={10} color={Colors.textMuted} />
+                <CheckIcon size={10} color={theme.color.inkMuted} />
                 <Text style={styles.legalNameText}>{vendor.kyc_legal_name} · Verified by VARS</Text>
               </View>
             ) : null}
@@ -356,10 +359,10 @@ export default function VendorProfileScreen() {
               )}
             </View>
             <View style={styles.badgeRow}>
-              {vendor.pioneer && <Badge label="★ Pioneer" color={Colors.badgePioneer} />}
-              {vendor.badge_vars_choice && <Badge label="VARS Choice" color={Colors.badgeVarsChoice} />}
-              {vendor.badge_top_rated && <Badge label="Top Rated" color={Colors.badgeTopRated} />}
-              <Badge label="Verified" color={Colors.badgeVerified} />
+              {vendor.pioneer && <Badge label="★ Pioneer" color={Colors.badgePioneer} styles={styles} />}
+              {vendor.badge_vars_choice && <Badge label="VARS Choice" color={Colors.badgeVarsChoice} styles={styles} />}
+              {vendor.badge_top_rated && <Badge label="Top Rated" color={Colors.badgeTopRated} styles={styles} />}
+              <Badge label="Verified" color={Colors.badgeVerified} styles={styles} />
             </View>
             {vendor.bio ? <Text style={styles.bio} numberOfLines={3}>{sanitizeContent(vendor.bio, 150)}</Text> : null}
             <Text style={styles.responseTime}>{formatAcceptTime(vendor.avg_response_minutes)}</Text>
@@ -517,125 +520,127 @@ export default function VendorProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.background },
-  errorText: { fontSize: 16, color: Colors.text, marginBottom: 12 },
-  backLink: { fontSize: 15, color: Colors.primary, fontWeight: '600' },
+function makeStyles(theme: VarsTheme) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.color.bg },
+    loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.color.bg },
+    errorText: { fontSize: 16, color: theme.color.ink, marginBottom: 12 },
+    backLink: { fontSize: 15, color: theme.color.accentBlue, fontWeight: '600' },
 
-  // Floating nav buttons
-  backBtn: {
-    position: 'absolute', left: 16, zIndex: 10,
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  backBtnText: { color: Colors.white, fontSize: 26, lineHeight: 30, marginTop: -2 },
-  favBtn: {
-    position: 'absolute', right: 16, zIndex: 10,
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  favBtnText: { color: Colors.white, fontSize: 20 },
+    // Floating nav buttons — sit on top of the portfolio photo, stay fixed-contrast.
+    backBtn: {
+      position: 'absolute', left: 16, zIndex: 10,
+      width: 36, height: 36, borderRadius: 18,
+      backgroundColor: 'rgba(0,0,0,0.35)',
+      alignItems: 'center', justifyContent: 'center',
+    },
+    backBtnText: { color: '#FFF', fontSize: 26, lineHeight: 30, marginTop: -2 },
+    favBtn: {
+      position: 'absolute', right: 16, zIndex: 10,
+      width: 36, height: 36, borderRadius: 18,
+      backgroundColor: 'rgba(0,0,0,0.35)',
+      alignItems: 'center', justifyContent: 'center',
+    },
+    favBtnText: { color: '#FFF', fontSize: 20 },
 
-  // Profile row
-  profileRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    gap: 14,
-    backgroundColor: Colors.background,
-  },
-  avatarWrap: { width: AVATAR_SIZE, height: AVATAR_SIZE },
-  avatar: { width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2 },
-  statusDotWrap: { position: 'absolute', bottom: 0, right: 0 },
-  avatarFallback: { backgroundColor: Colors.ink, alignItems: 'center', justifyContent: 'center' },
-  avatarInitial: { fontSize: 28, fontWeight: '800', color: Colors.white },
-  profileInfo: { flex: 1, paddingTop: 2 },
-  skeletonInfo: { flex: 1, paddingTop: 2, gap: 8 },
-  name: { fontSize: 20, fontWeight: '800', color: Colors.text, marginBottom: 2 },
-  legalNameRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 },
-  legalNameText: { fontSize: 12, color: Colors.textMuted },
-  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginBottom: 6 },
-  starText: { color: Colors.star, fontSize: 13 },
-  ratingText: { fontSize: 13, fontWeight: '700', color: Colors.text },
-  reviewCount: { fontSize: 12, color: Colors.textMuted },
-  newOnVars: { fontSize: 12, fontWeight: '600', color: Colors.badgeNew },
-  badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginBottom: 6 },
-  badge: { borderRadius: BORDER_RADIUS, paddingHorizontal: 7, paddingVertical: 3 },
-  badgeText: { fontSize: 10, fontWeight: '700' },
-  bio: { fontSize: 13, color: Colors.textSecondary, lineHeight: 19 },
-  responseTime: { fontSize: 12, color: Colors.textMuted, marginTop: 4 },
+    // Profile row
+    profileRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      paddingHorizontal: 16,
+      paddingBottom: 16,
+      gap: 14,
+      backgroundColor: theme.color.bg,
+    },
+    avatarWrap: { width: AVATAR_SIZE, height: AVATAR_SIZE },
+    avatar: { width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2 },
+    statusDotWrap: { position: 'absolute', bottom: 0, right: 0 },
+    avatarFallback: { backgroundColor: theme.color.ink, alignItems: 'center', justifyContent: 'center' },
+    avatarInitial: { fontSize: 28, fontWeight: '800', color: theme.color.inverseInk },
+    profileInfo: { flex: 1, paddingTop: 2 },
+    skeletonInfo: { flex: 1, paddingTop: 2, gap: 8 },
+    name: { fontSize: 20, fontWeight: '800', color: theme.color.ink, marginBottom: 2 },
+    legalNameRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 },
+    legalNameText: { fontSize: 12, color: theme.color.inkMuted },
+    ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginBottom: 6 },
+    starText: { color: Colors.star, fontSize: 13 },
+    ratingText: { fontSize: 13, fontWeight: '700', color: theme.color.ink },
+    reviewCount: { fontSize: 12, color: theme.color.inkMuted },
+    newOnVars: { fontSize: 12, fontWeight: '600', color: Colors.badgeNew },
+    badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginBottom: 6 },
+    badge: { borderRadius: BORDER_RADIUS, paddingHorizontal: 7, paddingVertical: 3 },
+    badgeText: { fontSize: 10, fontWeight: '700' },
+    bio: { fontSize: 13, color: theme.color.inkMuted, lineHeight: 19 },
+    responseTime: { fontSize: 12, color: theme.color.inkMuted, marginTop: 4 },
 
-  // Carousel
-  carouselEmpty: { height: 0 },
-  dotsRow: {
-    flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
-    gap: 6, paddingVertical: 10, backgroundColor: Colors.background,
-  },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.border },
-  dotActive: { width: 18, backgroundColor: Colors.ink },
+    // Carousel
+    carouselEmpty: { height: 0 },
+    dotsRow: {
+      flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
+      gap: 6, paddingVertical: 10, backgroundColor: theme.color.bg,
+    },
+    dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: theme.color.inkFaint },
+    dotActive: { width: 18, backgroundColor: theme.color.ink },
 
-  // Tabs
-  tabRow: {
-    flexDirection: 'row', backgroundColor: Colors.background,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  sectionTab: { flex: 1, paddingVertical: 12, alignItems: 'center' },
-  sectionTabActive: { borderBottomWidth: 2, borderBottomColor: Colors.ink },
-  sectionTabText: { fontSize: 14, fontWeight: '600', color: Colors.textMuted },
-  sectionTabTextActive: { color: Colors.ink },
+    // Tabs
+    tabRow: {
+      flexDirection: 'row', backgroundColor: theme.color.bg,
+      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+    },
+    sectionTab: { flex: 1, paddingVertical: 12, alignItems: 'center' },
+    sectionTabActive: { borderBottomWidth: 2, borderBottomColor: theme.color.ink },
+    sectionTabText: { fontSize: 14, fontWeight: '600', color: theme.color.inkMuted },
+    sectionTabTextActive: { color: theme.color.ink },
 
-  section: { paddingHorizontal: 16, paddingTop: 8 },
+    section: { paddingHorizontal: 16, paddingTop: 8 },
 
-  // Service card
-  serviceCard: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
-    paddingVertical: 14, paddingHorizontal: 12,
-    borderWidth: 1, borderColor: Colors.border, borderRadius: 5,
-    marginBottom: 8, backgroundColor: Colors.background,
-  },
-  serviceCardSelected: {
-    borderColor: Colors.ink,
-    backgroundColor: Colors.ink + '08',
-  },
-  serviceCardLeft: { flex: 1, marginRight: 12 },
-  serviceCardRight: { alignItems: 'flex-end', gap: 8 },
-  serviceL2: { fontSize: 11, color: Colors.textMuted, fontWeight: '500', marginBottom: 2 },
-  serviceName: { fontSize: 15, fontWeight: '700', color: Colors.text, marginBottom: 2 },
-  serviceDesc: { fontSize: 13, color: Colors.textSecondary, lineHeight: 18, marginBottom: 4 },
-  serviceDuration: { fontSize: 12, color: Colors.textMuted, fontWeight: '500' },
-  servicePrice: { fontSize: 16, fontWeight: '800', color: Colors.text },
-  checkbox: {
-    width: 22, height: 22, borderRadius: 11,
-    borderWidth: 1.5, borderColor: Colors.border,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: Colors.background,
-  },
-  checkboxSelected: { backgroundColor: Colors.ink, borderColor: Colors.ink },
-  checkmark: { color: Colors.white, fontSize: 13, fontWeight: '800' },
+    // Service card
+    serviceCard: {
+      flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
+      paddingVertical: 14, paddingHorizontal: 12,
+      borderWidth: 1, borderColor: theme.color.inkFaint, borderRadius: 5,
+      marginBottom: 8, backgroundColor: theme.color.bg,
+    },
+    serviceCardSelected: {
+      borderColor: theme.color.ink,
+      backgroundColor: theme.color.ink + '08',
+    },
+    serviceCardLeft: { flex: 1, marginRight: 12 },
+    serviceCardRight: { alignItems: 'flex-end', gap: 8 },
+    serviceL2: { fontSize: 11, color: theme.color.inkMuted, fontWeight: '500', marginBottom: 2 },
+    serviceName: { fontSize: 15, fontWeight: '700', color: theme.color.ink, marginBottom: 2 },
+    serviceDesc: { fontSize: 13, color: theme.color.inkMuted, lineHeight: 18, marginBottom: 4 },
+    serviceDuration: { fontSize: 12, color: theme.color.inkMuted, fontWeight: '500' },
+    servicePrice: { fontSize: 16, fontWeight: '800', color: theme.color.ink },
+    checkbox: {
+      width: 22, height: 22, borderRadius: 11,
+      borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      alignItems: 'center', justifyContent: 'center',
+      backgroundColor: theme.color.bg,
+    },
+    checkboxSelected: { backgroundColor: theme.color.ink, borderColor: theme.color.ink },
+    checkmark: { color: theme.color.inverseInk, fontSize: 13, fontWeight: '800' },
 
-  // Reviews
-  reviewCard: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.border },
-  reviewHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  reviewerName: { fontSize: 14, fontWeight: '700', color: Colors.text },
-  reviewComment: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20, marginBottom: 4 },
-  reviewDate: { fontSize: 12, color: Colors.textMuted },
+    // Reviews
+    reviewCard: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint },
+    reviewHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+    reviewerName: { fontSize: 14, fontWeight: '700', color: theme.color.ink },
+    reviewComment: { fontSize: 14, color: theme.color.inkMuted, lineHeight: 20, marginBottom: 4 },
+    reviewDate: { fontSize: 12, color: theme.color.inkMuted },
 
-  emptyText: { fontSize: 14, color: Colors.textMuted, paddingVertical: 20, textAlign: 'center' },
+    emptyText: { fontSize: 14, color: theme.color.inkMuted, paddingVertical: 20, textAlign: 'center' },
 
-  // CTA
-  ctaWrap: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: Colors.background,
-    borderTopWidth: 1, borderTopColor: Colors.border,
-    paddingHorizontal: 20, paddingTop: 12,
-  },
-  ctaButton: {
-    height: 56, backgroundColor: Colors.ink, borderRadius: BORDER_RADIUS,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  ctaText: { color: Colors.white, fontSize: 17, fontWeight: '800' },
-});
+    // CTA
+    ctaWrap: {
+      position: 'absolute', bottom: 0, left: 0, right: 0,
+      backgroundColor: theme.color.bg,
+      borderTopWidth: 1, borderTopColor: theme.color.inkFaint,
+      paddingHorizontal: 20, paddingTop: 12,
+    },
+    ctaButton: {
+      height: 56, backgroundColor: theme.color.ink, borderRadius: BORDER_RADIUS,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    ctaText: { color: theme.color.inverseInk, fontSize: 17, fontWeight: '800' },
+  });
+}

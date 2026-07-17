@@ -8,7 +8,7 @@
 // • Save calls vendor-set-zone edge function
 // • Circle overlay shows the zone boundary
 // ============================================================
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert, StyleSheet, Text,
   TouchableOpacity, View, Switch, ScrollView,
@@ -20,7 +20,8 @@ import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
-import { Colors } from '@/constants/colors';
+import { VarsTheme } from '@/constants/visualSystem';
+import { useVarsTheme } from '@/contexts/ThemeContext';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
@@ -48,6 +49,8 @@ function toLocalDateStr(d: Date): string {
 export default function VendorZoneSetup() {
   const insets = useSafeAreaInsets();
   const mapRef = useRef<MapView>(null);
+  const { theme } = useVarsTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -200,8 +203,8 @@ export default function VendorZoneSetup() {
             <Circle
               center={{ latitude: pinLat, longitude: pinLng }}
               radius={radius * 1000} // metres
-              fillColor={Colors.ink + '14'}
-              strokeColor={Colors.ink}
+              fillColor={theme.color.ink + '14'}
+              strokeColor={theme.color.ink}
               strokeWidth={1.5}
             />
             {/* Draggable pin */}
@@ -214,7 +217,7 @@ export default function VendorZoneSetup() {
               }}
               title="Zone centre"
               description="Drag to reposition"
-              pinColor={Colors.ink}
+              pinColor={theme.color.ink}
             />
           </MapView>
           <View style={s.mapHint}>
@@ -257,8 +260,8 @@ export default function VendorZoneSetup() {
             <Switch
               value={autoEnabled}
               onValueChange={setAutoEnabled}
-              trackColor={{ true: Colors.ink, false: Colors.inkFaint }}
-              thumbColor={'#FFF'}
+              trackColor={{ false: theme.color.inkFaint, true: theme.color.ink }}
+              thumbColor={theme.color.inverseInk}
             />
           </View>
 
@@ -298,73 +301,75 @@ export default function VendorZoneSetup() {
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  centered:  { flex: 1, alignItems: 'center', justifyContent: 'center' },
+function makeStyles(theme: VarsTheme) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.color.bg },
+    centered:  { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  backBtn:     { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  backText:    { fontSize: 28, color: Colors.ink, lineHeight: 32 },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: Colors.text },
+    header: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 16, paddingVertical: 12,
+      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+    },
+    backBtn:     { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+    backText:    { fontSize: 28, color: theme.color.ink, lineHeight: 32 },
+    headerTitle: { fontSize: 17, fontWeight: '700', color: theme.color.ink },
 
-  mapWrap: { position: 'relative' },
-  map: { width: '100%', height: 300 },
-  mapHint: {
-    position: 'absolute', bottom: 8, left: 0, right: 0,
-    alignItems: 'center',
-  },
-  mapHintText: {
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    color: '#FFF', fontSize: 12, fontWeight: '600',
-    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 5,
-    overflow: 'hidden',
-  },
+    mapWrap: { position: 'relative' },
+    map: { width: '100%', height: 300 },
+    mapHint: {
+      position: 'absolute', bottom: 8, left: 0, right: 0,
+      alignItems: 'center',
+    },
+    mapHintText: {
+      backgroundColor: 'rgba(0,0,0,0.55)',
+      color: '#FFF', fontSize: 12, fontWeight: '600',
+      paddingHorizontal: 10, paddingVertical: 4, borderRadius: 5,
+      overflow: 'hidden',
+    },
 
-  controls: { padding: 20, gap: 20 },
+    controls: { padding: 20, gap: 20 },
 
-  dateRow: { backgroundColor: Colors.ink, borderRadius: 5, padding: 14 },
-  dateLabelText: {
-    fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.65)',
-    textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4,
-  },
-  dateValueText: { fontSize: 18, fontWeight: '800', color: '#FFF' },
+    dateRow: { backgroundColor: theme.color.ink, borderRadius: 5, padding: 14 },
+    dateLabelText: {
+      fontSize: 11, fontWeight: '700', color: theme.color.inverseInk + 'A6',
+      textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4,
+    },
+    dateValueText: { fontSize: 18, fontWeight: '800', color: theme.color.inverseInk },
 
-  sectionLabel: {
-    fontSize: 13, fontWeight: '700', color: Colors.textMuted,
-    textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: -12,
-  },
-  radiusRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  radiusChip: {
-    paddingHorizontal: 16, paddingVertical: 10,
-    borderRadius: 5, borderWidth: 1.5, borderColor: Colors.inkFaint,
-  },
-  radiusChipActive: { backgroundColor: Colors.ink, borderColor: Colors.ink },
-  radiusChipText:   { fontSize: 14, fontWeight: '700', color: Colors.textSecondary },
-  radiusChipTextActive: { color: '#FFF' },
+    sectionLabel: {
+      fontSize: 13, fontWeight: '700', color: theme.color.inkMuted,
+      textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: -12,
+    },
+    radiusRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+    radiusChip: {
+      paddingHorizontal: 16, paddingVertical: 10,
+      borderRadius: 5, borderWidth: 1.5, borderColor: theme.color.inkFaint,
+    },
+    radiusChipActive: { backgroundColor: theme.color.ink, borderColor: theme.color.ink },
+    radiusChipText:   { fontSize: 14, fontWeight: '700', color: theme.color.inkMuted },
+    radiusChipTextActive: { color: theme.color.inverseInk },
 
-  toggleRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: 'transparent', borderRadius: 5, padding: 16,
-    borderWidth: 1, borderColor: Colors.ink,
-  },
-  toggleLabel: { fontSize: 15, fontWeight: '700', color: Colors.text, marginBottom: 3 },
-  toggleSub:   { fontSize: 13, color: Colors.textSecondary, lineHeight: 18 },
+    toggleRow: {
+      flexDirection: 'row', alignItems: 'center', gap: 12,
+      backgroundColor: 'transparent', borderRadius: 5, padding: 16,
+      borderWidth: 1, borderColor: theme.color.ink,
+    },
+    toggleLabel: { fontSize: 15, fontWeight: '700', color: theme.color.ink, marginBottom: 3 },
+    toggleSub:   { fontSize: 13, color: theme.color.inkMuted, lineHeight: 18 },
 
-  infoBox: {
-    backgroundColor: 'transparent', borderRadius: 5, padding: 14,
-    borderWidth: 1, borderColor: Colors.inkFaint,
-  },
-  infoTitle: { fontSize: 13, fontWeight: '700', color: Colors.ink, marginBottom: 6 },
-  infoText:  { fontSize: 13, color: Colors.inkMuted, lineHeight: 20 },
+    infoBox: {
+      backgroundColor: 'transparent', borderRadius: 5, padding: 14,
+      borderWidth: 1, borderColor: theme.color.inkFaint,
+    },
+    infoTitle: { fontSize: 13, fontWeight: '700', color: theme.color.ink, marginBottom: 6 },
+    infoText:  { fontSize: 13, color: theme.color.inkMuted, lineHeight: 20 },
 
-  saveBtn: {
-    height: 56, backgroundColor: Colors.ink,
-    borderRadius: 5, alignItems: 'center', justifyContent: 'center',
-  },
-  btnDisabled: { opacity: 0.5 },
-  saveBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
-});
+    saveBtn: {
+      height: 56, backgroundColor: theme.color.ink,
+      borderRadius: 5, alignItems: 'center', justifyContent: 'center',
+    },
+    btnDisabled: { opacity: 0.5 },
+    saveBtnText: { color: theme.color.inverseInk, fontSize: 16, fontWeight: '800' },
+  });
+}

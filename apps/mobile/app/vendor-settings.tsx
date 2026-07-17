@@ -2,7 +2,7 @@
 // VARS — Vendor Settings (root stack screen — lives above tab navigator)
 // Sections: Account, Security, Payout details, Support, Legal
 // ============================================================
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, Pressable,
   ScrollView, Alert, Modal, Switch, KeyboardAvoidingView, Platform, Linking,
@@ -13,7 +13,8 @@ import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { signOut } from '@/lib/auth';
-import { Colors, BORDER_RADIUS } from '@/constants/colors';
+import { BORDER_RADIUS } from '@/constants/colors';
+import { VarsTheme } from '@/constants/visualSystem';
 import { ChevronRightIcon, CheckIcon } from '@/components/icons';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { useVarsTheme } from '@/contexts/ThemeContext';
@@ -25,6 +26,7 @@ const BIOMETRIC_KEY = 'vars_biometric_lock';
 export default function VendorSettings() {
   const insets = useSafeAreaInsets();
   const { theme, appearance, override, setOverride } = useVarsTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
 
   // Account
   const [displayName, setDisplayName] = useState('');
@@ -218,7 +220,7 @@ export default function VendorSettings() {
               value={displayName}
               onChangeText={setDisplayName}
               placeholder="Your display name"
-              placeholderTextColor={Colors.textMuted}
+              placeholderTextColor={theme.color.inkMuted}
               autoCapitalize="words"
               returnKeyType="done"
               onSubmitEditing={handleSaveName}
@@ -235,7 +237,7 @@ export default function VendorSettings() {
               >
                 {savingName
                   ? <ScissorsLoader size="small" color="light" />
-                  : <CheckIcon size={18} color={Colors.white} />}
+                  : <CheckIcon size={18} color={theme.color.inverseInk} />}
               </TouchableOpacity>
             )}
           </View>
@@ -262,8 +264,8 @@ export default function VendorSettings() {
             }
             activeOpacity={0.7}
           >
-            <Text style={[s.rowLabel, !isEmailUser && { color: Colors.textMuted }]}>Change password</Text>
-            <ChevronRightIcon size={16} color={Colors.textMuted} />
+            <Text style={[s.rowLabel, !isEmailUser && { color: theme.color.inkMuted }]}>Change password</Text>
+            <ChevronRightIcon size={16} color={theme.color.inkMuted} />
           </TouchableOpacity>
           {biometricAvailable && (
             <View style={s.row}>
@@ -271,9 +273,9 @@ export default function VendorSettings() {
               <Switch
                 value={biometricEnabled}
                 onValueChange={handleToggleBiometric}
-                trackColor={{ false: Colors.border, true: Colors.ink }}
-                thumbColor={Colors.white}
-                ios_backgroundColor={Colors.border}
+                trackColor={{ false: theme.color.inkFaint, true: theme.color.ink }}
+                thumbColor={theme.color.inverseInk}
+                ios_backgroundColor={theme.color.inkFaint}
               />
             </View>
           )}
@@ -325,7 +327,7 @@ export default function VendorSettings() {
             </>
           ) : (
             <View style={[s.row, s.lastRow]}>
-              <Text style={[s.rowLabel, { color: Colors.textMuted }]}>No bank account connected</Text>
+              <Text style={[s.rowLabel, { color: theme.color.inkMuted }]}>No bank account connected</Text>
             </View>
           )}
         </View>
@@ -339,7 +341,7 @@ export default function VendorSettings() {
             activeOpacity={0.7}
           >
             <Text style={s.rowLabel}>Get help</Text>
-            <ChevronRightIcon size={16} color={Colors.textMuted} />
+            <ChevronRightIcon size={16} color={theme.color.inkMuted} />
           </TouchableOpacity>
         </View>
 
@@ -352,7 +354,7 @@ export default function VendorSettings() {
             activeOpacity={0.7}
           >
             <Text style={s.rowLabel}>Terms of use</Text>
-            <ChevronRightIcon size={16} color={Colors.textMuted} />
+            <ChevronRightIcon size={16} color={theme.color.inkMuted} />
           </TouchableOpacity>
           <TouchableOpacity
             style={s.row}
@@ -360,7 +362,7 @@ export default function VendorSettings() {
             activeOpacity={0.7}
           >
             <Text style={s.rowLabel}>Privacy policy</Text>
-            <ChevronRightIcon size={16} color={Colors.textMuted} />
+            <ChevronRightIcon size={16} color={theme.color.inkMuted} />
           </TouchableOpacity>
           <TouchableOpacity
             style={[s.row, s.lastRow]}
@@ -368,7 +370,7 @@ export default function VendorSettings() {
             activeOpacity={0.7}
           >
             <Text style={s.rowLabel}>Privacy and data</Text>
-            <ChevronRightIcon size={16} color={Colors.textMuted} />
+            <ChevronRightIcon size={16} color={theme.color.inkMuted} />
           </TouchableOpacity>
         </View>
 
@@ -389,11 +391,11 @@ export default function VendorSettings() {
             <View style={[s.card, { marginTop: 16, marginBottom: 0 }]}>
               <TouchableOpacity style={s.row} onPress={handleSupportWhatsApp} activeOpacity={0.7}>
                 <Text style={s.rowLabel}>WhatsApp</Text>
-                <ChevronRightIcon size={16} color={Colors.textMuted} />
+                <ChevronRightIcon size={16} color={theme.color.inkMuted} />
               </TouchableOpacity>
               <TouchableOpacity style={[s.row, s.lastRow]} onPress={handleSupportEmail} activeOpacity={0.7}>
                 <Text style={s.rowLabel}>Email</Text>
-                <ChevronRightIcon size={16} color={Colors.textMuted} />
+                <ChevronRightIcon size={16} color={theme.color.inkMuted} />
               </TouchableOpacity>
             </View>
           </Pressable>
@@ -420,7 +422,7 @@ export default function VendorSettings() {
                 <TextInput
                   style={s.passwordInput}
                   placeholder="Current password"
-                  placeholderTextColor={Colors.textMuted}
+                  placeholderTextColor={theme.color.inkMuted}
                   value={currentPassword}
                   onChangeText={setCurrentPassword}
                   secureTextEntry={!showCurrent}
@@ -435,7 +437,7 @@ export default function VendorSettings() {
                 <TextInput
                   style={s.passwordInput}
                   placeholder="New password"
-                  placeholderTextColor={Colors.textMuted}
+                  placeholderTextColor={theme.color.inkMuted}
                   value={newPassword}
                   onChangeText={setNewPassword}
                   secureTextEntry={!showNew}
@@ -450,7 +452,7 @@ export default function VendorSettings() {
                 <TextInput
                   style={s.passwordInput}
                   placeholder="Confirm new password"
-                  placeholderTextColor={Colors.textMuted}
+                  placeholderTextColor={theme.color.inkMuted}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   secureTextEntry={!showConfirm}
@@ -480,90 +482,92 @@ export default function VendorSettings() {
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  backText: { fontSize: 28, color: Colors.ink, lineHeight: 32 },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: Colors.text },
-  scroll: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 60 },
+function makeStyles(theme: VarsTheme) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.color.bg },
+    header: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 16, paddingVertical: 12,
+      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+    },
+    backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+    backText: { fontSize: 28, color: theme.color.ink, lineHeight: 32 },
+    headerTitle: { fontSize: 17, fontWeight: '700', color: theme.color.ink },
+    scroll: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 60 },
 
-  sectionLabel: {
-    fontSize: 11, fontWeight: '700', color: Colors.textMuted,
-    textTransform: 'uppercase', letterSpacing: 0.8,
-    marginBottom: 8, marginLeft: 2,
-  },
-  card: {
-    borderWidth: 1, borderColor: Colors.border, borderRadius: BORDER_RADIUS,
-    backgroundColor: Colors.background, marginBottom: 28, overflow: 'hidden',
-  },
+    sectionLabel: {
+      fontSize: 11, fontWeight: '700', color: theme.color.inkMuted,
+      textTransform: 'uppercase', letterSpacing: 0.8,
+      marginBottom: 8, marginLeft: 2,
+    },
+    card: {
+      borderWidth: 1, borderColor: theme.color.inkFaint, borderRadius: BORDER_RADIUS,
+      backgroundColor: theme.color.bg, marginBottom: 28, overflow: 'hidden',
+    },
 
-  fieldRow: {
-    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14,
-    minHeight: 54, borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  lockedRow: { backgroundColor: Colors.surface },
-  lastRow: { borderBottomWidth: 0 },
-  fieldLabel: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary, width: 80 },
-  fieldInput: { flex: 1, fontSize: 15, color: Colors.text, paddingVertical: 0 },
-  fieldValue: { flex: 1, fontSize: 15, color: Colors.text },
-  lockBadge: {
-    fontSize: 11, fontWeight: '600', color: Colors.textMuted,
-    borderWidth: 1, borderColor: Colors.border, borderRadius: BORDER_RADIUS,
-    paddingHorizontal: 6, paddingVertical: 2,
-  },
+    fieldRow: {
+      flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14,
+      minHeight: 54, borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+    },
+    lockedRow: { backgroundColor: theme.color.surface2 },
+    lastRow: { borderBottomWidth: 0 },
+    fieldLabel: { fontSize: 13, fontWeight: '600', color: theme.color.inkMuted, width: 80 },
+    fieldInput: { flex: 1, fontSize: 15, color: theme.color.ink, paddingVertical: 0 },
+    fieldValue: { flex: 1, fontSize: 15, color: theme.color.ink },
+    lockBadge: {
+      fontSize: 11, fontWeight: '600', color: theme.color.inkMuted,
+      borderWidth: 1, borderColor: theme.color.inkFaint, borderRadius: BORDER_RADIUS,
+      paddingHorizontal: 6, paddingVertical: 2,
+    },
 
-  row: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 14, height: 54,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  rowLabel: { fontSize: 15, fontWeight: '500', color: Colors.text },
-  rowDestructive: { fontSize: 15, fontWeight: '500', color: Colors.error },
+    row: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 14, height: 54,
+      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+    },
+    rowLabel: { fontSize: 15, fontWeight: '500', color: theme.color.ink },
+    rowDestructive: { fontSize: 15, fontWeight: '500', color: theme.color.accentRed },
 
-  switchRow: {
-    paddingHorizontal: 14, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
+    switchRow: {
+      paddingHorizontal: 14, paddingVertical: 10,
+      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+    },
 
-  confirmBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: Colors.ink,
-    alignItems: 'center', justifyContent: 'center',
-    marginLeft: 8,
-  },
-  saveBtn: {
-    margin: 12, height: 48, backgroundColor: Colors.ink,
-    borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center',
-  },
-  saveBtnDisabled: { opacity: 0.5 },
-  saveBtnText: { color: Colors.white, fontSize: 15, fontWeight: '700' },
+    confirmBtn: {
+      width: 36, height: 36, borderRadius: 18,
+      backgroundColor: theme.color.ink,
+      alignItems: 'center', justifyContent: 'center',
+      marginLeft: 8,
+    },
+    saveBtn: {
+      margin: 12, height: 48, backgroundColor: theme.color.ink,
+      borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center',
+    },
+    saveBtnDisabled: { opacity: 0.5 },
+    saveBtnText: { color: theme.color.inverseInk, fontSize: 15, fontWeight: '700' },
 
-  supportOverlay: { flex: 1, backgroundColor: Colors.overlay, justifyContent: 'flex-end' },
-  supportSheet: {
-    backgroundColor: Colors.background,
-    borderTopLeftRadius: BORDER_RADIUS, borderTopRightRadius: BORDER_RADIUS,
-    padding: 24, paddingBottom: 40,
-  },
-  supportTitle: { fontSize: 20, fontWeight: '800', color: Colors.text },
-  supportSub: { fontSize: 14, color: Colors.textSecondary, marginTop: 4 },
+    supportOverlay: { flex: 1, backgroundColor: theme.color.overlay, justifyContent: 'flex-end' },
+    supportSheet: {
+      backgroundColor: theme.color.bg,
+      borderTopLeftRadius: BORDER_RADIUS, borderTopRightRadius: BORDER_RADIUS,
+      padding: 24, paddingBottom: 40,
+    },
+    supportTitle: { fontSize: 20, fontWeight: '800', color: theme.color.ink },
+    supportSub: { fontSize: 14, color: theme.color.inkMuted, marginTop: 4 },
 
-  modalHeader: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  modalTitle: { fontSize: 17, fontWeight: '700', color: Colors.text },
-  modalCancel: { fontSize: 15, color: Colors.textMuted, fontWeight: '500' },
-  modalBody: { paddingTop: 20 },
-  passwordField: {
-    flexDirection: 'row', alignItems: 'center',
-    borderWidth: 1.5, borderColor: Colors.border, borderRadius: BORDER_RADIUS,
-    paddingHorizontal: 14, height: 54, marginBottom: 12,
-  },
-  passwordInput: { flex: 1, fontSize: 15, color: Colors.text },
-  showToggle: { fontSize: 13, color: Colors.textMuted, fontWeight: '600', paddingLeft: 8 },
-});
+    modalHeader: {
+      flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+      paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+    },
+    modalTitle: { fontSize: 17, fontWeight: '700', color: theme.color.ink },
+    modalCancel: { fontSize: 15, color: theme.color.inkMuted, fontWeight: '500' },
+    modalBody: { paddingTop: 20 },
+    passwordField: {
+      flexDirection: 'row', alignItems: 'center',
+      borderWidth: 1.5, borderColor: theme.color.inkFaint, borderRadius: BORDER_RADIUS,
+      paddingHorizontal: 14, height: 54, marginBottom: 12,
+    },
+    passwordInput: { flex: 1, fontSize: 15, color: theme.color.ink },
+    showToggle: { fontSize: 13, color: theme.color.inkMuted, fontWeight: '600', paddingLeft: 8 },
+  });
+}
