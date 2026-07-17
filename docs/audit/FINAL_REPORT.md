@@ -2,6 +2,10 @@
 
 Date: 2026-05-25
 
+> Per-domain exploit scenarios and fixes behind the blockers below live in
+> [findings.md](findings.md) (architecture, database, edge functions,
+> payments, security, admin, environment, testing, ops).
+
 ## 1. Executive Summary
 
 VARS is not ready to handle real customers, vendors, payments, refunds, disputes, and payouts in production. The product surface is substantial and several builds pass, but the backend and operations model do not yet provide the guarantees required for a real-money Lagos marketplace.
