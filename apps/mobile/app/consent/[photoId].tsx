@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
+import { ConfirmModal } from '@/components/ConfirmModal';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
@@ -37,6 +38,7 @@ export default function ConsentScreen() {
   const [loading, setLoading] = useState(true);
   const [responding, setResponding] = useState(false);
   const [done, setDone] = useState<'approved' | 'declined' | null>(null);
+  const [showSignInModal, setShowSignInModal] = useState(false);
 
   const load = useCallback(async () => {
     if (!photoId) return;
@@ -70,7 +72,7 @@ export default function ConsentScreen() {
   const respond = async (response: 'approved' | 'declined') => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      Alert.alert('Sign in required', 'Please sign in to respond to this request.');
+      setShowSignInModal(true);
       return;
     }
 
@@ -199,6 +201,16 @@ export default function ConsentScreen() {
       <Text style={styles.hint}>
         Declining removes this photo from their profile entirely.
       </Text>
+
+      <ConfirmModal
+        visible={showSignInModal}
+        title="Sign in required"
+        body="Please sign in to respond to this request."
+        confirmLabel="Got it"
+        dismissLabel={null}
+        onConfirm={() => setShowSignInModal(false)}
+        onDismiss={() => setShowSignInModal(false)}
+      />
     </View>
   );
 }

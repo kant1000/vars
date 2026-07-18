@@ -10,6 +10,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
+import { ConfirmModal } from '@/components/ConfirmModal';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
@@ -61,10 +62,12 @@ export default function VendorProfileScreen() {
 
   const [services, setServices] = useState<VendorServiceItem[]>([]);
   const [servicesLoading, setServicesLoading] = useState(true);
+  const [deleteServiceId, setDeleteServiceId] = useState<string | null>(null);
 
   const [photos, setPhotos] = useState<PortfolioPhoto[]>([]);
   const [photosLoading, setPhotosLoading] = useState(true);
   const [addingPhoto, setAddingPhoto] = useState(false);
+  const [deletePhotoTarget, setDeletePhotoTarget] = useState<PortfolioPhoto | null>(null);
   const [scheduleNudgeDismissed, setScheduleNudgeDismissed] = useState(true);
 
   useFocusEffect(useCallback(() => {
@@ -113,22 +116,15 @@ export default function VendorProfileScreen() {
     setPhotosLoading(false);
   };
 
-  const handleDeleteService = (id: string) => {
-    Alert.alert(
-      'Remove service',
-      'This service will be removed from your profile.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove', style: 'destructive',
-          onPress: async () => {
-            const { error } = await supabase.from('vendor_services').delete().eq('id', id);
-            if (error) { Alert.alert('Error', error.message); return; }
-            setServices((prev) => prev.filter((s) => s.id !== id));
-          },
-        },
-      ]
-    );
+  const handleDeleteService = (id: string) => setDeleteServiceId(id);
+
+  const confirmDeleteService = async () => {
+    const id = deleteServiceId;
+    setDeleteServiceId(null);
+    if (!id) return;
+    const { error } = await supabase.from('vendor_services').delete().eq('id', id);
+    if (error) { Alert.alert('Error', error.message); return; }
+    setServices((prev) => prev.filter((s) => s.id !== id));
   };
 
   const handleMove = async (index: number, direction: 'up' | 'down') => {
@@ -198,27 +194,19 @@ export default function VendorProfileScreen() {
     }
   };
 
-  const handleDeletePhoto = (photo: PortfolioPhoto) => {
-    Alert.alert(
-      'Delete photo',
-      'This photo will be permanently removed from your profile.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deletePortfolioPhoto(photo.storage_path);
-              await supabase.from('portfolio_photos').delete().eq('id', photo.id);
-              setPhotos((prev) => prev.filter((p) => p.id !== photo.id));
-            } catch (err: any) {
-              Alert.alert('Error', err.message ?? 'Could not delete photo.');
-            }
-          },
-        },
-      ]
-    );
+  const handleDeletePhoto = (photo: PortfolioPhoto) => setDeletePhotoTarget(photo);
+
+  const confirmDeletePhoto = async () => {
+    const photo = deletePhotoTarget;
+    setDeletePhotoTarget(null);
+    if (!photo) return;
+    try {
+      await deletePortfolioPhoto(photo.storage_path);
+      await supabase.from('portfolio_photos').delete().eq('id', photo.id);
+      setPhotos((prev) => prev.filter((p) => p.id !== photo.id));
+    } catch (err: any) {
+      Alert.alert('Error', err.message ?? 'Could not delete photo.');
+    }
   };
 
   return (
@@ -343,6 +331,28 @@ export default function VendorProfileScreen() {
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
+
+      <ConfirmModal
+        visible={!!deleteServiceId}
+        title="Remove service"
+        body="This service will be removed from your profile."
+        confirmLabel="Remove"
+        dismissLabel="Cancel"
+        destructive
+        onConfirm={confirmDeleteService}
+        onDismiss={() => setDeleteServiceId(null)}
+      />
+
+      <ConfirmModal
+        visible={!!deletePhotoTarget}
+        title="Delete photo"
+        body="This photo will be permanently removed from your profile."
+        confirmLabel="Delete"
+        dismissLabel="Cancel"
+        destructive
+        onConfirm={confirmDeletePhoto}
+        onDismiss={() => setDeletePhotoTarget(null)}
+      />
 
       <ScrollView contentContainerStyle={{ paddingBottom: 60 }}>
         {/* Hero */}

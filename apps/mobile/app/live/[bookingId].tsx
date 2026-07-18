@@ -15,6 +15,7 @@ import {
   TouchableOpacity, View,
 } from 'react-native';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
+import { ConfirmModal } from '@/components/ConfirmModal';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -149,11 +150,12 @@ const DISPUTE_CATEGORIES: { value: DisputeCategory; label: string }[] = [
 ];
 
 function DisputeModal({
-  visible, bookingId, onClose,
+  visible, bookingId, onClose, onSuccess,
 }: {
   visible: boolean;
   bookingId: string;
   onClose: () => void;
+  onSuccess: () => void;
 }) {
   const { theme } = useVarsTheme();
   const dm = useMemo(() => makeStylesDm(theme), [theme]);
@@ -193,7 +195,7 @@ function DisputeModal({
       setSubmitting(false);
     }
     onClose();
-    Alert.alert('Dispute raised', 'Our team will review this within 24 hours. Payment is held until resolved.');
+    onSuccess();
   };
 
   return (
@@ -295,7 +297,9 @@ export default function LiveScreen() {
   const [confirming, setConfirming] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const [disputeVisible, setDisputeVisible] = useState(false);
+  const [showDisputeSuccessModal, setShowDisputeSuccessModal] = useState(false);
   // Live tracking: count consecutive Realtime location-update failures
   const staleLocCount = useRef(0);
   const [staleLocWarning, setStaleLocWarning] = useState(false);
@@ -422,41 +426,33 @@ export default function LiveScreen() {
     if (!session || !booking) return;
     // Cancellation is only permitted while pending or accepted — not once vendor is on their way
     if (!([BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED] as BookingStatus[]).includes(booking.status)) return;
+    setShowCancelModal(true);
+  };
 
-    Alert.alert(
-      'Cancel booking?',
-      'A cancellation fee may apply depending on timing. Check the policy in your booking.',
-      [
-        { text: 'Keep booking', style: 'cancel' },
-        {
-          text: 'Cancel',
-          style: 'destructive',
-          onPress: async () => {
-            setCancelling(true);
-            try {
-              const { data: { session: s } } = await supabase.auth.getSession();
-              const res = await fetchWithRetry(`${SUPABASE_URL}/functions/v1/paystack-cancel`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  Authorization: `Bearer ${s?.access_token ?? ''}`,
-                },
-                body: JSON.stringify({ booking_id: booking.id }),
-              });
-              if (!res.ok) {
-                const d = await res.json();
-                Alert.alert('Error', d.error ?? 'Could not cancel. Please try again.');
-              }
-              // Status update comes via Realtime
-            } catch {
-              Alert.alert('Error', "Couldn't reach server — please check your connection.");
-            } finally {
-              setCancelling(false);
-            }
-          },
+  const confirmCancelBooking = async () => {
+    if (!booking) return;
+    setShowCancelModal(false);
+    setCancelling(true);
+    try {
+      const { data: { session: s } } = await supabase.auth.getSession();
+      const res = await fetchWithRetry(`${SUPABASE_URL}/functions/v1/paystack-cancel`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${s?.access_token ?? ''}`,
         },
-      ]
-    );
+        body: JSON.stringify({ booking_id: booking.id }),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        Alert.alert('Error', d.error ?? 'Could not cancel. Please try again.');
+      }
+      // Status update comes via Realtime
+    } catch {
+      Alert.alert('Error', "Couldn't reach server — please check your connection.");
+    } finally {
+      setCancelling(false);
+    }
   };
 
   const confirmServiceRendered = async () => {
@@ -663,6 +659,28 @@ export default function LiveScreen() {
         visible={disputeVisible}
         bookingId={booking.id}
         onClose={() => setDisputeVisible(false)}
+        onSuccess={() => setShowDisputeSuccessModal(true)}
+      />
+
+      <ConfirmModal
+        visible={showCancelModal}
+        title="Cancel booking?"
+        body="A cancellation fee may apply depending on timing. Check the policy in your booking."
+        confirmLabel="Cancel"
+        dismissLabel="Keep booking"
+        destructive
+        onConfirm={confirmCancelBooking}
+        onDismiss={() => setShowCancelModal(false)}
+      />
+
+      <ConfirmModal
+        visible={showDisputeSuccessModal}
+        title="Dispute raised"
+        body="Our team will review this within 24 hours. Payment is held until resolved."
+        confirmLabel="Got it"
+        dismissLabel={null}
+        onConfirm={() => setShowDisputeSuccessModal(false)}
+        onDismiss={() => setShowDisputeSuccessModal(false)}
       />
     </View>
   );

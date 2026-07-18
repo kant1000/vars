@@ -29,6 +29,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
+import { ConfirmModal } from '@/components/ConfirmModal';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { BORDER_RADIUS } from '@/constants/colors';
@@ -62,6 +63,7 @@ export default function VendorLoginScreen() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showSetupFirstModal, setShowSetupFirstModal] = useState(false);
   // Tracks whether OTP was triggered from "forgot password" on the password screen
   const forgotMode = useRef(false);
 
@@ -97,10 +99,7 @@ export default function VendorLoginScreen() {
         }
       } else if (status === 'lead_only') {
         if (identifierType === 'phone') {
-          Alert.alert(
-            'Set up your account first',
-            "We found your number, but your account isn't set up yet. Use your email address to get started — you can log in with your phone once that's done.",
-          );
+          setShowSetupFirstModal(true);
         } else {
           forgotMode.current = false;
           await sendOtp();
@@ -525,6 +524,16 @@ export default function VendorLoginScreen() {
           </>
         )}
       </ScrollView>
+
+      <ConfirmModal
+        visible={showSetupFirstModal}
+        title="Set up your account first"
+        body="We found your number, but your account isn't set up yet. Use your email address to get started — you can log in with your phone once that's done."
+        confirmLabel="Got it"
+        dismissLabel={null}
+        onConfirm={() => setShowSetupFirstModal(false)}
+        onDismiss={() => setShowSetupFirstModal(false)}
+      />
     </KeyboardAvoidingView>
   );
 }

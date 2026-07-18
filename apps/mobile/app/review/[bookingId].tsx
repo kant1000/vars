@@ -12,6 +12,7 @@ import {
   TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
+import { ConfirmModal } from '@/components/ConfirmModal';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
@@ -42,6 +43,7 @@ export default function ReviewScreen() {
   const [rating, setRating]   = useState(0);
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [resultModal, setResultModal] = useState<{ title: string; body: string; onDone: () => void } | null>(null);
 
   const loadBooking = useCallback(async () => {
     if (!bookingId) {
@@ -89,18 +91,21 @@ export default function ReviewScreen() {
       const data = await res.json();
       if (!res.ok) {
         if (res.status === 409) {
-          Alert.alert('Already reviewed', "You've already left a review for this booking.");
-          router.back();
+          setResultModal({
+            title: 'Already reviewed',
+            body: "You've already left a review for this booking.",
+            onDone: () => router.back(),
+          });
         } else {
           Alert.alert('Error', data.error ?? 'Something went wrong. Please try again.');
         }
         return;
       }
-      Alert.alert(
-        'Thanks for your review! ⭐',
-        'Your feedback helps the VARS community find the best stylists.',
-        [{ text: 'Done', onPress: () => router.replace('/(tabs)/profile') }],
-      );
+      setResultModal({
+        title: 'Thanks for your review! ⭐',
+        body: 'Your feedback helps the VARS community find the best stylists.',
+        onDone: () => router.replace('/(tabs)/profile'),
+      });
     } catch {
       Alert.alert('Error', 'Something went wrong. Please try again.');
     } finally {
@@ -196,6 +201,16 @@ export default function ReviewScreen() {
           </TouchableOpacity>
         </ScrollView>
       </View>
+
+      <ConfirmModal
+        visible={!!resultModal}
+        title={resultModal?.title ?? ''}
+        body={resultModal?.body ?? ''}
+        confirmLabel="Done"
+        dismissLabel={null}
+        onConfirm={() => resultModal?.onDone()}
+        onDismiss={() => resultModal?.onDone()}
+      />
     </KeyboardAvoidingView>
   );
 }

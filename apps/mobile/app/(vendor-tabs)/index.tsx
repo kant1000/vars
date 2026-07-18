@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
+import { ConfirmModal } from '@/components/ConfirmModal';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
@@ -193,6 +194,7 @@ function ActiveCard({
   const [advanceError, setAdvanceError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const [gateStage, setGateStage] = useState<'confirm' | 'charging' | 'success' | 'awaiting_payment' | 'error' | null>(null);
   const [gateError, setGateError] = useState<string | null>(null);
   const action = FLOW_ACTIONS[booking.status];
@@ -241,47 +243,33 @@ function ActiveCard({
     setActing(false);
   };
 
-  const handleCancel = () => {
-    const alertTitle = isInGracePeriod ? 'Cancel penalty-free?' : 'Cancel this booking?';
-    const alertMessage = isInGracePeriod
-      ? 'This booking was auto-accepted. Cancelling now is penalty-free — the customer gets a full refund with no impact on your record.'
-      : 'The customer will receive a full refund. Your cancellation count will be tracked.';
-    Alert.alert(
-      alertTitle,
-      alertMessage,
-      [
-        { text: 'Keep booking', style: 'cancel' },
-        {
-          text: 'Cancel booking',
-          style: 'destructive',
-          onPress: async () => {
-            setCancelling(true);
-            setCancelError(null);
-            try {
-              const { data: { session: s } } = await supabase.auth.getSession();
-              const res = await fetchWithRetry(`${SUPABASE_URL}/functions/v1/vendor-cancel-booking`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  Authorization: `Bearer ${s?.access_token ?? ''}`,
-                },
-                body: JSON.stringify({ booking_id: booking.id }),
-              });
-              if (!res.ok) {
-                const d = await res.json();
-                setCancelError(d.error ?? "Couldn't cancel — tap to retry");
-              } else {
-                onUpdated();
-              }
-            } catch {
-              setCancelError("Couldn't reach server — tap to retry");
-            } finally {
-              setCancelling(false);
-            }
-          },
+  const handleCancel = () => setShowCancelModal(true);
+
+  const confirmCancel = async () => {
+    setShowCancelModal(false);
+    setCancelling(true);
+    setCancelError(null);
+    try {
+      const { data: { session: s } } = await supabase.auth.getSession();
+      const res = await fetchWithRetry(`${SUPABASE_URL}/functions/v1/vendor-cancel-booking`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${s?.access_token ?? ''}`,
         },
-      ]
-    );
+        body: JSON.stringify({ booking_id: booking.id }),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        setCancelError(d.error ?? "Couldn't cancel — tap to retry");
+      } else {
+        onUpdated();
+      }
+    } catch {
+      setCancelError("Couldn't reach server — tap to retry");
+    } finally {
+      setCancelling(false);
+    }
   };
 
   const handleGate = async () => {
@@ -425,6 +413,20 @@ function ActiveCard({
         onClose={() => { setGateStage(null); onUpdated(); }}
         theme={theme}
       />
+      <ConfirmModal
+        visible={showCancelModal}
+        title={isInGracePeriod ? 'Cancel penalty-free?' : 'Cancel this booking?'}
+        body={
+          isInGracePeriod
+            ? 'This booking was auto-accepted. Cancelling now is penalty-free — the customer gets a full refund with no impact on your record.'
+            : 'The customer will receive a full refund. Your cancellation count will be tracked.'
+        }
+        confirmLabel="Cancel booking"
+        dismissLabel="Keep booking"
+        destructive
+        onConfirm={confirmCancel}
+        onDismiss={() => setShowCancelModal(false)}
+      />
     </View>
   );
 }
@@ -535,6 +537,7 @@ function BookingRow({
 }) {
   const { theme } = useVarsTheme();
   const [addingPhoto, setAddingPhoto] = useState(false);
+  const [showRequestSentModal, setShowRequestSentModal] = useState(false);
   const isCompleted = booking.status === 'completed';
   const profileFull = (vendorPhotoCount ?? 0) >= 10;
 
@@ -568,10 +571,7 @@ function BookingRow({
         return;
       }
 
-      Alert.alert(
-        'Request sent',
-        'Your client has been notified. The photo will appear on your profile once they approve.'
-      );
+      setShowRequestSentModal(true);
       onPhotoAdded?.();
     } catch (err: any) {
       Alert.alert('Error', err.message ?? 'Could not upload photo.');
@@ -621,6 +621,15 @@ function BookingRow({
           <Text style={c.rowStatusLabel}>{booking.status.replace(/_/g, ' ')}</Text>
         )}
       </View>
+      <ConfirmModal
+        visible={showRequestSentModal}
+        title="Request sent"
+        body="Your client has been notified. The photo will appear on your profile once they approve."
+        confirmLabel="Got it"
+        dismissLabel={null}
+        onConfirm={() => setShowRequestSentModal(false)}
+        onDismiss={() => setShowRequestSentModal(false)}
+      />
     </View>
   );
 }
