@@ -127,13 +127,13 @@ export default function TermsAcceptanceScreen() {
               <DocItem
                 title="Terms of Use"
                 version={DOCUMENT_VERSIONS.customer_terms}
-                onPress={() => Linking.openURL('https://www.bookwithvars.com/terms')}
+                onPress={() => router.push('/terms' as any)}
                 styles={s}
               />
               <DocItem
                 title="Privacy Policy"
                 version={DOCUMENT_VERSIONS.privacy_policy}
-                onPress={() => Linking.openURL('https://www.bookwithvars.com/privacy')}
+                onPress={() => router.push('/privacy' as any)}
                 styles={s}
               />
             </>

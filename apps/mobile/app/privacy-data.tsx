@@ -2,8 +2,9 @@
 // VARS — Privacy and Data Dashboard (Item 12)
 // Shows: terms acceptance history, data rights actions,
 // transactional-messages status, vendor KYC retention notice.
-// Privacy Policy link is customer-only — vendors already have it
-// in-app via Settings > Legal (vendor-privacy.tsx).
+// Privacy Policy row (-> privacy.tsx) is customer-only — vendors
+// already have their own in-app version via Settings > Legal
+// (vendor-privacy.tsx).
 // Entry from: customer profile and vendor settings.
 // ============================================================
 import React, { useState, useCallback, useMemo } from 'react';
@@ -228,7 +229,7 @@ export default function PrivacyDataScreen() {
               <View style={s.card}>
                 <TouchableOpacity
                   style={s.row}
-                  onPress={() => Linking.openURL('https://www.bookwithvars.com/privacy')}
+                  onPress={() => router.push('/privacy' as any)}
                   activeOpacity={0.7}
                 >
                   <Text style={s.rowLabel}>Privacy Policy</Text>
