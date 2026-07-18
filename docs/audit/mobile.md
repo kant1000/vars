@@ -2,7 +2,9 @@
 
 Branch: `codex-mobile-visual-system-overhaul` — 11 commits, pushed to origin (`7688a66`..`dcf5c25`)
 Founder-approved: 2026-07-17
-Status: **On-device QA not yet run** — see [Gaps & blockers](#6-gaps--blockers)
+Status: **Implementation complete** (primitive catalogue + app-wide dark-mode theme wiring). **On-device QA not yet run** — see [Gaps & blockers](#6-gaps--blockers)
+
+> **2026-07-18 addendum:** a second, larger phase of work happened directly on `main` (not this branch) after the primitive catalogue landed: wiring live `theme.color.*` tokens into every screen app-wide so dark mode actually renders correctly, plus a related `ScissorsLoader` contrast fix. Condensed in [section 10](#10-themedark-mode-migration-roadmap-complete); the decisions that need to stay accurate long-term are now in `docs/VARS_PROJECT_CONTEXT.md`'s Visual System table, not here.
 
 > `docs/MOBILE_VISUAL_SYSTEM_OVERHAUL.md` (the original research/spec doc) and `docs/VARS_Visual_System_Implementation_Plan.md` (the phase-by-phase execution plan) have been removed — their decisions were already locked into `docs/VARS_PROJECT_CONTEXT.md`'s Visual System table and Primitive Catalogue Reference in Phase 7, and their still-relevant working material (the founder device QA checklist) is preserved in [section 9](#9-founder-device-qa-checklist) below. The phase log in section 3 cites the deleted plan doc by name as a historical record of what guided the work — it's no longer a live link.
 
@@ -45,119 +47,32 @@ This work was done in a Windows sandbox with no Android emulator, no iOS simulat
 
 ---
 
-## 3. Phase-by-phase log
+## 3. Phase-by-phase log (condensed — full detail in git history)
 
-What shipped in each phase, against `docs/VARS_Visual_System_Implementation_Plan.md`.
+What shipped in each phase, against `docs/VARS_Visual_System_Implementation_Plan.md` (since removed — decisions locked into `docs/VARS_PROJECT_CONTEXT.md`).
 
-### Phase 0 — Foundation `4b2af1d` `39aaa35`
+| Phase | Scope | Commit |
+|---|---|---|
+| 0 — Foundation | Built `VarsSwitch`/`VarsTabItem` (the two catalogue gaps); fixed a mis-mapped icon; dev-only preview route rendering all 11 primitives in both themes | `4b2af1d` `39aaa35` |
+| 1 — Infrastructure | `ThemeContext` (system appearance + persisted override), folded into the existing splash-hold gate, `StatusBar` follows resolved appearance, appearance settings UI on both roles | `50859dd` |
+| 2 — Skeletons | `VarsSkeleton` on 7 screens: discovery, bookings, notifications, both profiles, vendor public profile, earnings — shapes matched to real content dimensions, not approximated | `58e9ec8` |
+| 3 — Vendor onboarding | All 5 steps migrated to the primitive catalogue; chip/pill selectors deliberately left alone (architecturally incompatible with `VarsSegmentedControl`) | `33defbe` |
+| 4 — Booking flow & gate checkout | Cards/inputs/buttons only — the honest-wait payment states (`webview`, `polling` phases) left byte-for-byte untouched | `65ed63c` |
+| 5 — Schedule | Undo toast + booking sheet only — slot grid/gesture UI deliberately out of scope (became Phase 12 of [section 10](#10-themedark-mode-migration-roadmap-complete)) | `8deaaec` |
+| 6 — Icon system | SF Symbols (iOS) / classic Material Icons (Android, not Material Symbols — needs an SDK upgrade past 52) behind `VarsIcon`; platform isolation verified via compiled-bundle inspection | `44abb86` |
+| 7 — Lock it in | Corrected a stale "state signalling" rule; locked elevation ladder, catalogue, loading/wait-state, and icon-system decisions into `docs/VARS_PROJECT_CONTEXT.md` | `dcf5c25` |
 
-- Container border override: shipped code used `inkFaint`, docs still said solid `#111111` — founder ruled code wins, doc corrected.
-- Built `VarsSwitch` and `VarsTabItem`, the two catalogue gaps identified in the prior review.
-- Fixed `add` icon silently rendering as a checkmark (wrong SVG mapping); fixed an `Array<T>` lint warning.
-- Repo hygiene: deleted an untracked, unrelated Android home-screen screenshot; cherry-picked an unrelated pre-existing bug fix off this branch onto `main` so the overhaul PR stays clean.
-- Built a throwaway, unlinked preview route rendering all 11 primitives in both themes for founder review.
+**Post-audit accessibility fix round** (same session): `accentRed` contrast (`#EF4444` → `#DC2626`), `VarsButton` loading-state accessible-name loss, `VarsInput` label association, `VarsToast` live-region, `VarsDialog` modal flag, reduce-motion support added to `VarsSwitch`/`VarsSkeleton`/`ScissorsLoader`. Independently re-verified per-fix in [section 7](#7-accessibility-assessment-wcag-oriented).
 
-### Phase 1 — Infrastructure `50859dd`
-
-- `ThemeContext.tsx`: resolves system appearance via `useColorScheme`, persists a `system | light | dark` override to AsyncStorage.
-- Theme load folded into the existing splash-hold gate in `_layout.tsx` — no flash of the wrong theme on launch, reusing the app's existing auth/onboarding-gate pattern rather than inventing a new one.
-- `StatusBar` now follows resolved appearance instead of raw OS `auto`.
-- `SafeAreaProvider` given `initialMetrics` (caught a version mismatch: this RN safe-area-context version names the prop differently than the plan assumed).
-- Appearance settings UI added to both customer and vendor settings screens using two `VarsSwitch` controls ("Match system" / "Dark mode") per explicit instruction, covering the three-way model with the binary primitive.
-
-### Phase 2 — Skeletons `58e9ec8`
-
-- 7 screens: discovery feed, bookings, notifications, customer profile, vendor profile, vendor public profile, earnings.
-- Each skeleton shape-matched against the real content's actual dimensions read from source, not approximated.
-- Bookings and earnings screens restructured so static chrome (header, filter row) renders immediately instead of being hidden behind a full-screen spinner along with the data-dependent parts.
-- Small indeterminate loaders (pull-to-refresh, pagination, button-busy) deliberately left on `ScissorsLoader` — out of scope by the plan's own definition.
-
-### Phase 3 — Vendor onboarding `33defbe`
-
-- All 5 onboarding steps migrated: text inputs, cards, checkboxes, and buttons onto the primitive catalogue.
-- Chip/pill selectors (category, subcategory, duration) deliberately left alone — architecturally incompatible with `VarsSegmentedControl`'s fixed equal-width row, not one of the four in-scope primitive types.
-- Step 4 (KYC/bank) touched only unambiguous input/button swaps; colored status callouts, the bank-picker, and the WebView cancel overlay were left alone — see [section 5](#5-business-logic-preservation-evidence) for what was verified untouched there.
-
-### Phase 4 — Booking flow & gate checkout `65ed63c`
-
-- Highest-stakes phase by the plan's own framing: the honest-wait rule (no optimistic payment success) is non-negotiable here.
-- In the card-verification WebView component, only the `disclosure` and `failed` phase buttons were touched. The `webview` and `polling` phases — the actual wait states — are byte-for-byte untouched.
-- One incidental correctness fix: gate checkout's "Back to bookings" buttons used a grey fill that the documented CTA spec never actually sanctioned; `VarsButton`'s secondary variant brings it in line with the spec rather than introducing a new look.
-- Note for continuity with prior audit findings: the gate-checkout and card-verification screens in the *current* codebase already poll for server-side confirmation (`pollForCardVerify`, `pollForOnWay`) rather than treating a WebView redirect as success — an earlier version of this audit doc (superseded by this one) flagged that as a P0 gap; it no longer reflects the current implementation, which this session read in full.
-
-### Phase 5 — Schedule `8deaaec`
-
-- Named by the plan as the highest interaction-density, highest regression-risk screen (2,266 lines) — scope was deliberately narrow.
-- Migrated: the undo toast (the catalogue's literal named use case for `VarsToast`) and the entire booking bottom sheet (accept/decline, all three status-progress buttons, reschedule flow, four cards).
-- Deliberately not touched: the slot grid, drag-based range selection, recurring-day chips, block/unblock UI — named by the plan's own checkpoint as the regression surface, and none of it maps to the primitive catalogue regardless.
-
-### Phase 6 — Icon system `44abb86`
-
-- Research surfaced that the plan's "SF Symbols / Material Symbols" pairing wasn't achievable as written: `expo-symbols` only supports Material Symbols on Android from v55+, which needs an Expo SDK upgrade past this app's SDK 52 — flagged, and the user chose classic Material Icons via `@expo/vector-icons` instead, already bundled at this SDK.
-- All 33 icon concepts individually verified against both real type systems: `sf-symbols-typescript`'s typed union for iOS, `MaterialIcons`'s actual glyph map for Android (which uses hyphenated names, not the underscored ones originally researched).
-- Platform isolation done via Metro's `.ios.tsx`/`.android.tsx` file resolution and verified by directly inspecting both compiled bundles — `expo-symbols` appears only in iOS's, `MaterialIcons` only in Android's.
-- Android dev-client build attempted on the connected device, failed on a pre-existing Gradle/AGP toolchain issue — see [Gaps & blockers](#6-gaps--blockers).
-
-### Phase 7 — Lock it in `dcf5c25`
-
-- Fixed a real, previously-flagged discrepancy: the project doc's "state signalling" rule (border weight = state) never matched what shipped. Corrected to describe reality — fill/colour signals interactive state, border weight belongs to the elevation ladder.
-- Locked four decisions that had only existed as recommendations: elevation ladder, primitive catalogue, loading/wait-state rules, icon system — each dated and attributed.
-- Overhaul doc status changed from "research deliverable" to "implemented," with the device-QA gap stated explicitly rather than implied away.
-
-### Post-audit fixes (this update)
-
-- **`accentRed` contrast**: `apps/mobile/constants/visualSystem.ts` — light-mode `accentRed` darkened from `#EF4444` to `#DC2626`. Re-verify against the recomputed ratio in [section 7.1](#71-colour-contrast--computed-from-shipped-tokens) before treating this as closed.
-- **`VarsButton` loading-state name loss**: `primitives.tsx` — now sets `accessibilityLabel={label}` unconditionally so the label survives the loading state.
-- **`VarsInput` label association**: `primitives.tsx` — now derives `accessibilityLabel` from the visible label, an explicit override, or the placeholder.
-- **`VarsToast` announcement**: `primitives.tsx` — now sets a polite live region and an accessible label.
-- **`VarsDialog` modal flag**: `primitives.tsx` — panel now marked as modal for accessibility.
-- **Reduce-motion**: `VarsSwitch`, `VarsSkeleton`, and `ScissorsLoader` now check the OS reduce-motion setting.
-
-See [section 7](#7-accessibility-assessment-wcag-oriented) for independent verification of each of these.
+Business-logic preservation methodology and evidence for phases 3–5: [section 5](#5-business-logic-preservation-evidence).
 
 ---
 
-## 4. Complete file inventory
+## 4. File inventory
 
-Every file touched across the branch, grouped by first phase touched. Files touched again in a later phase are noted inline.
+Every file touched across Phases 0–7 is in the git history for `codex-mobile-visual-system-overhaul` (`7688a66`..`dcf5c25`); Phases 8–16's ~40 files are in `main`'s 2026-07-17–18 commits (phase→scope mapping in [section 10](#10-themedark-mode-migration-roadmap-complete)). Not duplicated here — git is the authoritative record, and a static list here would already be stale relative to it.
 
-| File | Phase(s) | What changed |
-|---|---|---|
-| `docs/MOBILE_VISUAL_SYSTEM_OVERHAUL.md` | 0, 6, 7 | New research doc; icon section rewrite; status lock-in |
-| `docs/VARS_PROJECT_CONTEXT.md` | 0, 7 | Appearance/container override rows; full lock-in pass |
-| `docs/VARS_Visual_System_Implementation_Plan.md` | 0 | New — the execution plan itself |
-| `apps/mobile/constants/visualSystem.ts` | 0, post-audit | New — tokens, elevation ladder; `accentRed` darkened for contrast |
-| `apps/mobile/components/ui/primitives.tsx` | 0, 6, post-audit | New — 11 primitives; icon rendering delegated; a11y fixes |
-| `apps/mobile/components/ui/index.ts` | 0 | New — barrel export |
-| `apps/mobile/components/icons.tsx` | 0 | `PlusIcon` added |
-| `apps/mobile/app/_dev-visual-preview.tsx` | 0 | New — throwaway, unlinked preview route |
-| `apps/mobile/contexts/ThemeContext.tsx` | 1 | New — theme provider |
-| `apps/mobile/app/_layout.tsx` | 1 | Theme provider wired in, splash-gate, SafeArea, StatusBar |
-| `apps/mobile/app/(tabs)/profile.tsx` | 1, 2 | Appearance settings; active-bookings skeleton |
-| `apps/mobile/app/vendor-settings.tsx` | 1 | Appearance settings |
-| `apps/mobile/app/(tabs)/index.tsx` | 2 | Discovery feed skeleton |
-| `apps/mobile/app/(tabs)/bookings.tsx` | 2 | Bookings skeleton, header restructure |
-| `apps/mobile/app/(tabs)/notifications.tsx` | 2 | Notifications skeleton |
-| `apps/mobile/app/(vendor-tabs)/earnings.tsx` | 2 | Earnings skeleton, header restructure |
-| `apps/mobile/app/(vendor-tabs)/profile.tsx` | 2 | Vendor profile skeleton |
-| `apps/mobile/app/vendor/[id].tsx` | 2 | Vendor public profile skeleton |
-| `apps/mobile/app/vendor-onboarding/step-1-profile.tsx` | 3 | Full primitive migration |
-| `apps/mobile/app/vendor-onboarding/step-2-services.tsx` | 3* | Full primitive migration (chips left alone) |
-| `apps/mobile/app/vendor-onboarding/step-3-portfolio.tsx` | 3 | Full primitive migration |
-| `apps/mobile/app/vendor-onboarding/step-4-kyc.tsx` | 3 | Partial — inputs/buttons/neutral card only |
-| `apps/mobile/app/vendor-onboarding/step-5-pending.tsx` | 3 | Full primitive migration |
-| `apps/mobile/app/booking/[vendorId].tsx` | 4 | Partial — cards/inputs/buttons, honest-wait phases untouched |
-| `apps/mobile/app/booking/gate-checkout/[bookingId].tsx` | 4 | Partial — 3 non-wait-state phases' buttons only |
-| `apps/mobile/app/(vendor-tabs)/schedule.tsx` | 5 | Partial — undo toast + booking sheet only |
-| `apps/mobile/components/ui/iconMap.ts` | 6 | New — name/glyph tables, SVG fallback map |
-| `apps/mobile/components/ui/VarsIconRenderer.tsx` | 6 | New — web/fallback renderer |
-| `apps/mobile/components/ui/VarsIconRenderer.ios.tsx` | 6 | New — SF Symbols renderer |
-| `apps/mobile/components/ui/VarsIconRenderer.android.tsx` | 6 | New — Material Icons renderer |
-| `apps/mobile/package.json` | 6 | `expo-symbols@~0.2.2` added |
-| `yarn.lock` | 6 | Lockfile update for the above only — diffed to confirm no other package moved |
-| `apps/mobile/components/ScissorsLoader.tsx` | post-audit | Reduce-motion support added |
-
-\* `step-2-services.tsx` also received an unrelated one-line pre-existing bug fix (`DURATION_OPTIONS` reference error, predates this branch), cherry-picked directly onto `main` in Phase 0 rather than carried on this branch.
+One exception worth keeping visible: `vendor-onboarding/step-2-services.tsx` also received an unrelated one-line pre-existing bug fix (`DURATION_OPTIONS` reference error, predates this branch) cherry-picked directly onto `main` in Phase 0 rather than carried on this branch — easy to miss if you're only looking at branch diffs.
 
 ---
 
@@ -198,19 +113,19 @@ Verified on a physical Samsung Galaxy A40 (`SM_A405FN`, Android, USB debugging):
 
 Confirmed on real hardware per above: the `_dev-visual-preview` screen renders the primitive catalogue correctly in both light and dark mode (buttons, elevation surfaces, icons all correct). iOS still has zero on-device confirmation — no Mac/Xcode available in this environment.
 
-### 🔴 New finding — Dark mode is not actually wired into any real screen (2026-07-17)
+### 🟢 Fixed — Dark mode is now wired into every real screen (2026-07-18)
 
-`ThemeProvider`, persistence, and the Appearance toggle UI (`vendor-settings.tsx`) all work correctly in isolation. But checking every file that imports `useVarsTheme()` (16 files) shows `theme` is never used to style the screen itself — it's only ever forwarded into a prop on an isolated `VarsSwitch` or two. Every screen's actual container/card/text styling comes from the static `Colors` object in `constants/colors.ts`, which has no theme awareness at all. Net effect: **toggling Dark Mode changes nothing anywhere in the app except the two switches on the Appearance screen and the dedicated `_dev-visual-preview` screen.** This was surfaced by the founder testing the build on-device, not caught by any prior static-analysis pass in this document — a reminder that "types pass, lint passes, bundle compiles" is not evidence a *feature* works.
+Was: `ThemeProvider`, persistence, and the Appearance toggle UI all worked in isolation, but `theme` was never used to style any screen itself — every screen's actual styling came from the static, theme-unaware `Colors` object, so toggling Dark Mode changed nothing anywhere except the Appearance screen's own switches. Surfaced by the founder testing the build on-device, not caught by static analysis — a reminder that "types pass, lint passes, bundle compiles" is not evidence a *feature* works.
 
-Full inventory and a phased migration plan are in [section 10](#10-themedark-mode-migration-roadmap).
+Fixed across all 9 phases in [section 10](#10-themedark-mode-migration-roadmap-complete) — every screen and shared component now reads live `theme.color.*` tokens. **Not full primitive-catalogue adoption** — this wired theme tokens into each screen's existing hand-built styles (`useVarsTheme()` + `makeStyles(theme)`), it did not additionally convert those screens onto `VarsButton`/`VarsSurface`/etc. The two gaps below are about that separate, still-open axis.
 
-### 🟠 Scoped gap — Six screens have skeletons but not primitive-migrated interactive elements
+### 🟠 Scoped gap — Six skeleton screens still hand-build their interactive elements
 
-Discovery, bookings, notifications, customer profile, vendor profile, vendor public profile, and earnings got `VarsSkeleton` loading states in Phase 2, but their buttons, cards, and inputs are still hand-built — that migration was never scoped into this branch. Subsumed by the broader theme migration roadmap in section 10, since these are the same files.
+Discovery, bookings, notifications, customer profile, vendor profile, vendor public profile, and earnings got `VarsSkeleton` loading states in Phase 2 and are now dark-mode-correct (section 10), but their buttons, cards, and inputs still aren't built from the primitive catalogue — that migration was never scoped into either phase of work.
 
-### 🟠 Scoped gap — Schedule's grid/gesture UI is entirely unmigrated
+### 🟠 Scoped gap — Schedule's grid/gesture UI never adopted the primitive catalogue
 
-Deliberate, per Phase 5's own risk framing — the slot grid, drag-based range select, recurring-day chips, and block/unblock UI never touched the new primitives. This is the single highest-density interaction surface in the app and has had zero design-system changes applied to it. Its own dedicated phase (12) in section 10, given its size (2,240 lines) and risk.
+Deliberate, per Phase 5's own risk framing — the slot grid, drag-based range select, recurring-day chips, and block/unblock UI never touched `VarsButton`/`VarsSurface`/etc. It did get dark-mode theme wiring in section 10's Phase 12, so it's visually correct in both themes now, but it's still hand-built JSX rather than primitive components — the single highest-density interaction surface in the app with zero primitive-catalogue adoption.
 
 ### 🟢 Confirmed clean — Icon platform isolation
 
@@ -305,51 +220,28 @@ Carried over from `docs/MOBILE_VISUAL_SYSTEM_OVERHAUL.md` section 6 (now removed
 
 ---
 
-## 10. Theme/dark-mode migration roadmap
+## 10. Theme/dark-mode migration roadmap (complete)
 
-Added 2026-07-17 after on-device testing showed Dark Mode has no visible effect anywhere except the Appearance screen's own switches and `_dev-visual-preview` (see [section 6](#6-gaps--blockers)). 40 files import the static `Colors` object from `constants/colors.ts`; of those, 16 also import `useVarsTheme()` but never use `theme.*` for their own styling — `theme` is only ever forwarded into a prop on an isolated primitive. Every phase below is styling-only: no business logic, no payment/KYC flow changes, diff-reviewed against [section 5](#5-business-logic-preservation-evidence)'s methodology same as prior phases.
+Added 2026-07-17 after on-device testing showed Dark Mode had no visible effect anywhere except the Appearance screen's own switches and `_dev-visual-preview`. All 9 phases below shipped 2026-07-17–18, wiring live `theme.color.*` tokens into every screen and shared component app-wide (~40 files) — previously `theme` was only ever forwarded into an isolated primitive prop. Every phase was styling-only: no business logic, no payment/KYC flow changes, diff-reviewed against [section 5](#5-business-logic-preservation-evidence)'s methodology.
 
-Grouped by risk and reuse rather than file order — shared components go first since fixing them pays off in every later phase.
+| Phase | Scope | Files |
+|---|---|---|
+| 8 | Shared components + nav shell | 6 |
+| 9 | Auth & onboarding entry | 4 |
+| 10 | Customer core tabs | 4 |
+| 11 | Vendor core tabs minus schedule | 3 |
+| 12 | `schedule.tsx` (dedicated — 2,240 lines) | 1 |
+| 13 | Booking flow & live tracking | 5 |
+| 14 | Vendor onboarding theme wiring | 5 |
+| 15 | Vendor profile/services/zone | 5 |
+| 16 | Legal/static pages | 6 |
 
-| Phase | Scope | Files | Lines | Why this grouping |
-|---|---|---|---|---|
-| 8 ✅ | Shared components + nav shell (`ConfirmModal`, `VendorCard`, `VendorPriceInput`, both tab layouts, onboarding layout) | 6 | ~590 | Reused everywhere — do first so later phases inherit the fix. `OfflineBanner` excluded on inspection — its colors are a fixed warning treatment, not theme-reactive by design |
-| 9 ✅ | Auth & onboarding entry (`auth/login`, `auth/phone`, `auth/vendor-login`, `onboarding`) | 4 | ~1,480 | Pre-login, zero payment/business-logic risk. **Preserved the hardcoded Google/Facebook brand colors in `login.tsx` untouched** — see CLAUDE.md's Brand Color Exceptions |
-| 10 ✅ | Customer core tabs (home, bookings, notifications, profile) | 4 | ~1,416 | Highest-traffic customer screens |
-| 11 ✅ | Vendor core tabs minus schedule (dashboard, earnings, profile) | 3 | ~2,280 | Highest-traffic vendor screens; `(vendor-tabs)/index.tsx` is 1,304 lines alone |
-| 12 ✅ | `schedule.tsx` — dedicated phase | 1 | 2,240 | Custom grid/gesture UI, previously scoped out of Phase 5 for the same reason; too large and too risky to bundle with anything else |
-| 13 ✅ | Booking flow & live tracking (`booking/[vendorId]`, `booking/detail`, `gate-checkout`, `live/[bookingId]`, `review`) | 5 | ~3,400 | Highest business value, touches payment *UI* (not logic) — needs the most care |
-| 14 ✅ | Vendor onboarding theme wiring (steps 1–5) | 5 | ~1,438 | Already on `Vars*` primitives from Phase 3 — this is finishing the wiring, not a re-skin |
-| 15 ✅ | Vendor profile/services/zone (`vendor-settings`, `vendor/[id]`, services add/edit, zone-setup) | 5 | ~2,224 | Where the dark-mode gap was originally noticed |
-| 16 ✅ | Legal/static pages (terms, privacy, consent, delete-account) | 6 | ~1,478 | Lowest visual priority — migrated anyway for consistency |
+**The decisions and conventions that need to stay accurate going forward are locked into `docs/VARS_PROJECT_CONTEXT.md`'s Visual System table, not here** — `accentRed` = `#DC2626`, the `inkMuted` muted-text collapse, the deliberate non-migration boundary (status color maps, brand colors, fixed-contrast overlays), the `makeStyles(theme)` pattern, and the `ScissorsLoader` color-flip rule (a related bug found and fixed in the same pass: its `color` prop is a fixed SVG fill, not a theme token, and was hardcoded at every call site — invisible on inverted surfaces until fixed 2026-07-18).
 
-Total: 9 phases, ~14,600 lines across 40 files. **All phases complete as of 2026-07-17.**
+Two further fixes landed after this table closed, same effort: native `Alert.alert` confirmations (sign-out, "Coming soon" placeholders, "Go online first") replaced with the themed `ConfirmModal` component since native alerts follow the OS system theme, not the app's override; and two hand-rolled booking-flow modals (cancel, reschedule) consolidated onto `ConfirmModal` to stop the app growing a second ad-hoc modal pattern. Full list of remaining hand-rolled (but already theme-correct) modals and the `VarsDialog`-vs-`ConfirmModal` architecture note: `docs/VARS_PROJECT_CONTEXT.md`.
 
-### Phase 8 notes (completed 2026-07-17)
-
-- Resolved a real conflict surfaced during migration: `constants/colors.ts` had `Colors.accentRed`/`Colors.error` at `#EF4444`, diverged from `constants/visualSystem.ts`'s `#DC2626` (the WCAG-fixed value from the prior accessibility round). Unified both to `#DC2626` — founder decision, not a unilateral pick.
-- Resolved a second conflict: the static system has two muted-text tiers (`textSecondary` `#6B7280`, `textMuted` `#A3A3A3`); the theme system only has one (`inkMuted`). Founder decision: collapse both into `theme.color.inkMuted` rather than add a new token tier. Applied consistently across all Phase 8 files.
-- Pattern established: screens/components call `useVarsTheme()`, memoize `StyleSheet.create` output via `useMemo(() => makeStyles(theme), [theme])` instead of a module-level static `StyleSheet.create`. Semantic/brand tokens with no theme equivalent (badge colors, pioneer gold, star rating, status colors) are deliberately left on the static `Colors` import — only core-shell tokens (background/surface/border/text/ink) migrate.
-- Verified: `tsc --noEmit` clean, lint clean (0 errors, same 26 pre-existing warnings), on-device confirmation that the underlying `theme.color.*` mechanism renders correctly in both light and dark via `_dev-visual-preview`. Did not force-verify the migrated tab bar specifically on-device — the terms-acceptance gate blocked further in-app navigation for the test account and re-triggering it wasn't worth a real, timestamped acceptance record on that account.
-
-### Phases 9–16 notes (completed 2026-07-17)
-
-- Every phase followed the pattern and conventions locked in during Phase 8: `useVarsTheme()` + `useMemo(() => makeStyles(theme), [theme])` replacing module-level `StyleSheet.create`; `#DC2626` as the sole `accentRed`/error value; both muted-text tiers collapsed into `theme.color.inkMuted`; `Colors.primary` → `theme.color.accentBlue`; `Colors.success` → `theme.color.accentGreen`; buttons/pills filled with `theme.color.ink` pair their text with `theme.color.inverseInk` rather than a static `'#FFF'`.
-- Subcomponents defined outside a screen's root component either call `useVarsTheme()` independently (small presentational helpers reused many times per file — `Section`/`Body`/`Bullet`/`Bold` in the legal pages, `CheckRow` in onboarding step 5) or receive `theme`/`styles` as an explicit prop (`Badge`, `DocItem`, `VendorProfileSkeleton`).
-- Deliberate non-migration boundary, applied consistently: per-status semantic color maps (`STATUS_CONFIG` etc. — object keys stay string literals per CLAUDE.md, values stay on static `Colors.status*`), fixed-warning-treatment banners (`Colors.warning`), brand accent colors (Google/Facebook buttons, pioneer gold), and fixed-contrast overlays sitting on photos/maps/WebViews (map hint pills, floating nav buttons on portfolio photos) are intentionally left static — not gaps.
-- Fixed two real pre-existing bugs surfaced by the migration itself: a hardcoded white-translucent booked-slot label in `schedule.tsx` that would have gone illegible against an inverted dark background, and a Timeline status-icon color ternary in the booking flow that conflated "done" (reactive) and "active" (fixed-per-status) states into one incorrect branch.
-- Verified per-phase: `tsc --noEmit` clean and lint at or below the pre-existing 23-warning baseline (0 errors) for every phase, checked before each commit.
-- Not done: a full on-device light/dark toggle walkthrough of every migrated screen (40 files) — only the vendor-settings screen (the screen where the gap was first reported) and the underlying token mechanism via `_dev-visual-preview` were visually confirmed on the physical test device. Recommend a manual pass through [section 9](#9-founder-device-qa-checklist)'s theme-toggle checklist before shipping.
-
-### ScissorsLoader dark-mode contrast fix (2026-07-18)
-
-On-device testing after Phase 16 surfaced a bug the phase table didn't cover: `ScissorsLoader`'s `color` prop (`'light' | 'dark'`, a fixed SVG fill, not a theme token — see `components/ScissorsLoader.tsx`) was hardcoded at every call site across the app. Full-screen loading gates used `color="dark"` on a container that, once themed, could go dark — making the icon invisible. Small spinners inside `theme.color.ink`-filled buttons used `color="light"`, but `ink` itself inverts between themes (light: near-black, dark: near-white per `constants/visualSystem.ts`), so the spinner went invisible in dark mode exactly when the button it sat inside also flipped.
-
-- Fixed by flipping the color inline per call site: `theme.appearance === 'dark' ? 'light' : 'dark'` for spinners on `theme.color.bg`/outline surfaces, and the inverse (`theme.appearance === 'dark' ? 'dark' : 'light'`) for spinners inside buttons whose text already used `theme.color.inverseInk` — matched each spinner's rule to its sibling text/icon color rather than guessing.
-- Also found and fixed two loading-gate containers (`booking/[vendorId].tsx`'s `CardVerifyView`, `vendor-onboarding/step-2-services.tsx`) missing `backgroundColor: theme.color.bg` entirely — they fell back to the navigator default background, which two flows (`vendor-services/add.tsx` `edit.tsx`, `vendor-zone-setup.tsx`) had already surfaced as visible white-flash bugs on-device.
-- Deliberately left unchanged: spinners on fixed-brand-fill buttons (Google button, pioneer-gold zone-confirm banner, the per-status `FLOW_ACTIONS` button in vendor jobs) since their paired text is already static `'#FFF'`/`'dark'`, and one spinner overlaying a `react-native-maps` tile with no `customMapStyle` (the map itself never goes dark, so the static icon color is already correct).
-- Swept all ~40 files that import `ScissorsLoader`; `tsc --noEmit` and lint (0 errors, unchanged 23-warning baseline) verified after every batch. Not verified on-device beyond the two originally-reported flows — recommend confirming a representative sample (a full-screen gate, an ink-filled button spinner, an outline-button spinner) during the theme-toggle QA pass in [section 9](#9-founder-device-qa-checklist).
+**Not done:** a full on-device light/dark toggle walkthrough of every migrated screen — see [section 9](#9-founder-device-qa-checklist).
 
 ---
 
-*Generated from the working session that produced `codex-mobile-visual-system-overhaul`, commits `7688a66`–`dcf5c25`, updated after a post-audit accessibility fix round and again after the 2026-07-17 Android device-build and theme-audit session. Every claim above traces to a specific file, command output, or diff reviewed during that session — ask for the underlying evidence on any line that matters to your sign-off. This document replaces a prior mobile audit dated 2026-05-25, whose findings (payment WebView redirect handling, in particular) predate the gate-payment model and no longer reflect the current codebase.*
+*Generated from the working session that produced `codex-mobile-visual-system-overhaul`, commits `7688a66`–`dcf5c25`, updated after a post-audit accessibility fix round, again after the 2026-07-17 Android device-build and theme-audit session, and condensed on 2026-07-18 once both phase-logs (0–7, 8–16) were fully complete — their still-relevant decisions moved to `docs/VARS_PROJECT_CONTEXT.md`, their still-open items (device QA, screen-reader pass) kept intact in sections 6 and 9. Every claim above traces to a specific file, command output, or diff reviewed during that session — ask for the underlying evidence on any line that matters to your sign-off. This document replaces a prior mobile audit dated 2026-05-25, whose findings (payment WebView redirect handling, in particular) predate the gate-payment model and no longer reflect the current codebase.*
