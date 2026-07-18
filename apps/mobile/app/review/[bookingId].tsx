@@ -5,7 +5,7 @@
 // Star rating mandatory, comment optional (per spec §4.6).
 // DB trigger updates vendor.avg_rating + total_reviews on insert.
 // ============================================================
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert, KeyboardAvoidingView,
   Platform, ScrollView, StyleSheet, Text,
@@ -37,28 +37,41 @@ export default function ReviewScreen() {
   const s = useMemo(() => makeStyles(theme), [theme]);
 
   const [booking, setBooking] = useState<BookingInfo | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [rating, setRating]   = useState(0);
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from('bookings')
-        .select('vendor_id, service_name, vendors(full_name)')
-        .eq('id', bookingId)
-        .single();
-      if (data) {
-        setBooking({
-          vendor_id: (data as any).vendor_id,
-          vendor_name: (data as any).vendors?.full_name ?? 'Your stylist',
-          service_name: (data as any).service_name,
-        });
-      }
+  const loadBooking = useCallback(async () => {
+    if (!bookingId) {
+      setLoadError('Missing booking reference.');
       setLoading(false);
-    })();
+      return;
+    }
+    setLoading(true);
+    setLoadError(null);
+    const { data, error } = await supabase
+      .from('bookings')
+      .select('vendor_id, service_name, vendors(full_name)')
+      .eq('id', bookingId)
+      .single();
+    if (error) {
+      // PGRST116 = no row matched (genuinely not found / not this user's booking).
+      // Anything else is a real failure (RLS, network) — don't call it "not found".
+      console.error('[review] failed to load booking', bookingId, error);
+      setLoadError(error.code === 'PGRST116' ? null : (error.message || 'Could not load this booking.'));
+    } else if (data) {
+      setBooking({
+        vendor_id: (data as any).vendor_id,
+        vendor_name: (data as any).vendors?.full_name ?? 'Your stylist',
+        service_name: (data as any).service_name,
+      });
+    }
+    setLoading(false);
   }, [bookingId]);
+
+  useEffect(() => { loadBooking(); }, [loadBooking]);
 
   const submit = async () => {
     if (!user || !booking || rating === 0) return;
@@ -101,7 +114,10 @@ export default function ReviewScreen() {
   if (!booking) {
     return (
       <View style={s.centered}>
-        <Text style={s.errorText}>Booking not found.</Text>
+        <Text style={s.errorText}>{loadError ? 'Could not load this booking.' : 'Booking not found.'}</Text>
+        {loadError && (
+          <TouchableOpacity onPress={loadBooking}><Text style={s.link}>Try again</Text></TouchableOpacity>
+        )}
         <TouchableOpacity onPress={() => router.back()}><Text style={s.link}>Go back</Text></TouchableOpacity>
       </View>
     );
