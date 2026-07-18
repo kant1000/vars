@@ -189,6 +189,7 @@ Twenty migration files build up the schema incrementally:
 | `20260603000002_online_visibility_and_response_time` | Adds `avg_response_minutes INT` to `vendors` — exponential moving average (80/20) of manual booking acceptance time, updated by trigger on `pending → accepted` (auto-accepted bookings excluded); adds `trg_vendor_response_time` trigger; updates `get_nearby_vendors` to filter `is_online = TRUE` so offline vendors never appear in customer discovery, and sorts by distance only |
 | `20260705000002_trigger_prefill_vendor_from_lead` | Adds `lead_service_type TEXT` to `vendors`; replaces `transfer_pioneer_from_lead()` to copy `full_name`, `phone_number`, and `service_type` from matched `vendor_leads` row on vendor INSERT (not just pioneer leads); matches by email first, then phone; marks lead as `converted = TRUE` with timestamp |
 | `20260705000003_fn_check_vendor_identity` | Creates `normalise_nigerian_phone(TEXT)` SQL helper (mirrors JS in `vendor-register-lead`); creates `check_vendor_identity(p_email, p_phone)` SECURITY DEFINER function returning `has_account \| lead_only \| not_found`; patches `transfer_pioneer_from_lead` to normalise phone before comparison |
+| `20260718000001_avatars_storage_policies` | Adds insert/update/delete/read RLS policies (scoped to `users/{user_uid}/...`) for the `avatars` storage bucket — the bucket existed with `public = true` but zero `storage.objects` policies, so every customer profile-photo upload was rejected by default-deny RLS. Mirrors the `portfolio` bucket's policy shape. |
 
 ### Key Tables
 
@@ -417,6 +418,10 @@ The system is fully built. Providers are stubbed until `DELIVERY_LIVE=true`.
 | Booking detail | `/booking/detail/[bookingId]` |
 | Live booking tracker | `/live/[bookingId]` |
 | Leave a review | `/review/[bookingId]` |
+| Privacy and data | `/privacy-data` |
+| Terms of Use | `/terms` |
+| Privacy Policy | `/privacy` |
+| Delete account | `/delete-account` |
 
 ### Vendor
 
@@ -457,9 +462,9 @@ All loading states across the app use a custom `ScissorsLoader` component (`apps
 
 - Renders the VARS scissors logo mark as an animated SVG using `react-native-svg`
 - Two blades rotate ±32° around the scissor joint pivot in a snip-and-return loop (close → open → repeat), driven by the React Native `Animated` API (`Animated.sequence` + `Animated.loop`). Rotation is applied via a nested `translate(pivot) → AnimatedG rotation → translate(-pivot)` pattern, which reliably produces the correct pivot on Android new architecture (React Native 0.76 / Fabric).
-- The SVG viewBox is expanded to `-120 -90 800 820` (original content space: 555×718) so the blade tips and handles do not clip during the full ±32° swing.
-- Props: `size: 'small' | 'medium' | 'large'` (23×24 / 39×39 / 61×63 px) and `color: 'light' | 'dark'` (#FFFFFF / #1A1A1A)
-- Color rule: `light` on filled black button backgrounds; `dark` on white or surface backgrounds
+- The SVG viewBox is expanded to `-120 -90 800 920` (original content space: 555×718) so the blade tips and handles do not clip during the full ±32° swing. `VB_H` must stay `920` — `820` only gives 12 units of bottom clearance and blade tips clip at full rotation.
+- Props: `size: 'small' | 'medium' | 'large'` (23×24 / 39×39 / 61×63 px) and `color: 'light' | 'dark'` (#FFFFFF / #1A1A1A) — a fixed SVG fill, **not** a theme token
+- Color rule (must be computed per call site, not hardcoded, since `theme.color.ink`/`bg` invert between light and dark): on a `theme.color.bg`/outline surface, `theme.appearance === 'dark' ? 'light' : 'dark'`; inside a `theme.color.ink`-filled button (paired with `theme.color.inverseInk` text), the inverse — `theme.appearance === 'dark' ? 'dark' : 'light'`. Fixed-brand-fill surfaces (Google button, pioneer-gold banners) keep a static color regardless of theme. Every call site in the app had this hardcoded and invisible in dark mode until fixed 2026-07-18 — see `docs/audit/mobile.md` §10.
 
 ### VendorPriceInput
 
