@@ -5,11 +5,12 @@
 // ============================================================
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert, Dimensions, Modal, PanResponder, Platform,
+  Dimensions, Modal, PanResponder, Platform,
   RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { Calendar as RNCalendar } from 'react-native-calendars';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
+import { ConfirmModal } from '@/components/ConfirmModal';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
@@ -988,6 +989,7 @@ export default function ScheduleScreen() {
   const cal = useMemo(() => makeStylesCal(theme), [theme]);
 
   const [vendorId, setVendorId] = useState<string | null>(null);
+  const [showOfflineModal, setShowOfflineModal] = useState(false);
   const [selectedDay, setSelectedDay] = useState(() => getEffectiveToday());
   const [blocks, setBlocks] = useState<CalendarBlock[]>([]);
   const [bookings, setBookings] = useState<VendorBooking[]>([]);
@@ -1562,7 +1564,7 @@ export default function ScheduleScreen() {
           style={[s.zoneBtn, !isOnline && s.zoneBtnDisabled]}
           onPress={() => {
             if (!isOnline) {
-              Alert.alert('Go online first', 'Go online on the Jobs tab before configuring auto-accept.');
+              setShowOfflineModal(true);
               return;
             }
             router.push('/vendor-zone-setup' as any);
@@ -1974,6 +1976,16 @@ export default function ScheduleScreen() {
           </Modal>
         );
       })()}
+
+      <ConfirmModal
+        visible={showOfflineModal}
+        title="Go online first"
+        body="Go online on the Jobs tab before configuring auto-accept."
+        confirmLabel="Got it"
+        dismissLabel={null}
+        onConfirm={() => setShowOfflineModal(false)}
+        onDismiss={() => setShowOfflineModal(false)}
+      />
     </View>
   );
 }
