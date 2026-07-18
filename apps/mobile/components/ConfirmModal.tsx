@@ -12,7 +12,8 @@ interface ConfirmModalProps {
   title: string;
   body: string | React.ReactNode;
   confirmLabel: string;
-  dismissLabel?: string;
+  // Pass null to render a single-button info dialog (no dismiss action).
+  dismissLabel?: string | null;
   onConfirm: () => void;
   onDismiss: () => void;
   destructive?: boolean;
@@ -59,9 +60,11 @@ export function ConfirmModal({
               <Text style={s.confirmBtnText}>{confirmLabel}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={s.dismissBtn} onPress={onDismiss} activeOpacity={0.7}>
-              <Text style={s.dismissBtnText}>{dismissLabel}</Text>
-            </TouchableOpacity>
+            {dismissLabel !== null && (
+              <TouchableOpacity style={s.dismissBtn} onPress={onDismiss} activeOpacity={0.7}>
+                <Text style={s.dismissBtnText}>{dismissLabel}</Text>
+              </TouchableOpacity>
+            )}
           </Pressable>
         </Animated.View>
       </Pressable>

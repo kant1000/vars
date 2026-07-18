@@ -620,7 +620,7 @@ function makeStyles(theme: VarsTheme) {
       justifyContent: 'flex-end',
     },
     statusCard: {
-      backgroundColor: theme.color.bg, borderTopLeftRadius: 16, borderTopRightRadius: 16,
+      backgroundColor: theme.color.bg, borderTopLeftRadius: BORDER_RADIUS, borderTopRightRadius: BORDER_RADIUS,
       paddingHorizontal: 24, paddingTop: 24, paddingBottom: 40,
     },
     statusCardHeader: {

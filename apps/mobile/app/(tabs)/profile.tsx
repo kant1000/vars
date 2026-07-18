@@ -59,6 +59,7 @@ export default function ProfileScreen() {
   const [saving, setSaving]           = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [showSignOutModal, setShowSignOutModal] = useState(false);
+  const [comingSoon, setComingSoon] = useState<{ title: string; body: string } | null>(null);
 
   const [bookings, setBookings]       = useState<ActiveBooking[]>([]);
   const [loadingBookings, setLoadingBookings] = useState(true);
@@ -270,14 +271,14 @@ export default function ProfileScreen() {
           <SettingsRow
             icon={<HeartIcon size={18} color={theme.color.ink} />}
             label="My favourites"
-            onPress={() => Alert.alert('Coming soon', 'Save your favourite stylists — launching soon.')}
+            onPress={() => setComingSoon({ title: 'Coming soon', body: 'Save your favourite stylists — launching soon.' })}
             s={s}
             theme={theme}
           />
           <SettingsRow
             icon={<BellIcon size={18} color={theme.color.ink} />}
             label="Notification preferences"
-            onPress={() => Alert.alert('Coming soon', 'Notification controls are on the way.')}
+            onPress={() => setComingSoon({ title: 'Coming soon', body: 'Notification controls are on the way.' })}
             s={s}
             theme={theme}
           />
@@ -330,6 +331,16 @@ export default function ProfileScreen() {
         destructive
         onConfirm={() => { setShowSignOutModal(false); signOut(); }}
         onDismiss={() => setShowSignOutModal(false)}
+      />
+
+      <ConfirmModal
+        visible={!!comingSoon}
+        title={comingSoon?.title ?? ''}
+        body={comingSoon?.body ?? ''}
+        confirmLabel="Got it"
+        dismissLabel={null}
+        onConfirm={() => setComingSoon(null)}
+        onDismiss={() => setComingSoon(null)}
       />
     </KeyboardAvoidingView>
   );
