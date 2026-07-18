@@ -3,6 +3,7 @@ import {
   Animated, Modal, Pressable, StyleSheet,
   Text, TouchableOpacity, View,
 } from 'react-native';
+import { ScissorsLoader } from './ScissorsLoader';
 import { BORDER_RADIUS } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { useVarsTheme } from '@/contexts/ThemeContext';
@@ -17,6 +18,12 @@ interface ConfirmModalProps {
   onConfirm: () => void;
   onDismiss: () => void;
   destructive?: boolean;
+  // Swaps the confirm button's label for a spinner and disables both buttons —
+  // for modals that stay open during the async action instead of closing immediately.
+  confirmLoading?: boolean;
+  // Set false for decisions with no neutral "never mind" (e.g. accept/decline
+  // where a stray backdrop tap or Android back press shouldn't silently pick one).
+  dismissOnBackdropPress?: boolean;
 }
 
 export function ConfirmModal({
@@ -24,11 +31,14 @@ export function ConfirmModal({
   confirmLabel, dismissLabel = 'Not now',
   onConfirm, onDismiss,
   destructive = false,
+  confirmLoading = false,
+  dismissOnBackdropPress = true,
 }: ConfirmModalProps) {
   const { theme } = useVarsTheme();
   const s = useMemo(() => makeStyles(theme), [theme]);
   const scale = useRef(new Animated.Value(0.92)).current;
   const opacity = useRef(new Animated.Value(0)).current;
+  const backdropDismiss = dismissOnBackdropPress ? onDismiss : () => {};
 
   useEffect(() => {
     if (visible) {
@@ -43,8 +53,8 @@ export function ConfirmModal({
   }, [visible]);
 
   return (
-    <Modal transparent visible={visible} animationType="none" onRequestClose={onDismiss}>
-      <Pressable style={s.overlay} onPress={onDismiss}>
+    <Modal transparent visible={visible} animationType="none" onRequestClose={backdropDismiss}>
+      <Pressable style={s.overlay} onPress={backdropDismiss}>
         <Animated.View style={[s.card, { opacity, transform: [{ scale }] }]}>
           <Pressable>
             <Text style={s.title}>{title}</Text>
@@ -53,15 +63,25 @@ export function ConfirmModal({
               : <View style={s.bodyWrap}>{body}</View>}
 
             <TouchableOpacity
-              style={[s.confirmBtn, destructive && s.confirmBtnDestructive]}
+              style={[s.confirmBtn, destructive && s.confirmBtnDestructive, confirmLoading && s.btnDisabled]}
               onPress={onConfirm}
+              disabled={confirmLoading}
               activeOpacity={0.85}
             >
-              <Text style={s.confirmBtnText}>{confirmLabel}</Text>
+              {confirmLoading ? (
+                <ScissorsLoader size="small" color={destructive || theme.appearance !== 'dark' ? 'light' : 'dark'} />
+              ) : (
+                <Text style={s.confirmBtnText}>{confirmLabel}</Text>
+              )}
             </TouchableOpacity>
 
             {dismissLabel !== null && (
-              <TouchableOpacity style={s.dismissBtn} onPress={onDismiss} activeOpacity={0.7}>
+              <TouchableOpacity
+                style={[s.dismissBtn, confirmLoading && s.btnDisabled]}
+                onPress={onDismiss}
+                disabled={confirmLoading}
+                activeOpacity={0.7}
+              >
                 <Text style={s.dismissBtnText}>{dismissLabel}</Text>
               </TouchableOpacity>
             )}
@@ -113,6 +133,9 @@ function makeStyles(theme: VarsTheme) {
     },
     confirmBtnDestructive: {
       backgroundColor: theme.color.accentRed,
+    },
+    btnDisabled: {
+      opacity: 0.5,
     },
     confirmBtnText: {
       color: theme.color.inverseInk,

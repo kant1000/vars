@@ -6,12 +6,12 @@
 // ============================================================
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Modal,
-  Pressable, RefreshControl, ScrollView,
+  RefreshControl, ScrollView,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
+import { ConfirmModal } from '@/components/ConfirmModal';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
@@ -684,33 +684,32 @@ export default function BookingDetailScreen() {
 
       {/* ── Cancel confirmation modal ───────────────── */}
       {booking && (
-        <Modal visible={showCancelModal} transparent animationType="fade" onRequestClose={() => setShowCancelModal(false)}>
-          <Pressable style={s.modalOverlay} onPress={() => setShowCancelModal(false)}>
-            <Pressable style={s.modalSheet} onPress={() => {}}>
-              <Text style={s.modalTitle}>Cancel booking?</Text>
-              <Text style={s.modalBody}>
-                Your stylist hasn&apos;t set off yet — cancellation is free. No payment has been taken.
-              </Text>
-              <View style={s.modalActions}>
-                <TouchableOpacity style={s.modalKeepBtn} onPress={() => setShowCancelModal(false)}>
-                  <Text style={s.modalKeepText}>Keep booking</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={s.modalCancelBtn} onPress={handleCancel}>
-                  <Text style={s.modalCancelText}>Yes, cancel</Text>
-                </TouchableOpacity>
-              </View>
-            </Pressable>
-          </Pressable>
-        </Modal>
+        <ConfirmModal
+          visible={showCancelModal}
+          title="Cancel booking?"
+          body="Your stylist hasn't set off yet — cancellation is free. No payment has been taken."
+          confirmLabel="Yes, cancel"
+          dismissLabel="Keep booking"
+          destructive
+          onConfirm={handleCancel}
+          onDismiss={() => setShowCancelModal(false)}
+        />
       )}
 
       {/* ── Reschedule suggestion modal ─────────────── */}
       {booking.status === BOOKING_STATUS.RESCHEDULED_PENDING && !!booking.suggested_scheduled_at && (
-        <Modal visible transparent animationType="fade" onRequestClose={() => {}}>
-          <View style={s.rescheduleOverlay}>
-            <View style={s.rescheduleSheet}>
+        <ConfirmModal
+          visible
+          dismissOnBackdropPress={false}
+          title="Suggested a new time"
+          confirmLabel="Accept new time"
+          dismissLabel="Find another stylist"
+          confirmLoading={actionLoading}
+          onConfirm={handleAcceptReschedule}
+          onDismiss={handleDeclineReschedule}
+          body={
+            <>
               <Text style={s.rescheduleVendorName}>{booking.vendor_name}</Text>
-              <Text style={s.rescheduleHeading}>Suggested a new time</Text>
               <View style={s.rescheduleTimeCard}>
                 <Text style={s.rescheduleDateText}>{fmtDate(booking.suggested_scheduled_at)}</Text>
                 <Text style={s.rescheduleTimeText}>{fmtTime(booking.suggested_scheduled_at)}</Text>
@@ -720,25 +719,9 @@ export default function BookingDetailScreen() {
                   <Text style={s.errorText}>{actionError}</Text>
                 </View>
               )}
-              <TouchableOpacity
-                style={[s.primaryBtn, { width: '100%' }, actionLoading && s.btnDisabled]}
-                onPress={handleAcceptReschedule}
-                disabled={actionLoading}
-              >
-                {actionLoading
-                  ? <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} />
-                  : <Text style={s.primaryBtnText}>Accept new time</Text>}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[s.secondaryBtn, { width: '100%' }, actionLoading && s.btnDisabled]}
-                onPress={handleDeclineReschedule}
-                disabled={actionLoading}
-              >
-                <Text style={s.secondaryBtnText}>Find another stylist</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
+            </>
+          }
+        />
       )}
 
       {/* ── Dispute sheet ───────────────────────────── */}
@@ -885,7 +868,6 @@ function makeStyles(theme: VarsTheme) {
     reviewLabel: { fontSize: 14, fontWeight: '600', color: theme.color.inkMuted },
 
     // Modals
-    modalOverlay: { flex: 1, backgroundColor: theme.color.overlay, justifyContent: 'flex-end' },
     modalSheet: {
       backgroundColor: theme.color.bg,
       borderTopLeftRadius: 5, borderTopRightRadius: 5,
@@ -894,17 +876,6 @@ function makeStyles(theme: VarsTheme) {
     modalTitle: { fontSize: 20, fontWeight: '800', color: theme.color.ink },
     modalBody: { fontSize: 14, color: theme.color.inkMuted, lineHeight: 20 },
     modalBold: { fontWeight: '700', color: theme.color.ink },
-    modalActions: { flexDirection: 'row', gap: 10, marginTop: 4 },
-    modalKeepBtn: {
-      flex: 1, height: 52, borderRadius: 5, alignItems: 'center', justifyContent: 'center',
-      backgroundColor: theme.color.surface2, borderWidth: 1, borderColor: theme.color.inkFaint,
-    },
-    modalKeepText: { fontSize: 15, fontWeight: '700', color: theme.color.ink },
-    modalCancelBtn: {
-      flex: 1, height: 52, borderRadius: 5, alignItems: 'center', justifyContent: 'center',
-      backgroundColor: theme.color.ink,
-    },
-    modalCancelText: { fontSize: 15, fontWeight: '700', color: theme.color.inverseInk },
     disputeInput: {
       backgroundColor: theme.color.surface2, borderRadius: 5,
       borderWidth: 1, borderColor: theme.color.inkFaint,
@@ -924,20 +895,9 @@ function makeStyles(theme: VarsTheme) {
     categoryLabelSelected: { fontWeight: '600', color: theme.color.accentRed },
 
     // Reschedule modal
-    rescheduleOverlay: {
-      flex: 1, backgroundColor: theme.color.overlay,
-      justifyContent: 'center', alignItems: 'center', padding: 24,
-    },
-    rescheduleSheet: {
-      backgroundColor: theme.color.bg, borderRadius: 5,
-      padding: 24, width: '100%', gap: 12, alignItems: 'center',
-    },
     rescheduleVendorName: {
       fontSize: 12, fontWeight: '700', color: theme.color.inkMuted,
       textTransform: 'uppercase', letterSpacing: 0.5,
-    },
-    rescheduleHeading: {
-      fontSize: 22, fontWeight: '800', color: theme.color.ink, textAlign: 'center',
     },
     rescheduleTimeCard: {
       backgroundColor: theme.color.surface2, borderRadius: 5,
