@@ -271,7 +271,7 @@ export default function ProfileScreen() {
           <SettingsRow
             icon={<HeartIcon size={18} color={theme.color.ink} />}
             label="My favourites"
-            onPress={() => setComingSoon({ title: 'Coming soon', body: 'Save your favourite stylists — launching soon.' })}
+            onPress={() => setComingSoon({ title: 'Coming soon', body: 'Save your favourite stylists. Launching soon.' })}
             s={s}
             theme={theme}
           />

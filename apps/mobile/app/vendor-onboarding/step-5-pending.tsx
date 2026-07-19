@@ -96,7 +96,7 @@ export default function Step5Pending() {
 
       {!isReview && !isLive && (
         <Text style={styles.note}>
-          Make sure notifications are on — we'll let you know the moment you're approved.
+          Make sure notifications are on. We'll let you know the moment you're approved.
         </Text>
       )}
 

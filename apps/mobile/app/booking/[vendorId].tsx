@@ -271,7 +271,7 @@ function Step1({
 
         {slots.some((sl) => sl.available && sl.autoAccept) && (
           <View style={s.autoAcceptLegend}>
-            <Text style={s.autoAcceptLegendText}>⚡ Instant confirm — no waiting</Text>
+            <Text style={s.autoAcceptLegendText}>⚡ Instant confirm, no waiting</Text>
           </View>
         )}
 
@@ -549,7 +549,7 @@ function Step2Location({
             <Row label="Total" value={fmtPrice(totalKobo)} bold s={s} />
             {transportFeeKobo > 0 && (
               <Text style={s.transportNote}>
-                Your stylist is travelling further to reach you — this price reflects that.
+                Your stylist is travelling further to reach you, this price reflects that.
               </Text>
             )}
           </VarsSurface>
@@ -557,7 +557,7 @@ function Step2Location({
           <View style={[s.infoBox, isAutoAccept && s.infoBoxAutoAccept]}>
             <Text style={[s.infoText, isAutoAccept && s.infoTextAutoAccept]}>
               {isAutoAccept
-                ? '⚡ Instant confirm — your booking is confirmed right away.'
+                ? '⚡ Instant confirm: your booking is confirmed right away.'
                 : 'Your payment will be taken when your vendor sets off to you, not before.'}
             </Text>
           </View>
@@ -570,7 +570,7 @@ function Step2Location({
           loading={paying}
           onPress={onPay}
           disabled={!mapReady || paying}
-          label={`Confirm booking — ${fmtPrice(totalKobo)}`}
+          label={`Confirm booking · ${fmtPrice(totalKobo)}`}
         />
       </View>
     </>
@@ -615,7 +615,7 @@ function CardVerifyView({
         <VarsButton
           theme={theme}
           onPress={onStart}
-          label={`Verify card — ${fmtPrice(amountKobo)}`}
+          label={`Verify card · ${fmtPrice(amountKobo)}`}
           style={{ marginTop: 8 }}
         />
         <TouchableOpacity onPress={onCancel} style={{ alignItems: 'center', paddingVertical: 12 }} activeOpacity={0.7}>
@@ -647,7 +647,7 @@ function CardVerifyView({
       <View style={[{ flex: 1 }, s.centered]}>
         <ScissorsLoader size="large" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
         <Text style={{ fontSize: 14, color: theme.color.inkMuted, marginTop: 20, textAlign: 'center', paddingHorizontal: 32 }}>
-          Verifying your card — this only takes a moment.
+          Verifying your card, this only takes a moment.
         </Text>
       </View>
     );

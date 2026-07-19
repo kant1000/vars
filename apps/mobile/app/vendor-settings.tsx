@@ -136,14 +136,14 @@ export default function VendorSettings() {
       return Alert.alert('Same password', 'New password must be different from your current one.');
     }
     if (newPassword !== confirmPassword) {
-      return Alert.alert('No match', 'Passwords do not match — try again.');
+      return Alert.alert('No match', 'Passwords do not match. Try again.');
     }
     setSavingPassword(true);
     // Re-authenticate to verify current password — updateUser alone doesn't check it.
     const { error: authError } = await supabase.auth.signInWithPassword({ email, password: currentPassword });
     if (authError) {
       setSavingPassword(false);
-      return Alert.alert('Incorrect password', 'Current password is wrong — try again.');
+      return Alert.alert('Incorrect password', 'Current password is wrong. Try again.');
     }
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     setSavingPassword(false);
@@ -162,7 +162,7 @@ export default function VendorSettings() {
     const ticket = buildTicket();
     const subject = encodeURIComponent(`[${ticket}] VARS Support Request`);
     const body = encodeURIComponent(
-      `[Write your message above this line — do not edit below]\n\n────────────────────────\nTicket: ${ticket}\nVARS Email: ${email}\nVARS Phone: ${phone}`
+      `[Write your message above this line, do not edit below]\n\n────────────────────────\nTicket: ${ticket}\nVARS Email: ${email}\nVARS Phone: ${phone}`
     );
     Linking.openURL(`mailto:support@bookwithvars.com?subject=${subject}&body=${body}`);
   };
@@ -238,12 +238,12 @@ export default function VendorSettings() {
           </View>
           <View style={[s.fieldRow, s.lockedRow]}>
             <Text style={s.fieldLabel}>Email</Text>
-            <Text style={s.fieldValue}>{email || '—'}</Text>
+            <Text style={s.fieldValue}>{email || 'No email set'}</Text>
             <Text style={s.lockBadge}>Locked</Text>
           </View>
           <View style={[s.fieldRow, s.lockedRow, s.lastRow]}>
             <Text style={s.fieldLabel}>Phone</Text>
-            <Text style={s.fieldValue}>{phone || '—'}</Text>
+            <Text style={s.fieldValue}>{phone || 'No phone set'}</Text>
             <Text style={s.lockBadge}>Locked</Text>
           </View>
         </View>
@@ -255,7 +255,7 @@ export default function VendorSettings() {
             style={s.row}
             onPress={() => isEmailUser
               ? setShowPasswordModal(true)
-              : Alert.alert('Not available', 'You sign in with your phone number — password change is not available.')
+              : Alert.alert('Not available', 'You sign in with your phone number. Password change is not available.')
             }
             activeOpacity={0.7}
           >
@@ -303,7 +303,7 @@ export default function VendorSettings() {
             <>
               <View style={[s.fieldRow, s.lockedRow]}>
                 <Text style={s.fieldLabel}>Bank</Text>
-                <Text style={s.fieldValue}>{bankName || '—'}</Text>
+                <Text style={s.fieldValue}>{bankName || 'No bank set'}</Text>
               </View>
               <View style={[s.fieldRow, s.lockedRow]}>
                 <Text style={s.fieldLabel}>Account</Text>
@@ -311,7 +311,7 @@ export default function VendorSettings() {
               </View>
               <View style={[s.fieldRow, s.lockedRow, s.lastRow]}>
                 <Text style={s.fieldLabel}>Name</Text>
-                <Text style={s.fieldValue}>{accountName || '—'}</Text>
+                <Text style={s.fieldValue}>{accountName || 'No name set'}</Text>
               </View>
             </>
           ) : (

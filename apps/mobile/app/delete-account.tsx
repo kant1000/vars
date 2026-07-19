@@ -106,7 +106,7 @@ export default function DeleteAccountScreen() {
           </Text>
 
           <Text style={s.note}>
-            Prefer to take a break instead? You can simply stop using the app — your data stays safe until you return.
+            Prefer to take a break instead? You can simply stop using the app, your data stays safe until you return.
           </Text>
 
           <TouchableOpacity

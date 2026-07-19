@@ -255,10 +255,10 @@ export default function Step4Kyc() {
         </View>
         <View style={styles.subStepLabels}>
           <Text style={[styles.subStepLabel, subStep === 'bank' && styles.subStepLabelActive]}>
-            {bankVerified ? '✓ ' : ''}1 of 2 — Bank account
+            {bankVerified ? '✓ ' : ''}1 of 2 · Bank account
           </Text>
           <Text style={[styles.subStepLabel, subStep === 'kyc' && styles.subStepLabelActive]}>
-            {kycVerified ? '✓ ' : ''}2 of 2 — Identity
+            {kycVerified ? '✓ ' : ''}2 of 2 · Identity
           </Text>
         </View>
 
@@ -325,7 +325,7 @@ export default function Step4Kyc() {
               theme={theme}
               onPress={handleBankContinue}
               disabled={!bankVerified}
-              label="Continue — Identity check"
+              label="Continue · Identity check"
             />
           </View>
         )}
@@ -361,7 +361,7 @@ export default function Step4Kyc() {
               <VarsSurface theme={theme} elevation={1} style={styles.prepCard}>
                 <Text style={styles.prepTitle}>Before you start</Text>
                 <Text style={styles.prepItem}>· Your NIN, BVN, or a government-issued ID</Text>
-                <Text style={styles.prepItem}>· A clear selfie in good lighting — face the camera directly</Text>
+                <Text style={styles.prepItem}>· A clear selfie in good lighting, face the camera directly</Text>
                 <Text style={styles.prepItem}>· Takes about 3 minutes</Text>
                 <View style={styles.prepDivider} />
                 <Text style={styles.prepNote}>

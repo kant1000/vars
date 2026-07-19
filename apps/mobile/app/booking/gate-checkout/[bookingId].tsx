@@ -111,7 +111,7 @@ export default function GateCheckoutScreen() {
       setAmountKobo(data.amount_kobo);
       setPhase('checkout');
     } catch {
-      setErrorMsg('Could not reach server — check your connection and try again.');
+      setErrorMsg('Could not reach server, check your connection and try again.');
       setPhase('error');
     }
   }, [bookingId]);
@@ -169,7 +169,7 @@ export default function GateCheckoutScreen() {
         <ScissorsLoader size="large" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
         <Text style={s.confirmingTitle}>Confirming payment</Text>
         <Text style={s.confirmingBody}>
-          Verifying with your bank — this only takes a moment.
+          Verifying with your bank, this only takes a moment.
         </Text>
       </View>
     );
@@ -234,7 +234,7 @@ export default function GateCheckoutScreen() {
           <VarsButton
             theme={theme}
             onPress={fetchCheckout}
-            label={`Try again — ${amountKobo > 0 ? fmtPrice(amountKobo) : ''}`}
+            label={`Try again${amountKobo > 0 ? ` · ${fmtPrice(amountKobo)}` : ''}`}
             style={s.retryBtn}
           />
         )}
@@ -275,7 +275,7 @@ export default function GateCheckoutScreen() {
           source={{ uri: `https://checkout.paystack.com/${accessCode}` }}
           onShouldStartLoadWithRequest={(req) => handleWebViewNav(req.url)}
           onError={() => {
-            setErrorMsg('Could not load payment page — check your connection and try again.');
+            setErrorMsg('Could not load payment page, check your connection and try again.');
             setPhase('error');
           }}
           onHttpError={(syntheticEvent) => {

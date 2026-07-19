@@ -65,7 +65,7 @@ export default function PrivacyScreen() {
             Facebook if you sign in that way.
           </Body>
           <Body>
-            When you verify a card through Paystack, we receive a secure payment token — not your
+            When you verify a card through Paystack, we receive a secure payment token, not your
             full card number. When you set a booking location, we collect your GPS location and
             structured access details (building name, floor, flat number, access code). Access
             details are visible only to your matched stylist and VARS admin.
@@ -100,7 +100,7 @@ export default function PrivacyScreen() {
             transport surcharge, and support the safety of home service bookings.
           </Body>
           <Body>
-            During an active booking — once your stylist taps "On My Way" — their live GPS
+            During an active booking, once your stylist taps "On My Way," their live GPS
             position is shared with you in real time until the service is complete. Their live
             position isn't stored beyond what's needed to display it.
           </Body>
@@ -125,7 +125,7 @@ export default function PrivacyScreen() {
 
         <Section title="Who we share information with">
           <Body>
-            We share information only where needed to operate VARS — the payment, analytics, and
+            We share information only where needed to operate VARS: the payment, analytics, and
             notification providers named in this policy, plus our hosting providers (Supabase,
             Vercel) and legal or safety authorities where required by law.
           </Body>
@@ -133,8 +133,8 @@ export default function PrivacyScreen() {
 
         <Section title="Your choices">
           <Body>
-            You can ask us to update, correct, or delete your information where the law allows —
-            see the Privacy and Data screen in your account for data export and account deletion.
+            You can ask us to update, correct, or delete your information where the law allows.
+            See the Privacy and Data screen in your account for data export and account deletion.
             Some information may need to be kept for security, payment, dispute, legal, or
             fraud-prevention reasons.
           </Body>

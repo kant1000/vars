@@ -43,13 +43,13 @@ function OnboardingHeader() {
     <View style={styles.headerContainer}>
       {isPioneer && (
         <View style={styles.pioneerBanner}>
-          <Text style={styles.pioneerText}>VARS Pioneer — 0% commission on your first 3 bookings</Text>
+          <Text style={styles.pioneerText}>VARS Pioneer · 0% commission on your first 3 bookings</Text>
         </View>
       )}
       {showProgress && (
         <View style={styles.progressContainer}>
           <Text style={styles.progressLabel}>
-            Step {current + 1} of {total} — {STEPS[current]}
+            Step {current + 1} of {total} · {STEPS[current]}
           </Text>
           <View style={styles.track}>
             {STEPS.slice(0, total).map((_, i) => (

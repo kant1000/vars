@@ -94,7 +94,7 @@ const STATUS_CONFIG: Record<BookingStatus, { label: string; color: string; descr
   service_rendered:     { label: 'Service complete',       color: Colors.primary,         description: 'Confirm below to release payment to your stylist.' },
   completed:            { label: 'Completed',              color: Colors.statusCompleted, description: 'Service complete. Payment has been released.' },
   cancelled:            { label: 'Cancelled',              color: Colors.statusCancelled, description: 'This booking was cancelled.' },
-  expired:              { label: 'Expired',                color: Colors.statusExpired,   description: 'This booking expired — you\'ve been fully refunded.' },
+  expired:              { label: 'Expired',                color: Colors.statusExpired,   description: 'This booking expired. You\'ve been fully refunded.' },
   disputed:             { label: 'Under review',           color: Colors.statusDisputed,  description: 'This booking is under review by the VARS team.' },
   rescheduled_pending:  { label: 'New time suggested',     color: Colors.statusPending,   description: 'Your stylist suggested a new time. Review it below.' },
 };
@@ -164,8 +164,6 @@ function Timeline({ booking }: { booking: BookingDetail }) {
               <Text style={[tl.label, step.reached && tl.labelReached]}>{step.label}</Text>
               {step.ts ? (
                 <Text style={tl.ts}>{fmtDateTime(step.ts)}</Text>
-              ) : step.reached ? (
-                <Text style={tl.ts}>—</Text>
               ) : null}
             </View>
           </View>
@@ -519,7 +517,7 @@ export default function BookingDetailScreen() {
           <Text style={s.statusDescription}>{cfg.description}</Text>
           {(booking.status === BOOKING_STATUS.PENDING || booking.status === BOOKING_STATUS.ACCEPTED) && (
             <Text style={s.escrowNote}>
-              Payment is only taken when your stylist sets off — not before.
+              Payment is only taken when your stylist sets off, not before.
             </Text>
           )}
         </View>
@@ -687,7 +685,7 @@ export default function BookingDetailScreen() {
         <ConfirmModal
           visible={showCancelModal}
           title="Cancel booking?"
-          body="Your stylist hasn't set off yet — cancellation is free. No payment has been taken."
+          body="Your stylist hasn't set off yet, cancellation is free. No payment has been taken."
           confirmLabel="Yes, cancel"
           dismissLabel="Keep booking"
           destructive

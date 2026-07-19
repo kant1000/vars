@@ -528,7 +528,7 @@ export default function VendorLoginScreen() {
       <ConfirmModal
         visible={showSetupFirstModal}
         title="Set up your account first"
-        body="We found your number, but your account isn't set up yet. Use your email address to get started — you can log in with your phone once that's done."
+        body="We found your number, but your account isn't set up yet. Use your email address to get started; you can log in with your phone once that's done."
         confirmLabel="Got it"
         dismissLabel={null}
         onConfirm={() => setShowSetupFirstModal(false)}

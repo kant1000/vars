@@ -533,7 +533,7 @@ function BookingBottomSheet({
                         theme={theme}
                         loading={submittingReschedule}
                         onPress={handleSuggestReschedule}
-                        label={`Send — ${fmtDate(suggestedSlot)} at ${fmtTime(suggestedSlot)}`}
+                        label={`Send · ${fmtDate(suggestedSlot)} at ${fmtTime(suggestedSlot)}`}
                         style={bs.primaryBtn}
                       />
                     )}
@@ -550,7 +550,7 @@ function BookingBottomSheet({
 
             {booking.status === BOOKING_STATUS.RESCHEDULED_PENDING && (
               <VarsSurface theme={theme} style={bs.waitingBox}>
-                <Text style={bs.waitingText}>Reschedule suggestion sent — waiting for customer response</Text>
+                <Text style={bs.waitingText}>Reschedule suggestion sent, waiting for customer response</Text>
               </VarsSurface>
             )}
 

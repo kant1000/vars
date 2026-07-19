@@ -449,7 +449,7 @@ export default function LiveScreen() {
       }
       // Status update comes via Realtime
     } catch {
-      Alert.alert('Error', "Couldn't reach server — please check your connection.");
+      Alert.alert('Error', "Couldn't reach server, please check your connection.");
     } finally {
       setCancelling(false);
     }
@@ -471,11 +471,11 @@ export default function LiveScreen() {
       });
       if (!res.ok) {
         const d = await res.json();
-        setConfirmError(d.error ?? "Couldn't save — tap to retry");
+        setConfirmError(d.error ?? "Couldn't save, tap to retry");
       }
       // Status update will come via Realtime
     } catch {
-      setConfirmError("Couldn't reach server — tap to retry");
+      setConfirmError("Couldn't reach server, tap to retry");
     } finally {
       setConfirming(false);
     }
@@ -542,7 +542,7 @@ export default function LiveScreen() {
         {/* Stale location warning */}
         {staleLocWarning && (
           <View style={s.staleLocBox}>
-            <Text style={s.staleLocText}>📡 Live location unavailable — showing last known position</Text>
+            <Text style={s.staleLocText}>📡 Live location unavailable, showing last known position</Text>
           </View>
         )}
 

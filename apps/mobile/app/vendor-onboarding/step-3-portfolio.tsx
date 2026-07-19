@@ -88,7 +88,7 @@ export default function Step3Portfolio() {
       {/* Guidance card */}
       <VarsSurface theme={theme} elevation={1} style={styles.guidanceCard}>
         <Text style={styles.guidanceText}>
-          Upload photos of your work — results on real clients, before/after shots, finished styles. No selfies or stock images.
+          Upload photos of your work: results on real clients, before/after shots, finished styles. No selfies or stock images.
         </Text>
       </VarsSurface>
 

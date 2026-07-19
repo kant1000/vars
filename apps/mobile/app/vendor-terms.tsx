@@ -73,7 +73,7 @@ export default function TermsScreen() {
 
         <Section title="Pioneer Programme">
           <Body>
-            The VARS Pioneers cohort — the first 50 stylists to register and verify — is now full.
+            The VARS Pioneers cohort (the first 50 stylists to register and verify) is now full.
             Pioneer benefits are permanently locked in for those 50 stylists: zero commission on
             their first 3 completed bookings. On Pioneer bookings, 100% of the amount charged goes
             to the stylist.
@@ -88,7 +88,7 @@ export default function TermsScreen() {
         <Section title="Verification and safety">
           <Body>
             VARS requires stylists to complete identity verification through Youverify before
-            receiving bookings. A clean check means the stylist goes live immediately — no waiting,
+            receiving bookings. A clean check means the stylist goes live immediately: no waiting,
             no manual queue. Passing verification does not guarantee bookings, earnings, ranking,
             or permanent access to the platform.
           </Body>
@@ -101,12 +101,12 @@ export default function TermsScreen() {
           <Body>
             When a customer confirms a booking, their payment is authorised through Paystack but
             not yet captured. It is captured only when the stylist accepts. If the stylist declines
-            or their 1-hour acceptance window expires, the authorisation releases automatically —
+            or their 1-hour acceptance window expires, the authorisation releases automatically:
             no refund process, no delay, no friction.
           </Body>
           <Body>
             Once accepted, a booking moves through a fixed sequence: On My Way → Arrived → Service
-            Rendered. Each step triggers a specific platform action — phone reveal, live location
+            Rendered. Each step triggers a specific platform action: phone reveal, live location
             sharing, and payment settlement. Steps cannot be skipped.
           </Body>
           <Body>
@@ -141,11 +141,11 @@ export default function TermsScreen() {
         <Section title="Payments and settlement">
           <Body>
             <Bold>Your payment is not taken when you book.</Bold> It is taken at the moment your
-            stylist confirms they are on their way to you — not before.
+            stylist confirms they are on their way to you, not before.
           </Body>
           <Body>
             Settlement to the stylist's bank account is processed once the service is confirmed
-            complete — either when you confirm, or 2 hours pass after the stylist marks "Service
+            complete: either when you confirm, or 2 hours pass after the stylist marks "Service
             Rendered" without a dispute being raised.
           </Body>
           <Body>
@@ -161,7 +161,7 @@ export default function TermsScreen() {
           </Bullet>
           <Bullet>
             <Bold>After the stylist sets off:</Bold> Cancellation is not available. Use Raise a
-            dispute if something goes wrong — disputes are reviewed and a full refund issued if
+            dispute if something goes wrong: disputes are reviewed and a full refund issued if
             warranted.
           </Bullet>
         </Section>

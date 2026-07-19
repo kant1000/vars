@@ -65,7 +65,7 @@ export default function PrivacyScreen() {
           </Body>
           <Body>
             For bookings, we collect the service location including the full address and structured
-            access details — building name, floor, flat number, and access code. These are stored
+            access details: building name, floor, flat number, and access code. These are stored
             on the booking record and shared with the assigned stylist so they can reach you.
             Access details are visible only to the matched stylist and VARS admin.
           </Body>
@@ -123,7 +123,7 @@ export default function PrivacyScreen() {
             transport surcharge, and support the safety of home service bookings.
           </Body>
           <Body>
-            During an active booking — once the stylist taps "On My Way" — their live GPS position
+            During an active booking, once the stylist taps "On My Way," their live GPS position
             is shared with the customer in real time until the service is complete. The stylist's
             live position is not stored beyond what is needed to display it.
           </Body>

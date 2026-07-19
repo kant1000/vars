@@ -23,7 +23,7 @@ export function OfflineBanner({ visible }: { visible: boolean }) {
       style={[s.wrap, { transform: [{ translateY: slideY }] }]}
       pointerEvents="none"
     >
-      <Text style={s.text}>You're offline — we'll sync when you're back</Text>
+      <Text style={s.text}>You're offline. We'll sync when you're back</Text>
     </Animated.View>
   );
 }

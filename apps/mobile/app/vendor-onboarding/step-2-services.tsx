@@ -329,7 +329,7 @@ export default function Step2Services() {
         loading={isSaving}
         onPress={handleNext}
         disabled={isSaving || draftServices.length === 0}
-        label="Next — Add portfolio photos"
+        label="Next · Add portfolio photos"
         style={styles.nextBtnSpacing}
       />
     </ScrollView>

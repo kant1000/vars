@@ -150,7 +150,7 @@ export function VendorOnlineProvider({ children }: { children: React.ReactNode }
         .eq('id', user.id);
       if (error) {
         setIsOnline(!next);
-        setToggleError("Couldn't save — tap to retry");
+        setToggleError("Couldn't save, tap to retry");
       }
     }
     setTogglingOnline(false);

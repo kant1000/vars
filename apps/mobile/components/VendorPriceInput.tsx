@@ -32,7 +32,7 @@ export function VendorPriceInput({
 
   const previewText = hasValue
     ? isPioneerActive
-      ? `You keep 100% — Pioneer booking · ${formatNaira(num)}`
+      ? `You keep 100% · Pioneer booking · ${formatNaira(num)}`
       : `You'll receive: ${formatNaira(num * 0.8)}`
     : null;
 

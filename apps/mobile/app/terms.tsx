@@ -54,7 +54,7 @@ export default function TermsScreen() {
           <Body>
             VARS is a marketplace connecting customers in Lagos with independent, verified
             beauty and grooming professionals who come to them. VARS is not the provider of
-            beauty services — each stylist is an independent professional responsible for the
+            beauty services: each stylist is an independent professional responsible for the
             quality and delivery of their own work.
           </Body>
         </Section>
@@ -70,18 +70,18 @@ export default function TermsScreen() {
           <Body>
             Every stylist completes identity verification through Youverify, including a
             government-issued ID and a biometric liveness check, before receiving bookings. The
-            face on a stylist's profile is the face that passed verification — that's by design.
+            face on a stylist's profile is the face that passed verification. That's by design.
           </Body>
         </Section>
 
         <Section title="How bookings work">
           <Body>
             When you confirm a booking, no payment is taken yet. Your stylist has one hour to
-            accept — if they don't respond, the booking expires with no charge.
+            accept. If they don't respond, the booking expires with no charge.
           </Body>
           <Body>
             Payment is captured only when your stylist commits to travel by tapping "On My Way."
-            From there, bookings follow a fixed sequence — On My Way, Arrived, Service Rendered —
+            From there, bookings follow a fixed sequence: On My Way, Arrived, Service Rendered,
             and steps can't be skipped.
           </Body>
           <Body>
@@ -92,7 +92,7 @@ export default function TermsScreen() {
 
         <Section title="Card verification">
           <Body>
-            First-time customers complete a one-time card verification — a non-refundable charge
+            First-time customers complete a one-time card verification: a non-refundable charge
             of ₦50 processed by Paystack. This confirms your card is active and stores a secure
             token for future charges. It happens once per account.
           </Body>
@@ -101,7 +101,7 @@ export default function TermsScreen() {
         <Section title="Payments and pricing">
           <Body>
             The price shown at booking is the total you pay. It includes the stylist's service
-            price and, where applicable, a transport surcharge — there are no hidden charges. A
+            price and, where applicable, a transport surcharge. There are no hidden charges. A
             transport surcharge applies when your booking location is more than 5km from the
             stylist's zone centre.
           </Body>
@@ -119,7 +119,7 @@ export default function TermsScreen() {
         <Section title="Cancellation">
           <Body>
             You can cancel at any time before your stylist commits to travel, at no charge. Once
-            they're on their way and payment has been taken, cancellation isn't available — use
+            they're on their way and payment has been taken, cancellation isn't available. Use
             the dispute option in the app if something goes wrong at that point.
           </Body>
           <Body>
@@ -132,7 +132,7 @@ export default function TermsScreen() {
           <Body>
             You can raise a dispute from the booking detail screen after a service is marked
             complete and before the two-hour auto-release window closes. Disputed bookings are
-            frozen until a VARS administrator reviews and resolves the matter — we aim to resolve
+            frozen until a VARS administrator reviews and resolves the matter. We aim to resolve
             disputes within 24 hours.
           </Body>
         </Section>
@@ -146,7 +146,7 @@ export default function TermsScreen() {
 
         <Section title="Auto-accept">
           <Body>
-            Some stylists configure an auto-accept zone — bookings in that zone are confirmed
+            Some stylists configure an auto-accept zone: bookings in that zone are confirmed
             instantly without manual review, with a 5-minute grace window for the stylist to
             cancel without penalty.
           </Body>
@@ -155,14 +155,14 @@ export default function TermsScreen() {
         <Section title="Portfolio photos and consent">
           <Body>
             After a completed service, a stylist may request your permission to include a photo
-            in their VARS portfolio. You have 72 hours to approve or decline — no photo is added
+            in their VARS portfolio. You have 72 hours to approve or decline. No photo is added
             to any public profile without your explicit approval.
           </Body>
         </Section>
 
         <Section title="Independent stylists">
           <Body>
-            Stylists on VARS are independent professionals — not employees, agents, or
+            Stylists on VARS are independent professionals, not employees, agents, or
             contractors of VARS. They control their own schedule, pricing, and services. VARS is
             not liable for the quality, safety, or outcome of any service delivered by a stylist,
             except where caused by our own negligence. Our total liability to you in connection

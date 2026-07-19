@@ -136,7 +136,7 @@ export default function Step1Profile() {
               <Text style={styles.lockBadge}>Locked</Text>
             </VarsSurface>
             <Text style={styles.fieldCaption}>
-              Phone used to sign in — contact us if this needs updating.
+              Phone used to sign in. Contact us if this needs updating.
             </Text>
           </View>
 
@@ -149,7 +149,7 @@ export default function Step1Profile() {
               <Text style={styles.lockBadge}>Locked</Text>
             </VarsSurface>
             <Text style={styles.fieldCaption}>
-              Email from your registration — contact us if this needs updating.
+              Email from your registration. Contact us if this needs updating.
             </Text>
           </View>
 

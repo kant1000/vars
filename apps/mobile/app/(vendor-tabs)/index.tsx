@@ -119,12 +119,12 @@ function PendingCard({
       });
       if (!res.ok) {
         const d = await res.json();
-        setActionError(d.error ?? "Couldn't save — tap to retry");
+        setActionError(d.error ?? "Couldn't save, tap to retry");
       } else {
         onUpdated();
       }
     } catch {
-      setActionError("Couldn't reach server — tap to retry");
+      setActionError("Couldn't reach server, tap to retry");
     } finally {
       setActing(false);
     }
@@ -233,12 +233,12 @@ function ActiveCard({
       });
       if (!res.ok) {
         const data = await res.json();
-        setAdvanceError(data.error ?? "Couldn't save — tap to retry");
+        setAdvanceError(data.error ?? "Couldn't save, tap to retry");
       } else {
         onUpdated();
       }
     } catch {
-      setAdvanceError("Couldn't save — tap to retry");
+      setAdvanceError("Couldn't save, tap to retry");
     }
     setActing(false);
   };
@@ -261,12 +261,12 @@ function ActiveCard({
       });
       if (!res.ok) {
         const d = await res.json();
-        setCancelError(d.error ?? "Couldn't cancel — tap to retry");
+        setCancelError(d.error ?? "Couldn't cancel, tap to retry");
       } else {
         onUpdated();
       }
     } catch {
-      setCancelError("Couldn't reach server — tap to retry");
+      setCancelError("Couldn't reach server, tap to retry");
     } finally {
       setCancelling(false);
     }
@@ -284,7 +284,7 @@ function ActiveCard({
       });
       if (!res.ok) {
         const d = await res.json();
-        setGateError(d.error ?? "Couldn't process payment — please try again.");
+        setGateError(d.error ?? "Couldn't process payment, please try again.");
         setGateStage('error');
         return;
       }
@@ -304,7 +304,7 @@ function ActiveCard({
         onUpdated();
       }, 1500);
     } catch {
-      setGateError("Couldn't reach the server — please try again.");
+      setGateError("Couldn't reach the server, please try again.");
       setGateStage('error');
     }
   };
@@ -337,7 +337,7 @@ function ActiveCard({
       {isPastEnd && (
         <View style={c.renderReminderBanner}>
           <Text style={c.renderReminderText}>
-            💰 Service time has passed — mark it done to release your payment.
+            💰 Service time has passed. Mark it done to release your payment.
           </Text>
         </View>
       )}
@@ -346,7 +346,7 @@ function ActiveCard({
         <View style={c.gateConfirmingBanner}>
           <Text style={c.gateConfirmingTitle}>Confirming payment</Text>
           <Text style={c.gateConfirmingBody}>
-            Your client is completing their payment. You'll get a notification as soon as it's confirmed — then you're good to go.
+            Your client is completing their payment. You'll get a notification as soon as it's confirmed, then you're good to go.
           </Text>
         </View>
       )}
@@ -385,7 +385,7 @@ function ActiveCard({
       )}
       {isInGracePeriod && booking.status === BOOKING_STATUS.ACCEPTED && (
         <View style={c.graceBanner}>
-          <Text style={c.graceText}>Auto-accepted — cancel penalty-free in</Text>
+          <Text style={c.graceText}>Auto-accepted, cancel penalty-free in</Text>
           <Text style={c.graceCountdown}>{graceCountdown}</Text>
         </View>
       )}
@@ -418,7 +418,7 @@ function ActiveCard({
         title={isInGracePeriod ? 'Cancel penalty-free?' : 'Cancel this booking?'}
         body={
           isInGracePeriod
-            ? 'This booking was auto-accepted. Cancelling now is penalty-free — the customer gets a full refund with no impact on your record.'
+            ? 'This booking was auto-accepted. Cancelling now is penalty-free: the customer gets a full refund with no impact on your record.'
             : 'The customer will receive a full refund. Your cancellation count will be tracked.'
         }
         confirmLabel="Cancel booking"
@@ -493,7 +493,7 @@ function GateModal({
               <CreditCardIcon size={32} color={Colors.statusOnWay} />
               <Text style={gm.title}>Payment request sent</Text>
               <Text style={gm.body}>
-                {firstName}{' is completing their payment. Head out — you\'ll be notified the moment it confirms.'}
+                {firstName}{' is completing their payment. Head out, you\'ll be notified the moment it confirms.'}
               </Text>
               <TouchableOpacity style={gm.primaryBtn} onPress={onClose}>
                 <Text style={gm.primaryBtnText}>Got it</Text>
@@ -591,7 +591,7 @@ function BookingRow({
           ) : photoConsentState === 'pending' ? (
             <Text style={c.photoSent}>📷 Photo request sent</Text>
           ) : profileFull ? (
-            <Text style={c.photoFull}>Profile full — delete a photo to add more</Text>
+            <Text style={c.photoFull}>Profile full, delete a photo to add more</Text>
           ) : (
             <TouchableOpacity
               onPress={handleAddPhoto}
@@ -929,9 +929,9 @@ export default function VendorJobsScreen() {
                   headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s?.access_token ?? ''}` },
                 });
                 if (res.ok) setRepaymentClaimed(true);
-                else Alert.alert('Error', "Couldn't reach server — try again.");
+                else Alert.alert('Error', "Couldn't reach server, try again.");
               } catch {
-                Alert.alert('Error', "Couldn't reach server — try again.");
+                Alert.alert('Error', "Couldn't reach server, try again.");
               } finally {
                 setRepaymentClaiming(false);
               }
@@ -1087,7 +1087,7 @@ export default function VendorJobsScreen() {
             <Text style={c.emptyTitle}>{isOnline ? 'No jobs yet' : 'You\'re offline'}</Text>
             <Text style={c.emptyBody}>
               {isOnline
-                ? 'Sit tight — booking requests will appear here.'
+                ? 'Sit tight, booking requests will appear here.'
                 : 'Go online to start receiving booking requests.'}
             </Text>
           </View>
