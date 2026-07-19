@@ -7,7 +7,6 @@ import { HomeTiles } from './components/HomeTiles';
 import { AudienceHeader } from './components/AudienceHeader';
 import { SearchBar } from './components/SearchBar';
 import { BubbleGrid } from './components/BubbleGrid';
-import { ExpandPanel } from './components/ExpandPanel';
 import { PasswordGate } from './components/PasswordGate';
 import { AskAIButton } from './components/AskAIButton';
 import { AIModal } from './components/AIModal';
@@ -92,8 +91,6 @@ export function ReferenceApp() {
     return words.some((w) => haystack.includes(w));
   });
 
-  const selected = filtered.find((b) => b.id === selectedId) ?? null;
-
   return (
     <div className="ref-root">
       {screen === 'home' && <HomeTiles onPartner={openPartner} onBoard={openBoard} />}
@@ -105,7 +102,6 @@ export function ReferenceApp() {
             <SearchBar value={search} onChange={handleSearch} />
             <BubbleGrid bubbles={filtered} selectedId={selectedId} onSelect={handleSelect} />
             {filtered.length === 0 && <p className="ref-nores">No topics match that search.</p>}
-            {selected && <ExpandPanel bubble={selected} />}
             <AskAIButton onPress={() => setAiOpen(true)} />
           </div>
           <ContactFooter />

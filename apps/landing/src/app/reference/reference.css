@@ -129,7 +129,7 @@
 .ref-nores { font-size: 13px; color: var(--mid); padding: 20px 0; }
 
 /* ── Expand panel ─────────────────────────────────────────── */
-.ref-panel { border: 1.5px solid var(--black); padding: 18px 16px; margin-top: 22px; }
+.ref-panel { width: 100%; border: 1.5px solid var(--black); padding: 18px 16px; margin-top: 7px; }
 .ref-panel-cat {
   font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
   color: var(--mid); margin-bottom: 8px;
