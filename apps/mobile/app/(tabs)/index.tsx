@@ -69,7 +69,13 @@ function useLocation() {
     setPermissionDenied(false);
     try {
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      setCoords({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+      // Keep the same object reference when the coords haven't actually moved, so
+      // re-checking on every app-foreground doesn't re-trigger the vendor fetch below.
+      setCoords((prev) =>
+        prev.lat === loc.coords.latitude && prev.lng === loc.coords.longitude
+          ? prev
+          : { lat: loc.coords.latitude, lng: loc.coords.longitude }
+      );
     } catch {
       // keep default Lagos coords
     }
@@ -118,7 +124,7 @@ export default function HomeScreen() {
     const scored = list
       .map((v) => {
         let bestScore = Infinity;
-        for (const svc of v.services) {
+        for (const svc of v.services ?? []) {
           const subcategory = (CATEGORY_L2_LABELS[svc.category_l2] ?? svc.category_l2).toLowerCase();
           const serviceName = svc.service_name.toLowerCase();
           const description = (svc.description ?? '').toLowerCase();

@@ -26,7 +26,7 @@ export const AI_PLATFORMS: AIPlatform[] = [
   {
     id: 'chatgpt',
     name: 'ChatGPT',
-    monogram: 'G',
+    monogram: 'O',
     color: '#10A37F',
     buildUrl: (message) => `https://chatgpt.com/?q=${encodeURIComponent(message)}`,
   },
@@ -47,7 +47,7 @@ export const AI_PLATFORMS: AIPlatform[] = [
   {
     id: 'copilot',
     name: 'Copilot',
-    monogram: 'C',
+    monogram: 'M',
     color: '#0FA0EA',
     buildUrl: (message) => `https://copilot.microsoft.com/?q=${encodeURIComponent(message)}`,
   },

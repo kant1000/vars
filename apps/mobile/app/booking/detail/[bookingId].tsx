@@ -164,6 +164,8 @@ function Timeline({ booking }: { booking: BookingDetail }) {
               <Text style={[tl.label, step.reached && tl.labelReached]}>{step.label}</Text>
               {step.ts ? (
                 <Text style={tl.ts}>{fmtDateTime(step.ts)}</Text>
+              ) : step.reached ? (
+                <Text style={tl.ts}>Logged</Text>
               ) : null}
             </View>
           </View>

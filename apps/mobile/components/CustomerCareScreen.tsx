@@ -5,7 +5,7 @@
 // sticky WhatsApp/Email footer. See docs/codex/CLEANUP_ROADMAP.md
 // for why this replaced the old per-side "Get help" modal.
 // ============================================================
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View,
   TextInput,
@@ -77,11 +77,31 @@ export function CustomerCareScreen({ audience }: { audience: CustomerCareAudienc
 
   const [search, setSearch] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [copiedNotice, setCopiedNotice] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [identity, setIdentity] = useState<string>('N/A');
 
   const supportEmail = audience === 'vendor' ? 'support@bookwithvars.com' : 'hello@bookwithvars.com';
 
   const aiSheetRef = useRef<BottomSheetModal>(null);
+  const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      // Phone-only accounts have no auth email; fall back to the auth phone so
+      // support tickets always carry an identifying detail either way.
+      setIdentity(user?.email ?? user?.phone ?? 'N/A');
+    });
+  }, []);
+
+  const showNotice = useCallback((message: string, duration = 2500) => {
+    if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+    setNotice(message);
+    noticeTimerRef.current = setTimeout(() => setNotice(null), duration);
+  }, []);
+
+  useEffect(() => () => {
+    if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+  }, []);
 
   const visibleEntries = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -98,34 +118,39 @@ export function CustomerCareScreen({ audience }: { audience: CustomerCareAudienc
 
   const handleWhatsApp = useCallback(async () => {
     const ticket = buildTicket();
-    const { data: { user } } = await supabase.auth.getUser();
     const message = encodeURIComponent(
-      `Hi VARS, I need help with something.\n\nTicket: ${ticket}\nAccount: ${user?.email ?? 'N/A'}`
+      `Hi VARS, I need help with something.\n\nTicket: ${ticket}\nAccount: ${identity}`
     );
-    Linking.openURL(`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`);
-  }, []);
+    try {
+      await Linking.openURL(`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`);
+    } catch {
+      showNotice("Couldn't open WhatsApp on this device.");
+    }
+  }, [identity, showNotice]);
 
   const handleEmail = useCallback(async () => {
     const ticket = buildTicket();
-    const { data: { user } } = await supabase.auth.getUser();
     const subject = encodeURIComponent(`[${ticket}] VARS Support Request`);
     const body = encodeURIComponent(
-      `[Write your message above this line, do not edit below]\n\n────────────────────────\nTicket: ${ticket}\nAccount: ${user?.email ?? 'N/A'}`
+      `[Write your message above this line, do not edit below]\n\n────────────────────────\nTicket: ${ticket}\nAccount: ${identity}`
     );
-    Linking.openURL(`mailto:${supportEmail}?subject=${subject}&body=${body}`);
-  }, [supportEmail]);
+    try {
+      await Linking.openURL(`mailto:${supportEmail}?subject=${subject}&body=${body}`);
+    } catch {
+      showNotice('No mail app is set up on this device.');
+    }
+  }, [identity, supportEmail, showNotice]);
 
   const handleAIPlatform = useCallback(async (platform: AIPlatform) => {
     const message = buildAIMessage(audience, supportEmail);
     await Clipboard.setStringAsync(message);
-    setCopiedNotice(true);
-    setTimeout(() => setCopiedNotice(false), 2500);
+    showNotice("Copied. Paste it in if it's not already there.");
     try {
       await Linking.openURL(platform.buildUrl(message));
     } catch {
-      // Clipboard copy already succeeded; the notice below covers this case too.
+      // Clipboard copy already succeeded; the notice above covers this case too.
     }
-  }, [audience, supportEmail]);
+  }, [audience, supportEmail, showNotice]);
 
   return (
     <View style={[s.container, { paddingTop: insets.top }]}>
@@ -193,9 +218,7 @@ export function CustomerCareScreen({ audience }: { audience: CustomerCareAudienc
               <AIPlatformTile key={platform.id} platform={platform} s={s} onPress={() => handleAIPlatform(platform)} />
             ))}
           </View>
-          {copiedNotice && (
-            <VarsToast message="Copied. Paste it in if it's not already there." theme={theme} />
-          )}
+          {notice && <VarsToast message={notice} theme={theme} />}
         </BottomSheetView>
       </BottomSheetModal>
     </View>

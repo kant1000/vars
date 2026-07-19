@@ -503,8 +503,6 @@ function makeStyles(theme: VarsTheme) {
       borderTopLeftRadius: BORDER_RADIUS, borderTopRightRadius: BORDER_RADIUS,
       padding: 24, paddingBottom: 40,
     },
-    supportTitle: { fontSize: 20, fontWeight: '800', color: theme.color.ink },
-    supportSub: { fontSize: 14, color: theme.color.inkMuted, marginTop: 4 },
 
     modalHeader: {
       flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',

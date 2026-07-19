@@ -225,7 +225,7 @@ No Paystack charge at booking creation. The charge fires when the vendor commits
 
 - **Customer forgot-password flow added** (`apps/mobile/app/auth/login.tsx`): Customer login had no password-recovery path at all (vendor login already has one). Added a "Forgot password?" link on the sign-in form: email OTP → verify → set a new password directly, since customers have no other screen to change a password (unlike vendor-login's forgot flow, which just signs the vendor in via OTP and leaves the old password intact). `signInWithOtp` called with `shouldCreateUser: false` so a mistyped email surfaces as an error instead of silently provisioning a new blank account. Done.
 
-- **Support channel row already resolved** — the "Immediate Next Steps" item below calling this a placeholder Alert predates the vendor Settings screen's actual implementation (`handleSupportWhatsApp`/`handleSupportEmail`, a real WhatsApp/Email picker sheet). Struck below.
+- **Support replaced by Customer Care** (`apps/mobile/components/CustomerCareScreen.tsx`): the old vendor-only "Get help" WhatsApp/Email picker (`handleSupportWhatsApp`/`handleSupportEmail` in `vendor-settings.tsx`, referenced below as the earlier resolution of this item) is gone. Both sides now get a shared Customer Care screen: an audience-filtered searchable bubble grid (`constants/customerCareContent.ts`), an "Ask your AI" handoff sheet to Claude/ChatGPT/Gemini/Perplexity/Copilot/Grok (`constants/aiPlatforms.ts`, clipboard-copy fallback since not all six platforms' URL-prefill is verifiable), and a sticky WhatsApp/Email footer. Routed at `/customer-care` (customer) and `/vendor-customer-care` (vendor, via the same top-level-screen-plus-redirect-shim pattern as `vendor-settings`). Done.
 
 ## Immediate Next Steps
 
@@ -241,6 +241,6 @@ No Paystack charge at booking creation. The charge fires when the vendor commits
 - Android APK delivery: local debug Gradle build when a phone is connected via USB (tried and tested, faster, real device logs), EAS Cloud Build (`eas build --platform android --profile preview`) when there's no phone plugged in — avoids Windows PATH/JDK friction. Full decision process: `docs/MOBILE_DEVICE_TESTING.md`.
 - Activate Paystack live credentials. Blocked on Paystack account activation review (ticket Vars 1850306).
 - Activate Google Maps API key. Set in mobile `.env.local` and Supabase Edge Function secrets; no code changes needed.
-- ~~Scope support channel for the Settings "Get help" row.~~ **Done** — WhatsApp/Email picker sheet implemented (`handleSupportWhatsApp`/`handleSupportEmail` in `vendor-settings.tsx`).
+- ~~Scope support channel for the Settings "Get help" row.~~ **Done** — replaced by the Customer Care screen (`CustomerCareScreen.tsx`), not the earlier WhatsApp/Email picker sheet.
 - Wire biometric lock enforcement gate in `apps/mobile/app/_layout.tsx` on `AppState` change (`vars_biometric_lock` preference already stored by the Settings toggle).
 - Run the founder device QA checklist (`docs/audit/mobile.md` §9) and a real screen-reader pass — dark mode is now wired app-wide but has not been walked screen-by-screen on a physical device.
