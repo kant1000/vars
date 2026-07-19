@@ -238,7 +238,7 @@ No Paystack charge at booking creation. The charge fires when the vendor commits
 | Both Sides Open (customer marketing) | August 2026 | Upcoming |
 
 - Build vendor pipeline to 400 — 75 have registered interest. Outreach system is live; delivery activates when `DELIVERY_LIVE=true` is set in Supabase secrets.
-- Android APK delivery: use EAS Cloud Build (`eas build --platform android --profile preview`) — avoids Windows PATH/JDK friction, produces a shareable `.apk` without local Android Studio.
+- Android APK delivery: local debug Gradle build when a phone is connected via USB (tried and tested, faster, real device logs), EAS Cloud Build (`eas build --platform android --profile preview`) when there's no phone plugged in — avoids Windows PATH/JDK friction. Full decision process: `docs/MOBILE_DEVICE_TESTING.md`.
 - Activate Paystack live credentials. Blocked on Paystack account activation review (ticket Vars 1850306).
 - Activate Google Maps API key. Set in mobile `.env.local` and Supabase Edge Function secrets; no code changes needed.
 - ~~Scope support channel for the Settings "Get help" row.~~ **Done** — WhatsApp/Email picker sheet implemented (`handleSupportWhatsApp`/`handleSupportEmail` in `vendor-settings.tsx`).

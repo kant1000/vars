@@ -88,11 +88,13 @@ Keep this file under 200 lines total. Add project-specific rules below these 12.
 - Before writing any notification or UI copy, re-read the [Copy Voice & Tone](README.md#copy-voice--tone) section.
 - Lead with forward momentum, not failure. "Let's try that again" not "Identity check didn't go through". "Confirming..." not "Awaiting vendor". "Outside your zone" not "Paused — outside zone".
 - Passive blame and deficit labels (`"Unverified"`, `"couldn't"`, `"didn't"`, `"wasn't"`) are banned from user-facing copy.
+- **Never use an em-dash (`—`) in user-facing copy**, in any app. Split into two sentences or use a comma/colon/semicolon instead. Code comments are unaffected. Empty-field placeholders use a word (`"Not set"`), not a bare `—`.
 
 ### Mobile Design System
 - **Border radius is always `5`.** No exceptions for UI surfaces. Use `BORDER_RADIUS` exported from `apps/mobile/constants/colors.ts` — never a hardcoded number.
 - Circular elements (avatars, status dots) are exempt: they use `borderRadius = width / 2` to remain circular.
 - When adding any new component or style, set `borderRadius: BORDER_RADIUS` (not `borderRadius: 5` inline — import the constant).
+- **Every screen/component change must be light-and-dark and both-platform-icon complete.** Full checklist: `docs/MOBILE_THEME_CHECKLIST.md` — read it before adding a style or icon, don't re-derive the rules from scratch.
 
 ### ScissorsLoader Convention
 - The only scissors loader is `apps/mobile/components/ScissorsLoader.tsx`. Import from `@/components/ScissorsLoader` — never recreate inline.
@@ -118,3 +120,14 @@ These are the **only** hardcoded colour strings permitted in the mobile codebase
 - Always `--no-ff` when merging branches. Preserve history.
 - Validate with `yarn workspace @vars/admin build`, `yarn workspace @vars/landing build`, and `yarn workspace @vars/mobile lint` before pushing main.
 - `git diff main origin/main` must be empty after every push.
+
+### Mobile Device Testing
+- Full decision process, exact commands, and the freshness-marker mechanism: `docs/MOBILE_DEVICE_TESTING.md`. Read it before running/building the mobile app — don't re-derive the process from memory.
+- One-line summary: phone connected via USB → local debug Gradle build (tried and tested, faster, real device logs); no phone → EAS Cloud Build (`eas build --platform android --profile preview`); phone connected but the installed app already matches HEAD → skip the rebuild, just start Metro (`npx expo start --dev-client`).
+- Two Android Gradle bugs are already root-caused and fixed (`expo-haptics` version, Sentry double-autolinking, see `docs/audit/mobile.md` §6) — don't re-diagnose a build failure as either of these without checking first.
+
+### Tools & Environment Available
+- **Supabase MCP** is connected to the live project — use it directly instead of asking permission each time: `list_tables`, `execute_sql`, `get_logs`, `get_advisors`, `apply_migration`, `deploy_edge_function`, `list_edge_functions`, `list_migrations`, `generate_typescript_types`, `get_project_url`, `get_publishable_keys`. Still never touch Paystack/Youverify logic or already-applied migrations without explicit instruction (see Absolute Off-Limits above).
+- **Vercel MCP** is connected — deployments, project/build logs, runtime errors for the admin/landing apps.
+- Gmail, Google Calendar, Google Drive, Clay, and Make MCP connectors are also available but are not part of this project's normal workflow — don't reach for them unless the task actually calls for it.
+- Local CLI tools present in this environment: `adb` (Android SDK platform-tools, may need the full path — see `docs/MOBILE_DEVICE_TESTING.md`), `gradlew.bat` (inside `apps/mobile/android/`, gitignored/regenerated), `eas-cli` (globally installed, authenticated).

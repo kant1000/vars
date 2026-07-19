@@ -834,6 +834,8 @@ Never frame a state as a deficit. Frame it as what happens next, what the user c
 
 **Consequence-led copy** — `"If you decline, the photo is deleted permanently"` leads with loss. Lead with the action: `"Declining removes this photo from their profile entirely."`
 
+**Em-dashes** — never use an em-dash (`—`) in any user-facing string, in any app (`apps/mobile`, `apps/admin`, `apps/landing`). Split into two sentences, or use a comma, colon, or semicolon depending on the clause relationship. This applies to copy only — code comments are unaffected. A field with no value uses a real word (`"Not set"`), not a bare `—` placeholder character.
+
 ### Where copy lives
 
 | Copy type | File |

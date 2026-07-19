@@ -46,6 +46,9 @@ expo-env.d.ts
 # Re-created automatically on fresh clone. Do not commit.
 android/
 
+# Local device-build freshness marker — see docs/MOBILE_DEVICE_TESTING.md
+apps/mobile/.device-build-marker.json
+
 # Scratch files
 response.txt
 screen_now.png
