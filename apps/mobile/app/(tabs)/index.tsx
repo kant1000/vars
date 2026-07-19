@@ -6,7 +6,7 @@
 // ============================================================
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  FlatList, RefreshControl,
+  AppState, FlatList, Linking, RefreshControl,
   StyleSheet, Text, TouchableOpacity, View,
   TextInput,
 } from 'react-native';
@@ -17,9 +17,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { VendorCard, VendorCardData } from '@/components/VendorCard';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { VarsSkeleton } from '@/components/ui';
+import { SearchIcon } from '@/components/icons';
 import { useVarsTheme } from '@/contexts/ThemeContext';
-import { Colors } from '@/constants/colors';
+import { Colors, BORDER_RADIUS } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
+import { CATEGORY_L2_LABELS } from '@vars/shared';
 
 const SKELETON_ROWS = 6;
 
@@ -48,6 +50,7 @@ const RADIUS_KM       = 30;   // hard cap — never query beyond this
 const MAX_VENDORS     = 100;  // upper bound for the single fetch; revisit when online vendors exceed this
 const INITIAL_SLICE   = 20;
 const SLICE_INCREMENT = 10;
+const MIN_SEARCH_CHARS = 3;   // below this, search does nothing and the category filter alone applies
 
 // ── Hook: device location ──────────────────────────────────
 // Permission is requested during onboarding (Get Started CTA).
@@ -57,21 +60,30 @@ function useLocation() {
   const [coords, setCoords] = useState<{ lat: number; lng: number }>({ lat: 6.4531, lng: 3.3958 });
   const [permissionDenied, setPermissionDenied] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      const { status } = await Location.getForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        setPermissionDenied(true);
-        return;
-      }
-      try {
-        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        setCoords({ lat: loc.coords.latitude, lng: loc.coords.longitude });
-      } catch {
-        // keep default Lagos coords
-      }
-    })();
+  const checkLocation = useCallback(async () => {
+    const { status } = await Location.getForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      setPermissionDenied(true);
+      return;
+    }
+    setPermissionDenied(false);
+    try {
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      setCoords({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+    } catch {
+      // keep default Lagos coords
+    }
   }, []);
+
+  useEffect(() => { checkLocation(); }, [checkLocation]);
+
+  // Re-check when app returns to foreground (catches a permission grant made in Settings)
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') checkLocation();
+    });
+    return () => sub.remove();
+  }, [checkLocation]);
 
   return { coords, permissionDenied };
 }
@@ -92,14 +104,34 @@ export default function HomeScreen() {
 
   const firstName = profile?.full_name?.split(' ')[0] ?? 'there';
 
-  // ── In-memory filtering: category + name search ──────────
+  // ── In-memory filtering: category + service search ────────
   // Both filters run on the already-fetched 30 km pool, so category
-  // switches and name searches are instant with no additional RPC call.
+  // switches and searches are instant with no additional RPC call.
+  // Search matches what a vendor offers, not who they are: subcategory
+  // (e.g. "Braids"), then service name, then description, in that
+  // priority order. A vendor's own name never factors into a match.
   const filteredVendors = useMemo(() => {
-    let list = allVendors.filter((v) => v.category_names.includes(activeCategory));
+    const list = allVendors.filter((v) => v.category_names.includes(activeCategory));
     const q = search.trim().toLowerCase();
-    if (q) list = list.filter((v) => v.full_name.toLowerCase().includes(q));
-    return list;
+    if (q.length < MIN_SEARCH_CHARS) return list;
+
+    const scored = list
+      .map((v) => {
+        let bestScore = Infinity;
+        for (const svc of v.services) {
+          const subcategory = (CATEGORY_L2_LABELS[svc.category_l2] ?? svc.category_l2).toLowerCase();
+          const serviceName = svc.service_name.toLowerCase();
+          const description = (svc.description ?? '').toLowerCase();
+          if (subcategory.includes(q)) bestScore = Math.min(bestScore, 0);
+          else if (serviceName.includes(q)) bestScore = Math.min(bestScore, 1);
+          else if (description.includes(q)) bestScore = Math.min(bestScore, 2);
+        }
+        return { vendor: v, score: bestScore };
+      })
+      .filter((entry) => entry.score !== Infinity);
+
+    scored.sort((a, b) => a.score - b.score);
+    return scored.map((entry) => entry.vendor);
   }, [allVendors, activeCategory, search]);
 
   const renderedVendors = filteredVendors.slice(0, sliceCursor);
@@ -175,15 +207,16 @@ export default function HomeScreen() {
 
       {/* ── Search bar ── */}
       <View style={styles.searchWrap}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search stylists..."
-          placeholderTextColor={theme.color.inkMuted}
-          value={search}
-          onChangeText={setSearch}
-          returnKeyType="search"
-          clearButtonMode="while-editing"
-        />
+        <View style={styles.searchInputWrap}>
+          <SearchIcon size={22} color={theme.color.inkMuted} />
+          <TextInput
+            style={styles.searchInput}
+            value={search}
+            onChangeText={setSearch}
+            returnKeyType="search"
+            clearButtonMode="while-editing"
+          />
+        </View>
       </View>
 
       {/* ── Category tabs ── */}
@@ -207,9 +240,9 @@ export default function HomeScreen() {
 
       {/* ── Location permission banner ── */}
       {permissionDenied && (
-        <View style={styles.locBanner}>
-          <Text style={styles.locBannerText}>Showing stylists in Lagos — location access was denied.</Text>
-        </View>
+        <TouchableOpacity style={styles.locBanner} onPress={() => Linking.openSettings()} activeOpacity={0.7}>
+          <Text style={styles.locBannerText}>Showing stylists in Lagos. Tap to enable location access.</Text>
+        </TouchableOpacity>
       )}
 
       {/* ── Vendor list ── */}
@@ -272,11 +305,15 @@ function makeStyles(theme: VarsTheme) {
     greeting: { fontSize: 22, fontWeight: '800', color: theme.color.ink },
     subGreeting: { fontSize: 14, color: theme.color.inkMuted, marginTop: 2 },
     searchWrap: { paddingHorizontal: 16, paddingVertical: 10 },
-    searchInput: {
-      backgroundColor: theme.color.surface2, borderRadius: 5,
-      paddingHorizontal: 16, paddingVertical: 11,
-      fontSize: 15, color: theme.color.ink,
+    searchInputWrap: {
+      flexDirection: 'row', alignItems: 'center', gap: 8,
+      backgroundColor: theme.color.surface2, borderRadius: BORDER_RADIUS,
+      paddingHorizontal: 16,
       borderWidth: 1.5, borderColor: theme.color.inkFaint,
+    },
+    searchInput: {
+      flex: 1, paddingVertical: 11,
+      fontSize: 15, color: theme.color.ink,
     },
     tabs: { flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 12, gap: 8 },
     tab: {

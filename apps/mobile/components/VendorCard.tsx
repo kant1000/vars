@@ -33,6 +33,7 @@ export interface VendorCardData {
   pioneer: boolean;
   price_from: number;       // kobo
   category_names: string[];
+  services: { category_l2: string; service_name: string; description: string | null }[];
 }
 
 interface Props {
