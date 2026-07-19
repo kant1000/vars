@@ -72,7 +72,7 @@ export const phases: Phase[] = [
     milestones: [
       {
         id: 'vendor-pipeline',
-        title: '400 Vendors in the Pipeline',
+        title: '410 Vendors in the Pipeline',
         period: 'June 2026',
         description:
           '{vendorCount} professionals registered their interest ahead of launch. The pipeline is built — onboarding is now active.',

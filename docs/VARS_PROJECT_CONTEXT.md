@@ -318,7 +318,6 @@ No formal drop-off data across the 5-step onboarding flow yet. Once vendors onbo
 | Item | Detail |
 |---|---|
 | Business registration | Nigerian CAC registration complete — Paystack verification passed July 2026. |
-| UK entity | Seyi is based in Maidenhead, UK. A UK limited company can be registered quickly if needed for Stripe or other global payment rails. |
 | Domain | bookwithvars.com — registered via Google/Squarespace. DNS pointed at Vercel for landing page. |
 | GitHub | github.com/kant1000/vars — private. |
 | Hosting | Vercel (landing + admin), Supabase (backend), EAS (mobile builds). |
