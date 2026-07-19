@@ -5,7 +5,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, Pressable,
-  ScrollView, Alert, Modal, KeyboardAvoidingView, Platform, Linking,
+  ScrollView, Alert, Modal, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -41,9 +41,6 @@ export default function VendorSettings() {
   const [accountNumber, setAccountNumber] = useState('');
   const [accountName, setAccountName] = useState('');
   const [payoutReady, setPayoutReady] = useState(false);
-
-  // Support modal
-  const [showSupportModal, setShowSupportModal] = useState(false);
 
   // Sign-out confirmation
   const [showSignOutModal, setShowSignOutModal] = useState(false);
@@ -153,27 +150,6 @@ export default function VendorSettings() {
       dismissPasswordModal();
       Alert.alert('Done', 'Your password has been updated.');
     }
-  };
-
-  const buildTicket = () => `VARS-${Date.now().toString(36).toUpperCase().slice(-8)}`;
-
-  const handleSupportEmail = async () => {
-    setShowSupportModal(false);
-    const ticket = buildTicket();
-    const subject = encodeURIComponent(`[${ticket}] VARS Support Request`);
-    const body = encodeURIComponent(
-      `[Write your message above this line, do not edit below]\n\n────────────────────────\nTicket: ${ticket}\nVARS Email: ${email}\nVARS Phone: ${phone}`
-    );
-    Linking.openURL(`mailto:support@bookwithvars.com?subject=${subject}&body=${body}`);
-  };
-
-  const handleSupportWhatsApp = async () => {
-    setShowSupportModal(false);
-    const ticket = buildTicket();
-    const message = encodeURIComponent(
-      `Hi VARS, I need help with something.\n\nTicket: ${ticket}\nVARS Email: ${email}\nVARS Phone: ${phone}`
-    );
-    Linking.openURL(`https://wa.me/447344975063?text=${message}`);
   };
 
   const handleSignOut = () => setShowSignOutModal(true);
@@ -326,10 +302,10 @@ export default function VendorSettings() {
         <View style={s.card}>
           <TouchableOpacity
             style={[s.row, s.lastRow]}
-            onPress={() => setShowSupportModal(true)}
+            onPress={() => router.push('/vendor-customer-care' as any)}
             activeOpacity={0.7}
           >
-            <Text style={s.rowLabel}>Get help</Text>
+            <Text style={s.rowLabel}>Customer Care</Text>
             <ChevronRightIcon size={16} color={theme.color.inkMuted} />
           </TouchableOpacity>
         </View>
@@ -366,31 +342,6 @@ export default function VendorSettings() {
       </ScrollView>
 
       {/* Change password sheet */}
-      {/* Support channel picker */}
-      <Modal
-        visible={showSupportModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowSupportModal(false)}
-      >
-        <Pressable style={s.supportOverlay} onPress={() => setShowSupportModal(false)}>
-          <Pressable style={s.supportSheet} onPress={() => {}}>
-            <Text style={s.supportTitle}>Get help</Text>
-            <Text style={s.supportSub}>Choose how you'd like to reach us</Text>
-            <View style={[s.card, { marginTop: 16, marginBottom: 0 }]}>
-              <TouchableOpacity style={s.row} onPress={handleSupportWhatsApp} activeOpacity={0.7}>
-                <Text style={s.rowLabel}>WhatsApp</Text>
-                <ChevronRightIcon size={16} color={theme.color.inkMuted} />
-              </TouchableOpacity>
-              <TouchableOpacity style={[s.row, s.lastRow]} onPress={handleSupportEmail} activeOpacity={0.7}>
-                <Text style={s.rowLabel}>Email</Text>
-                <ChevronRightIcon size={16} color={theme.color.inkMuted} />
-              </TouchableOpacity>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
-
       <Modal
         visible={showPasswordModal}
         transparent

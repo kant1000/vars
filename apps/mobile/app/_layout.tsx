@@ -269,6 +269,8 @@ function RootNavigator() {
       <Stack.Screen name="terms-acceptance" options={{ gestureEnabled: false }} />
       <Stack.Screen name="delete-account" />
       <Stack.Screen name="privacy-data" />
+      <Stack.Screen name="customer-care" />
+      <Stack.Screen name="vendor-customer-care" />
       <Stack.Screen name="+not-found" />
     </Stack>
     </>

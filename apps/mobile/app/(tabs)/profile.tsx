@@ -291,6 +291,17 @@ export default function ProfileScreen() {
           />
         </Section>
 
+        {/* ── Support ── */}
+        <Section title="Support" s={s}>
+          <SettingsRow
+            icon={<Text style={{ fontSize: 16 }}>💬</Text>}
+            label="Customer Care"
+            onPress={() => router.push('/customer-care' as any)}
+            s={s}
+            theme={theme}
+          />
+        </Section>
+
         {/* ── Appearance ── */}
         <Section title="Appearance" s={s}>
           <View style={[s.switchRow, override === 'system' && s.switchRowLast]}>

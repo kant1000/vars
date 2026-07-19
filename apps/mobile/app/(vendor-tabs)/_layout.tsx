@@ -32,9 +32,10 @@ export default function VendorTabLayout() {
       <Tabs.Screen name="schedule" options={{ title: 'Schedule', tabBarLabel: 'Schedule', tabBarIcon: ({ color, size }) => <CalendarIcon  size={size} color={color} /> }} />
       <Tabs.Screen name="earnings" options={{ title: 'Earnings', tabBarLabel: 'Earnings', tabBarIcon: ({ color, size }) => <BanknoteIcon  size={size} color={color} /> }} />
       <Tabs.Screen name="profile"  options={{ title: 'Profile',  tabBarLabel: 'Profile',  tabBarIcon: ({ color, size }) => <PersonIcon    size={size} color={color} /> }} />
-      <Tabs.Screen name="settings" options={{ href: null }} />
-      <Tabs.Screen name="terms"    options={{ href: null }} />
-      <Tabs.Screen name="privacy"  options={{ href: null }} />
+      <Tabs.Screen name="settings"      options={{ href: null }} />
+      <Tabs.Screen name="terms"        options={{ href: null }} />
+      <Tabs.Screen name="privacy"      options={{ href: null }} />
+      <Tabs.Screen name="customer-care" options={{ href: null }} />
     </Tabs>
     </VendorOnlineProvider>
   );
