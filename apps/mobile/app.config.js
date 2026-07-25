@@ -56,7 +56,7 @@ module.exports = {
       [
         'expo-build-properties',
         {
-          android: { newArchEnabled: true },
+          android: { newArchEnabled: true, compileSdkVersion: 36, targetSdkVersion: 36 },
           ios: { newArchEnabled: true },
         },
       ],
