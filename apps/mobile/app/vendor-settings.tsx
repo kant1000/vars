@@ -21,7 +21,7 @@ import { ConfirmModal } from '@/components/ConfirmModal';
 import { useVarsTheme } from '@/contexts/ThemeContext';
 import { VarsSwitch } from '@/components/ui';
 
-// Stored in AsyncStorage; enforcement gate belongs in _layout.tsx on AppState change.
+// Stored in AsyncStorage; enforcement gate lives in lib/useBiometricLock.ts, wired in _layout.tsx.
 const BIOMETRIC_KEY = 'vars_biometric_lock';
 
 export default function VendorSettings() {

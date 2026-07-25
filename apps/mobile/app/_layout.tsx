@@ -23,6 +23,8 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { ThemeProvider, useVarsTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/lib/supabase';
 import { hasAcceptedCurrentTerms } from '@/lib/termsGate';
+import { useBiometricLock } from '@/lib/useBiometricLock';
+import { BiometricLockOverlay } from '@/components/BiometricLockOverlay';
 
 // ── Debug error boundary — shows full error on screen instead of crashing ──
 import { Text, View } from 'react-native';
@@ -114,6 +116,10 @@ function RootNavigator() {
 
   const appReady = !isLoading && onboardingReady && themeReady;
 
+  // Additive, separate from the routing effects below — only cares about foreground
+  // transitions after onboarding, never about navigation state.
+  const { locked, retryUnlock } = useBiometricLock(appReady && onboardingDone);
+
   // Initial routing — fires once when auth + onboarding state are both known.
   // Splash stays up until this runs, so the user never sees a blank frame.
   useEffect(() => {
@@ -191,6 +197,10 @@ function RootNavigator() {
         router.replace('/(tabs)');
       }
     }
+    // segments is deliberately excluded: this effect is guarded by didInitRoute to fire
+    // exactly once on cold launch, and re-running it on every navigation (which including
+    // segments would do) would fight the post-launch redirect effects below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appReady, isAuthenticated, needsPhone, onboardingDone]);
 
   // Phone gate — handles auth state changes after the initial route is set.
@@ -212,6 +222,9 @@ function RootNavigator() {
     if (!isAuthenticated) {
       router.replace(onboardingDone ? '/(tabs)' : '/onboarding');
     }
+    // onboardingDone is deliberately excluded: this gate only needs to fire when auth
+    // state changes (sign-out), not when the onboarding flag itself changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, appReady]);
 
   // Handle OAuth deep link callback (e.g. vars://auth/callback?code=xxx)
@@ -273,6 +286,7 @@ function RootNavigator() {
       <Stack.Screen name="vendor-customer-care" />
       <Stack.Screen name="+not-found" />
     </Stack>
+    {locked && <BiometricLockOverlay onRetry={retryUnlock} />}
     </>
   );
 }

@@ -242,5 +242,5 @@ No Paystack charge at booking creation. The charge fires when the vendor commits
 - Activate Paystack live credentials. Blocked on Paystack account activation review (ticket Vars 1850306).
 - Activate Google Maps API key. Set in mobile `.env.local` and Supabase Edge Function secrets; no code changes needed.
 - ~~Scope support channel for the Settings "Get help" row.~~ **Done** — replaced by the Customer Care screen (`CustomerCareScreen.tsx`), not the earlier WhatsApp/Email picker sheet.
-- Wire biometric lock enforcement gate in `apps/mobile/app/_layout.tsx` on `AppState` change (`vars_biometric_lock` preference already stored by the Settings toggle).
+- ~~Wire biometric lock enforcement gate in `apps/mobile/app/_layout.tsx` on `AppState` change.~~ **Done** — `lib/useBiometricLock.ts` + `components/BiometricLockOverlay.tsx`, wired in `_layout.tsx`. Fires only on background→active transitions after onboarding is complete; never on cold launch.
 - Run the founder device QA checklist (`docs/audit/mobile.md` §9) and a real screen-reader pass — dark mode is now wired app-wide but has not been walked screen-by-screen on a physical device.
