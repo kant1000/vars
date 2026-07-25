@@ -124,8 +124,8 @@ These, plus the ones above, are the **only** hardcoded colour strings permitted 
 
 ### Mobile Device Testing
 - Full decision process, exact commands, and the freshness-marker mechanism: `docs/MOBILE_DEVICE_TESTING.md`. Read it before running/building the mobile app — don't re-derive the process from memory.
-- One-line summary: phone connected via USB → local debug Gradle build (tried and tested, faster, real device logs); no phone → EAS Cloud Build (`eas build --platform android --profile preview`); phone connected but the installed app already matches HEAD → skip the rebuild, just start Metro (`npx expo start --dev-client`).
-- Two Android Gradle bugs are already root-caused and fixed (`expo-haptics` version, Sentry double-autolinking, see `docs/audit/mobile.md` §6) — don't re-diagnose a build failure as either of these without checking first.
+- One-line summary: phone connected via USB → local debug Gradle build (tried and tested, faster, real device logs); no phone → EAS Cloud Build (`eas build --platform android --profile preview`); phone connected but the installed app already matches HEAD → skip the rebuild, just start Metro (`.\node_modules\.bin\expo.cmd start --dev-client` from `apps/mobile/` — never `npx expo`, confirmed broken in this workspace).
+- Two Android Gradle bugs are already root-caused and fixed (`expo-haptics` version, Sentry double-autolinking, see `docs/audit/mobile.md` §6) — don't re-diagnose a build failure as either of these without checking first. Separately, `npx expo <anything>` is confirmed broken in this workspace (doubled `node_modules` resolution bug) — see `docs/MOBILE_DEVICE_TESTING.md` for the working invocation.
 
 ### Tools & Environment Available
 - **Supabase MCP** is connected to the live project — use it directly instead of asking permission each time: `list_tables`, `execute_sql`, `get_logs`, `get_advisors`, `apply_migration`, `deploy_edge_function`, `list_edge_functions`, `list_migrations`, `generate_typescript_types`, `get_project_url`, `get_publishable_keys`. Still never touch Paystack/Youverify logic or already-applied migrations without explicit instruction (see Absolute Off-Limits above).

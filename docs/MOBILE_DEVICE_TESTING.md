@@ -34,8 +34,9 @@ Get-Content apps/mobile/.device-build-marker.json -ErrorAction SilentlyContinue
 
 **3. If `android/` doesn't exist yet** (it's gitignored — regenerated fresh on a new clone, wiped after a clean), regenerate it — this also reapplies the Sentry autolink config plugin automatically, no manual step needed:
 ```powershell
-npx expo prebuild -p android
+.\node_modules\.bin\expo.cmd prebuild -p android
 ```
+Do not use `npx expo prebuild` — confirmed broken in this workspace (see the note at the end of this doc).
 `android/local.properties` is inside the gitignored `android/` tree too, so it won't exist after a fresh prebuild — Gradle fails with `SDK location not found` until it's created:
 ```powershell
 Set-Content -Path android/local.properties -Value "sdk.dir=$($env:LOCALAPPDATA -replace '\\','\\\\')\\Android\\Sdk" -Encoding utf8
@@ -54,8 +55,9 @@ Set-Content -Path apps/mobile/.device-build-marker.json -Value $marker -Encoding
 
 **5. Start Metro so the app (freshly installed or already current) can connect:**
 ```powershell
-npx expo start --dev-client
+.\node_modules\.bin\expo.cmd start --dev-client
 ```
+Do not use `npx expo start` — same broken-npx issue as step 3.
 Open the app already on the phone (package `com.vars.app`) — it connects over the `adb reverse` USB tunnel.
 
 **If port 8081 is already occupied, don't assume it's reusable.** Check what's actually running there before connecting to it:
@@ -80,3 +82,15 @@ eas build --platform android --profile preview
 Both root-caused and fixed in `docs/audit/mobile.md` §6 — if a build fails, it is not these:
 - `expo-haptics` pinned to an SDK-incompatible version → fixed, now `~14.0.1` in `apps/mobile/package.json`.
 - `@sentry/react-native` double-autolinking (two colliding Gradle projects for the same module) → fixed via `apps/mobile/plugins/withSentryAutolinkFix.js`, auto-applied on every `expo prebuild` through `app.config.js`.
+
+## Known-broken: `npx expo` (don't re-diagnose this either)
+
+Confirmed 2026-07-25: `npx expo <anything>` fails in this Yarn 1 classic workspace with `MODULE_NOT_FOUND: Cannot find module '...node_modules\node_modules\expo\bin\cli'` — npx resolves the `expo` binary itself through a doubled `node_modules` path before any subcommand-specific code runs, so this affects `run:android`, `prebuild`, `start`, all of it, regardless of which directory it's invoked from. Not a Gradle issue, not one of the two above — a separate, previously undiagnosed bug in how npx resolves binaries in this specific workspace setup. Use `yarn workspace @vars/mobile <script>` for anything defined in `apps/mobile/package.json`, or `.\node_modules\.bin\expo.cmd <subcommand>` (run from `apps/mobile/`) for anything that isn't — `node node_modules/.bin/expo` also fails on Windows since that extensionless file is a POSIX shell shim, not something Node can execute.
+
+## Gotcha: `adb reverse` drops when the app is fully closed
+
+If the phone shows **"Failed to connect to localhost/127.0.0.1:8081"** after force-closing and reopening the app (not just backgrounding it), the USB reverse tunnel was torn down and needs re-establishing before the reopened app can find Metro:
+```powershell
+& $adb reverse tcp:8081 tcp:8081
+```
+Metro itself is usually still running fine at this point (`netstat -ano | findstr :8081` to confirm) — this is purely a dropped tunnel, not a Metro or build problem.

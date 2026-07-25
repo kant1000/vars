@@ -896,10 +896,11 @@ Android Studio ships a bundled JDK at the `jbr` path — use that, not a separat
 ```powershell
 $env:JAVA_HOME    = "C:\Program Files\Android\Android Studio\jbr"
 $env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
-npx expo run:android --no-build-cache
+yarn workspace @vars/mobile android --no-build-cache
 ```
 
-- Run from the **repo root** (not `apps/mobile/`). Expo reads root `.env.local` from CWD at bundle time.
+**Never invoke via `npx expo run:android`** — confirmed broken in this monorepo (Yarn 1 classic workspaces): `npx` resolves the `expo` binary itself through a doubled `node_modules` path and fails with `MODULE_NOT_FOUND` before any build logic runs, regardless of which directory it's run from or what subcommand follows. `yarn workspace @vars/mobile <script>` is the only confirmed-working invocation for scripts defined in `apps/mobile/package.json` (`android`, `ios`, `start`, `lint`). For `expo` subcommands with no defined script (e.g. `prebuild`), `cd apps/mobile` and call `.\node_modules\.bin\expo.cmd <subcommand>` directly — `node node_modules/.bin/expo` (no extension) also fails on Windows, since that file is a POSIX shell shim, not something Node can execute directly.
+- `yarn workspace @vars/mobile android` runs from repo root but internally changes into `apps/mobile/` before invoking Expo — it reads env vars from `apps/mobile/.env`, not root `.env.local`. See [Environment Variables](#environment-variables) below.
 - `android/` is auto-generated on first run and is gitignored — do not commit it.
 - First build after a fresh clone takes 15–35 min (full Gradle compile). Subsequent builds use the Gradle cache.
 - `--no-build-cache` forces a full recompile; omit it once the cache is warm.
@@ -935,7 +936,7 @@ yarn db:types
 
 ### Mobile
 
-`apps/mobile/.env` is read by Expo Go and the development server when running from within the `apps/mobile/` workspace. When running `expo run:android` from the **repo root** (the standard local build path), Expo reads `.env.local` from the current working directory instead. All `EXPO_PUBLIC_*` variables must be present in the **root `.env.local`** for local Android builds to pick them up at bundle time.
+`apps/mobile/.env` is read by Expo Go, the development server, and the standard local build command (`yarn workspace @vars/mobile android`, which changes into `apps/mobile/` before invoking Expo) — keep all `EXPO_PUBLIC_*` variables there. A separate root `.env.local` also exists (used by the admin/landing Next.js apps and any command invoked directly from repo root without going through a `yarn workspace` script) — the two are maintained independently and are not guaranteed to be in sync; when in doubt about which one a given command reads, check its actual working directory at env-load time.
 
 ```
 EXPO_PUBLIC_SUPABASE_URL=

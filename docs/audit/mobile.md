@@ -19,8 +19,8 @@ This branch introduces an 11-component visual primitive catalogue (`VarsSurface`
 | | |
 |---|---|
 | Code-verified | ✅ |
-| Founder-approved | ✅ (device QA pending) |
-| Pre-existing infra blockers | 1 (Android Gradle build) |
+| Founder-approved | ✅ (Android device QA complete 2026-07-25, see §6; iOS still pending — no Mac/Xcode available) |
+| Pre-existing infra blockers | 0 — resolved 2026-07-25, see §6 |
 
 ---
 
@@ -111,7 +111,15 @@ Verified on a physical Samsung Galaxy A40 (`SM_A405FN`, Android, USB debugging):
 
 ### 🟢 Resolved — On-device visual confirmation (Android)
 
-Confirmed on real hardware per above: the `_dev-visual-preview` screen renders the primitive catalogue correctly in both light and dark mode (buttons, elevation surfaces, icons all correct). iOS still has zero on-device confirmation — no Mac/Xcode available in this environment.
+Confirmed on real hardware per above: the `_dev-visual-preview` screen (since removed as dead code, 2026-07-25 — it had zero references anywhere in the app) rendered the primitive catalogue correctly in both light and dark mode (buttons, elevation surfaces, icons all correct). iOS still has zero on-device confirmation — no Mac/Xcode available in this environment.
+
+### 🟢 Resolved — Android build/tooling session, full on-device QA pass (2026-07-25)
+
+The build issue that persisted after the 2026-07-17 Gradle fixes above turned out to be a third, separate, previously undiagnosed bug: `npx expo <anything>` fails in this Yarn 1 classic workspace with a doubled-`node_modules` module-resolution error, before any Gradle logic even runs. Not a Gradle issue. Fixed by using `yarn workspace @vars/mobile android` instead — see `docs/MOBILE_DEVICE_TESTING.md` for the full corrected-invocation writeup. Verified: `BUILD SUCCESSFUL`, installed and ran on a physical Galaxy A40.
+
+Same session: bumped `compileSdkVersion`/`targetSdkVersion` to 36 (Google Play mandates this for new submissions from 31 Aug 2026) via the `expo-build-properties` plugin in `app.config.js` — deliberately not a direct `android/build.gradle` edit, since that folder is gitignored and regenerated on every prebuild, so a direct edit would not have reached an actual shipped build. Compiles clean on the current toolchain (AGP 8.6.0 warns but doesn't fail on compileSdk 36).
+
+The founder device QA checklist in [section 9](#9-founder-device-qa-checklist) has now been walked end-to-end on Android (system/manual theme toggle, OLED tonal separation, contrast, skeleton footprints, no-optimistic-success on payment/KYC/dispute/deletion, Material Icons, content truncation, biometric lock, ScissorsLoader, offline banner, booking flow, vendor onboarding) — zero fails. iOS remains entirely unverified; no Mac/Xcode available in this environment. The "Pre-existing infra blockers" count in the summary table above is stale as of this entry — treat this section as current.
 
 ### 🟢 Fixed — Dark mode is now wired into every real screen (2026-07-18)
 
@@ -206,7 +214,7 @@ Concrete next actions, in a reasonable order. Items resolved by the post-audit f
 
 ## 9. Founder device QA checklist
 
-Carried over from `docs/MOBILE_VISUAL_SYSTEM_OVERHAUL.md` section 6 (now removed — see the note at the top of this document). Not yet run on either platform; gated behind fixing the Android Gradle build and getting an iOS build/device in the loop.
+Carried over from `docs/MOBILE_VISUAL_SYSTEM_OVERHAUL.md` section 6 (now removed — see the note at the top of this document). **Run on Android, 2026-07-25 — all items below passed** (see §6). Still not run on iOS — no Mac/Xcode available in this environment.
 
 - Toggle system light/dark while the app is running.
 - Check the manual override: system, light, dark.
