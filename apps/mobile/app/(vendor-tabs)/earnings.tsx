@@ -8,12 +8,11 @@
 // ============================================================
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  FlatList, RefreshControl, ScrollView,
+  FlatList, RefreshControl,
   StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/contexts/AuthContext';
 import { VarsSkeleton } from '@/components/ui';
 import { useVarsTheme } from '@/contexts/ThemeContext';
 import { BORDER_RADIUS } from '@/constants/colors';
@@ -65,7 +64,6 @@ export default function EarningsScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useVarsTheme();
   const s = useMemo(() => makeStyles(theme), [theme]);
-  const { session } = useAuth();
 
   const [vendorId, setVendorId] = useState<string | null>(null);
   const [period, setPeriod]     = useState<Period>('all');

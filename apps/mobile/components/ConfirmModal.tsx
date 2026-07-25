@@ -50,6 +50,8 @@ export function ConfirmModal({
       scale.setValue(0.92);
       opacity.setValue(0);
     }
+    // scale and opacity are Animated.Value refs — stable identity for the component's lifetime.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
   return (

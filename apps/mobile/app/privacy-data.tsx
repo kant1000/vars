@@ -56,11 +56,7 @@ export default function PrivacyDataScreen() {
   const [loading,     setLoading]     = useState(true);
   const [exporting,   setExporting]   = useState(false);
 
-  useFocusEffect(useCallback(() => {
-    loadData();
-  }, [user?.id]));
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!user) return;
     setLoading(true);
 
@@ -80,7 +76,11 @@ export default function PrivacyDataScreen() {
     setAcceptances(terms ?? []);
     setIsVendor(!!vendor);
     setLoading(false);
-  };
+  }, [user]);
+
+  useFocusEffect(useCallback(() => {
+    loadData();
+  }, [loadData]));
 
   const handleExport = async () => {
     setExporting(true);
@@ -105,8 +105,6 @@ export default function PrivacyDataScreen() {
         return;
       }
 
-      // Download the JSON file — surface it as a share sheet
-      const blob = await res.blob();
       Alert.alert(
         'Export ready',
         'Your data export has been prepared. Check your Downloads folder or use the share option.',

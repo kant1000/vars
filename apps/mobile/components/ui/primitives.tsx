@@ -1,9 +1,8 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   AccessibilityInfo,
   Animated,
   Easing,
-  Modal,
   Pressable,
   StyleProp,
   StyleSheet,
@@ -434,50 +433,6 @@ export function VarsToast({
   );
 }
 
-export function VarsDialog({
-  visible,
-  title,
-  body,
-  confirmLabel,
-  dismissLabel = 'Not now',
-  onConfirm,
-  onDismiss,
-  theme = varsLight,
-  tone = 'neutral',
-}: {
-  visible: boolean;
-  title: string;
-  body: string;
-  confirmLabel: string;
-  dismissLabel?: string;
-  onConfirm: () => void;
-  onDismiss: () => void;
-  theme?: VarsTheme;
-  tone?: Tone;
-}) {
-  const accent = theme.color[TONE_ACCENT[tone]];
-  const panelStyle = useMemo(() => varsElevationStyle(theme, 4), [theme]);
-
-  return (
-    <Modal transparent visible={visible} animationType="fade" onRequestClose={onDismiss}>
-      <Pressable style={[styles.dialogOverlay, { backgroundColor: theme.color.overlay }]} onPress={onDismiss}>
-        <Pressable
-          accessibilityLabel={title}
-          accessibilityViewIsModal
-          importantForAccessibility="yes"
-          style={[styles.dialog, panelStyle]}
-        >
-          <View style={[styles.dialogRail, { backgroundColor: accent }]} />
-          <Text style={[styles.dialogTitle, { color: theme.color.ink }]}>{title}</Text>
-          <Text style={[styles.dialogBody, { color: theme.color.inkMuted }]}>{body}</Text>
-          <VarsButton label={confirmLabel} onPress={onConfirm} theme={theme} tone={tone} />
-          <VarsButton label={dismissLabel} onPress={onDismiss} theme={theme} variant="ghost" size="md" />
-        </Pressable>
-      </Pressable>
-    </Modal>
-  );
-}
-
 const styles = StyleSheet.create({
   surface: {
     borderRadius: VARS_RADIUS,
@@ -604,33 +559,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     textDecorationLine: 'underline',
-  },
-  dialogOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 28,
-  },
-  dialog: {
-    borderRadius: VARS_RADIUS,
-    padding: 22,
-    overflow: 'hidden',
-  },
-  dialogRail: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 4,
-  },
-  dialogTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    lineHeight: 24,
-    marginBottom: 10,
-  },
-  dialogBody: {
-    fontSize: 14,
-    lineHeight: 21,
-    marginBottom: 22,
   },
 });

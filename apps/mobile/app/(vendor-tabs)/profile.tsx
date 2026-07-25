@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // VARS — Vendor Profile
 // Sections: Portfolio, My Services
 // Account/Security/Payout/Legal → /vendor-settings (root stack screen)

@@ -16,6 +16,8 @@ export function OfflineBanner({ visible }: { visible: boolean }) {
       duration: 280,
       useNativeDriver: true,
     }).start();
+    // slideY is an Animated.Value ref — stable identity for the component's lifetime.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
   return (

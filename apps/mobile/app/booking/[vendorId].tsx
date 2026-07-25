@@ -732,6 +732,10 @@ export default function BookingFlow() {
         setTotalServiceKobo(data.reduce((acc, sv) => acc + (sv.price_kobo as number), 0));
         setLoadingServices(false);
       });
+    // Mount-only by design: serviceIds is derived fresh from route params on every
+    // render, and this is the booking flow — refetching on every render (rather than
+    // once on entry) is not a change to make in a lint-only pass.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Step 1 = Schedule, Step 2 = Review
@@ -857,6 +861,9 @@ export default function BookingFlow() {
       setError(err.message);
       setPaying(false);
     }
+    // posthog is deliberately excluded: this is the booking-creation function
+    // (submitBooking) — not changing its dependency array in a lint-only pass.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slot, coords, serviceIds, locAddress, access, vendorId]);
 
   const pollForCardVerify = useCallback(async () => {

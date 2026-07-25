@@ -11,7 +11,7 @@
 //   • Expose toggleOnline() consumed by both Jobs and Profile tabs
 // ============================================================
 import React, {
-  createContext, useCallback, useContext, useEffect, useRef, useState,
+  createContext, useCallback, useContext, useEffect, useState,
 } from 'react';
 import { AppState } from 'react-native';
 import * as Location from 'expo-location';

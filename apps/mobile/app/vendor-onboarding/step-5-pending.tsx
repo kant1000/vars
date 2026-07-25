@@ -35,6 +35,8 @@ export default function Step5Pending() {
         Animated.timing(pulse, { toValue: 1, duration: 900, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
       ])
     ).start();
+    // pulse is an Animated.Value ref — stable identity for the component's lifetime.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -146,6 +148,8 @@ function CheckRow({ label, done, pulse: shouldPulse }: { label: string; done?: b
     );
     anim.start();
     return () => anim.stop();
+    // scale is an Animated.Value ref — stable identity for the component's lifetime.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shouldPulse]);
 
   return (

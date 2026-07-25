@@ -6,7 +6,7 @@
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dimensions, Modal, PanResponder, Platform,
-  RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View,
+  ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { Calendar as RNCalendar } from 'react-native-calendars';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
@@ -27,6 +27,8 @@ import { CheckIcon, CloseIcon, PinIcon, LockIcon, LightningIcon } from '@/compon
 import * as Haptics from 'expo-haptics';
 import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import type { CalendarProps } from '@marceloterreiro/flash-calendar';
+import { BookingStatus, BOOKING_STATUS } from '@vars/shared';
+
 // flash-calendar is lazy-loaded so its top-level require('@shopify/flash-list') does not
 // run during schedule.tsx module initialisation, which crashed the app in release builds.
 const FlashCalendarLazy = React.lazy<React.ComponentType<CalendarProps>>(async () => {
@@ -42,7 +44,6 @@ const fromDateId = (id: string): Date => {
   const [y, mo, dy] = id.split('-').map(Number);
   return new Date(y, mo - 1, dy);
 };
-import { BookingStatus, BOOKING_STATUS } from '@vars/shared';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
@@ -603,20 +604,6 @@ function DetailRow({ label, value, bold, bs }: { label: string; value: string; b
   );
 }
 
-// ── Sub-components ────────────────────────────────────────────
-function LegendDot({ borderColor, backgroundColor = 'transparent', label, icon, borderWidth = 1.5, s }: {
-  borderColor: string; backgroundColor?: string; label: string; icon?: React.ReactNode; borderWidth?: number; s: ReturnType<typeof makeStylesS>;
-}) {
-  return (
-    <View style={s.legendItem}>
-      <View style={[s.legendDot, { borderColor, borderWidth, backgroundColor }]}>
-        {icon ?? null}
-      </View>
-      <Text style={s.legendLabel}>{label}</Text>
-    </View>
-  );
-}
-
 // ── BlockRangeSheet ───────────────────────────────────────────
 function BlockRangeSheet({
   vendorId,
@@ -652,6 +639,10 @@ function BlockRangeSheet({
 
   useEffect(() => {
     if (endMin <= startMin) setEndMin(Math.min(startMin + BR_STEP, BR_WORK_END));
+    // endMin is deliberately excluded: this effect corrects endMin in response to
+    // startMin changing, so depending on endMin too would re-run it every time it
+    // sets endMin itself.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startMin]);
 
   const startOptions = useMemo(() => {
@@ -1299,6 +1290,10 @@ export default function ScheduleScreen() {
   }, [bookings, session?.access_token]);
 
   // ── Calendar helpers ──────────────────────────────────────────
+  // Not wrapped in its own useCallback: it reads `blocks` via closure and is called from
+  // several handlers below with differing dependency needs. Restructuring its memoization
+  // is out of scope for this lint-only pass.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const getBlockForSlot = (slotTime: Date): CalendarBlock | undefined => {
     const t = slotTime.getTime();
     return blocks.find((b) => new Date(b.start_time).getTime() === t);

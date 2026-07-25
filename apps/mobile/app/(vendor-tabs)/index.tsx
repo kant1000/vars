@@ -14,7 +14,6 @@ import {
   Alert, LayoutChangeEvent, Linking, Modal, RefreshControl,
   ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
-import * as Notifications from 'expo-notifications';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { router, useFocusEffect } from 'expo-router';
@@ -83,6 +82,9 @@ function useCountdown(expiresAt: string) {
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
+    // getSecondsLeft is redefined every render; including it would restart the
+    // interval on every tick instead of only when expiresAt changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expiresAt]);
 
   const minutes = Math.floor(secondsLeft / 60);
