@@ -154,9 +154,9 @@
 | Lawful basis | Consent (form submission) + legitimate interest (follow-up outreach) |
 | Purpose | Vendor acquisition; nurture leads toward app onboarding |
 | Source of data | Data subject (landing page form) |
-| Recipients/processors | Supabase (storage); Resend (email delivery); Termii (WhatsApp/SMS delivery, once unblocked) |
-| Cross-border transfer? | Yes: Supabase, Resend (US) |
-| Transfer safeguard | DPA with Resend; DPA with Termii |
+| Recipients/processors | Supabase (storage); Resend (email delivery); 360dialog (WhatsApp delivery) |
+| Cross-border transfer? | Yes: Supabase, Resend (US); 360dialog (EU) |
+| Transfer safeguard | DPA with Resend; DPA with 360dialog |
 | Retention | 24 months from last contact if unconverted; converted leads retained per vendor account retention |
 | Security measures | HMAC-signed unsubscribe links; email_unsubscribed flag checked before every send; advisory lock prevents pioneer race condition |
 
@@ -255,7 +255,7 @@
 | Paystack | Payment gateway | Card tokens, transaction data, bank details | Nigeria (confirm) | PCI-DSS Level 1, ISO 27001/27701, CBN PSSP | **Needed** |
 | Youverify | KYC identity verification | Biometric face image, ID documents, legal name | Nigeria (confirm data residency) | ISO 27001, ISO 27018, SOC 2 Type II (claimed) | **Needed** |
 | Resend | Email delivery | Email addresses, names, message content | US | Review | **Needed** |
-| Termii | WhatsApp/SMS delivery (blocked, not yet active) | Phone numbers, message content | Nigeria (confirm) | Review | **Needed** |
+| 360dialog | WhatsApp delivery (OTP auth + outreach) | Phone numbers, message content | EU (Germany) | Review | **Needed** |
 | Expo | Push notification delivery | Push tokens, notification payloads | US | Standard terms | **Review needed** |
 | Google | OAuth (customer auth), Maps API | Email (OAuth), API calls (no PII stored by Google) | US | Standard terms | **Review needed** |
 | Facebook/Meta | OAuth (customer auth) | Email (OAuth) | US | Standard terms | **Review needed** |
