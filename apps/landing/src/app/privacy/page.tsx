@@ -17,7 +17,7 @@ export default function PrivacyPage() {
         <Link href="/" className="legal-back">Back to VARS</Link>
         <p className="legal-kicker">Privacy Policy</p>
         <h1>How VARS handles your data</h1>
-        <p className="legal-updated">Last updated: 13 July 2026</p>
+        <p className="legal-updated">Last updated: 31 July 2026</p>
 
         <section>
           <h2>Who we are</h2>
@@ -35,8 +35,8 @@ export default function PrivacyPage() {
             at bookwithvars.com, and all related services.
           </p>
           <p>
-            A Data Protection Officer (DPO) will be appointed. Until then, direct all
-            data protection queries to hello@bookwithvars.com.
+            VARS has appointed a Data Protection Officer. Data protection queries
+            can be directed to hello@bookwithvars.com.
           </p>
         </section>
 
@@ -57,7 +57,7 @@ export default function PrivacyPage() {
           <h3>Vendors</h3>
           <ul>
             <li>Name, email address, and phone number at registration</li>
-            <li>Government-issued ID and a liveness face image during identity verification through Youverify</li>
+            <li>A liveness face image captured during identity verification through Youverify, used to confirm your identity. VARS does not store your government-issued ID document; it is referenced by Youverify during the check only. VARS retains just the liveness image and the verification result. The raw liveness image is stored in a private, access-restricted file store; a cropped copy becomes your public profile photo (see below)</li>
             <li>Profile photo, extracted from your KYC liveness check and locked to your account</li>
             <li>Bank account details when you set up payouts (verified via Paystack)</li>
             <li>GPS location while you are online (every 5 minutes for zone drift detection) and while en route to a booking (every 60 seconds for live tracking)</li>
@@ -147,7 +147,7 @@ export default function PrivacyPage() {
               <strong>Facebook / Meta</strong> — sign-in (United States)
             </li>
             <li>
-              <strong>Apple</strong> — sign-in and push notification delivery (United States)
+              <strong>Apple</strong> — push notification delivery via APNs (United States)
             </li>
             <li>
               <strong>Vercel</strong> — website and admin panel hosting (United States)
@@ -184,7 +184,7 @@ export default function PrivacyPage() {
         <section>
           <h2>How long we keep your data</h2>
           <ul>
-            <li>Customer and vendor account data: life of account plus 6 months after deletion</li>
+            <li>Customer and vendor account data: your name, contact details, and photo are anonymised immediately when you delete your account. Records we are required by law to keep, such as the KYC, financial, and dispute records below, are retained for their stated periods regardless of account deletion</li>
             <li>KYC records (ID documents and face images): 5 years after the end of the vendor relationship, as required by anti-money laundering law</li>
             <li>Booking records and payment history: 6 years, as required by Nigerian tax law (CITA)</li>
             <li>Payout and settlement records: 6 years</li>
@@ -278,7 +278,7 @@ export default function PrivacyPage() {
             Email: <a href="mailto:hello@bookwithvars.com">hello@bookwithvars.com</a>
           </p>
           <p>
-            DPO contact details will be published here once appointed.
+            Data protection queries can be directed to the same address.
           </p>
         </section>
       </div>

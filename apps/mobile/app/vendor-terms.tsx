@@ -210,8 +210,8 @@ export default function TermsScreen() {
         <Section title="Contact">
           <Body>
             For questions about these terms, email{' '}
-            <Text style={s.link} onPress={() => Linking.openURL('mailto:support@bookwithvars.com')}>
-              support@bookwithvars.com
+            <Text style={s.link} onPress={() => Linking.openURL('mailto:hello@bookwithvars.com')}>
+              hello@bookwithvars.com
             </Text>
             .
           </Body>

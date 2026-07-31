@@ -69,8 +69,10 @@ export default function TermsScreen() {
         <Section title="Verification and safety">
           <Body>
             Every stylist completes identity verification through Youverify, including a
-            government-issued ID and a biometric liveness check, before receiving bookings. The
-            face on a stylist's profile is the face that passed verification. That's by design.
+            government-issued ID check and a biometric liveness check, before receiving bookings.
+            VARS does not store the ID document itself, only the verification result and a
+            liveness image. The face on a stylist's profile is the face that passed verification.
+            That's by design.
           </Body>
         </Section>
 
