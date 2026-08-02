@@ -21,7 +21,7 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import { Colors } from '@/constants/colors';
+import { Colors, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { useVarsTheme } from '@/contexts/ThemeContext';
 import { fmtPrice, fmtTime, fmtDateTime } from '@/lib/format';
@@ -123,7 +123,7 @@ function makeStylesTl(theme: VarsTheme) {
     left: { alignItems: 'center', marginRight: 12, width: 28 },
     dot: {
       width: 28, height: 28, borderRadius: 14,
-      borderWidth: 2, borderColor: theme.color.inkFaint,
+      borderWidth: BORDER_WIDTH.thick, borderColor: theme.color.inkFaint,
       backgroundColor: theme.color.bg,
       alignItems: 'center', justifyContent: 'center',
     },
@@ -258,23 +258,23 @@ function makeStylesDm(theme: VarsTheme) {
     categoryRow: {
       flexDirection: 'row', alignItems: 'center', gap: 12,
       paddingVertical: 12, paddingHorizontal: 14,
-      borderRadius: 5, borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      borderRadius: 5, borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint,
       backgroundColor: theme.color.surface2,
     },
     categoryRowSelected: { borderColor: theme.color.accentRed, backgroundColor: theme.color.accentRed + '0D' },
     radio: {
       width: 18, height: 18, borderRadius: 9,
-      borderWidth: 2, borderColor: theme.color.inkFaint,
+      borderWidth: BORDER_WIDTH.thick, borderColor: theme.color.inkFaint,
     },
     radioSelected: { borderColor: theme.color.accentRed, backgroundColor: theme.color.accentRed },
     categoryLabel: { fontSize: 14, color: theme.color.ink, flex: 1 },
     categoryLabelSelected: { fontWeight: '600', color: theme.color.accentRed },
     input: {
-      backgroundColor: theme.color.surface2, borderRadius: 5, borderWidth: 1, borderColor: theme.color.inkFaint,
+      backgroundColor: theme.color.surface2, borderRadius: 5, borderWidth: BORDER_WIDTH.thin, borderColor: theme.color.inkFaint,
       paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, color: theme.color.ink, minHeight: 80,
     },
     btns: { flexDirection: 'row', gap: 12, marginTop: 16 },
-    cancel: { flex: 1, height: 48, borderRadius: 5, borderWidth: 1.5, borderColor: theme.color.inkFaint, alignItems: 'center', justifyContent: 'center' },
+    cancel: { flex: 1, height: 48, borderRadius: 5, borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint, alignItems: 'center', justifyContent: 'center' },
     cancelText: { fontSize: 15, fontWeight: '600', color: theme.color.ink },
     submit: { flex: 2, height: 48, backgroundColor: theme.color.ink, borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
     submitDisabled: { opacity: 0.5 },
@@ -696,7 +696,7 @@ function makeStyles(theme: VarsTheme) {
     header: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       paddingHorizontal: 16, paddingVertical: 12,
-      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+      borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
     },
     backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
     backText: { fontSize: 28, color: theme.color.ink, lineHeight: 32 },
@@ -711,7 +711,7 @@ function makeStyles(theme: VarsTheme) {
     card: {
       marginHorizontal: 16, marginBottom: 12,
       backgroundColor: theme.color.surface2, borderRadius: 5,
-      padding: 16, borderWidth: 1, borderColor: theme.color.inkFaint, gap: 4,
+      padding: 16, borderWidth: BORDER_WIDTH.thin, borderColor: theme.color.inkFaint, gap: 4,
     },
     cardTitle: { fontSize: 18, fontWeight: '800', color: theme.color.ink },
     cardMeta: { fontSize: 13, color: theme.color.inkMuted },
@@ -723,7 +723,7 @@ function makeStyles(theme: VarsTheme) {
     phoneCard: {
       marginHorizontal: 16, marginBottom: 12,
       backgroundColor: Colors.success + '15', borderRadius: 5,
-      padding: 16, borderWidth: 1, borderColor: Colors.success + '40',
+      padding: 16, borderWidth: BORDER_WIDTH.thin, borderColor: Colors.success + '40',
     },
     phoneLabel: { fontSize: 15, fontWeight: '700', color: Colors.success, marginBottom: 2 },
     phoneNum: { fontSize: 18, fontWeight: '800', color: theme.color.ink },
@@ -742,7 +742,7 @@ function makeStyles(theme: VarsTheme) {
     staleLocBox: {
       marginHorizontal: 16, marginBottom: 8,
       backgroundColor: Colors.warning + '18', borderRadius: 5, padding: 10,
-      borderWidth: 1, borderColor: Colors.warning + '50',
+      borderWidth: BORDER_WIDTH.thin, borderColor: Colors.warning + '50',
     },
     staleLocText: { fontSize: 12, color: Colors.warning, fontWeight: '500' },
 
@@ -753,7 +753,7 @@ function makeStyles(theme: VarsTheme) {
     actions: {
       position: 'absolute', bottom: 0, left: 0, right: 0,
       backgroundColor: theme.color.bg,
-      borderTopWidth: 1, borderTopColor: theme.color.inkFaint,
+      borderTopWidth: BORDER_WIDTH.thin, borderTopColor: theme.color.inkFaint,
       padding: 16, gap: 10,
     },
     confirmBtn: {
@@ -764,7 +764,7 @@ function makeStyles(theme: VarsTheme) {
     btnDisabled: { opacity: 0.5 },
     cancelBtn: {
       height: 44, alignItems: 'center', justifyContent: 'center',
-      borderWidth: 1.5, borderColor: theme.color.accentRed, borderRadius: 5,
+      borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.accentRed, borderRadius: 5,
     },
     cancelBtnText: { fontSize: 14, color: theme.color.accentRed, fontWeight: '700' },
     disputeBtn: {

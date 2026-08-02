@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Text, TextInput, StyleSheet } from 'react-native';
-import { BORDER_RADIUS } from '@/constants/colors';
+import { BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { useVarsTheme } from '@/contexts/ThemeContext';
 import { MIN_SERVICE_PRICE_KOBO } from '@vars/shared';
@@ -69,7 +69,7 @@ function makeStyles(theme: VarsTheme) {
 
     inputRow: {
       flexDirection: 'row', alignItems: 'center',
-      height: 44, borderWidth: 1.5, borderColor: theme.color.inkFaint, borderRadius: BORDER_RADIUS,
+      height: 44, borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint, borderRadius: BORDER_RADIUS,
       paddingHorizontal: 12, backgroundColor: theme.color.surface2,
     },
     prefix: { fontSize: 16, fontWeight: '600', color: theme.color.ink, marginRight: 4 },

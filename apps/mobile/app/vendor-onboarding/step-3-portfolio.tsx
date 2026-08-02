@@ -16,7 +16,7 @@ import { uploadSinglePortfolioPhoto, PortfolioUpload } from '@/lib/storage';
 import { useAuth } from '@/contexts/AuthContext';
 import { VarsButton, VarsCheckbox, VarsSurface } from '@/components/ui';
 import { useVarsTheme } from '@/contexts/ThemeContext';
-import { BORDER_RADIUS } from '@/constants/colors';
+import { BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { CloseIcon } from '@/components/icons';
 
@@ -169,7 +169,7 @@ function makeStyles(theme: VarsTheme) {
     },
     addButton: {
       width: '30%', aspectRatio: 1, borderRadius: BORDER_RADIUS,
-      borderWidth: 1.5, borderColor: theme.color.inkFaint, borderStyle: 'dashed',
+      borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint, borderStyle: 'dashed',
       alignItems: 'center', justifyContent: 'center', gap: 4,
     },
     addIcon: { fontSize: 28, color: theme.color.ink, fontWeight: '300' },

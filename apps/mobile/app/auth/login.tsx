@@ -25,7 +25,7 @@ import Svg, { Path } from 'react-native-svg';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router, useLocalSearchParams } from 'expo-router';
 import { supabase } from '@/lib/supabase';
-import { BORDER_RADIUS } from '@/constants/colors';
+import { BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { useVarsTheme } from '@/contexts/ThemeContext';
 import {
@@ -643,7 +643,7 @@ function makeStyles(theme: VarsTheme) {
     },
     dividerLine: {
       flex: 1,
-      height: 1,
+      height: BORDER_WIDTH.thin,
       backgroundColor: theme.color.inkFaint,
     },
     dividerText: {
@@ -656,7 +656,7 @@ function makeStyles(theme: VarsTheme) {
     },
     input: {
       height: 54,
-      borderWidth: 1.5,
+      borderWidth: BORDER_WIDTH.regular,
       borderColor: theme.color.inkFaint,
       borderRadius: BORDER_RADIUS,
       paddingHorizontal: 16,

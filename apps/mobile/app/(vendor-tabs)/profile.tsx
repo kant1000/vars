@@ -17,7 +17,7 @@ import { supabase } from '@/lib/supabase';
 import { uploadSinglePortfolioPhoto, deletePortfolioPhoto } from '@/lib/storage';
 import { VarsSkeleton } from '@/components/ui';
 import { useVarsTheme } from '@/contexts/ThemeContext';
-import { Colors, BORDER_RADIUS } from '@/constants/colors';
+import { Colors, BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { CheckIcon, CloseIcon, EditIcon, GearIcon } from '@/components/icons';
 import { CATEGORY_L2_LABELS, MAX_VENDOR_SERVICES } from '@vars/shared';
@@ -536,7 +536,7 @@ function makeStyles(theme: VarsTheme) {
 
     header: {
       paddingHorizontal: 20, paddingVertical: 14,
-      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+      borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
     },
     headerTitle: { fontSize: 24, fontWeight: '800', color: theme.color.ink },
 
@@ -559,7 +559,7 @@ function makeStyles(theme: VarsTheme) {
     heroLegalText: { fontSize: 12, color: theme.color.inkMuted },
 
     section: {
-      marginTop: 8, borderTopWidth: 1, borderTopColor: theme.color.inkFaint,
+      marginTop: 8, borderTopWidth: BORDER_WIDTH.thin, borderTopColor: theme.color.inkFaint,
       paddingTop: 16, paddingHorizontal: 20,
     },
     sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
@@ -573,7 +573,7 @@ function makeStyles(theme: VarsTheme) {
     svcRow: {
       flexDirection: 'row', alignItems: 'center',
       paddingVertical: 12, paddingHorizontal: 4,
-      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+      borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
       backgroundColor: theme.color.bg,
     },
     svcInfo: { flex: 1 },
@@ -590,7 +590,7 @@ function makeStyles(theme: VarsTheme) {
     orderBtnDisabled: { opacity: 0.2 },
     addSvcBtn: {
       marginTop: 12, height: 42,
-      borderRadius: 5, borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      borderRadius: 5, borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint,
       alignItems: 'center', justifyContent: 'center',
     },
     addSvcText: { fontSize: 14, fontWeight: '600', color: theme.color.ink },
@@ -616,7 +616,7 @@ function makeStyles(theme: VarsTheme) {
     },
     addPhotoBtn: {
       width: PHOTO_SIZE, height: PHOTO_SIZE, borderRadius: 5,
-      borderWidth: 1.5, borderColor: theme.color.ink, borderStyle: 'dashed',
+      borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.ink, borderStyle: 'dashed',
       alignItems: 'center', justifyContent: 'center', gap: 4,
     },
     addPhotoIcon: { fontSize: 24, color: theme.color.ink, fontWeight: '300' },

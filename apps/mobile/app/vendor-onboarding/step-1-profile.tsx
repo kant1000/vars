@@ -15,7 +15,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { VarsButton, VarsInput, VarsSurface } from '@/components/ui';
 import { useVarsTheme } from '@/contexts/ThemeContext';
-import { BORDER_RADIUS } from '@/constants/colors';
+import { BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { sanitizeContent } from '@/lib/format';
 
@@ -209,7 +209,7 @@ function makeStyles(theme: VarsTheme) {
     lockedPlaceholder: { fontSize: 16, color: theme.color.inkMuted, flex: 1 },
     lockBadge: {
       fontSize: 11, fontWeight: '600', color: theme.color.inkMuted,
-      borderWidth: 1, borderColor: theme.color.inkFaint, borderRadius: BORDER_RADIUS,
+      borderWidth: BORDER_WIDTH.thin, borderColor: theme.color.inkFaint, borderRadius: BORDER_RADIUS,
       paddingHorizontal: 6, paddingVertical: 2,
     },
     fieldCaption: { fontSize: 12, color: theme.color.inkMuted, marginTop: 6, lineHeight: 16 },

@@ -17,7 +17,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { VarsSkeleton } from '@/components/ui';
 import { useVarsTheme } from '@/contexts/ThemeContext';
-import { BORDER_RADIUS } from '@/constants/colors';
+import { BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { BellIcon, HourglassIcon, CheckCircleIcon, XCircleIcon, CreditCardIcon, BanknoteIcon, ArrowUpIcon, CarIcon, PinIcon, StarIcon, WarningIcon, ClockIcon, SparkleIcon } from '@/components/icons';
 
@@ -273,7 +273,7 @@ function makeStyles(theme: VarsTheme) {
     header: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       paddingHorizontal: 20, paddingVertical: 14,
-      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+      borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
     },
     headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     headerTitle: { fontSize: 24, fontWeight: '800', color: theme.color.ink },
@@ -293,7 +293,7 @@ function makeStyles(theme: VarsTheme) {
     row: {
       flexDirection: 'row', alignItems: 'flex-start',
       paddingHorizontal: 16, paddingVertical: 14,
-      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+      borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
       backgroundColor: theme.color.bg,
       gap: 12,
     },

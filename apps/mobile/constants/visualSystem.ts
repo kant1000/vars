@@ -1,4 +1,5 @@
 import { Platform, ViewStyle } from 'react-native';
+import { BORDER_WIDTH } from './colors';
 
 export type VarsAppearance = 'light' | 'dark';
 export type VarsElevation = 0 | 1 | 2 | 3 | 4;
@@ -111,7 +112,7 @@ export function varsElevationStyle(theme: VarsTheme, elevation: VarsElevation): 
   const base: ViewStyle = {
     backgroundColor: varsSurface(theme, elevation),
     borderColor: theme.color.inkFaint,
-    borderWidth: elevation === 0 ? 1 : 1.5,
+    borderWidth: elevation === 0 ? BORDER_WIDTH.thin : BORDER_WIDTH.regular,
   };
 
   if (theme.appearance === 'dark') {

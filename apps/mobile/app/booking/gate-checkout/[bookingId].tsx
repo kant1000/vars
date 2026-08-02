@@ -31,6 +31,7 @@ import { useVarsTheme } from '@/contexts/ThemeContext';
 import { VarsTheme } from '@/constants/visualSystem';
 import { fmtPrice } from '@/lib/format';
 import { BOOKING_STATUS } from '@vars/shared';
+import { BORDER_WIDTH } from '@/constants/colors';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
@@ -303,7 +304,7 @@ function makeStyles(theme: VarsTheme) {
     header: {
       flexDirection: 'row', alignItems: 'center',
       paddingHorizontal: 16, paddingVertical: 12,
-      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+      borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
     },
     headerClose: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
     headerTitle: { fontSize: 16, fontWeight: '700', color: theme.color.ink },

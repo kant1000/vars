@@ -15,7 +15,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { VarsSkeleton } from '@/components/ui';
 import { useVarsTheme } from '@/contexts/ThemeContext';
-import { Colors, BORDER_RADIUS } from '@/constants/colors';
+import { Colors, BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { fmtPrice, fmtDateTime } from '@/lib/format';
 import { BookingStatus, BOOKING_STATUS } from '@vars/shared';
@@ -286,7 +286,7 @@ function makeStyles(theme: VarsTheme) {
     },
     header: {
       paddingHorizontal: 20, paddingVertical: 14,
-      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+      borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
     },
     headerTitle: { fontSize: 24, fontWeight: '800', color: theme.color.ink },
     sectionLabel: {
@@ -297,10 +297,10 @@ function makeStyles(theme: VarsTheme) {
     card: {
       marginHorizontal: 16, marginBottom: 10,
       backgroundColor: theme.color.surface2, borderRadius: BORDER_RADIUS,
-      padding: 16, borderWidth: 1, borderColor: theme.color.inkFaint, gap: 4,
+      padding: 16, borderWidth: BORDER_WIDTH.thin, borderColor: theme.color.inkFaint, gap: 4,
     },
     cardPaymentNeeded: {
-      borderColor: Colors.warning, borderWidth: 2,
+      borderColor: Colors.warning, borderWidth: BORDER_WIDTH.thick,
     },
     confirmingBanner: {
       marginTop: 8, backgroundColor: Colors.warning + '18',
@@ -330,12 +330,12 @@ function makeStyles(theme: VarsTheme) {
     dateTime: { fontSize: 12, color: theme.color.inkMuted },
     price: { fontSize: 14, fontWeight: '700', color: theme.color.ink },
     reviewBtn: {
-      marginTop: 10, borderTopWidth: 1, borderTopColor: theme.color.inkFaint,
+      marginTop: 10, borderTopWidth: BORDER_WIDTH.thin, borderTopColor: theme.color.inkFaint,
       paddingTop: 10, alignItems: 'flex-start',
     },
     reviewBtnText: { fontSize: 13, fontWeight: '700', color: theme.color.accentBlue },
     reviewedRow: {
-      marginTop: 10, borderTopWidth: 1, borderTopColor: theme.color.inkFaint,
+      marginTop: 10, borderTopWidth: BORDER_WIDTH.thin, borderTopColor: theme.color.inkFaint,
       paddingTop: 10, flexDirection: 'row', alignItems: 'center', gap: 8,
     },
     reviewedStars: { fontSize: 14, color: theme.color.accentBlue },

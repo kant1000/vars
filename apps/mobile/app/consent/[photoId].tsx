@@ -14,7 +14,7 @@ import { ConfirmModal } from '@/components/ConfirmModal';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
-import { BORDER_RADIUS } from '@/constants/colors';
+import { BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { useVarsTheme } from '@/contexts/ThemeContext';
 import { CheckIcon, CloseIcon } from '@/components/icons';
@@ -234,7 +234,7 @@ function makeStyles(theme: VarsTheme) {
     },
     actions: { flexDirection: 'row', gap: 12, marginBottom: 16 },
     declineBtn: {
-      flex: 1, height: 56, borderWidth: 1.5, borderColor: theme.color.accentRed,
+      flex: 1, height: 56, borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.accentRed,
       borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center',
     },
     declineBtnText: { color: theme.color.accentRed, fontSize: 16, fontWeight: '700' },

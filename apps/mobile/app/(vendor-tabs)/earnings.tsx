@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { VarsSkeleton } from '@/components/ui';
 import { useVarsTheme } from '@/contexts/ThemeContext';
-import { BORDER_RADIUS } from '@/constants/colors';
+import { BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { fmtPrice, fmtDate, fmtTime } from '@/lib/format';
 import { EyeIcon, EyeOffIcon } from '@/components/icons';
@@ -275,7 +275,7 @@ function makeStyles(theme: VarsTheme) {
 
     header: {
       paddingHorizontal: 20, paddingVertical: 14,
-      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+      borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
     },
     headerTitle: { fontSize: 24, fontWeight: '800', color: theme.color.ink },
 
@@ -286,7 +286,7 @@ function makeStyles(theme: VarsTheme) {
     filterPill: {
       flex: 1, alignItems: 'center',
       paddingVertical: 7,
-      borderRadius: BORDER_RADIUS, borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      borderRadius: BORDER_RADIUS, borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint,
     },
     filterPillActive: {
       backgroundColor: theme.color.ink, borderColor: theme.color.ink,
@@ -297,7 +297,7 @@ function makeStyles(theme: VarsTheme) {
     hero: {
       margin: 16, marginTop: 12,
       padding: 20,
-      borderRadius: BORDER_RADIUS, borderWidth: 1.5, borderColor: theme.color.ink,
+      borderRadius: BORDER_RADIUS, borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.ink,
     },
     heroLabelRow: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -325,7 +325,7 @@ function makeStyles(theme: VarsTheme) {
     row: {
       flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between',
       paddingVertical: 14, paddingHorizontal: 20,
-      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+      borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
     },
     rowLeft:    { flex: 1, marginRight: 12, gap: 2 },
     rowClient:  { fontSize: 15, fontWeight: '700', color: theme.color.ink },
@@ -335,7 +335,7 @@ function makeStyles(theme: VarsTheme) {
     rowAmount:  { fontSize: 16, fontWeight: '800', color: theme.color.ink },
     statusPill: {
       borderRadius: BORDER_RADIUS, paddingHorizontal: 8, paddingVertical: 2,
-      borderWidth: 1,
+      borderWidth: BORDER_WIDTH.thin,
     },
     statusText: { fontSize: 11, fontWeight: '700' },
 

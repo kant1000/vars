@@ -19,7 +19,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { VarsSkeleton } from '@/components/ui';
 import { useVarsTheme } from '@/contexts/ThemeContext';
-import { Colors, BORDER_RADIUS } from '@/constants/colors';
+import { Colors, BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { CheckIcon, StarFilledIcon, StarEmptyIcon } from '@/components/icons';
 import { CATEGORY_L2_LABELS } from '@vars/shared';
@@ -585,10 +585,10 @@ function makeStyles(theme: VarsTheme) {
     // Tabs
     tabRow: {
       flexDirection: 'row', backgroundColor: theme.color.bg,
-      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+      borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
     },
     sectionTab: { flex: 1, paddingVertical: 12, alignItems: 'center' },
-    sectionTabActive: { borderBottomWidth: 2, borderBottomColor: theme.color.ink },
+    sectionTabActive: { borderBottomWidth: BORDER_WIDTH.thick, borderBottomColor: theme.color.ink },
     sectionTabText: { fontSize: 14, fontWeight: '600', color: theme.color.inkMuted },
     sectionTabTextActive: { color: theme.color.ink },
 
@@ -598,7 +598,7 @@ function makeStyles(theme: VarsTheme) {
     serviceCard: {
       flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
       paddingVertical: 14, paddingHorizontal: 12,
-      borderWidth: 1, borderColor: theme.color.inkFaint, borderRadius: 5,
+      borderWidth: BORDER_WIDTH.thin, borderColor: theme.color.inkFaint, borderRadius: 5,
       marginBottom: 8, backgroundColor: theme.color.bg,
     },
     serviceCardSelected: {
@@ -614,7 +614,7 @@ function makeStyles(theme: VarsTheme) {
     servicePrice: { fontSize: 16, fontWeight: '800', color: theme.color.ink },
     checkbox: {
       width: 22, height: 22, borderRadius: 11,
-      borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint,
       alignItems: 'center', justifyContent: 'center',
       backgroundColor: theme.color.bg,
     },
@@ -622,7 +622,7 @@ function makeStyles(theme: VarsTheme) {
     checkmark: { color: theme.color.inverseInk, fontSize: 13, fontWeight: '800' },
 
     // Reviews
-    reviewCard: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint },
+    reviewCard: { paddingVertical: 14, borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint },
     reviewHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
     reviewerName: { fontSize: 14, fontWeight: '700', color: theme.color.ink },
     reviewComment: { fontSize: 14, color: theme.color.inkMuted, lineHeight: 20, marginBottom: 4 },
@@ -634,7 +634,7 @@ function makeStyles(theme: VarsTheme) {
     ctaWrap: {
       position: 'absolute', bottom: 0, left: 0, right: 0,
       backgroundColor: theme.color.bg,
-      borderTopWidth: 1, borderTopColor: theme.color.inkFaint,
+      borderTopWidth: BORDER_WIDTH.thin, borderTopColor: theme.color.inkFaint,
       paddingHorizontal: 20, paddingTop: 12,
     },
     ctaButton: {

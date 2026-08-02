@@ -17,7 +17,7 @@ import {
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
-import { BORDER_RADIUS } from '@/constants/colors';
+import { BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { useVarsTheme } from '@/contexts/ThemeContext';
 import { signOut } from '@/lib/auth';
@@ -167,7 +167,7 @@ function makeStyles(theme: VarsTheme) {
       justifyContent: 'space-between',
       paddingHorizontal: 16,
       paddingVertical: 12,
-      borderBottomWidth: 1,
+      borderBottomWidth: BORDER_WIDTH.thin,
       borderBottomColor: theme.color.inkFaint,
     },
     backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
@@ -186,7 +186,7 @@ function makeStyles(theme: VarsTheme) {
       borderRadius: BORDER_RADIUS,
       padding: 16,
       marginBottom: 24,
-      borderWidth: 1,
+      borderWidth: BORDER_WIDTH.thin,
       borderColor: theme.color.inkFaint,
     },
     infoItem: {
@@ -204,7 +204,7 @@ function makeStyles(theme: VarsTheme) {
     continueBtn: {
       marginTop: 8,
       height: 52,
-      borderWidth: 1.5,
+      borderWidth: BORDER_WIDTH.regular,
       borderColor: theme.color.accentRed,
       borderRadius: BORDER_RADIUS,
       alignItems: 'center',
@@ -219,7 +219,7 @@ function makeStyles(theme: VarsTheme) {
     },
     confirmInput: {
       height: 56,
-      borderWidth: 1.5,
+      borderWidth: BORDER_WIDTH.regular,
       borderColor: theme.color.accentRed,
       borderRadius: BORDER_RADIUS,
       paddingHorizontal: 16,

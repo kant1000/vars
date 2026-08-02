@@ -24,6 +24,7 @@ import { useVarsTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { savePhoneNumber } from '@/lib/auth';
 import { hasAcceptedCurrentTerms } from '@/lib/termsGate';
+import { BORDER_WIDTH } from '@/constants/colors';
 
 export default function PhoneScreen() {
   const { theme } = useVarsTheme();
@@ -145,7 +146,7 @@ function makeStyles(theme: VarsTheme) {
     },
     input: {
       height: 58,
-      borderWidth: 1.5,
+      borderWidth: BORDER_WIDTH.regular,
       borderColor: theme.color.inkFaint,
       borderRadius: 5,
       paddingHorizontal: 16,

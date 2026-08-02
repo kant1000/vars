@@ -23,6 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { VarsTheme } from '@/constants/visualSystem';
 import { useVarsTheme } from '@/contexts/ThemeContext';
+import { BORDER_WIDTH } from '@/constants/colors';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
@@ -205,7 +206,7 @@ export default function VendorZoneSetup() {
               radius={radius * 1000} // metres
               fillColor={theme.color.ink + '14'}
               strokeColor={theme.color.ink}
-              strokeWidth={1.5}
+              strokeWidth={BORDER_WIDTH.regular}
             />
             {/* Draggable pin */}
             <Marker
@@ -304,7 +305,7 @@ function makeStyles(theme: VarsTheme) {
     header: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       paddingHorizontal: 16, paddingVertical: 12,
-      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+      borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
     },
     backBtn:     { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
     backText:    { fontSize: 28, color: theme.color.ink, lineHeight: 32 },
@@ -339,7 +340,7 @@ function makeStyles(theme: VarsTheme) {
     radiusRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
     radiusChip: {
       paddingHorizontal: 16, paddingVertical: 10,
-      borderRadius: 5, borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      borderRadius: 5, borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint,
     },
     radiusChipActive: { backgroundColor: theme.color.ink, borderColor: theme.color.ink },
     radiusChipText:   { fontSize: 14, fontWeight: '700', color: theme.color.inkMuted },
@@ -348,14 +349,14 @@ function makeStyles(theme: VarsTheme) {
     toggleRow: {
       flexDirection: 'row', alignItems: 'center', gap: 12,
       backgroundColor: 'transparent', borderRadius: 5, padding: 16,
-      borderWidth: 1, borderColor: theme.color.ink,
+      borderWidth: BORDER_WIDTH.thin, borderColor: theme.color.ink,
     },
     toggleLabel: { fontSize: 15, fontWeight: '700', color: theme.color.ink, marginBottom: 3 },
     toggleSub:   { fontSize: 13, color: theme.color.inkMuted, lineHeight: 18 },
 
     infoBox: {
       backgroundColor: 'transparent', borderRadius: 5, padding: 14,
-      borderWidth: 1, borderColor: theme.color.inkFaint,
+      borderWidth: BORDER_WIDTH.thin, borderColor: theme.color.inkFaint,
     },
     infoTitle: { fontSize: 13, fontWeight: '700', color: theme.color.ink, marginBottom: 6 },
     infoText:  { fontSize: 13, color: theme.color.inkMuted, lineHeight: 20 },

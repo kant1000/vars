@@ -15,6 +15,7 @@ import { VarsButton, VarsSurface } from '@/components/ui';
 import { useVarsTheme } from '@/contexts/ThemeContext';
 import { VarsTheme } from '@/constants/visualSystem';
 import { hasAcceptedCurrentTerms } from '@/lib/termsGate';
+import { BORDER_WIDTH } from '@/constants/colors';
 
 const POLL_INTERVAL_MS = 8000;
 
@@ -196,7 +197,7 @@ function makeRowStyles(theme: VarsTheme) {
     row: { flexDirection: 'row', alignItems: 'center', gap: 14 },
     dot: { width: 14, height: 14, borderRadius: 7 },
     dotDone: { backgroundColor: theme.color.accentGreen },
-    dotPending: { borderWidth: 2, borderColor: theme.color.inkFaint, backgroundColor: 'transparent' },
+    dotPending: { borderWidth: BORDER_WIDTH.thick, borderColor: theme.color.inkFaint, backgroundColor: 'transparent' },
     label: { fontSize: 15, color: theme.color.inkMuted, fontWeight: '500', flex: 1 },
     labelDone: { color: theme.color.ink },
   });

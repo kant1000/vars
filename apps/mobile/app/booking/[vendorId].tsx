@@ -24,7 +24,7 @@ import * as Location from 'expo-location';
 import { supabase } from '@/lib/supabase';
 import { VarsButton, VarsInput, VarsSurface } from '@/components/ui';
 import { useVarsTheme } from '@/contexts/ThemeContext';
-import { Colors } from '@/constants/colors';
+import { Colors, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { fmtPrice, fmtDuration, fmtTime, fmtDate } from '@/lib/format';
 import { LightningIcon, CheckIcon, PinIcon } from '@/components/icons';
@@ -114,9 +114,9 @@ function StepBar({ step }: { step: number }) {
 }
 function makeStylesSb(theme: VarsTheme) {
   return StyleSheet.create({
-    wrap: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16, backgroundColor: theme.color.bg, borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint },
+    wrap: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16, backgroundColor: theme.color.bg, borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint },
     item: { alignItems: 'center', gap: 4 },
-    dot: { width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: theme.color.inkFaint, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.color.bg },
+    dot: { width: 28, height: 28, borderRadius: 14, borderWidth: BORDER_WIDTH.thick, borderColor: theme.color.inkFaint, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.color.bg },
     dotDone: { backgroundColor: theme.color.accentBlue, borderColor: theme.color.accentBlue },
     dotActive: { borderColor: theme.color.accentBlue },
     dotText: { fontSize: 12, fontWeight: '700', color: theme.color.inkMuted },
@@ -1043,7 +1043,7 @@ function makeStyles(theme: VarsTheme) {
     header: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       paddingHorizontal: 16, paddingVertical: 12,
-      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+      borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
     },
     headerBack: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
     headerBackText: { fontSize: 28, color: theme.color.ink, lineHeight: 32 },
@@ -1057,7 +1057,7 @@ function makeStyles(theme: VarsTheme) {
     slotRow: { flexDirection: 'row', gap: 8 },
     slot: {
       paddingVertical: 10,
-      borderRadius: 5, borderWidth: 1.5, borderColor: theme.color.accentBlue,
+      borderRadius: 5, borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.accentBlue,
       alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 4,
     },
     slotUnavailable: { borderColor: theme.color.inkFaint, backgroundColor: theme.color.surface2 },
@@ -1071,7 +1071,7 @@ function makeStyles(theme: VarsTheme) {
     autoAcceptLegend: {
       marginHorizontal: 16, marginBottom: 8, marginTop: 4,
       backgroundColor: Colors.pioneerGoldSurface, borderRadius: 5, paddingHorizontal: 10, paddingVertical: 6,
-      borderWidth: 1, borderColor: Colors.pioneerGold + '30',
+      borderWidth: BORDER_WIDTH.thin, borderColor: Colors.pioneerGold + '30',
     },
     autoAcceptLegendText: { fontSize: 12, color: Colors.pioneerGoldDark, fontWeight: '600' },
 
@@ -1084,11 +1084,11 @@ function makeStyles(theme: VarsTheme) {
     summaryLabel: { fontSize: 14, color: theme.color.inkMuted },
     summaryValue: { fontSize: 14, fontWeight: '600', color: theme.color.ink },
     summaryValueBold: { fontSize: 16, fontWeight: '800', color: theme.color.accentBlue },
-    divider: { height: 1, backgroundColor: theme.color.inkFaint, marginVertical: 6 },
+    divider: { height: BORDER_WIDTH.thin, backgroundColor: theme.color.inkFaint, marginVertical: 6 },
     fieldLabel: { fontSize: 14, fontWeight: '600', color: theme.color.ink, marginBottom: 6 },
     textInput: {
       backgroundColor: theme.color.surface2, borderRadius: 5,
-      borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint,
       paddingHorizontal: 14, paddingVertical: 12,
       fontSize: 15, color: theme.color.ink,
     },
@@ -1104,7 +1104,7 @@ function makeStyles(theme: VarsTheme) {
     },
     pickerOption: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-      paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+      paddingVertical: 14, borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
     },
     pickerOptionText: { fontSize: 16, color: theme.color.ink },
     pickerOptionSelected: { color: theme.color.accentBlue, fontWeight: '700' },
@@ -1130,14 +1130,14 @@ function makeStyles(theme: VarsTheme) {
     confirmBar: {
       position: 'absolute', bottom: 0, left: 0, right: 0,
       backgroundColor: theme.color.bg,
-      borderTopWidth: 1, borderTopColor: theme.color.inkFaint,
+      borderTopWidth: BORDER_WIDTH.thin, borderTopColor: theme.color.inkFaint,
       padding: 16,
     },
     // Pay button
     payWrap: {
       position: 'absolute', bottom: 0, left: 0, right: 0,
       backgroundColor: theme.color.bg,
-      borderTopWidth: 1, borderTopColor: theme.color.inkFaint,
+      borderTopWidth: BORDER_WIDTH.thin, borderTopColor: theme.color.inkFaint,
       padding: 20,
     },
   });

@@ -18,7 +18,7 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
-import { BORDER_RADIUS } from '@/constants/colors';
+import { BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { useVarsTheme } from '@/contexts/ThemeContext';
 import {
@@ -204,7 +204,7 @@ function makeStyles(theme: VarsTheme) {
       paddingHorizontal: 24,
       paddingTop: 24,
       paddingBottom: 16,
-      borderBottomWidth: 1,
+      borderBottomWidth: BORDER_WIDTH.thin,
       borderBottomColor: theme.color.inkFaint,
     },
     wordmark: {
@@ -228,7 +228,7 @@ function makeStyles(theme: VarsTheme) {
       alignItems: 'center',
       paddingVertical: 14,
       paddingHorizontal: 16,
-      borderWidth: 1,
+      borderWidth: BORDER_WIDTH.thin,
       borderColor: theme.color.inkFaint,
       borderRadius: BORDER_RADIUS,
       marginBottom: 10,
@@ -248,7 +248,7 @@ function makeStyles(theme: VarsTheme) {
     footer: {
       paddingHorizontal: 24,
       paddingTop: 12,
-      borderTopWidth: 1,
+      borderTopWidth: BORDER_WIDTH.thin,
       borderTopColor: theme.color.inkFaint,
       backgroundColor: theme.color.bg,
     },

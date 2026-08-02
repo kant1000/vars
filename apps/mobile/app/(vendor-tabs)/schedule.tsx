@@ -17,7 +17,7 @@ import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import { Colors } from '@/constants/colors';
+import { Colors, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { useVendorOnline } from '@/contexts/VendorOnlineContext';
 import { VarsButton, VarsSurface, VarsToast } from '@/components/ui';
@@ -1993,13 +1993,13 @@ function makeStylesS(theme: VarsTheme) {
     header: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       paddingHorizontal: 20, paddingVertical: 14,
-      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+      borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
     },
     headerTitle: { fontSize: 24, fontWeight: '800', color: theme.color.ink },
     zoneBtn: {
       flexDirection: 'row', alignItems: 'center', gap: 5,
       paddingHorizontal: 12, paddingVertical: 6,
-      borderRadius: 5, borderWidth: 1.5, borderColor: theme.color.ink, backgroundColor: theme.color.bg,
+      borderRadius: 5, borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.ink, backgroundColor: theme.color.bg,
     },
     zoneBtnLabel: { fontSize: 13, fontWeight: '700', color: theme.color.ink },
     zoneBtnDisabled: { opacity: 0.35, borderColor: theme.color.inkFaint },
@@ -2019,13 +2019,13 @@ function makeStylesS(theme: VarsTheme) {
     blockDayRow: { paddingHorizontal: 16, paddingBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 8 },
     blockDayBtn: {
       paddingHorizontal: 14, paddingVertical: 7,
-      borderRadius: 5, borderWidth: 1.5, borderColor: theme.color.ink,
+      borderRadius: 5, borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.ink,
       minWidth: 110, alignItems: 'center',
     },
     blockDayBtnText: { fontSize: 13, fontWeight: '700', color: theme.color.ink },
     todayBtn: {
       paddingHorizontal: 14, paddingVertical: 7,
-      borderRadius: 5, borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      borderRadius: 5, borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint,
       alignItems: 'center',
     },
     todayBtnText: { fontSize: 13, fontWeight: '700', color: theme.color.inkMuted },
@@ -2033,7 +2033,7 @@ function makeStylesS(theme: VarsTheme) {
     grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, gap: 12 },
     slot: {
       width: SLOT_W, height: 60, borderRadius: 5,
-      borderWidth: 1.5, alignItems: 'center', justifyContent: 'center',
+      borderWidth: BORDER_WIDTH.regular, alignItems: 'center', justifyContent: 'center',
     },
     slotPast: { opacity: 0.35 },
     slotTime: { fontSize: 11, fontWeight: '600' },
@@ -2041,7 +2041,7 @@ function makeStylesS(theme: VarsTheme) {
     // Booked slot — solid ink fill with inverse-ink text
     slotBooked: {
       borderColor: theme.color.ink,
-      borderWidth: 2.5,
+      borderWidth: BORDER_WIDTH.heavy,
       backgroundColor: theme.color.ink,
       justifyContent: 'center', alignItems: 'center',
       paddingHorizontal: 3,
@@ -2119,7 +2119,7 @@ function makeStylesBs(theme: VarsTheme) {
     detailLabel: { fontSize: 14, color: theme.color.inkMuted },
     detailValue: { fontSize: 14, fontWeight: '600', color: theme.color.ink },
     detailValueBold: { fontSize: 16, fontWeight: '800', color: theme.color.ink },
-    divider: { height: 1, backgroundColor: theme.color.inkFaint, marginVertical: 4 },
+    divider: { height: BORDER_WIDTH.thin, backgroundColor: theme.color.inkFaint, marginVertical: 4 },
 
     lockedRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
     lockedText: { fontSize: 13, color: theme.color.inkMuted, fontStyle: 'italic', flex: 1 },
@@ -2146,7 +2146,7 @@ function makeStylesBs(theme: VarsTheme) {
     },
     rescheduleChip: {
       paddingHorizontal: 12, paddingVertical: 8,
-      borderRadius: 5, borderWidth: 1.5, borderColor: theme.color.ink, alignItems: 'center',
+      borderRadius: 5, borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.ink, alignItems: 'center',
     },
     rescheduleChipUnavailable: { borderColor: theme.color.inkFaint, backgroundColor: 'transparent' },
     rescheduleChipSelected: { backgroundColor: theme.color.ink, borderColor: theme.color.ink },
@@ -2164,7 +2164,7 @@ function makeStylesBr(theme: VarsTheme) {
     actionRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
     actionBtn: {
       flex: 1, paddingVertical: 10, borderRadius: 5,
-      borderWidth: 1.5, borderColor: theme.color.inkFaint, alignItems: 'center',
+      borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint, alignItems: 'center',
     },
     actionBtnActive: { borderColor: theme.color.ink, backgroundColor: theme.color.ink },
     actionBtnText: { fontSize: 14, fontWeight: '700', color: theme.color.inkMuted },
@@ -2176,7 +2176,7 @@ function makeStylesBr(theme: VarsTheme) {
     chipRow: { gap: 8 },
     timeChip: {
       paddingHorizontal: 12, paddingVertical: 8,
-      borderRadius: 5, borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      borderRadius: 5, borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint,
     },
     timeChipActive: { borderColor: theme.color.ink, backgroundColor: theme.color.ink },
     timeChipText: { fontSize: 13, fontWeight: '600', color: theme.color.ink },
@@ -2185,7 +2185,7 @@ function makeStylesBr(theme: VarsTheme) {
     weekdayRow: { flexDirection: 'row', gap: 6 },
     dayChip: {
       flex: 1, paddingVertical: 9, borderRadius: 5,
-      borderWidth: 1.5, borderColor: theme.color.inkFaint, alignItems: 'center',
+      borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint, alignItems: 'center',
     },
     dayChipActive: { borderColor: theme.color.ink, backgroundColor: theme.color.ink },
     dayChipText: { fontSize: 11, fontWeight: '700', color: theme.color.inkMuted },
@@ -2194,7 +2194,7 @@ function makeStylesBr(theme: VarsTheme) {
     repeatRow: { flexDirection: 'row', gap: 10 },
     repeatBtn: {
       flex: 1, paddingVertical: 10, borderRadius: 5,
-      borderWidth: 1.5, borderColor: theme.color.inkFaint, alignItems: 'center',
+      borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint, alignItems: 'center',
     },
     repeatBtnActive: { borderColor: theme.color.ink, backgroundColor: theme.color.ink },
     repeatBtnText: { fontSize: 13, fontWeight: '700', color: theme.color.inkMuted },
@@ -2202,7 +2202,7 @@ function makeStylesBr(theme: VarsTheme) {
 
     preview: {
       marginTop: 20, paddingVertical: 12, paddingHorizontal: 14,
-      borderRadius: 5, borderWidth: 1, borderColor: theme.color.inkFaint,
+      borderRadius: 5, borderWidth: BORDER_WIDTH.thin, borderColor: theme.color.inkFaint,
     },
     previewText: { fontSize: 14, color: theme.color.ink, fontWeight: '500' },
 
@@ -2247,7 +2247,7 @@ function makeStylesCal(theme: VarsTheme) {
     },
     recurringSection: {
       paddingHorizontal: 20, paddingTop: 14, paddingBottom: 8,
-      borderTopWidth: 1, borderTopColor: theme.color.inkFaint, marginTop: 10,
+      borderTopWidth: BORDER_WIDTH.thin, borderTopColor: theme.color.inkFaint, marginTop: 10,
     },
     recurringSectionTitle: {
       fontSize: 11, fontWeight: '700', color: theme.color.inkMuted,
@@ -2256,7 +2256,7 @@ function makeStylesCal(theme: VarsTheme) {
     recurringRow: { flexDirection: 'row', gap: 6 },
     recurringChip: {
       flex: 1, paddingVertical: 9, borderRadius: 5,
-      borderWidth: 1.5, borderColor: theme.color.inkFaint, alignItems: 'center',
+      borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint, alignItems: 'center',
     },
     recurringChipActive: { borderColor: theme.color.ink, backgroundColor: theme.color.ink },
     recurringChipText: { fontSize: 11, fontWeight: '700', color: theme.color.inkMuted },

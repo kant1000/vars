@@ -17,7 +17,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import { Colors } from '@/constants/colors';
+import { Colors, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { useVarsTheme } from '@/contexts/ThemeContext';
 import { StarFilledIcon, StarEmptyIcon } from '@/components/icons';
@@ -225,7 +225,7 @@ function makeStyles(theme: VarsTheme) {
     header: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       paddingHorizontal: 16, paddingVertical: 12,
-      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+      borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
     },
     backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
     backText: { fontSize: 28, color: theme.color.ink, lineHeight: 32 },
@@ -235,7 +235,7 @@ function makeStyles(theme: VarsTheme) {
 
     contextCard: {
       backgroundColor: theme.color.surface2, borderRadius: 5,
-      padding: 16, borderWidth: 1, borderColor: theme.color.inkFaint,
+      padding: 16, borderWidth: BORDER_WIDTH.thin, borderColor: theme.color.inkFaint,
       alignItems: 'center',
     },
     contextService: { fontSize: 18, fontWeight: '800', color: theme.color.ink, marginBottom: 4 },
@@ -250,7 +250,7 @@ function makeStyles(theme: VarsTheme) {
 
     commentInput: {
       backgroundColor: theme.color.surface2, borderRadius: 5,
-      borderWidth: 1, borderColor: theme.color.inkFaint,
+      borderWidth: BORDER_WIDTH.thin, borderColor: theme.color.inkFaint,
       paddingHorizontal: 14, paddingVertical: 12,
       fontSize: 15, color: theme.color.ink, minHeight: 100,
     },

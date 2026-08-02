@@ -22,7 +22,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import { BORDER_RADIUS } from '@/constants/colors';
+import { BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { useVarsTheme } from '@/contexts/ThemeContext';
 import { ChevronRightIcon } from '@/components/icons';
@@ -270,7 +270,7 @@ function makeStyles(theme: VarsTheme) {
     header: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       paddingHorizontal: 16, paddingVertical: 12,
-      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+      borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
     },
     backBtn:      { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
     backText:     { fontSize: 28, color: theme.color.ink, lineHeight: 32 },
@@ -283,20 +283,20 @@ function makeStyles(theme: VarsTheme) {
     },
     card: {
       backgroundColor: theme.color.bg,
-      borderRadius: BORDER_RADIUS, borderWidth: 1, borderColor: theme.color.inkFaint, overflow: 'hidden',
+      borderRadius: BORDER_RADIUS, borderWidth: BORDER_WIDTH.thin, borderColor: theme.color.inkFaint, overflow: 'hidden',
     },
     row: {
       flexDirection: 'row', alignItems: 'center',
       paddingHorizontal: 14, paddingVertical: 14, gap: 10,
     },
-    rowBorder:    { borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint },
+    rowBorder:    { borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint },
     rowLabel:     { fontSize: 14, fontWeight: '600', color: theme.color.ink },
     rowSub:       { fontSize: 12, color: theme.color.inkMuted, marginTop: 2 },
     statusOn:     { fontSize: 12, fontWeight: '700', color: theme.color.accentGreen },
     emptyText:    { fontSize: 13, color: theme.color.inkMuted, padding: 16 },
     infoBox: {
       backgroundColor: theme.color.surface2,
-      borderRadius: BORDER_RADIUS, borderWidth: 1, borderColor: theme.color.inkFaint,
+      borderRadius: BORDER_RADIUS, borderWidth: BORDER_WIDTH.thin, borderColor: theme.color.inkFaint,
       padding: 16,
     },
     infoText:     { fontSize: 13, color: theme.color.inkMuted, lineHeight: 20 },

@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { Colors, BORDER_RADIUS } from '@/constants/colors';
+import { Colors, BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { useVarsTheme } from '@/contexts/ThemeContext';
 import { StarFilledIcon } from '@/components/icons';
@@ -146,7 +146,7 @@ function makeStyles(theme: VarsTheme) {
       flexDirection: 'row', gap: 14,
       backgroundColor: theme.color.bg,
       borderRadius: BORDER_RADIUS, padding: 14,
-      borderWidth: 1, borderColor: theme.color.inkFaint,
+      borderWidth: BORDER_WIDTH.thin, borderColor: theme.color.inkFaint,
       marginHorizontal: 16, marginBottom: 12,
     },
     avatarWrap: { width: 68, height: 68 },

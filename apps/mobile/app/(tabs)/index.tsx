@@ -19,7 +19,7 @@ import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { VarsSkeleton } from '@/components/ui';
 import { SearchIcon } from '@/components/icons';
 import { useVarsTheme } from '@/contexts/ThemeContext';
-import { Colors, BORDER_RADIUS } from '@/constants/colors';
+import { Colors, BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { CATEGORY_L2_LABELS } from '@vars/shared';
 
@@ -315,7 +315,7 @@ function makeStyles(theme: VarsTheme) {
       flexDirection: 'row', alignItems: 'center', gap: 8,
       backgroundColor: theme.color.surface2, borderRadius: BORDER_RADIUS,
       paddingHorizontal: 16,
-      borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint,
     },
     searchInput: {
       flex: 1, paddingVertical: 11,
@@ -324,7 +324,7 @@ function makeStyles(theme: VarsTheme) {
     tabs: { flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 12, gap: 8 },
     tab: {
       flex: 1, paddingVertical: 8, alignItems: 'center',
-      borderRadius: 5, borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      borderRadius: 5, borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint,
       backgroundColor: theme.color.bg,
     },
     tabActive: { backgroundColor: theme.color.ink, borderColor: theme.color.ink },
@@ -339,7 +339,7 @@ function makeStyles(theme: VarsTheme) {
       flexDirection: 'row', gap: 14,
       backgroundColor: theme.color.bg,
       borderRadius: 5, padding: 14,
-      borderWidth: 1, borderColor: theme.color.inkFaint,
+      borderWidth: BORDER_WIDTH.thin, borderColor: theme.color.inkFaint,
       marginHorizontal: 16, marginBottom: 12,
     },
     skeletonInfo: { flex: 1, justifyContent: 'center', gap: 8 },

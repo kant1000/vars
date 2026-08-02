@@ -14,7 +14,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { VarsButton, VarsInput, VarsSurface } from '@/components/ui';
 import { useVarsTheme } from '@/contexts/ThemeContext';
-import { BORDER_RADIUS } from '@/constants/colors';
+import { BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { CloseIcon } from '@/components/icons';
 import {
@@ -351,7 +351,7 @@ function makeStyles(theme: VarsTheme) {
     pillRowInner: { flexDirection: 'row', gap: 8, paddingRight: 24 },
     pill: {
       paddingVertical: 8, paddingHorizontal: 16,
-      borderRadius: BORDER_RADIUS, borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      borderRadius: BORDER_RADIUS, borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint,
       backgroundColor: theme.color.bg,
     },
     pillActive: { backgroundColor: theme.color.ink, borderColor: theme.color.ink },
@@ -364,7 +364,7 @@ function makeStyles(theme: VarsTheme) {
     durationRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
     durationChip: {
       paddingVertical: 8, paddingHorizontal: 16,
-      borderRadius: BORDER_RADIUS, borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      borderRadius: BORDER_RADIUS, borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint,
     },
     durationChipActive: { backgroundColor: theme.color.ink, borderColor: theme.color.ink },
     durationChipText: { fontSize: 13, color: theme.color.inkMuted, fontWeight: '500' },

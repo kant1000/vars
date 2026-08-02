@@ -22,6 +22,7 @@ import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { VarsTheme } from '@/constants/visualSystem';
 import { useVarsTheme } from '@/contexts/ThemeContext';
+import { BORDER_WIDTH } from '@/constants/colors';
 
 const { width, height } = Dimensions.get('window');
 
@@ -205,7 +206,7 @@ function makeStyles(theme: VarsTheme) {
       fontWeight: '700',
     },
     nextButton: {
-      borderWidth: 1.5,
+      borderWidth: BORDER_WIDTH.regular,
       borderColor: theme.color.ink,
       borderRadius: 5,
       paddingVertical: 18,

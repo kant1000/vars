@@ -13,7 +13,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { signOut } from '@/lib/auth';
-import { BORDER_RADIUS } from '@/constants/colors';
+import { BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { ChevronRightIcon, CheckIcon } from '@/components/icons';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
@@ -439,7 +439,7 @@ function makeStyles(theme: VarsTheme) {
     header: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       paddingHorizontal: 16, paddingVertical: 12,
-      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+      borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
     },
     backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
     backText: { fontSize: 28, color: theme.color.ink, lineHeight: 32 },
@@ -452,13 +452,13 @@ function makeStyles(theme: VarsTheme) {
       marginBottom: 8, marginLeft: 2,
     },
     card: {
-      borderWidth: 1, borderColor: theme.color.inkFaint, borderRadius: BORDER_RADIUS,
+      borderWidth: BORDER_WIDTH.thin, borderColor: theme.color.inkFaint, borderRadius: BORDER_RADIUS,
       backgroundColor: theme.color.bg, marginBottom: 28, overflow: 'hidden',
     },
 
     fieldRow: {
       flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14,
-      minHeight: 54, borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+      minHeight: 54, borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
     },
     lockedRow: { backgroundColor: theme.color.surface2 },
     lastRow: { borderBottomWidth: 0 },
@@ -467,21 +467,21 @@ function makeStyles(theme: VarsTheme) {
     fieldValue: { flex: 1, fontSize: 15, color: theme.color.ink },
     lockBadge: {
       fontSize: 11, fontWeight: '600', color: theme.color.inkMuted,
-      borderWidth: 1, borderColor: theme.color.inkFaint, borderRadius: BORDER_RADIUS,
+      borderWidth: BORDER_WIDTH.thin, borderColor: theme.color.inkFaint, borderRadius: BORDER_RADIUS,
       paddingHorizontal: 6, paddingVertical: 2,
     },
 
     row: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       paddingHorizontal: 14, height: 54,
-      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+      borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
     },
     rowLabel: { fontSize: 15, fontWeight: '500', color: theme.color.ink },
     rowDestructive: { fontSize: 15, fontWeight: '500', color: theme.color.accentRed },
 
     switchRow: {
       paddingHorizontal: 14, paddingVertical: 10,
-      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+      borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
     },
 
     confirmBtn: {
@@ -506,14 +506,14 @@ function makeStyles(theme: VarsTheme) {
 
     modalHeader: {
       flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-      paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+      paddingBottom: 16, borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
     },
     modalTitle: { fontSize: 17, fontWeight: '700', color: theme.color.ink },
     modalCancel: { fontSize: 15, color: theme.color.inkMuted, fontWeight: '500' },
     modalBody: { paddingTop: 20 },
     passwordField: {
       flexDirection: 'row', alignItems: 'center',
-      borderWidth: 1.5, borderColor: theme.color.inkFaint, borderRadius: BORDER_RADIUS,
+      borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint, borderRadius: BORDER_RADIUS,
       paddingHorizontal: 14, height: 54, marginBottom: 12,
     },
     passwordInput: { flex: 1, fontSize: 15, color: theme.color.ink },

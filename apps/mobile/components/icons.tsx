@@ -3,7 +3,7 @@ import Svg, { Path, Circle, Rect, Line, Polyline } from 'react-native-svg';
 
 type P = { size?: number; color?: string };
 
-const sw = 1.75;
+const sw = 1.5;
 const base = (size: number, color: string) => ({
   width: size, height: size, viewBox: '0 0 24 24',
   fill: 'none' as const, stroke: color, strokeWidth: sw,
@@ -35,7 +35,7 @@ export function PenLineIcon({ size = 16, color = '#1A1A1A' }: P) {
   return <Svg {...base(size, color)}><Path d="M12 20h9" /><Path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></Svg>;
 }
 export function StarFilledIcon({ size = 16, color = '#1A1A1A' }: P) {
-  return <Svg width={size} height={size} viewBox="0 0 24 24"><Path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill={color} stroke={color} strokeWidth="1.75" strokeLinejoin="round" /></Svg>;
+  return <Svg width={size} height={size} viewBox="0 0 24 24"><Path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill={color} stroke={color} strokeWidth="1.5" strokeLinejoin="round" /></Svg>;
 }
 export function StarEmptyIcon({ size = 16, color = '#1A1A1A' }: P) {
   return <Svg {...base(size, color)}><Path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></Svg>;

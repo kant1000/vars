@@ -1,4 +1,6 @@
 // VARS brand colours
+import { StyleSheet } from 'react-native';
+
 export const Colors = {
   primary: '#0A7AFF',       // VARS blue
   primaryDark: '#0060CC',
@@ -75,3 +77,13 @@ export type ColorKey = keyof typeof Colors;
 // ── Design system token ────────────────────────────────────────
 // All borderRadius values in the app must use this. No other values allowed.
 export const BORDER_RADIUS = 5;
+
+// All border/stroke widths in the app must use these. No numeric literals allowed
+// (exceptions: social auth button borders in auth/login.tsx, mandated by brand guidelines).
+export const BORDER_WIDTH = {
+  hairline: StyleSheet.hairlineWidth,
+  thin: 0.75,
+  regular: 1,
+  thick: 1.5,
+  heavy: 2,
+} as const;

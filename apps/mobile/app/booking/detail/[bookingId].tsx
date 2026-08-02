@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { supabase } from '@/lib/supabase';
-import { Colors } from '@/constants/colors';
+import { Colors, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { useVarsTheme } from '@/contexts/ThemeContext';
 import { fmtPrice, fmtDuration, fmtTime, fmtDate, fmtDateTime } from '@/lib/format';
@@ -182,7 +182,7 @@ function makeStylesTl(theme: VarsTheme) {
     spineCol: { width: 24, alignItems: 'center', marginRight: 12 },
     dot: {
       width: 14, height: 14, borderRadius: 7,
-      borderWidth: 2, borderColor: theme.color.inkFaint,
+      borderWidth: BORDER_WIDTH.thick, borderColor: theme.color.inkFaint,
       backgroundColor: theme.color.bg, marginTop: 3,
     },
     dotReached: { borderColor: theme.color.accentBlue, backgroundColor: theme.color.accentBlue },
@@ -795,7 +795,7 @@ function makeStyles(theme: VarsTheme) {
     header: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       paddingHorizontal: 16, paddingVertical: 12,
-      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+      borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
     },
     headerBack: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
     headerBackText: { fontSize: 28, color: theme.color.ink, lineHeight: 32 },
@@ -803,7 +803,7 @@ function makeStyles(theme: VarsTheme) {
 
     statusHero: {
       paddingHorizontal: 20, paddingVertical: 20,
-      borderBottomWidth: 1, gap: 8,
+      borderBottomWidth: BORDER_WIDTH.thin, gap: 8,
     },
     statusPill: { alignSelf: 'flex-start', borderRadius: 5, paddingHorizontal: 8, paddingVertical: 3 },
     statusPillText: { fontSize: 12, fontWeight: '700' },
@@ -818,9 +818,9 @@ function makeStyles(theme: VarsTheme) {
 
     card: {
       backgroundColor: theme.color.surface2, borderRadius: 5,
-      padding: 16, borderWidth: 1, borderColor: theme.color.inkFaint, gap: 2,
+      padding: 16, borderWidth: BORDER_WIDTH.thin, borderColor: theme.color.inkFaint, gap: 2,
     },
-    cardDivider: { height: 1, backgroundColor: theme.color.inkFaint, marginVertical: 6 },
+    cardDivider: { height: BORDER_WIDTH.thin, backgroundColor: theme.color.inkFaint, marginVertical: 6 },
     summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5 },
     summaryLabel: { fontSize: 14, color: theme.color.inkMuted },
     summaryValue: { fontSize: 14, fontWeight: '600', color: theme.color.ink, maxWidth: '60%', textAlign: 'right' },
@@ -830,7 +830,7 @@ function makeStyles(theme: VarsTheme) {
     addressRow: {
       flexDirection: 'row', alignItems: 'flex-start', gap: 6,
       backgroundColor: theme.color.surface2, borderRadius: 5,
-      padding: 10, borderWidth: 1, borderColor: theme.color.inkFaint,
+      padding: 10, borderWidth: BORDER_WIDTH.thin, borderColor: theme.color.inkFaint,
     },
     addressText: { flex: 1, fontSize: 13, color: theme.color.ink, lineHeight: 18 },
 
@@ -849,18 +849,18 @@ function makeStyles(theme: VarsTheme) {
     primaryBtnText: { color: theme.color.inverseInk, fontSize: 16, fontWeight: '700' },
     secondaryBtn: {
       height: 44, borderRadius: 5, alignItems: 'center', justifyContent: 'center',
-      borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint,
     },
     secondaryBtnText: { fontSize: 15, fontWeight: '600', color: theme.color.inkMuted },
     cancelBtn: {
       height: 50, borderRadius: 5, alignItems: 'center', justifyContent: 'center',
-      borderWidth: 1.5, borderColor: theme.color.accentRed + '60',
+      borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.accentRed + '60',
     },
     cancelBtnText: { fontSize: 15, fontWeight: '600', color: theme.color.accentRed },
     btnDisabled: { opacity: 0.5 },
     servicePhoto: { width: 160, height: 160, borderRadius: 5 },
     reviewDisplay: {
-      borderWidth: 1, borderColor: theme.color.inkFaint, borderRadius: 5,
+      borderWidth: BORDER_WIDTH.thin, borderColor: theme.color.inkFaint, borderRadius: 5,
       paddingHorizontal: 16, paddingVertical: 14,
       flexDirection: 'row', alignItems: 'center', gap: 12,
     },
@@ -878,18 +878,18 @@ function makeStyles(theme: VarsTheme) {
     modalBold: { fontWeight: '700', color: theme.color.ink },
     disputeInput: {
       backgroundColor: theme.color.surface2, borderRadius: 5,
-      borderWidth: 1, borderColor: theme.color.inkFaint,
+      borderWidth: BORDER_WIDTH.thin, borderColor: theme.color.inkFaint,
       paddingHorizontal: 14, paddingVertical: 12,
       fontSize: 15, color: theme.color.ink, minHeight: 80,
     },
     categoryRow: {
       flexDirection: 'row', alignItems: 'center', gap: 12,
       paddingVertical: 12, paddingHorizontal: 14,
-      borderRadius: 5, borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      borderRadius: 5, borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint,
       backgroundColor: theme.color.surface2,
     },
     categoryRowSelected: { borderColor: theme.color.accentRed, backgroundColor: theme.color.accentRed + '0D' },
-    radio: { width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: theme.color.inkFaint },
+    radio: { width: 18, height: 18, borderRadius: 9, borderWidth: BORDER_WIDTH.thick, borderColor: theme.color.inkFaint },
     radioSelected: { borderColor: theme.color.accentRed, backgroundColor: theme.color.accentRed },
     categoryLabel: { fontSize: 14, color: theme.color.ink, flex: 1 },
     categoryLabelSelected: { fontWeight: '600', color: theme.color.accentRed },
@@ -901,7 +901,7 @@ function makeStyles(theme: VarsTheme) {
     },
     rescheduleTimeCard: {
       backgroundColor: theme.color.surface2, borderRadius: 5,
-      padding: 20, borderWidth: 1, borderColor: theme.color.inkFaint,
+      padding: 20, borderWidth: BORDER_WIDTH.thin, borderColor: theme.color.inkFaint,
       alignItems: 'center', width: '100%', marginVertical: 4,
     },
     rescheduleDateText: { fontSize: 15, fontWeight: '600', color: theme.color.inkMuted },

@@ -23,6 +23,7 @@ import {
   varsElevationStyle,
   varsLight,
 } from '@/constants/visualSystem';
+import { BORDER_WIDTH } from '@/constants/colors';
 
 export { iconSystemNames };
 export type { VarsIconName };
@@ -439,7 +440,7 @@ const styles = StyleSheet.create({
   },
   button: {
     borderRadius: VARS_RADIUS,
-    borderWidth: 1.5,
+    borderWidth: BORDER_WIDTH.regular,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
@@ -462,7 +463,7 @@ const styles = StyleSheet.create({
   input: {
     minHeight: 50,
     borderRadius: VARS_RADIUS,
-    borderWidth: 1.5,
+    borderWidth: BORDER_WIDTH.regular,
     paddingHorizontal: 14,
     fontSize: 16,
   },
@@ -481,7 +482,7 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: VARS_RADIUS,
-    borderWidth: 1.5,
+    borderWidth: BORDER_WIDTH.regular,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -497,7 +498,7 @@ const styles = StyleSheet.create({
     width: SWITCH_TRACK_WIDTH,
     height: SWITCH_TRACK_HEIGHT,
     borderRadius: SWITCH_TRACK_HEIGHT / 2,
-    borderWidth: 1.5,
+    borderWidth: BORDER_WIDTH.regular,
     padding: SWITCH_TRACK_PADDING,
     justifyContent: 'center',
   },
@@ -505,14 +506,14 @@ const styles = StyleSheet.create({
     width: SWITCH_THUMB_SIZE,
     height: SWITCH_THUMB_SIZE,
     borderRadius: SWITCH_THUMB_SIZE / 2,
-    borderWidth: 1,
+    borderWidth: BORDER_WIDTH.thin,
     backgroundColor: '#FFFFFF',
   },
   segmentWrap: {
     minHeight: 44,
     flexDirection: 'row',
     borderRadius: VARS_RADIUS,
-    borderWidth: 1.5,
+    borderWidth: BORDER_WIDTH.regular,
     overflow: 'hidden',
   },
   segment: {

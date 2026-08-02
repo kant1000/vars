@@ -20,7 +20,7 @@ import { useVarsTheme } from '@/contexts/ThemeContext';
 import { VarsSkeleton, VarsSwitch } from '@/components/ui';
 import { signOut } from '@/lib/auth';
 import { pickAndUploadImage } from '@/lib/storage';
-import { Colors, BORDER_RADIUS } from '@/constants/colors';
+import { Colors, BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { fmtPrice, fmtLongDate } from '@/lib/format';
 import { HeartIcon, BellIcon, EditIcon, ChevronRightIcon } from '@/components/icons';
@@ -387,7 +387,7 @@ function makeStyles(theme: VarsTheme) {
     // Header
     header: {
       alignItems: 'center', paddingHorizontal: 20, paddingBottom: 28,
-      backgroundColor: theme.color.bg, borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+      backgroundColor: theme.color.bg, borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
     },
     avatarWrap: { position: 'relative', marginBottom: 14 },
     avatar: { width: 88, height: 88, borderRadius: 44 },
@@ -398,25 +398,25 @@ function makeStyles(theme: VarsTheme) {
       width: 26, height: 26, borderRadius: 13,
       backgroundColor: theme.color.ink,
       alignItems: 'center', justifyContent: 'center',
-      borderWidth: 2, borderColor: theme.color.bg,
+      borderWidth: BORDER_WIDTH.thick, borderColor: theme.color.bg,
     },
     name: { fontSize: 22, fontWeight: '800', color: theme.color.ink, marginBottom: 4 },
     phoneDisplay: { fontSize: 14, color: theme.color.inkMuted, marginBottom: 12 },
-    editBtn: { paddingHorizontal: 20, paddingVertical: 8, borderWidth: 1.5, borderColor: theme.color.inkFaint, borderRadius: 5 },
+    editBtn: { paddingHorizontal: 20, paddingVertical: 8, borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint, borderRadius: 5 },
     editBtnText: { fontSize: 13, fontWeight: '600', color: theme.color.inkMuted },
 
     // Edit form
     editForm: { width: '100%', gap: 10, marginTop: 4 },
     input: {
       backgroundColor: theme.color.surface2, borderRadius: BORDER_RADIUS,
-      borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint,
       paddingHorizontal: 14, paddingVertical: 11,
       fontSize: 15, color: theme.color.ink,
     },
     editActions: { flexDirection: 'row', gap: 10 },
     cancelBtn: {
       flex: 1, height: 46, borderRadius: 5,
-      borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint,
       alignItems: 'center', justifyContent: 'center',
     },
     cancelBtnText: { fontSize: 14, fontWeight: '600', color: theme.color.inkMuted },
@@ -436,14 +436,14 @@ function makeStyles(theme: VarsTheme) {
     },
     sectionBody: {
       backgroundColor: theme.color.bg,
-      borderRadius: 5, borderWidth: 1, borderColor: theme.color.inkFaint, overflow: 'hidden',
+      borderRadius: 5, borderWidth: BORDER_WIDTH.thin, borderColor: theme.color.inkFaint, overflow: 'hidden',
     },
 
     // Booking rows
     bookingRow: {
       flexDirection: 'row', alignItems: 'center',
       paddingHorizontal: 14, paddingVertical: 12,
-      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+      borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
     },
     bookingService: { fontSize: 14, fontWeight: '700', color: theme.color.ink },
     bookingMeta: { fontSize: 12, color: theme.color.inkMuted, marginTop: 2 },
@@ -451,7 +451,7 @@ function makeStyles(theme: VarsTheme) {
     statusPill: { borderRadius: BORDER_RADIUS, paddingHorizontal: 7, paddingVertical: 2 },
     statusText: { fontSize: 11, fontWeight: '700', textTransform: 'capitalize' },
     reviewBtn: {
-      borderWidth: 1, borderColor: theme.color.inkFaint, borderRadius: BORDER_RADIUS,
+      borderWidth: BORDER_WIDTH.thin, borderColor: theme.color.inkFaint, borderRadius: BORDER_RADIUS,
       paddingHorizontal: 8, paddingVertical: 3,
     },
     reviewBtnText: { fontSize: 11, fontWeight: '700', color: theme.color.inkMuted },
@@ -462,19 +462,19 @@ function makeStyles(theme: VarsTheme) {
     settingsRow: {
       flexDirection: 'row', alignItems: 'center', gap: 12,
       paddingHorizontal: 14, paddingVertical: 14,
-      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+      borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
     },
     settingsIcon: { width: 24, alignItems: 'center' as const, justifyContent: 'center' as const },
     settingsLabel: { flex: 1, fontSize: 14, fontWeight: '600', color: theme.color.ink },
     switchRow: {
       paddingHorizontal: 14, paddingVertical: 10,
-      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+      borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
     },
     switchRowLast: { borderBottomWidth: 0 },
 
     // Sign out
     signOutWrap: { alignItems: 'center', paddingTop: 32, paddingBottom: 8, gap: 12 },
-    signOutBtn: { paddingHorizontal: 32, paddingVertical: 12, borderWidth: 1.5, borderColor: theme.color.inkFaint, borderRadius: 5 },
+    signOutBtn: { paddingHorizontal: 32, paddingVertical: 12, borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint, borderRadius: 5 },
     signOutText: { fontSize: 15, fontWeight: '600', color: theme.color.accentRed },
     versionText: { fontSize: 12, color: theme.color.inkMuted },
   });

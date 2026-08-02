@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text } from 'react-native';
+import { BORDER_WIDTH } from '@/constants/colors';
 
 export type VendorStatus = 'online' | 'busy' | 'offline';
 
@@ -21,7 +22,7 @@ export function StatusDot({ status, size = 14 }: Props) {
         height: size,
         borderRadius: size / 2,
         backgroundColor: bg,
-        borderWidth: Math.max(1.5, size * 0.11),
+        borderWidth: Math.max(BORDER_WIDTH.regular, size * 0.11),
         borderColor: '#FFFFFF',
         alignItems: 'center',
         justifyContent: 'center',

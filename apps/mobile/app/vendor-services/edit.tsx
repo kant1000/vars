@@ -19,6 +19,7 @@ import {
   MIN_SERVICE_PRICE_KOBO, SERVICE_NAME_MAX_CHARS, SERVICE_DESC_MAX_CHARS,
 } from '@vars/shared';
 import { sanitizeContent } from '@/lib/format';
+import { BORDER_WIDTH } from '@/constants/colors';
 
 const L1_KEYS = Object.values(CATEGORY_L1) as string[];
 
@@ -299,7 +300,7 @@ function makeStyles(theme: VarsTheme) {
     pillRowInner: { flexDirection: 'row', gap: 8, paddingRight: 24 },
     pill: {
       paddingVertical: 8, paddingHorizontal: 16,
-      borderRadius: 5, borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      borderRadius: 5, borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint,
       backgroundColor: theme.color.bg,
     },
     pillActive: { backgroundColor: theme.color.ink, borderColor: theme.color.ink },
@@ -307,7 +308,7 @@ function makeStyles(theme: VarsTheme) {
     pillTextActive: { color: theme.color.inverseInk },
 
     textInput: {
-      height: 44, borderWidth: 1.5, borderColor: theme.color.inkFaint, borderRadius: 5,
+      height: 44, borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint, borderRadius: 5,
       paddingHorizontal: 12, fontSize: 15, color: theme.color.ink, marginBottom: 16,
       backgroundColor: theme.color.surface2,
     },
@@ -317,7 +318,7 @@ function makeStyles(theme: VarsTheme) {
     durationRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
     durationChip: {
       paddingVertical: 8, paddingHorizontal: 16,
-      borderRadius: 5, borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      borderRadius: 5, borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint,
     },
     durationChipActive: { backgroundColor: theme.color.ink, borderColor: theme.color.ink },
     durationChipText: { fontSize: 13, color: theme.color.inkMuted, fontWeight: '500' },

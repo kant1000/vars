@@ -15,7 +15,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { VarsButton, VarsInput, VarsSurface } from '@/components/ui';
 import { useVarsTheme } from '@/contexts/ThemeContext';
-import { BORDER_RADIUS } from '@/constants/colors';
+import { BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 // 'failed' covers in-session WebView failures and returning after a webhook rejection.
 // 'review' covers needs_review — KYC passed but data capture failed; admin resolves.
@@ -445,7 +445,7 @@ function makeStyles(theme: VarsTheme) {
     prepCard: { padding: 20, gap: 10 },
     prepTitle: { fontSize: 16, fontWeight: '700', color: theme.color.ink, marginBottom: 4 },
     prepItem: { fontSize: 14, color: theme.color.inkMuted, lineHeight: 20 },
-    prepDivider: { height: 1, backgroundColor: theme.color.inkFaint, marginVertical: 6 },
+    prepDivider: { height: BORDER_WIDTH.thin, backgroundColor: theme.color.inkFaint, marginVertical: 6 },
     prepNote: { fontSize: 13, color: theme.color.inkMuted, lineHeight: 18 },
     prepBack: { alignItems: 'center', paddingVertical: 8 },
     prepBackText: { fontSize: 14, color: theme.color.inkMuted },
@@ -453,12 +453,12 @@ function makeStyles(theme: VarsTheme) {
     verifiedBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0FDF4', borderRadius: BORDER_RADIUS, padding: 12 },
     verifiedText: { color: theme.color.accentGreen, fontSize: 15, fontWeight: '600' },
 
-    input: { height: 50, borderWidth: 1.5, borderColor: theme.color.inkFaint, borderRadius: BORDER_RADIUS, paddingHorizontal: 14, justifyContent: 'center' },
+    input: { height: 50, borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint, borderRadius: BORDER_RADIUS, paddingHorizontal: 14, justifyContent: 'center' },
     inputText: { fontSize: 16, color: theme.color.ink },
     inputPlaceholder: { fontSize: 16, color: theme.color.inkMuted },
 
-    bankPicker: { borderWidth: 1.5, borderColor: theme.color.inkFaint, borderRadius: BORDER_RADIUS, overflow: 'hidden', backgroundColor: theme.color.bg },
-    bankOption: { padding: 14, borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint },
+    bankPicker: { borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint, borderRadius: BORDER_RADIUS, overflow: 'hidden', backgroundColor: theme.color.bg },
+    bankOption: { padding: 14, borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint },
     bankOptionText: { fontSize: 15, color: theme.color.ink },
 
     // Floats over the KYC WebView, not app chrome — stays fixed-contrast.

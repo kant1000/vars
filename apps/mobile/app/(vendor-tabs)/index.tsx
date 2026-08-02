@@ -19,7 +19,7 @@ import { ConfirmModal } from '@/components/ConfirmModal';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
-import { Colors, BORDER_RADIUS } from '@/constants/colors';
+import { Colors, BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { useVarsTheme } from '@/contexts/ThemeContext';
 import { uploadSinglePortfolioPhoto } from '@/lib/storage';
@@ -1115,12 +1115,12 @@ function makeStylesC(theme: VarsTheme) {
     header: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       paddingHorizontal: 20, paddingVertical: 14,
-      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+      borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
     },
     headerTitle: { fontSize: 24, fontWeight: '800', color: theme.color.ink },
     onlineToggle: {
       height: 34, paddingHorizontal: 14, borderRadius: 5,
-      borderWidth: 1.5, borderColor: theme.color.ink, backgroundColor: 'transparent',
+      borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.ink, backgroundColor: 'transparent',
       alignItems: 'center', justifyContent: 'center',
     },
     onlineToggleOverlay: {
@@ -1139,7 +1139,7 @@ function makeStylesC(theme: VarsTheme) {
     // Cards
     card: {
       backgroundColor: theme.color.surface2, borderRadius: 5,
-      padding: 16, borderWidth: 1, borderColor: theme.color.inkFaint, marginBottom: 10, gap: 6,
+      padding: 16, borderWidth: BORDER_WIDTH.thin, borderColor: theme.color.inkFaint, marginBottom: 10, gap: 6,
     },
     cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },
     statusDot: { width: 10, height: 10, borderRadius: 5 },
@@ -1149,7 +1149,7 @@ function makeStylesC(theme: VarsTheme) {
     serviceName: { fontSize: 16, fontWeight: '600', color: theme.color.ink },
     meta: { fontSize: 13, color: theme.color.inkMuted },
     earningsBox: {
-      marginTop: 8, paddingTop: 10, borderTopWidth: 1, borderTopColor: theme.color.inkFaint,
+      marginTop: 8, paddingTop: 10, borderTopWidth: BORDER_WIDTH.thin, borderTopColor: theme.color.inkFaint,
     },
     earningsLabel: {
       fontSize: 10, fontWeight: '700', color: theme.color.inkMuted,
@@ -1162,7 +1162,7 @@ function makeStylesC(theme: VarsTheme) {
     btnRow: { flexDirection: 'row', gap: 10, marginTop: 8 },
     declineBtn: {
       flex: 1, height: 44, borderRadius: 5,
-      borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint,
       alignItems: 'center', justifyContent: 'center',
     },
     declineBtnText: { fontSize: 14, fontWeight: '700', color: theme.color.inkMuted },
@@ -1194,7 +1194,7 @@ function makeStylesC(theme: VarsTheme) {
     renderReminderBanner: {
       backgroundColor: Colors.offlineText,
       borderRadius: 5, padding: 10, marginTop: 4,
-      borderWidth: 1, borderColor: Colors.amberBorder,
+      borderWidth: BORDER_WIDTH.thin, borderColor: Colors.amberBorder,
     },
     renderReminderText: { fontSize: 13, color: Colors.offlineBg, fontWeight: '600', lineHeight: 18 },
 
@@ -1210,7 +1210,7 @@ function makeStylesC(theme: VarsTheme) {
     graceBanner: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       backgroundColor: Colors.offlineText, borderRadius: BORDER_RADIUS,
-      borderWidth: 1, borderColor: Colors.amberBorder,
+      borderWidth: BORDER_WIDTH.thin, borderColor: Colors.amberBorder,
       paddingHorizontal: 12, paddingVertical: 8, marginTop: 8,
     },
     graceText: { fontSize: 12, fontWeight: '600', color: Colors.offlineBg, flex: 1 },
@@ -1219,7 +1219,7 @@ function makeStylesC(theme: VarsTheme) {
     // Gate fired — customer is completing checkout
     gateConfirmingBanner: {
       backgroundColor: Colors.warning + '15', borderRadius: BORDER_RADIUS,
-      borderWidth: 1, borderColor: Colors.warning + '40',
+      borderWidth: BORDER_WIDTH.thin, borderColor: Colors.warning + '40',
       padding: 12, marginTop: 8, gap: 4,
     },
     gateConfirmingTitle: { fontSize: 13, fontWeight: '700', color: Colors.warning },
@@ -1249,7 +1249,7 @@ function makeStylesC(theme: VarsTheme) {
     // Rows
     row: {
       flexDirection: 'row', alignItems: 'center',
-      paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint,
+      paddingVertical: 12, borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
     },
     rowService: { fontSize: 14, fontWeight: '600', color: theme.color.ink },
     rowMeta: { fontSize: 12, color: theme.color.inkMuted, marginTop: 2 },
@@ -1265,7 +1265,7 @@ function makeStylesC(theme: VarsTheme) {
     blockBanner: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       backgroundColor: Colors.primaryLight, paddingHorizontal: 16, paddingVertical: 10,
-      borderBottomWidth: 1, borderBottomColor: theme.color.inkFaint, gap: 8,
+      borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint, gap: 8,
     },
     blockBannerText: { flex: 1, fontSize: 13, color: Colors.primary, fontWeight: '500', lineHeight: 18 },
     blockBannerLink: { fontSize: 13, fontWeight: '700', color: Colors.primary, textDecorationLine: 'underline' },
@@ -1304,7 +1304,7 @@ function makeStylesGm(theme: VarsTheme) {
     primaryBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
     ghostBtn: {
       width: '100%', height: 48,
-      borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint,
       borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center',
       marginTop: 4,
     },
@@ -1335,7 +1335,7 @@ function makeStylesZm(theme: VarsTheme) {
     confirmBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
     changeBtn: {
       width: '100%', height: 48,
-      borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint,
       borderRadius: 5, alignItems: 'center', justifyContent: 'center',
       marginTop: 4,
     },

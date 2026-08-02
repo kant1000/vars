@@ -32,7 +32,7 @@ import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
-import { BORDER_RADIUS } from '@/constants/colors';
+import { BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { useVarsTheme } from '@/contexts/ThemeContext';
 
@@ -575,7 +575,7 @@ function makeStyles(theme: VarsTheme) {
     tabTextActive: { color: theme.color.ink, fontWeight: '600' },
 
     input: {
-      height: 54, borderWidth: 1.5, borderColor: theme.color.inkFaint,
+      height: 54, borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint,
       borderRadius: BORDER_RADIUS, paddingHorizontal: 16,
       fontSize: 16, color: theme.color.ink, marginBottom: 14,
       backgroundColor: theme.color.bg,
