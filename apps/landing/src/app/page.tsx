@@ -36,9 +36,33 @@ const structuredData = [
     '@context': 'https://schema.org',
     '@type': 'Organization',
     name: 'VARS',
+    legalName: 'VARSAPP LIMITED',
     url: siteUrl,
     logo: `${siteUrl}/logo.svg`,
     email: 'hello@bookwithvars.com',
+    telephone: '+2349021561493',
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: '119 LSDPC Estate, Phase III',
+      addressLocality: 'Ogba',
+      addressRegion: 'Lagos State',
+      addressCountry: 'NG',
+    },
+    contactPoint: [
+      {
+        '@type': 'ContactPoint',
+        telephone: '+2349021561493',
+        email: 'hello@bookwithvars.com',
+        contactType: 'customer service',
+        areaServed: 'NG',
+        hoursAvailable: {
+          '@type': 'OpeningHoursSpecification',
+          dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+          opens: '09:00',
+          closes: '17:00',
+        },
+      },
+    ],
     sameAs: ['https://www.instagram.com/bookwithvars'],
     description:
       'VARS is a Lagos home service beauty platform for stylists, barbers, and makeup artists.',
@@ -336,6 +360,8 @@ export default async function HomePage() {
           &nbsp;&nbsp;|&nbsp;&nbsp;
           <a href="https://www.instagram.com/bookwithvars">Instagram</a>
           &nbsp;&nbsp;|&nbsp;&nbsp;
+          <a href="/contact">Contact</a>
+          &nbsp;&nbsp;|&nbsp;&nbsp;
           <a href="/privacy">Privacy</a>
           &nbsp;&nbsp;|&nbsp;&nbsp;
           <a href="/terms">Terms</a>
@@ -348,8 +374,14 @@ export default async function HomePage() {
           &nbsp;&nbsp;|&nbsp;&nbsp;
           <a href="/roadmap">Roadmap</a>
         </p>
+        <p style={{ marginTop: 16, maxWidth: 480, marginLeft: 'auto', marginRight: 'auto' }}>
+          VARSAPP LIMITED is registered in Lagos, Nigeria, at 119 LSDPC Estate, Phase III, Ogba,
+          Lagos State, Nigeria. Reach us at{' '}
+          <a href="mailto:hello@bookwithvars.com">hello@bookwithvars.com</a> or{' '}
+          <a href="tel:+2349021561493">+2349021561493</a>, Monday to Friday, 9:00 to 17:00 WAT.
+        </p>
         <p style={{ marginTop: 16 }}>
-          &copy; {new Date().getFullYear()} Varsapp Limited. All rights reserved.
+          &copy; {new Date().getFullYear()} VARSAPP LIMITED. All rights reserved.
         </p>
       </footer>
     </>

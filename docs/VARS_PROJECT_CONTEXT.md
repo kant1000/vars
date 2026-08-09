@@ -262,7 +262,7 @@ What is built:
 
 Vendors first. Always. A user who opens VARS and sees no vendors nearby deletes the app and never returns. Supply density is the product.
 
-- **Primary seeding strategy:** Personal barber contact in Lagos connecting his professional network. Founder-led, zero cost, highest conversion rate.
+- **Primary seeding strategy:** The board hired three independent recruitment agents who went directly to barber shops, salons, and studios across Lagos (Lekki, VI, Surulere, Yaba, Ikeja) for direct, in-person recruitment.
 - **Channels:** Instagram (organic + paid), TikTok (organic + paid), WhatsApp groups, physical shop visits — Lekki, VI, Surulere, Yaba, Ikeja.
 
 ### Phase 2 — Open the Market (current phase)
@@ -271,14 +271,21 @@ Vendors first. Always. A user who opens VARS and sees no vendors nearby deletes 
 
 | Milestone | Period | Status |
 |---|---|---|
-| 400 Vendors in the Pipeline | June 2026 | **Active now** — 75 registered, target 400 verified and ready to go live |
-| App Store Launch | July 2026 | Upcoming — supply-only month; vendor onboarding only, no customer marketing yet |
-| Both Sides Open | August 2026 | Upcoming — customer marketing activates; first month both sides are live simultaneously |
-| Platform Health Review | Q3 2026 | Upcoming — audit booking quality, vendor performance, platform health before year-end push |
+| 410 Vendors in the Pipeline | June 2026 | **Completed** — pipeline built, onboarding now active |
+| App Store Launch | End of July 2026 | **Active now** (target period) — Android build is ready; iOS is blocked on a stalled Apple Developer enrollment. Not actually live on either store yet as of this writing — see `docs/store-submission-tracker.md` for real submission status. Public roadmap copy describes this period in forward/aspirational voice; this row reflects operational reality. |
+| Vendor Onboarding | August 2026 | Upcoming — converting the pipeline into active, verified stylists (KYC, bank setup, portfolio review) |
+| Both Sides Open | End of September 2026 | Upcoming — customer marketing activates; first month both sides are live simultaneously |
+| Platform Health Review | Q4 2026 | Upcoming — audit booking quality, vendor performance, platform health before year-end push |
 | Year-End | November–December 2026 | Upcoming |
 | 1,000 Completed Bookings | End 2026 | The Year 1 milestone — completed sessions, not installs |
 
 Phase 2 entry conditions were met as of May 2026: 100+ verified vendors, 4+ Lagos neighbourhoods, all 3 service categories, 3+ vendors per category per area.
+
+### Beyond
+
+| Milestone | Period | Status |
+|---|---|---|
+| VARS Points | 2027 | Upcoming — every booking earns points for both customers and vendors; specific unlocks not yet defined |
 
 **Wide Awake blog** (`bookwithvars.com/blog`) — content marketing arm, launched ahead of the August customer marketing activation. Covers money, mindset, culture, and the Nigerian beauty market. Articles are authored by Seyi Ibitoye. Content is defined statically in `apps/landing/src/app/blog/articles.ts` — no CMS. Live articles as of May 2026: *The Culture of Shame*, *Lagos Has the Talent*, *The Number in Your Head*. Five further articles are queued as "coming soon".
 
@@ -320,3 +327,10 @@ No formal drop-off data across the 5-step onboarding flow yet. Once vendors onbo
 | Domain | bookwithvars.com — registered via Google/Squarespace. DNS pointed at Vercel for landing page. |
 | GitHub | github.com/kant1000/vars — private. |
 | Hosting | Vercel (landing + admin), Supabase (backend), EAS (mobile builds). |
+| Head of Operations | Victoria Oluwatosin Okodudu — named operational contact/signatory, distinct from the founder; used on contractor and partner-facing documents. Also appointed a company director of VARSAPP LIMITED, 1 August 2026 (board resolution). |
+
+---
+
+## 11. Follow-up TODOs
+
+- **Paystack Small Business Bundle:** Once Paystack live keys are processing 10+ transactions in 30 days, redeem the Small Business Bundle (3 months fee-free processing, ₦10M cap) and evaluate the bundled Google Ads credits for the customer marketing push. Added 2026-08-09 — bundle terms not independently re-verified against Paystack's current public terms before this was written; sanity-check before acting.

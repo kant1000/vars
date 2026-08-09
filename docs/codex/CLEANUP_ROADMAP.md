@@ -243,9 +243,10 @@ No Paystack charge at booking creation. The charge fires when the vendor commits
 
 | Milestone | Period | Status |
 |---|---|---|
-| 400 Vendors in the Pipeline | June 2026 | **Active now** |
-| App Store Launch | July 2026 | Upcoming — supply-only, no customer marketing yet |
-| Both Sides Open (customer marketing) | August 2026 | Upcoming |
+| 410 Vendors in the Pipeline | June 2026 | **Completed** |
+| App Store Launch | End of July 2026 | **Active now** (target period) — Android build ready, iOS blocked on stalled Apple Developer enrollment (see `docs/store-submission-tracker.md`) |
+| Vendor Onboarding | August 2026 | Upcoming |
+| Both Sides Open (customer marketing) | End of September 2026 | Upcoming |
 
 - Build vendor pipeline to 400 — 75 have registered interest. Outreach system is live; delivery activates when `DELIVERY_LIVE=true` is set in Supabase secrets.
 - Android APK delivery: local debug Gradle build when a phone is connected via USB (tried and tested, faster, real device logs), EAS Cloud Build (`eas build --platform android --profile preview`) when there's no phone plugged in — avoids Windows PATH/JDK friction. Full decision process: `docs/MOBILE_DEVICE_TESTING.md`.

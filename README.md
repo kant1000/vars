@@ -35,7 +35,7 @@ VARS is a mobile marketplace that connects customers in Lagos with verified beau
 | Admin | Next.js dashboard |
 | KYC | Youverify SDK (vendors only) |
 | Roadmap | `apps/landing/src/app/roadmap/data/milestones.ts` — source of truth for phase and milestone state. Live at bookwithvars.com/roadmap. |
-| Current milestone | 400 Vendors in the Pipeline (June 2026). App Store Launch: July 2026. Customer marketing: August 2026. |
+| Current milestone | 410 Vendors in the Pipeline (June 2026, complete). App Store Launch: end of July 2026 (target — Apple Developer enrollment currently stalled, see `docs/store-submission-tracker.md`). Both Sides Open (customer marketing): end of September 2026. |
 
 The platform operates a **two-sided marketplace**:
 
