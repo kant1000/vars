@@ -11,7 +11,6 @@ import { createAdminClient, createAuthClient } from '../_shared/supabase.ts';
 import { BOOKING_STATUS } from '../_shared/constants.ts';
 import {
   sendNotification,
-  msg_vendorOnWay,
   msg_vendorArrived,
   msg_serviceRendered,
 } from '../_shared/notifications.ts';
@@ -82,10 +81,9 @@ Deno.serve(async (req: Request) => {
   ]);
 
   const vendorName = vendor?.full_name ?? 'Your vendor';
-  const msg =
-    status === 'on_way'           ? msg_vendorOnWay(vendorName) :
-    status === 'arrived'          ? msg_vendorArrived(vendorName) :
-                                    msg_serviceRendered(vendorName);
+  // on_way is excluded from JobStatus (see top-of-file comment) — status can only be
+  // 'arrived' or 'service_rendered' here.
+  const msg = status === 'arrived' ? msg_vendorArrived(vendorName) : msg_serviceRendered(vendorName);
 
   await sendNotification({
     recipientId: booking.user_id,

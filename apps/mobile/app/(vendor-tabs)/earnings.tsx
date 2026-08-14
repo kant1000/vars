@@ -19,6 +19,7 @@ import { BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { fmtPrice, fmtDate, fmtTime } from '@/lib/format';
 import { EyeIcon, EyeOffIcon } from '@/components/icons';
+import { PIONEER_BOOKINGS_THRESHOLD } from '@vars/shared';
 
 type Period = 'today' | 'week' | 'month' | 'all';
 
@@ -82,6 +83,15 @@ export default function EarningsScreen() {
     if (!vendorId) return;
     const range = periodRange(period);
 
+    const { data: vendorRow } = await supabase
+      .from('vendors')
+      .select('pioneer, pioneer_bookings_completed')
+      .eq('id', vendorId)
+      .single();
+    const vendorIsPioneer =
+      vendorRow?.pioneer === true &&
+      (vendorRow?.pioneer_bookings_completed ?? PIONEER_BOOKINGS_THRESHOLD) < PIONEER_BOOKINGS_THRESHOLD;
+
     let query = supabase
       .from('bookings')
       .select(`
@@ -101,7 +111,10 @@ export default function EarningsScreen() {
     setRows((data ?? []).map((b: any) => {
       const payoutRow = Array.isArray(b.payout_history) ? b.payout_history[0] : null;
       const totalKobo = b.service_price_kobo + (b.transport_fee_kobo ?? 0);
-      const vendorAmount = payoutRow?.vendor_amount_kobo ?? Math.round(totalKobo * 0.8);
+      // payout_history only exists once settled (status='completed'); for bookings still
+      // pending settlement, estimate using current pioneer status — matches settleBooking's
+      // own share logic closely enough for a "confirming/under review" estimate.
+      const vendorAmount = payoutRow?.vendor_amount_kobo ?? (vendorIsPioneer ? totalKobo : Math.round(totalKobo * 0.8));
       return {
         id: b.id,
         client_name: b.profiles?.full_name ?? 'Client',

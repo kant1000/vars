@@ -6,7 +6,7 @@
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient, createAuthClient } from '../_shared/supabase.ts';
-import { BOOKING_STATUS, BASE_RADIUS_KM, TRANSPORT_FEE_TIERS, PIONEER_BOOKINGS_THRESHOLD } from '../_shared/constants.ts';
+import { BOOKING_STATUS, BASE_RADIUS_KM, TRANSPORT_FEE_TIERS, PIONEER_BOOKINGS_THRESHOLD, AUTO_RELEASE_HOURS } from '../_shared/constants.ts';
 import { isSlotFree } from '../_shared/slot.ts';
 import { createTransportBuffers, createPreTransportBuffers } from '../_shared/calendar.ts';
 import {
@@ -259,7 +259,7 @@ Deno.serve(async (req: Request) => {
     // 7. Create booking
     const now = new Date();
     const scheduledEnd = new Date(scheduledDate.getTime() + durationMs);
-    const autoReleaseAt = new Date(scheduledEnd.getTime() + 2 * 60 * 60 * 1000);
+    const autoReleaseAt = new Date(scheduledEnd.getTime() + AUTO_RELEASE_HOURS * 60 * 60 * 1000);
     const userLocationPoint = `POINT(${user_location_lng} ${user_location_lat})`;
 
     const { data: booking, error: bookingError } = await supabase

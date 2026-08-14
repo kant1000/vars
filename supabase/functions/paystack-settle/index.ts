@@ -28,7 +28,7 @@ import {
   PaystackClient,
   calculateSettlement,
 } from '../_shared/paystack.ts';
-import { BOOKING_STATUS, PIONEER_BOOKINGS_THRESHOLD } from '../_shared/constants.ts';
+import { BOOKING_STATUS, PIONEER_BOOKINGS_THRESHOLD, AUTO_RELEASE_WARNING_MINUTES_BEFORE } from '../_shared/constants.ts';
 import {
   sendNotification,
   sendTransactionalEmail,
@@ -64,7 +64,7 @@ Deno.serve(async (req: Request) => {
     // subaccount settlement from the Paystack dashboard after this call.
     // --------------------------------------------------------
     if (isAdminCall) {
-      const { booking_id } = await req.json();
+      const { booking_id, dispute_id } = await req.json();
       if (!booking_id) return errorResponse('Missing booking_id');
 
       await settleBooking(supabase, booking_id, 'admin_dispute');
@@ -77,18 +77,25 @@ Deno.serve(async (req: Request) => {
         .single();
 
       if (booking) {
-        // Check if vendor still has other open/under_review disputes
+        // Check if vendor still has other open/under_review disputes.
+        // Exclude dispute_id (the one being resolved right now) — the caller
+        // hasn't marked it 'resolved' yet at this point (money moves before
+        // the dispute record updates), so without excluding it here this
+        // count would always find at least itself and settlement_on_hold
+        // would never clear.
         const { data: vendorBookingRows } = await supabase
           .from('bookings')
           .select('id')
           .eq('vendor_id', booking.vendor_id);
         const vendorBookingIds = (vendorBookingRows ?? []).map((b: { id: string }) => b.id);
 
-        const { count: totalOpen } = await supabase
+        let openDisputesQuery = supabase
           .from('disputes')
           .select('id', { count: 'exact', head: true })
           .in('booking_id', vendorBookingIds)
           .in('status', ['open', 'under_review']);
+        if (dispute_id) openDisputesQuery = openDisputesQuery.neq('id', dispute_id);
+        const { count: totalOpen } = await openDisputesQuery;
         if (totalOpen === 0) {
           await supabase
             .from('vendors')
@@ -179,10 +186,10 @@ Deno.serve(async (req: Request) => {
       let heldCount = 0;
 
       for (const [vendorId, vendorBookings] of byVendor) {
-        // Fetch vendor hold + restriction flags and subaccount code
+        // Fetch vendor hold + restriction flags, subaccount code, and pioneer status
         const { data: vendor } = await supabase
           .from('vendors')
-          .select('settlement_on_hold, is_restricted, paystack_subaccount_code')
+          .select('settlement_on_hold, is_restricted, paystack_subaccount_code, pioneer, pioneer_bookings_completed')
           .eq('id', vendorId)
           .single();
 
@@ -223,12 +230,18 @@ Deno.serve(async (req: Request) => {
           continue;
         }
 
-        // No disputes — settle all due bookings for this vendor
+        // No disputes — settle all due bookings for this vendor.
+        // Track pioneer_bookings_completed locally as settleBooking() increments it via
+        // RPC per booking, so later bookings in this loop see the updated count — mirrors
+        // settleBooking's own isPioneerBooking check instead of assuming every booking gets 80%.
         let vendorTotal = 0;
+        let pioneerCompletedSoFar = vendor?.pioneer_bookings_completed ?? PIONEER_BOOKINGS_THRESHOLD;
         for (const booking of vendorBookings!) {
           await settleBooking(supabase, booking.id, 'auto_release');
           const totalKobo = booking.service_price_kobo + ((booking as any).transport_fee_kobo ?? 0);
-          vendorTotal += Math.round(totalKobo * 0.8);
+          const isPioneerBooking = vendor?.pioneer === true && pioneerCompletedSoFar < PIONEER_BOOKINGS_THRESHOLD;
+          vendorTotal += isPioneerBooking ? totalKobo : Math.round(totalKobo * 0.8);
+          if (isPioneerBooking) pioneerCompletedSoFar++;
           settledCount++;
         }
 
@@ -283,9 +296,11 @@ Deno.serve(async (req: Request) => {
         remindedCount++;
       }
 
-      // 4. Warn customers 30 min before auto-release so they can dispute in time
-      const warnLo = new Date(now.getTime() + 25 * 60 * 1000).toISOString();
-      const warnHi = new Date(now.getTime() + 35 * 60 * 1000).toISOString();
+      // 4. Warn customers 30 min before auto-release so they can dispute in time.
+      // +/-5min tolerance around the target so a booking isn't missed between
+      // 5-minute cron ticks.
+      const warnLo = new Date(now.getTime() + (AUTO_RELEASE_WARNING_MINUTES_BEFORE - 5) * 60 * 1000).toISOString();
+      const warnHi = new Date(now.getTime() + (AUTO_RELEASE_WARNING_MINUTES_BEFORE + 5) * 60 * 1000).toISOString();
       const { data: warnBookings } = await supabase
         .from('bookings')
         .select('id, user_id, vendor_id, auto_release_at, profiles:user_id (push_token), vendors:vendor_id (full_name)')
@@ -349,7 +364,7 @@ Deno.serve(async (req: Request) => {
     // Settlement resumes automatically on the next cron run after admin lifts the restriction.
     const { data: vendor } = await supabase
       .from('vendors')
-      .select('settlement_on_hold, is_restricted, paystack_subaccount_code')
+      .select('settlement_on_hold, is_restricted, paystack_subaccount_code, pioneer, pioneer_bookings_completed')
       .eq('id', booking.vendor_id)
       .single();
 
@@ -369,11 +384,16 @@ Deno.serve(async (req: Request) => {
       if ((openDisputes ?? 0) === 0) {
         const paystack = new PaystackClient(Deno.env.get('PAYSTACK_SECRET_KEY')!);
         const totalKobo = booking.service_price_kobo + ((booking as any).transport_fee_kobo ?? 0);
+        // vendor was fetched before settleBooking() ran, so pioneer_bookings_completed here
+        // still reflects the pre-increment count — same value settleBooking used internally.
+        const isPioneerBooking =
+          vendor?.pioneer === true &&
+          (vendor.pioneer_bookings_completed ?? PIONEER_BOOKINGS_THRESHOLD) < PIONEER_BOOKINGS_THRESHOLD;
         await paystack.triggerSubaccountSettlement({
           vendor_id: booking.vendor_id,
           subaccount_code: vendor.paystack_subaccount_code,
           booking_ids: [booking_id],
-          total_amount_kobo: Math.round(totalKobo * 0.8),
+          total_amount_kobo: isPioneerBooking ? totalKobo : Math.round(totalKobo * 0.8),
         });
       }
     }

@@ -27,6 +27,7 @@ import { fmtPrice, fmtDuration, fmtDateTime } from '@/lib/format';
 import { fetchWithRetry } from '@/lib/fetchWithRetry';
 import { useNetworkState } from '@/lib/useNetworkState';
 import { flushQueue } from '@/lib/actionQueue';
+import { PIONEER_BOOKINGS_THRESHOLD } from '@vars/shared';
 import { cacheSet, cacheGet } from '@/lib/cache';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { LightningIcon, CheckCircleIcon, XCircleIcon, CarIcon, CreditCardIcon } from '@/components/icons';
@@ -828,7 +829,7 @@ export default function VendorJobsScreen() {
 
     if (!data) return;
 
-    setIsPioneer(data.pioneer === true && (data.pioneer_bookings_completed ?? 3) < 3);
+    setIsPioneer(data.pioneer === true && (data.pioneer_bookings_completed ?? PIONEER_BOOKINGS_THRESHOLD) < PIONEER_BOOKINGS_THRESHOLD);
     setIsRestricted(data.is_restricted === true);
     setRestrictionAmountKobo(data.restriction_amount_owed_kobo ?? 0);
     setRepaymentClaimed(data.restriction_repayment_claimed_at != null);

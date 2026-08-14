@@ -294,6 +294,24 @@ async function handleRefundUpdate(
       `booking=${booking?.id ?? 'unknown'} customer=${booking?.user_id ?? 'unknown'} — CUSTOMER NOT REFUNDED — MANUAL ACTION REQUIRED`
     );
 
+    // Surface on the admin dashboard alongside cron failures — this was previously
+    // console.error-only, so a failed refund had zero visibility outside the logs.
+    // job_name keyed per-reference (not a fixed slug) so system_alerts' UNIQUE(job_name)
+    // doesn't collapse distinct refund failures into one row.
+    const { error: alertErr } = await supabase.from('system_alerts').upsert(
+      {
+        alert_type: 'refund_failed',
+        job_name: `refund_failed:${reference ?? booking?.id ?? crypto.randomUUID()}`,
+        last_failed_at: now,
+        error_message: `Refund failed for booking ${booking?.id ?? 'unknown'} (ref=${reference ?? 'unknown'}, ` +
+          `amount=${amountKobo ?? 'unknown'} kobo, customer=${booking?.user_id ?? 'unknown'})`,
+      },
+      { onConflict: 'job_name' }
+    );
+    if (alertErr) {
+      console.error('refund.failed: system_alerts upsert failed:', alertErr);
+    }
+
     // Notify the customer that a manual refund is in progress so they aren't left in the dark.
     if (booking?.user_id) {
       const { error: notifErr } = await supabase.from('notifications').insert({

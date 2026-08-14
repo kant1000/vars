@@ -287,7 +287,7 @@ Phase 2 entry conditions were met as of May 2026: 100+ verified vendors, 4+ Lago
 |---|---|---|
 | VARS Points | 2027 | Upcoming — every booking earns points for both customers and vendors; specific unlocks not yet defined |
 
-**Wide Awake blog** (`bookwithvars.com/blog`) — content marketing arm, launched ahead of the August customer marketing activation. Covers money, mindset, culture, and the Nigerian beauty market. Articles are authored by Seyi Ibitoye. Content is defined statically in `apps/landing/src/app/blog/articles.ts` — no CMS. Live articles as of May 2026: *The Culture of Shame*, *Lagos Has the Talent*, *The Number in Your Head*. Five further articles are queued as "coming soon".
+**Wide Awake blog** (`bookwithvars.com/blog`) — content marketing arm, launched ahead of the 1 October 2026 "Both Sides Open" customer marketing activation (see `apps/landing/src/app/roadmap/data/milestones.ts` for current roadmap dates). Covers money, mindset, culture, and the Nigerian beauty market. Articles are authored by Seyi Ibitoye. Content is defined statically in `apps/landing/src/app/blog/articles.ts` — no CMS. Live articles as of May 2026: *The Culture of Shame*, *Lagos Has the Talent*, *The Number in Your Head*. Five further articles are queued as "coming soon".
 
 ### Two-stage vendor registration
 

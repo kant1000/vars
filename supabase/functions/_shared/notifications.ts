@@ -40,16 +40,21 @@ export async function sendNotification(payload: NotificationPayload): Promise<vo
   // 2. Send push notification via Expo if token exists
   if (payload.pushToken) {
     try {
-      // Auto-inject deep-link screen for all notifications that have a bookingId
+      // Auto-inject a default deep-link screen for notifications that have a
+      // bookingId — but never clobber an explicitly-set screen. Callers like
+      // paystack-gate set screen to the gate-checkout payment flow; overwriting
+      // it sent customers to the detail screen with no payment UI.
       const pushData: Record<string, unknown> = { ...payload.data, bookingId: payload.bookingId };
-      if (payload.recipientType === 'user' && payload.bookingId) {
-        pushData.screen = `/booking/detail/${payload.bookingId}`;
-      }
-      if (payload.recipientType === 'vendor' && payload.bookingId) {
-        pushData.screen = `/(vendor-tabs)/profile`;
+      if (!pushData.screen) {
+        if (payload.recipientType === 'user' && payload.bookingId) {
+          pushData.screen = `/booking/detail/${payload.bookingId}`;
+        }
+        if (payload.recipientType === 'vendor' && payload.bookingId) {
+          pushData.screen = `/(vendor-tabs)/profile`;
+        }
       }
 
-      await fetch('https://exp.host/--/api/v2/push/send', {
+      const res = await fetch('https://exp.host/--/api/v2/push/send', {
         method: 'POST',
         headers: {
           Accept: 'application/json',
@@ -65,6 +70,21 @@ export async function sendNotification(payload: NotificationPayload): Promise<vo
           priority: 'high',
         }),
       });
+
+      // Expo's response was previously never read — a rejected ticket (bad
+      // token, uninstalled app) looked identical to a delivered one. Prune
+      // push_token on DeviceNotRegistered so we stop retrying a dead token
+      // on every future notification to this recipient.
+      const result = await res.json().catch(() => null);
+      const ticket = result?.data;
+      if (ticket?.status === 'error') {
+        console.error(`Push ticket error for ${payload.recipientType} ${payload.recipientId}:`, ticket.message, ticket.details);
+        if (ticket.details?.error === 'DeviceNotRegistered') {
+          const table = payload.recipientType === 'user' ? 'profiles' : 'vendors';
+          await supabase.from(table).update({ push_token: null }).eq('id', payload.recipientId);
+          console.log(`Pruned dead push_token for ${payload.recipientType} ${payload.recipientId}`);
+        }
+      }
     } catch (err) {
       // Push failure must never break business logic
       console.error('Push notification failed:', err);
@@ -699,17 +719,32 @@ VARS`,
 }
 
 // ── Phone reveal ──────────────────────────────────────────────
+// Business-initiated WhatsApp — must use Meta-approved HSM templates
+// (free-form text to someone who hasn't messaged the WABA first is
+// silently rejected by Meta). `name`/`params` must match what's approved
+// in the 360dialog/Meta template manager exactly.
+// Body skeletons (submit verbatim, category Utility):
+//   vars_phone_reveal_customer: "Your VARS pro is on the way. {{1}}'s number: {{2}}"
+//     params: [vendorName, vendorPhone]
+//   vars_phone_reveal_vendor:   "Head out now. {{1}}'s number: {{2}}"
+//     params: [customerFirstName, customerPhone]
 
-export function sms_phoneReveal_customer(params: {
+export function whatsappPhoneRevealCustomerTemplate(params: {
   vendorName: string;
   vendorPhone: string;
-}): string {
-  return `Your VARS pro is on the way. ${params.vendorName}'s number: ${params.vendorPhone}`;
+}): { name: string; params: string[] } {
+  return {
+    name:   'vars_phone_reveal_customer',
+    params: [params.vendorName, params.vendorPhone],
+  };
 }
 
-export function sms_phoneReveal_vendor(params: {
+export function whatsappPhoneRevealVendorTemplate(params: {
   customerFirstName: string;
   customerPhone: string;
-}): string {
-  return `Head out now. ${params.customerFirstName}'s number: ${params.customerPhone}`;
+}): { name: string; params: string[] } {
+  return {
+    name:   'vars_phone_reveal_vendor',
+    params: [params.customerFirstName, params.customerPhone],
+  };
 }

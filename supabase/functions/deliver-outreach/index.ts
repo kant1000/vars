@@ -31,10 +31,8 @@ import {
   getFirstName,
   welcomeEmailHtmlParts,
   reengagementEmailHtmlParts,
-  goLiveEmailHtmlParts,
   whatsappIntroTemplate,
   whatsappReengagementTemplate,
-  whatsappGoLiveTemplate,
   type HtmlEmailParts,
   type WhatsAppTemplate,
 } from '../_shared/lead-copy.ts';
@@ -240,8 +238,6 @@ Deno.serve(async (req: Request) => {
           template = whatsappIntroTemplate(lead.full_name, lead.service_type, lead.pioneer);
         } else if (record.message_type === 'reengagement') {
           template = whatsappReengagementTemplate(lead.full_name, lead.service_type, lead.pioneer);
-        } else if (record.message_type === 'go_live') {
-          template = whatsappGoLiveTemplate(lead.full_name);
         } else {
           console.error('[deliver-outreach] Unknown WhatsApp message_type:', record.message_type, '— record', record.id, 'skipped');
           continue;
@@ -280,10 +276,6 @@ Deno.serve(async (req: Request) => {
           parts    = welcomeEmailHtmlParts(lead.full_name, lead.service_type, lead.pioneer, 0);
           ctaLabel = 'Join VARS';
           ctaUrl   = 'https://bookwithvars.com/activate';
-        } else if (record.message_type === 'go_live') {
-          // No CTA button — body copy already tells them to open the app
-          // they have installed, no /go-live page to link to.
-          parts = goLiveEmailHtmlParts();
         } else if (record.message_type === 'reengagement_email' || record.message_type === 'reengagement') {
           parts    = reengagementEmailHtmlParts(lead.full_name, lead.service_type, lead.pioneer);
           ctaLabel = 'Complete your profile';

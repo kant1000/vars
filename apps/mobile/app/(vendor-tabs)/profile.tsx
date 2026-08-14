@@ -20,7 +20,7 @@ import { useVarsTheme } from '@/contexts/ThemeContext';
 import { Colors, BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { CheckIcon, CloseIcon, EditIcon, GearIcon } from '@/components/icons';
-import { CATEGORY_L2_LABELS, MAX_VENDOR_SERVICES } from '@vars/shared';
+import { CATEGORY_L2_LABELS, MAX_VENDOR_SERVICES, PIONEER_BOOKINGS_THRESHOLD } from '@vars/shared';
 import { useVendorOnline } from '@/contexts/VendorOnlineContext';
 import { StatusDot } from '@/components/StatusDot';
 
@@ -63,6 +63,7 @@ export default function VendorProfileScreen() {
   const [services, setServices] = useState<VendorServiceItem[]>([]);
   const [servicesLoading, setServicesLoading] = useState(true);
   const [deleteServiceId, setDeleteServiceId] = useState<string | null>(null);
+  const [isPioneer, setIsPioneer] = useState(false);
 
   const [photos, setPhotos] = useState<PortfolioPhoto[]>([]);
   const [photosLoading, setPhotosLoading] = useState(true);
@@ -88,7 +89,7 @@ export default function VendorProfileScreen() {
     const [vendorRes, servicesRes, photosRes] = await Promise.all([
       supabase
         .from('vendors')
-        .select('full_name, kyc_legal_name, profile_image_url')
+        .select('full_name, kyc_legal_name, profile_image_url, pioneer, pioneer_bookings_completed')
         .eq('id', user.id)
         .single(),
 
@@ -110,6 +111,10 @@ export default function VendorProfileScreen() {
     setVendorName(vendorRes.data?.full_name ?? '');
     setKycLegalName(vendorRes.data?.kyc_legal_name ?? null);
     setProfileImageUrl(vendorRes.data?.profile_image_url ?? null);
+    setIsPioneer(
+      vendorRes.data?.pioneer === true &&
+      (vendorRes.data?.pioneer_bookings_completed ?? PIONEER_BOOKINGS_THRESHOLD) < PIONEER_BOOKINGS_THRESHOLD
+    );
     setServices((servicesRes.data ?? []) as VendorServiceItem[]);
     setPhotos((photosRes.data ?? []) as PortfolioPhoto[]);
     setServicesLoading(false);
@@ -145,7 +150,7 @@ export default function VendorProfileScreen() {
       <View style={s.svcInfo}>
         <Text style={s.svcMeta}>{CATEGORY_L2_LABELS[item.category_l2] ?? item.category_l2}</Text>
         <Text style={s.svcName}>{item.service_name}</Text>
-        <Text style={s.svcPrice}>₦{(Math.round(item.price_kobo * 0.8) / 100).toLocaleString('en-NG')}</Text>
+        <Text style={s.svcPrice}>₦{(Math.round(item.price_kobo * (isPioneer ? 1 : 0.8)) / 100).toLocaleString('en-NG')}</Text>
       </View>
       <TouchableOpacity onPress={() => router.push({ pathname: '/vendor-services/edit', params: { id: item.id } } as any)} style={s.svcActionBtn} hitSlop={8}>
         <EditIcon size={14} color={theme.color.inkMuted} />

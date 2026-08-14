@@ -264,10 +264,9 @@ business-initiated WhatsApp sends can't be free-form. The template names
 `vars_vendor_kyc_rejected`) and param order must match exactly what's approved
 in the 360dialog/Meta template manager — submit the skeleton text in
 `lead-copy.ts` verbatim (numbered placeholders → variables) when requesting
-HSM approval. `vars_vendor_kyc_rejected` was submitted 2026-08-14 and is
-**not yet approved** — the other three (plus the Authentication-category
-`vars_login_otp`, used by auth OTP, unrelated to this table) were approved
-the same day.
+HSM approval. `vars_vendor_kyc_rejected` was submitted 2026-08-14 and
+approved the same day — all four templates (plus the Authentication-category
+`vars_login_otp`, used by auth OTP, unrelated to this table) are now Approved.
 
 ### Email HTML template
 
@@ -314,7 +313,7 @@ data (jsonb), booking_id, is_read (default false), created_at
 
 Deep links are auto-injected into push payloads:
 - User notifications with a `booking_id` → `screen: /booking/detail/:id`
-- Vendor notifications with a `booking_id` → `screen: /vendor-tabs`
+- Vendor notifications with a `booking_id` → `screen: /(vendor-tabs)/profile`
 
 ### Booking event triggers
 
@@ -327,7 +326,7 @@ Each event below fires from the edge function named:
 | Vendor declines | `paystack-cancel` | Customer | Push + In-app |
 | Booking auto-accepted (vendor has auto-accept on) | `paystack-capture` | Customer + Vendor | Push + In-app |
 | Vendor cancels (>1 hr before) | `vendor-cancel-booking` | Customer | Push + In-app |
-| Vendor cancels (grace window) | `vendor-cancel-grace` | Customer | Push + In-app |
+| Vendor cancels (grace window) | `vendor-cancel-booking` (grace-period branch) | Customer | Push + In-app |
 | KYC verified | `vendor-kyc-webhook` | Vendor | Push + In-app |
 | KYC failed | `vendor-kyc-webhook` | Vendor | Push + In-app |
 | Service rendered by vendor | `vendor-update-job-status` | Customer | Push + In-app |

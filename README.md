@@ -256,14 +256,13 @@ All functions live in `supabase/functions/` and run on Deno.
 | `paystack-initialize` | POST | Validates booking request, calculates distance-based transport surcharge, checks Pioneer status to set the correct split (100/0 for Pioneer, 80/20 otherwise), creates booking record — no Paystack charge at this point. |
 | `paystack-gate` | POST | Fires when vendor commits to travel (manual "On My Way" tap or proximity cron trigger). Atomic gate_fired guard prevents double-fire. Returning customers (stored auth_code): silent `chargeAuthorization` with subaccount split; on success advances booking to `on_way`. First-time customers: `initializeTransaction` generates an access_code; status stays `accepted` until `charge.success` webhook fires. |
 | `paystack-gate-checkout` | POST | Generates a fresh Paystack access_code for first-time customers who need to complete payment after the gate fires (initial code may have expired or customer tapped push late). Verifies the existing `paystack_reference` with Paystack before issuing a new one — returns 409 if already charged (reconciles booking in place), 503 if verification itself fails. |
-| `paystack-webhook` | POST | Handles Paystack events: creates booking on `charge.success` (vendor's share already in their subaccount at this point), auto-accepts if conditions met, sets `settlement_on_hold` on vendor for `charge.dispute.create` |
+| `paystack-webhook` | POST | Handles Paystack events: on `charge.success`, verifies HMAC signature and advances the already-created booking to `on_way` (gate charge reconciliation) or stores a verified card's `authorization_code`; sets `settlement_on_hold` on vendor for `charge.dispute.create`; logs `refund.processed`/`refund.failed` |
 | `paystack-capture` | POST | Vendor accepts a pending booking — updates status to `accepted`, creates post + pre transport buffer blocks |
-| `paystack-release` | POST | Vendor declines or booking expires — issues a full Paystack refund to the customer |
+| `paystack-release` | POST | Vendor declines or booking expires pre-gate — no Paystack call, nothing was ever charged. Admin dispute mode (user refunded) is the only path that issues a real Paystack refund. |
 | `paystack-settle` | POST | Customer confirms service done or 2-hr auto-release fires — marks booking COMPLETED and creates `payout_history` (settlement_queued); cron sweeps by vendor, skips vendors with `settlement_on_hold` or open disputes, then logs an ops alert for VARS to trigger subaccount settlement from the Paystack dashboard |
 | `paystack-cancel` | POST | Customer cancels before the gate fires — free, no Paystack call. Post-gate customers cannot cancel (returns 409 — booking is locked once the vendor has committed to travel). Transport buffers released on pre-gate cancels. |
 | `paystack-verify-bank` | POST | Verifies vendor bank account via Paystack during onboarding; creates both a Transfer recipient (for cancellation Transfers) and a Subaccount (for per-transaction splits) |
-| `vendor-cancel-booking` | POST | Vendor cancels an accepted/in-progress booking — full refund to customer, transport buffers released, rolling 30-day cancellation count incremented, flags vendor at 3+ |
-| `vendor-cancel-grace` | POST | Vendor cancels an auto-accepted booking within the 5-minute grace period (penalty-free, full refund) |
+| `vendor-cancel-booking` | POST | Vendor cancels an accepted/in-progress booking — full refund to customer, transport buffers released, rolling 30-day cancellation count incremented, flags vendor at 3+. If cancelled within the auto-accept grace window (`auto_accept_grace_expires_at`), it's penalty-free and doesn't count toward the 30-day total — there is no separate `vendor-cancel-grace` function, this is a branch inside `vendor-cancel-booking`. |
 | `vendor-claim-repayment` | POST | Restricted vendor taps "I've paid" on the restriction wall — records `restriction_repayment_claimed_at` timestamp on the vendor row. Does not verify payment; admin confirms or rejects in the restrictions queue and manually lifts `is_restricted`. Idempotent: returns the existing timestamp if already claimed. |
 | `dispute-raise` | POST | User raises a dispute — requires a structured `category`; free-text `reason` optional unless category is `other`; booking status set to `disputed` (freezes auto-release), inserts into `disputes`, notifies both parties |
 | `phone-reveal` | POST (cron, every 5 min) | Finds accepted bookings within 15 min of `scheduled_at`, sets `phone_revealed = true`, notifies vendor ("Head out now") and customer ("They're on their way") |
@@ -399,7 +398,7 @@ The system is fully built. Providers are stubbed until `DELIVERY_LIVE=true`.
 3. Set `DELIVERY_LIVE=true`
 
 **Optional:**
-- Set `LAUNCH_MONTH` in Supabase secrets if launch month differs from the default (`'August'`)
+- Set `LAUNCH_MONTH` in Supabase secrets if launch month differs from the default (`'October'`)
 
 ---
 
@@ -963,7 +962,7 @@ DIALOG360_BASE_URL=        # https://waba-v2.360dialog.io
 DELIVER_OUTREACH_SECRET=   # required — deliver-outreach throws on startup if absent
 UNSUBSCRIBE_SECRET=        # HMAC key for email unsubscribe tokens
 DELIVERY_LIVE=             # set to 'true' to activate real delivery (default: stub mode)
-LAUNCH_MONTH=              # month name used in all outreach copy (default: 'August')
+LAUNCH_MONTH=              # month name used in all outreach copy (default: 'October')
 ```
 
 ### Admin (`apps/admin/.env.local`)

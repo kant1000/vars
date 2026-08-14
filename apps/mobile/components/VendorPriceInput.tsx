@@ -3,7 +3,7 @@ import { View, Text, TextInput, StyleSheet } from 'react-native';
 import { BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { useVarsTheme } from '@/contexts/ThemeContext';
-import { MIN_SERVICE_PRICE_KOBO } from '@vars/shared';
+import { MIN_SERVICE_PRICE_KOBO, PIONEER_BOOKINGS_THRESHOLD } from '@vars/shared';
 
 const MIN_PRICE = MIN_SERVICE_PRICE_KOBO / 100;
 
@@ -28,7 +28,7 @@ export function VendorPriceInput({
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const num = Number(value);
   const hasValue = value.trim() !== '' && num > 0 && !isNaN(num);
-  const isPioneerActive = pioneer && pioneerBookingsCompleted < 3;
+  const isPioneerActive = pioneer && pioneerBookingsCompleted < PIONEER_BOOKINGS_THRESHOLD;
 
   const previewText = hasValue
     ? isPioneerActive

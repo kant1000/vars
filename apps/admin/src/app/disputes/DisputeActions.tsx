@@ -28,9 +28,9 @@ export default function DisputeActions({
       // Reversing order (mark resolved then pay) leaves the dispute permanently
       // marked resolved with no money moved if the edge function call fails.
       if (resolution === 'refund_user') {
-        await callSettlementEdgeFn('paystack-release', bookingId);
+        await callSettlementEdgeFn('paystack-release', bookingId, disputeId);
       } else if (resolution === 'pay_vendor') {
-        await callSettlementEdgeFn('paystack-settle', bookingId);
+        await callSettlementEdgeFn('paystack-settle', bookingId, disputeId);
       }
       // 'split' requires a custom manual Paystack operation — mark resolved immediately
       // so the admin queue clears; ops handles the actual payment out-of-band.

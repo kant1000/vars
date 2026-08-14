@@ -7,14 +7,14 @@
 
 import { jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient } from '../_shared/supabase.ts';
-import { BOOKING_STATUS } from '../_shared/constants.ts';
+import { BOOKING_STATUS, PHONE_REVEAL_MINUTES_BEFORE } from '../_shared/constants.ts';
 import {
   sendNotification,
-  sendTransactionalWhatsApp,
+  sendWhatsAppTemplate,
   msg_reminder15min,
   msg_vendor_reminder15min,
-  sms_phoneReveal_customer,
-  sms_phoneReveal_vendor,
+  whatsappPhoneRevealCustomerTemplate,
+  whatsappPhoneRevealVendorTemplate,
 } from '../_shared/notifications.ts';
 
 Deno.serve(async (req: Request) => {
@@ -28,7 +28,7 @@ Deno.serve(async (req: Request) => {
   const supabase = createAdminClient();
 
   const now = new Date();
-  const revealCutoff = new Date(now.getTime() + 15 * 60 * 1000); // now + 15 min
+  const revealCutoff = new Date(now.getTime() + PHONE_REVEAL_MINUTES_BEFORE * 60 * 1000);
   const staleFloor   = new Date(now.getTime() - 60 * 60 * 1000); // don't reveal for bookings >1hr past
 
   // Find accepted bookings whose reveal window has arrived
@@ -105,14 +105,16 @@ Deno.serve(async (req: Request) => {
 
     // WhatsApp: send actual phone numbers out-of-band, independent of push
     // Fires regardless of push outcome — critical fallback if app is closed.
+    // Business-initiated, so Meta-approved HSM templates are required —
+    // free-form text here was silently rejected by Meta.
     if (profile?.phone_number && vendor?.phone_number) {
-      await sendTransactionalWhatsApp(
+      await sendWhatsAppTemplate(
         profile.phone_number,
-        sms_phoneReveal_customer({ vendorName, vendorPhone: vendor.phone_number }),
+        whatsappPhoneRevealCustomerTemplate({ vendorName, vendorPhone: vendor.phone_number }),
       );
-      await sendTransactionalWhatsApp(
+      await sendWhatsAppTemplate(
         vendor.phone_number,
-        sms_phoneReveal_vendor({ customerFirstName: clientFirstName, customerPhone: profile.phone_number }),
+        whatsappPhoneRevealVendorTemplate({ customerFirstName: clientFirstName, customerPhone: profile.phone_number }),
       );
     } else {
       console.warn(`phone-reveal: missing phone number(s) for booking ${booking.id} — WhatsApp skipped`);

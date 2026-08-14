@@ -14,7 +14,7 @@
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient, createAuthClient } from '../_shared/supabase.ts';
 import { PaystackClient } from '../_shared/paystack.ts';
-import { BOOKING_STATUS } from '../_shared/constants.ts';
+import { BOOKING_STATUS, BOOKING_RESPONSE_WINDOW_MINUTES } from '../_shared/constants.ts';
 import {
   sendNotification,
   msg_vendorDeclines,
@@ -46,7 +46,7 @@ Deno.serve(async (req: Request) => {
     // a real Paystack refund is required.
     // --------------------------------------------------------
     if (isAdminCall) {
-      const { booking_id } = await req.json();
+      const { booking_id, dispute_id } = await req.json();
       if (!booking_id) return errorResponse('Missing booking_id');
 
       const { data: booking } = await supabase
@@ -106,17 +106,22 @@ Deno.serve(async (req: Request) => {
 
       // Clear settlement_on_hold if no other open/under-review disputes remain
       // for this vendor. Mirrors the same check in paystack-settle admin path.
+      // Excludes dispute_id (the one being resolved right now — still 'open'/
+      // 'under_review' at this point, updateDispute hasn't run yet) or this
+      // would always find itself and never clear the hold.
       const { data: vendorBookingRows } = await supabase
         .from('bookings')
         .select('id')
         .eq('vendor_id', booking.vendor_id);
       const vendorBookingIds = (vendorBookingRows ?? []).map((b: { id: string }) => b.id);
 
-      const { count: remainingOpen } = await supabase
+      let remainingOpenQuery = supabase
         .from('disputes')
         .select('id', { count: 'exact', head: true })
         .in('booking_id', vendorBookingIds)
         .in('status', ['open', 'under_review']);
+      if (dispute_id) remainingOpenQuery = remainingOpenQuery.neq('id', dispute_id);
+      const { count: remainingOpen } = await remainingOpenQuery;
 
       if (remainingOpen === 0) {
         await supabase
@@ -138,7 +143,7 @@ Deno.serve(async (req: Request) => {
     // --------------------------------------------------------
     if (isCronCall) {
       const now = new Date().toISOString();
-      const oneHourAgo = new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString();
+      const oneHourAgo = new Date(Date.now() - BOOKING_RESPONSE_WINDOW_MINUTES * 60 * 1000).toISOString();
 
       // ── Sweep 1: pending timeout (vendor didn't respond) ────
       // UPDATE...RETURNING is atomic — concurrent cron runs can't both claim the same row.

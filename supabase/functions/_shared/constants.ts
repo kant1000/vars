@@ -57,6 +57,20 @@ export const TRANSPORT_FEE_TIERS = [
   { minKmOver: 10, maxKmOver: Infinity, feeKobo: 1_000_000, preBufferSlots: 2 },
 ] as const;
 
+// ── Booking timing constants ───────────────────────────────────
+
+/** How long (minutes) a vendor has to accept/decline a pending booking before it expires. */
+export const BOOKING_RESPONSE_WINDOW_MINUTES = 60; // 1 hour
+
+/** How long (hours) after the scheduled service end before payment auto-releases to the vendor. */
+export const AUTO_RELEASE_HOURS = 2;
+
+/** How many minutes before the scheduled appointment the customer/vendor phone numbers are revealed. */
+export const PHONE_REVEAL_MINUTES_BEFORE = 15;
+
+/** How many minutes before auto-release the customer is warned, so they can raise a dispute in time. */
+export const AUTO_RELEASE_WARNING_MINUTES_BEFORE = 30;
+
 // ── Gate payment constants ─────────────────────────────────────
 
 /** How long (minutes) the customer has to complete payment after a failed

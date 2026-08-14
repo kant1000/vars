@@ -13,7 +13,11 @@ export async function updateDispute(disputeId: string, patch: Record<string, unk
   revalidatePath('/disputes');
 }
 
-export async function callSettlementEdgeFn(fnName: 'paystack-release' | 'paystack-settle', bookingId: string) {
+export async function callSettlementEdgeFn(
+  fnName: 'paystack-release' | 'paystack-settle',
+  bookingId: string,
+  disputeId: string,
+) {
   if (!(await requireAdmin())) throw new Error('Unauthorised');
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
@@ -23,7 +27,11 @@ export async function callSettlementEdgeFn(fnName: 'paystack-release' | 'paystac
       'Content-Type': 'application/json',
       Authorization: `Bearer ${serviceRoleKey}`,
     },
-    body: JSON.stringify({ booking_id: bookingId, trigger: 'admin_dispute' }),
+    // dispute_id lets the edge function exclude THIS dispute from its
+    // "any other open disputes for this vendor?" check — at call time it's
+    // still status='open'/'under_review' (updateDispute hasn't run yet),
+    // so without excluding it settlement_on_hold could never clear.
+    body: JSON.stringify({ booking_id: bookingId, dispute_id: disputeId, trigger: 'admin_dispute' }),
   });
 
   if (!res.ok) {
