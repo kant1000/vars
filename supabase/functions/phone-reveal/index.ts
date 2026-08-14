@@ -103,18 +103,22 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // WhatsApp: send actual phone numbers out-of-band, independent of push
-    // Fires regardless of push outcome — critical fallback if app is closed.
-    // Business-initiated, so Meta-approved HSM templates are required —
-    // free-form text here was silently rejected by Meta.
+    // WhatsApp: notify out-of-band that the number is now visible in-app,
+    // independent of push. Fires regardless of push outcome — critical
+    // fallback if app is closed. Business-initiated, so Meta-approved HSM
+    // templates are required — free-form text here was silently rejected
+    // by Meta, and two attempts at embedding the raw number in the
+    // template body were also rejected (reads like a spam/scam-callback
+    // pattern to Meta's automated review). The template no longer carries
+    // the number itself — only the in-app reveal does that.
     if (profile?.phone_number && vendor?.phone_number) {
       await sendWhatsAppTemplate(
         profile.phone_number,
-        whatsappPhoneRevealCustomerTemplate({ vendorName, vendorPhone: vendor.phone_number }),
+        whatsappPhoneRevealCustomerTemplate({ vendorName }),
       );
       await sendWhatsAppTemplate(
         vendor.phone_number,
-        whatsappPhoneRevealVendorTemplate({ customerFirstName: clientFirstName, customerPhone: profile.phone_number }),
+        whatsappPhoneRevealVendorTemplate({ customerFirstName: clientFirstName }),
       );
     } else {
       console.warn(`phone-reveal: missing phone number(s) for booking ${booking.id} — WhatsApp skipped`);

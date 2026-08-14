@@ -723,28 +723,37 @@ VARS`,
 // (free-form text to someone who hasn't messaged the WABA first is
 // silently rejected by Meta). `name`/`params` must match what's approved
 // in the 360dialog/Meta template manager exactly.
-// Body skeletons (submit verbatim, category Utility):
-//   vars_phone_reveal_customer: "Your VARS pro is on the way. {{1}}'s number: {{2}}"
-//     params: [vendorName, vendorPhone]
-//   vars_phone_reveal_vendor:   "Head out now. {{1}}'s number: {{2}}"
-//     params: [customerFirstName, customerPhone]
+//
+// Both prior drafts (bare "{{1}}'s number: {{2}}" and its reworded
+// "{{2}} is {{1}}'s number." form) were rejected by Meta — a phone
+// number sitting in the body as its own variable token reads like the
+// spam/scam-callback pattern their automated review flags, regardless
+// of clause order. Fixed by dropping the phone number from the template
+// body entirely: the number itself is only ever revealed in-app (the
+// booking detail screen); the WhatsApp message just points there.
+// vars_phone_reveal_customer had to be resubmitted under a new name
+// after the second rejection — 360dialog doesn't allow reusing a
+// rejected template name for a differently-worded resubmission.
+//   vars_phone_reveal_customer1: "Your Vars Pro {{1}} will be with you soon. Their number is now visible in the app."
+//     params: [vendorName]
+//   vars_phone_reveal_vendor:    "If you need to reach {{1}}, their number is now visible in the app."
+//     params: [customerFirstName]
+// Category: Utility. Language: en.
 
 export function whatsappPhoneRevealCustomerTemplate(params: {
   vendorName: string;
-  vendorPhone: string;
 }): { name: string; params: string[] } {
   return {
-    name:   'vars_phone_reveal_customer',
-    params: [params.vendorName, params.vendorPhone],
+    name:   'vars_phone_reveal_customer1',
+    params: [params.vendorName],
   };
 }
 
 export function whatsappPhoneRevealVendorTemplate(params: {
   customerFirstName: string;
-  customerPhone: string;
 }): { name: string; params: string[] } {
   return {
     name:   'vars_phone_reveal_vendor',
-    params: [params.customerFirstName, params.customerPhone],
+    params: [params.customerFirstName],
   };
 }
