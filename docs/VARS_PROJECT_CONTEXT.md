@@ -273,8 +273,8 @@ Vendors first. Always. A user who opens VARS and sees no vendors nearby deletes 
 |---|---|---|
 | 410 Vendors in the Pipeline | June 2026 | **Completed** — pipeline built, onboarding now active |
 | App Store Launch | End of July 2026 | **Active now** (target period) — Android build is ready; iOS is blocked on a stalled Apple Developer enrollment. Not actually live on either store yet as of this writing — see `docs/store-submission-tracker.md` for real submission status. Public roadmap copy describes this period in forward/aspirational voice; this row reflects operational reality. |
-| Vendor Onboarding | August 2026 | Upcoming — converting the pipeline into active, verified stylists (KYC, bank setup, portfolio review) |
-| Both Sides Open | End of September 2026 | Upcoming — customer marketing activates; first month both sides are live simultaneously |
+| Vendor Onboarding | September 2026 | Upcoming — converting the pipeline into active, verified stylists (KYC, bank setup, portfolio review) |
+| Both Sides Open | 1 October 2026 | Upcoming — real customer go-live date; customer marketing activates and both sides are live simultaneously for the first time |
 | Platform Health Review | Q4 2026 | Upcoming — audit booking quality, vendor performance, platform health before year-end push |
 | Year-End | November–December 2026 | Upcoming |
 | 1,000 Completed Bookings | End 2026 | The Year 1 milestone — completed sessions, not installs |
@@ -334,3 +334,4 @@ No formal drop-off data across the 5-step onboarding flow yet. Once vendors onbo
 ## 11. Follow-up TODOs
 
 - **Paystack Small Business Bundle:** Once Paystack live keys are processing 10+ transactions in 30 days, redeem the Small Business Bundle (3 months fee-free processing, ₦10M cap) and evaluate the bundled Google Ads credits for the customer marketing push. Added 2026-08-09 — bundle terms not independently re-verified against Paystack's current public terms before this was written; sanity-check before acting.
+- **Meta ads scope for Mayowa:** Verbally agreed with Mayowa — she manages Meta ads (budget, bidding, media buying), VARS bears the cost. Not yet covered by the signed MSA: Clause 2 explicitly excludes paid advertising from her contracted scope. Needs a signed SOW addendum to formalize before this becomes operational spend. Added 2026-08-14.

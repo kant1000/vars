@@ -83,22 +83,22 @@ export const phases: Phase[] = [
         title: 'App Store Launch',
         period: 'End of July 2026',
         description:
-          'VARS lands on iOS App Store and Google Play. The app is live — but this month is about shipping, not selling. No customer marketing until the supply is ready.',
+          'VARS is on final approach to iOS App Store and Google Play. This month is about shipping, not selling: no customer marketing until the supply is ready and both stores are live.',
         state: 'active',
         isNow: true,
       },
       {
         id: 'vendor-onboarding-month',
         title: 'Vendor Onboarding',
-        period: 'August 2026',
+        period: 'September 2026',
         description:
-          'The app is live. August is dedicated to converting the pipeline into active, verified stylists. Every professional goes through identity verification, bank setup, and portfolio review before customers arrive.',
+          'September is dedicated to converting the pipeline into active, verified stylists. Every professional goes through identity verification, bank setup, and portfolio review before customers arrive.',
         state: 'upcoming',
       },
       {
         id: 'both-sides-open',
         title: 'Both Sides Open',
-        period: 'End of September 2026',
+        period: '1 October 2026',
         description:
           'Customer-facing marketing activates. For the first time, both sides of the marketplace are live simultaneously: customers book, stylists deliver. VARS is fully open.',
         state: 'upcoming',

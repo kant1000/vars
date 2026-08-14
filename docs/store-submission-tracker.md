@@ -10,7 +10,7 @@
 | Platform | Status | Target |
 |---|---|---|
 | D-U-N-S | COMPLETE | Done |
-| Apple Developer Account | REGRESSED — still "Enrollment Pending" as of 8 Aug 2026 (2+ weeks past the 25 Jul "confirming within 48hrs" note); $99 fee charged on the founder's side but not yet posted on Apple's side | Unresolved, no ETA |
+| Apple Developer Account | Payment charged 12 Aug 2026. Apple Support (Roshitha, case/enrollment ref B278PWKRGN) confirmed via email the same day that membership status is "Active." developer.apple.com/account portal still shows "Varsapp Limited (Pending)" and prompts to complete the purchase, a known Apple-side backend sync bug. Do NOT repurchase. Follow-up sent on the same thread requesting manual sync. | Awaiting Apple-side sync |
 | Google Play Console | COMPLETE | Done |
 | App Store listing | Not started | Early Aug (was: late Aug) |
 | Play Store listing | IN PROGRESS | Early-mid Aug (was: early Sep) |
@@ -19,23 +19,23 @@
 
 ---
 
-## Timeline (Revised 3 August 2026)
+## Timeline (Revised 14 August 2026)
 
-Original targets were based on the Android build being a major unknown. Claude Code resolved the Android build in a single session on 25 July. NDPC registration, the last open compliance dependency, completed 3 August. The timeline holds at the 25 July revision, with NDPC now off the risk list entirely.
+Original targets were based on the Android build being a major unknown; Claude Code resolved that in a single session on 25 July. NDPC registration, the last open compliance dependency, completed 3 August. Since then: Apple Developer Support confirmed the account is Active (12 Aug), but the developer.apple.com portal hasn't synced to reflect it, so iOS submission remains blocked with no confirmed date. Separately, the business timeline has been clarified: September 2026 is vendor conversion (onboarding the pipeline), with 1 October 2026 as the real customer go-live date (Both Sides Open) — both stores need to be live before then. Dates below are indicative targets, not commitments.
 
 | Milestone | Original | Revised |
 |---|---|---|
 | Android done | Early Aug | DONE, 25 Jul |
 | NDPC registration | TBC | DONE, 3 Aug |
-| iOS build ready | Mid Aug | Early Aug (once Apple verifies) |
+| iOS build ready | Mid Aug | Blocked — awaiting Apple portal sync, no ETA |
 | Compliance + assets done | Mid Aug | Early Aug |
-| App Store submission | Late Aug | First week of Aug |
-| App Store live | End of Aug | Aug 10 to 15 |
-| Play Store submission | Early Sep | First week of Aug |
-| Play Store live | Mid Sep | Aug 10 to 17 |
-| Customer marketing live | Aug (roadmap) | Aug, on track, earlier end |
+| App Store submission | Late Aug | Blocked — awaiting Apple portal sync; needs to resolve ahead of the 1 Oct customer go-live |
+| App Store live | End of Aug | Target: before 1 Oct 2026 (Both Sides Open) — blocked on Apple portal sync |
+| Play Store submission | Early Sep | September 2026 — AAB + screenshots not yet uploaded |
+| Play Store live | Mid Sep | Target: before 1 Oct 2026 (Both Sides Open) |
+| Customer marketing live | Aug (roadmap) | 1 October 2026 (Both Sides Open) |
 
-The single remaining external dependency is Apple Developer account verification. Once confirmed (expected this week), the iOS EAS cloud build takes hours, no local Xcode required.
+The single remaining external dependency is the Apple developer portal syncing to the Active status Apple Support already confirmed by email — no ETA from Apple on when that resolves. Once it does, the iOS EAS cloud build takes hours, no local Xcode required.
 
 ---
 
@@ -57,16 +57,16 @@ The single remaining external dependency is Apple Developer account verification
 
 | Field | Detail |
 |---|---|
-| Status | REGRESSED — Enrollment Pending as of 8 Aug 2026. Still not activated 2+ weeks after the 25 Jul "APPROVED, confirming within 48hrs" note; no further movement since |
+| Status | Payment charged 12 Aug 2026. Apple Support (Roshitha, case/enrollment ref B278PWKRGN) confirmed via email the same day that membership status is "Active." developer.apple.com/account portal still shows "Varsapp Limited (Pending)" and prompts to complete the purchase — a known Apple-side backend sync bug. Do NOT repurchase. |
 | Account type | Organisation |
 | D-U-N-S used | 352294670 |
-| $99 fee | Charged on the founder's side; has not posted on Apple's side as of 8 Aug 2026 |
+| $99 fee | Charged 12 Aug 2026 on the founder's side. Not yet reflected in the portal, but Apple Support has confirmed by email that the account is Active — do not repurchase |
 | SDK requirement | Xcode 26 / iOS 26 SDK (EAS cloud build, no local Xcode needed) |
 | Review timeline | 3 to 7 days first submission |
-| Target submission | First week of August 2026 — at risk given the enrollment stall |
-| Target live | Aug 10 to 15 2026 — at risk given the enrollment stall |
+| Target submission | Before 1 Oct 2026 customer go-live — blocked on Apple portal sync, no ETA |
+| Target live | Before 1 Oct 2026 (Both Sides Open) — blocked on Apple portal sync, no ETA |
 
-**Next step:** No longer a simple wait. Enrollment has stalled well past the expected confirmation window and the $99 charge has not posted on Apple's side. Follow up directly with Apple Developer Support to check enrollment status and confirm the payment before assuming activation is imminent. Once resolved, run `eas build --platform ios --profile production` from repo root, no Mac or local Xcode required. Complete Apple Privacy label in App Store Connect once account is fully active.
+**Next step:** Apple Support already confirmed Active status (case B278PWKRGN) via email 12 Aug; a follow-up was sent on the same thread requesting manual account sync. Do NOT repurchase or re-enroll while waiting. Once the portal reflects Active, run `eas build --platform ios --profile production` from repo root, no Mac or local Xcode required. Complete Apple Privacy label in App Store Connect once account is fully active.
 
 ---
 
@@ -152,6 +152,7 @@ This removes the last outstanding legal/compliance blocker referenced in the "Le
 | EAS CLI outdated | Tooling | RESOLVED | Upgraded globally: 18.5.0 to 21.2.0 |
 | On-device icon rendering QA | Android done, iOS pending | PARTIAL | Material Icons confirmed correct on Galaxy A40. SF Symbols unverifiable until iOS build is live |
 | Light/dark theme walkthrough | Android done, iOS pending | PARTIAL | Full pass on Galaxy A40, zero fails. iOS pending |
+| Developer portal shows Pending despite support confirming Active | iOS/Account | AWAITING APPLE SYNC | Payment posted, support confirmed active (case/enrollment ID B278PWKRGN), portal not yet reflecting it, follow-up sent same thread, do not pay again |
 
 ---
 
@@ -209,7 +210,7 @@ This removes the last outstanding legal/compliance blocker referenced in the "Le
 - [x] Android targeting API 36
 - [x] Android on-device QA pass (icons, dark mode, all screens), Galaxy A40, zero fails
 - [ ] iOS on-device QA pass, pending iOS build
-- [x] Apple Developer account enrolled, approved, $99 paid, activating within 48hrs
+- [x] Apple Developer account enrolled, $99 paid, Apple Support confirmed membership Active (case B278PWKRGN); portal sync still pending — see Technical Blockers
 - [x] Google Play org account registered
 - [x] Privacy policy audited for NDPA compliance
 - [x] NDPC registration complete, Registration ID NDPC/DCP/13824
@@ -256,6 +257,8 @@ This removes the last outstanding legal/compliance blocker referenced in the "Le
 
 | Date | Event |
 |---|---|
+| 12 Aug 2026 | Apple Developer Support (Roshitha) confirmed via email that enrollment B278PWKRGN is "Membership Status: Active." developer.apple.com/account portal still shows Pending and prompts repurchase, known Apple-side sync issue. Follow-up sent requesting manual account sync, no repurchase made. |
+| 12 Aug 2026 | Payment for Apple Developer Program charge posted successfully. |
 | 8 Aug 2026 | Apple Developer enrollment status regressed: still "Enrollment Pending" 2+ weeks after the 25 Jul "confirming within 48hrs" note, no activation. $99 fee shows charged on the founder's side but has not posted on Apple's side. Corrects the stale 25 Jul status line in the Current Status table and Apple App Store section above. |
 | 3 Aug 2026 | NDPC Certificate of Registration received. Registration ID NDPC/DCP/13824. VARSAPP LIMITED registered as Data Controller/Processor of Major Importance under Section 44, NDPA 2023. Filed under compliance/government in the shared drive. Removes the last open legal/compliance blocker on the tracker. |
 | 3 Aug 2026 | NDPA compliance audit complete: fixed ID-document phrasing, retention wording, and DPO status across all app privacy/terms surfaces (web, in-app customer, in-app vendor) and the compliance document set in Google Drive (privacy-policy, customer-terms, vendor-terms, data-retention-schedule, ropa, internal-data-protection-policy, cookie-policy, vendor-sla). DPO appointed (name pending). |
