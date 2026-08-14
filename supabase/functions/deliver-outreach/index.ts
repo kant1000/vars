@@ -12,6 +12,11 @@
 // by vendor_lead_tick().
 // Providers: 360dialog (whatsapp), Resend (email)
 //
+// WhatsApp sends use Meta-approved HSM templates (business-initiated
+// messages can't be free-form) — see whatsapp*Template() in lead-copy.ts
+// for the template names/param order, which must match what's approved
+// in the 360dialog/Meta template manager.
+//
 // Call via POST — no body required.
 // Optional body: { lead_id: string } to deliver only for one lead.
 // Optional body: { record_id: string } to deliver one specific record.
@@ -27,7 +32,11 @@ import {
   welcomeEmailHtmlParts,
   reengagementEmailHtmlParts,
   goLiveEmailHtmlParts,
+  whatsappIntroTemplate,
+  whatsappReengagementTemplate,
+  whatsappGoLiveTemplate,
   type HtmlEmailParts,
+  type WhatsAppTemplate,
 } from '../_shared/lead-copy.ts';
 import { EMAIL_TEMPLATE } from '../_shared/email-template.ts';
 
@@ -84,9 +93,9 @@ async function makeUnsubToken(leadId: string): Promise<string> {
 
 // ── Provider stubs / implementations ─────────────────────────────────────────
 
-async function sendWhatsApp(to: string, body: string): Promise<string> {
+async function sendWhatsApp(to: string, template: WhatsAppTemplate): Promise<string> {
   if (!DELIVERY_LIVE) {
-    console.log('[deliver-outreach] WhatsApp stub →', to, ':', body.slice(0, 80));
+    console.log('[deliver-outreach] WhatsApp stub →', to, ':', template.name, template.params);
     return `stub-wa-${Date.now()}`;
   }
 
@@ -99,8 +108,15 @@ async function sendWhatsApp(to: string, body: string): Promise<string> {
     body: JSON.stringify({
       messaging_product: 'whatsapp',
       to,
-      type: 'text',
-      text: { body },
+      type: 'template',
+      template: {
+        name:     template.name,
+        language: { code: 'en' },
+        components: [{
+          type:       'body',
+          parameters: template.params.map((text) => ({ type: 'text', text })),
+        }],
+      },
     }),
   });
 
@@ -219,7 +235,18 @@ Deno.serve(async (req: Request) => {
       let providerId: string;
 
       if (record.channel === 'whatsapp') {
-        providerId = await sendWhatsApp(lead.phone, record.message_body);
+        let template: WhatsAppTemplate;
+        if (record.message_type === 'introduction') {
+          template = whatsappIntroTemplate(lead.full_name, lead.service_type, lead.pioneer);
+        } else if (record.message_type === 'reengagement') {
+          template = whatsappReengagementTemplate(lead.full_name, lead.service_type, lead.pioneer);
+        } else if (record.message_type === 'go_live') {
+          template = whatsappGoLiveTemplate(lead.full_name);
+        } else {
+          console.error('[deliver-outreach] Unknown WhatsApp message_type:', record.message_type, '— record', record.id, 'skipped');
+          continue;
+        }
+        providerId = await sendWhatsApp(lead.phone, template);
 
       } else if (record.channel === 'sms') {
         // NOT CURRENTLY USED — reserved for future SMS reactivation
@@ -252,15 +279,15 @@ Deno.serve(async (req: Request) => {
         if (record.message_type === 'welcome_email') {
           parts    = welcomeEmailHtmlParts(lead.full_name, lead.service_type, lead.pioneer, 0);
           ctaLabel = 'Join VARS';
-          ctaUrl   = 'https://bookwithvars.com';
+          ctaUrl   = 'https://bookwithvars.com/activate';
         } else if (record.message_type === 'go_live') {
-          parts    = goLiveEmailHtmlParts();
-          ctaLabel = 'Open VARS';
-          ctaUrl   = 'https://bookwithvars.com';
+          // No CTA button — body copy already tells them to open the app
+          // they have installed, no /go-live page to link to.
+          parts = goLiveEmailHtmlParts();
         } else if (record.message_type === 'reengagement_email' || record.message_type === 'reengagement') {
           parts    = reengagementEmailHtmlParts(lead.full_name, lead.service_type, lead.pioneer);
           ctaLabel = 'Complete your profile';
-          ctaUrl   = 'https://bookwithvars.com';
+          ctaUrl   = 'https://bookwithvars.com/activate';
         } else {
           console.error('[deliver-outreach] Unknown email message_type:', record.message_type, '— record', record.id, 'skipped');
           continue;

@@ -16,7 +16,14 @@
 // ============================================================
 import { jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient } from '../_shared/supabase.ts';
-import { sendNotification, msg_vendor_verificationApproved, msg_vendor_verificationFailed } from '../_shared/notifications.ts';
+import {
+  sendNotification,
+  sendWhatsAppTemplate,
+  msg_vendor_verificationApproved,
+  msg_vendor_verificationFailed,
+  msg_vendor_needsReview,
+} from '../_shared/notifications.ts';
+import { whatsappGoLiveTemplate, whatsappKycRejectedTemplate } from '../_shared/lead-copy.ts';
 import { Image } from 'https://deno.land/x/imagescript@1.2.15/mod.ts';
 
 const YOUVERIFY_WEBHOOK_SECRET = Deno.env.get('YOUVERIFY_WEBHOOK_SECRET') ?? '';
@@ -191,9 +198,20 @@ Deno.serve(async (req: Request) => {
 
   // ---- Rejection path ----
   if (isFailed) {
+    // Fetch before the update — need full_name/phone for the WhatsApp/push copy either way.
+    const { data: vendorBefore } = await adminClient
+      .from('vendors')
+      .select('full_name, phone_number, push_token')
+      .eq('id', vendorId)
+      .single();
+
     const { error: updateErr } = await adminClient
       .from('vendors')
-      .update({ kyc_status: 'rejected', kyc_rejection_reason: reason })
+      // is_active reset to false — a rejected vendor must not stay bookable.
+      // Covers both a fresh rejection and one that follows a prior verification
+      // (see vendor-kyc-init's re-init guard, which normally prevents that path,
+      // but this keeps the two in sync regardless).
+      .update({ kyc_status: 'rejected', kyc_rejection_reason: reason, is_active: false })
       .eq('id', vendorId);
 
     if (updateErr) {
@@ -201,13 +219,7 @@ Deno.serve(async (req: Request) => {
       return errorResponse('DB error', 500);
     }
 
-    const { data: vendor } = await adminClient
-      .from('vendors')
-      .select('push_token')
-      .eq('id', vendorId)
-      .single();
-
-    if (vendor?.push_token) {
+    if (vendorBefore?.push_token) {
       const msg = msg_vendor_verificationFailed(reason);
       await sendNotification({
         recipientId: vendorId,
@@ -215,9 +227,14 @@ Deno.serve(async (req: Request) => {
         type: 'kyc_rejected',
         title: msg.title,
         body: msg.body,
-        pushToken: vendor.push_token,
+        pushToken: vendorBefore.push_token,
         data: { screen: '/vendor-onboarding/step-4-kyc' },
       });
+    }
+
+    if (vendorBefore?.phone_number) {
+      const template = whatsappKycRejectedTemplate(vendorBefore.full_name ?? 'there', reason);
+      await sendWhatsAppTemplate(vendorBefore.phone_number, template);
     }
 
     console.log(`vendor-kyc-webhook: vendor ${vendorId} → rejected`);
@@ -225,6 +242,29 @@ Deno.serve(async (req: Request) => {
   }
 
   // ---- Verified path ----
+
+  // Fetch once up front — reused across both needs_review branches and the
+  // final success branch below, so push/WhatsApp notifications work in every
+  // exit path, not just the happy one.
+  const { data: vendorForNotify } = await adminClient
+    .from('vendors')
+    .select('full_name, phone_number, push_token, paystack_subaccount_code')
+    .eq('id', vendorId)
+    .single();
+
+  async function notifyNeedsReview() {
+    if (!vendorForNotify?.push_token) return;
+    const msg = msg_vendor_needsReview();
+    await sendNotification({
+      recipientId: vendorId!,
+      recipientType: 'vendor',
+      type: 'kyc_needs_review',
+      title: msg.title,
+      body: msg.body,
+      pushToken: vendorForNotify.push_token,
+      data: { screen: '/vendor-onboarding/step-5-pending' },
+    });
+  }
 
   // 1. Try extracting from webhook payload
   let imageBuffer = await extractImageBuffer(payload);
@@ -249,16 +289,27 @@ Deno.serve(async (req: Request) => {
     const missing = [!imageBuffer && 'image', !legalName && 'legal name'].filter(Boolean).join(' and ');
     console.warn(`vendor-kyc-webhook: missing ${missing} after GET fallback for vendor ${vendorId} — setting needs_review`);
     await adminClient.from('vendors').update({ kyc_status: 'needs_review' }).eq('id', vendorId);
+    await notifyNeedsReview();
     return jsonResponse({ received: true });
   }
 
-  // 4. All data present — build DB update
+  // 4. All data present — build DB update.
+  // is_active only flips true once a Paystack subaccount also exists — bank
+  // setup happens client-side, decoupled from this webhook, and can complete
+  // before or after KYC. Verifying identity alone must not make a vendor
+  // bookable/payable with no payout destination on file. paystack-verify-bank
+  // (action=save) does the mirror-image check and flips is_active true if
+  // kyc_status is already 'verified' by the time the bank account is saved.
   const dbUpdate: Record<string, unknown> = {
     kyc_status:           'verified',
-    is_active:            true,
     kyc_rejection_reason: null,
     kyc_legal_name:       legalName,
   };
+  if (vendorForNotify?.paystack_subaccount_code) {
+    dbUpdate.is_active = true;
+  } else {
+    console.log(`vendor-kyc-webhook: vendor ${vendorId} verified but no paystack_subaccount_code yet — is_active stays as-is`);
+  }
 
   console.log(`vendor-kyc-webhook: legal name stored for vendor ${vendorId}: ${legalName}`);
 
@@ -292,6 +343,7 @@ Deno.serve(async (req: Request) => {
   } catch (imgErr: any) {
     console.error('vendor-kyc-webhook: image upload failed for vendor', vendorId, '—', imgErr?.message ?? imgErr);
     await adminClient.from('vendors').update({ kyc_status: 'needs_review' }).eq('id', vendorId);
+    await notifyNeedsReview();
     return jsonResponse({ received: true });
   }
 
@@ -306,14 +358,8 @@ Deno.serve(async (req: Request) => {
     return errorResponse('DB error', 500);
   }
 
-  // 7. Push notification
-  const { data: vendor } = await adminClient
-    .from('vendors')
-    .select('push_token')
-    .eq('id', vendorId)
-    .single();
-
-  if (vendor?.push_token) {
+  // 7. Push + in-app notification
+  if (vendorForNotify?.push_token) {
     const msg = msg_vendor_verificationApproved();
     await sendNotification({
       recipientId: vendorId,
@@ -321,9 +367,18 @@ Deno.serve(async (req: Request) => {
       type: 'kyc_approved',
       title: msg.title,
       body: msg.body,
-      pushToken: vendor.push_token,
-      data: { screen: '/vendor-tabs' },
+      pushToken: vendorForNotify.push_token,
+      data: { screen: '/(vendor-tabs)/profile' },
     });
+  }
+
+  // 8. WhatsApp — instant, authoritative "verified" send. Reuses the
+  // already-approved vars_vendor_golive template (see whatsappGoLiveTemplate
+  // doc comment in lead-copy.ts for why the lead-nurture pipeline's own
+  // go-live path was retired rather than risking a duplicate here).
+  if (vendorForNotify?.phone_number) {
+    const template = whatsappGoLiveTemplate(vendorForNotify.full_name ?? 'there');
+    await sendWhatsAppTemplate(vendorForNotify.phone_number, template);
   }
 
   console.log(`vendor-kyc-webhook: vendor ${vendorId} → verified`);

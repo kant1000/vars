@@ -374,12 +374,12 @@ deliver-outreach (edge fn) — called by cron or "Send Now"
 | `welcome_email` | email | Immediately on registration | Service-specific hook, pioneer/earnings, KYC explainer, single CTA |
 | `introduction` | whatsapp | 24h after signup, `last_outreach IS NULL` | Service-specific opener, pioneer/earnings line |
 | `reengagement` | whatsapp | COLD state, 7 days silence | Pioneer spot urgency or ₦ earnings, KYC reassurance |
-| `go_live` | whatsapp | KYC verified | Congratulations, pioneer commission note, booking CTA |
+| `go_live` | whatsapp | KYC verified | Congratulations, go-online reminder (identical for every recipient — no pioneer/earnings line, dropped during Meta template submission) |
 | `custom` | any | Admin ComposePanel blast | Free-text admin-authored |
 
 ### Copy
 
-All message copy lives in [`supabase/functions/_shared/lead-copy.ts`](supabase/functions/_shared/lead-copy.ts). Edit there to change what leads receive — no migration or logic change needed. Functions exported: `welcomeEmail`, `reengagementEmail`, `whatsappIntro`, `whatsappReengagement`, `whatsappGoLive`.
+All message copy lives in [`supabase/functions/_shared/lead-copy.ts`](supabase/functions/_shared/lead-copy.ts). Edit there to change what leads receive — no migration or logic change needed. Functions exported: `welcomeEmail`, `reengagementEmail`, `whatsappIntroTemplate`, `whatsappReengagementTemplate`, `whatsappGoLiveTemplate`. The WhatsApp functions return a Meta HSM template name + positional params (not free text) — see "Going Live" below.
 
 Copy varies by:
 - **Service type** — barbing / hair_styling / makeovers / other each get a different opening hook
@@ -394,7 +394,7 @@ The system is fully built. Providers are stubbed until `DELIVERY_LIVE=true`.
 2. Set `DELIVERY_LIVE=true`
 
 **WhatsApp (additional steps required):**
-1. Submit the three outreach message templates (intro, reengagement, go-live) to Meta via 360dialog for HSM approval — without approved templates, messages are silently discarded
+1. Submit the three template skeletons already in `lead-copy.ts` (`vars_vendor_intro`, `vars_vendor_reengagement`, `vars_vendor_golive`) to Meta via the 360dialog dashboard for HSM approval, verbatim — without approved templates, messages are rejected
 2. Set `DIALOG360_API_KEY`, `DIALOG360_BASE_URL` in Supabase secrets
 3. Set `DELIVERY_LIVE=true`
 

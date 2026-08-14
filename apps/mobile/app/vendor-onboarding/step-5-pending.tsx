@@ -93,7 +93,7 @@ export default function Step5Pending() {
         <CheckRow label="Profile submitted" done />
         <CheckRow label="Services set" done />
         <CheckRow label="Portfolio uploaded" done />
-        <CheckRow label="Identity & bank verified" done />
+        <CheckRow label="Identity & bank verified" done={isLive} />
         <CheckRow label={isLive ? 'You\'re live on VARS' : 'Going live on VARS...'} done={isLive} pulse={!isLive} />
       </VarsSurface>
 

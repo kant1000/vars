@@ -251,10 +251,14 @@ msg_reschedule_accepted_vendor   msg_reschedule_declined_vendor   msg_reschedule
 
 ## 9. KYC Flow
 
-**Source:** `supabase/functions/vendor-kyc-webhook/index.ts`, `supabase/functions/vendor-kyc-init/index.ts`
+**Source:** `supabase/functions/vendor-kyc-webhook/index.ts`, `supabase/functions/vendor-kyc-init/index.ts`, `supabase/functions/paystack-verify-bank/index.ts` (action=save)
 
-- Clean pass: single update sets `kyc_status = verified` AND `is_active = true` — no admin step required
-- Failure: `kyc_status = rejected`; `kyc_rejection_reason` populated; surfaces in admin queue; `msg_vendor_verificationFailed` notification sent to vendor
+- Clean pass: sets `kyc_status = verified`. `is_active = true` is now a **separate, gated** write — only set if `paystack_subaccount_code` already exists on the vendor row (fixed 2026-08-14; previously set unconditionally, letting a vendor become bookable/payable before a bank account was ever registered). `paystack-verify-bank`'s `save` action does the mirror-image check: sets `is_active = true` there instead, if `kyc_status` is already `verified` by the time the bank account is saved. FAIL if either write sets `is_active = true` without checking the other condition.
+- Failure: `kyc_status = rejected`, `kyc_rejection_reason` populated, `is_active` explicitly reset to `false` (fixed 2026-08-14 — previously never reset, so a vendor could stay bookable after rejection if `is_active` had been set true by an earlier verification). Surfaces in admin queue. `msg_vendor_verificationFailed` push/in-app notification sent, plus a WhatsApp send via `vars_vendor_kyc_rejected` (Meta template submitted 2026-08-14, **not yet approved** — see `docs/MESSAGING_SYSTEM.md`).
+- `needs_review` (both the missing-data-after-GET-fallback path and the image-upload-failure path) now sends a push/in-app notification (`msg_vendor_needsReview`, added 2026-08-14) — previously silent, vendor had no signal anything happened beyond polling `step-5-pending`. No WhatsApp on this path (not a terminal state).
+- Clean pass also sends WhatsApp via `vars_vendor_golive` (Meta-approved, already used elsewhere) — instant, at the actual verification event, not via the hourly `vendor_lead_tick` cron. FAIL if this WhatsApp send is missing on the verified path or if `vendor_lead_tick`'s go-live generation is ever reintroduced (retired as dead code 2026-08-14 — see §15).
+- `vendor-kyc-init` refuses to re-initiate a session if `kyc_status` is already `verified` (fixed 2026-08-14 — previously allowed a stray retap to regress `kyc_status` back to `pending` without ever touching `is_active`, silently dropping a live vendor from discovery).
+- Push notification deep link for the verified event is `/(vendor-tabs)/profile` (fixed 2026-08-14 — was the invalid route `/vendor-tabs`, matching no registered screen; same fix applied in `_shared/notifications.ts`'s auto-inject for any vendor push with a `bookingId`, and in `paystack-settle/index.ts`'s service-render-reminder push — FAIL if `/vendor-tabs` (without the parenthesized group) reappears anywhere as a push `screen` value).
 - On each new KYC attempt: `kyc_rejection_reason` is cleared before the new session is initiated
 - Webhook authenticated via HMAC using `YOUVERIFY_WEBHOOK_SECRET` before any processing
 - No raw ID data stored at any point
@@ -337,23 +341,26 @@ WARN for TODO or comment references to these features.
 
 ## 15. Vendor Lead Outreach System
 
-**Source:** `supabase/functions/_shared/lead-copy.ts`, `supabase/functions/deliver-outreach/index.ts`, Postgres `vendor_lead_tick()` function (`20260608000001_vendor_lead_tick_fix.sql`)
+**Source:** `supabase/functions/_shared/lead-copy.ts`, `supabase/functions/deliver-outreach/index.ts`, Postgres `vendor_lead_tick()` function (latest: `20260814000002_retire_dead_tick_golive.sql`)
 
 **lead-copy.ts exports** — all 5 must be present, FAIL for each missing:
 ```
-welcomeEmail  reengagementEmail  whatsappIntro  whatsappReengagement  whatsappGoLive
+welcomeEmail  reengagementEmail  whatsappIntroTemplate  whatsappReengagementTemplate  whatsappGoLiveTemplate
 ```
 
-- Each function must vary output by `service_type` (barbing/hair_styling/makeovers/other) AND pioneer status — FAIL if either branch is absent
-- `whatsappReengagement`: both the pioneer branch and the non-pioneer branch must reference the service label — FAIL if either branch omits service type
+- The `whatsapp*Template()` functions return `{ name, params }` (a Meta HSM template name + positional body params), not free text — FAIL if any WhatsApp send path builds a `type: 'text'` 360dialog payload for a business-initiated message (only `sendTransactionalWhatsApp()` in `notifications.ts`, used for session-initiated sends like phone-reveal, may use free-form text)
+- `welcomeEmail`/`reengagementEmail` must vary output by `service_type` (barbing/hair_styling/makeovers/other) AND pioneer status — FAIL if either branch is absent
+- `whatsappIntroTemplate` and `whatsappReengagementTemplate` must vary their profession/service-label param by `service_type` — FAIL if hardcoded (the reengagement WhatsApp copy in `vendor_lead_tick()` was fixed in `20260608000001` to include the service label in both pioneer/non-pioneer branches — a template missing it is out of sync with the live SQL wording). `whatsappGoLiveTemplate` does NOT vary by service_type (never included it in any migration) — this one is intentional, not a gap
 - `lead-copy.ts` must read `LAUNCH_MONTH` from `Deno.env` (defaulting to `'August'`) — FAIL if launch month is hardcoded as a string literal
 
 **vendor_lead_tick() priority order (highest first)** — FAIL if order differs:
-1. PROSPECT/COLD → VERIFIED (KYC approved)
-2. GO-LIVE message (`lead_state = VERIFIED`) — deletes any pending intro/reengagement WhatsApp drafts first
+1. PROSPECT/COLD → VERIFIED (KYC approved) — this transition is itself structurally unreachable (see below), kept only for the lead-state field's own bookkeeping
+2. Clear any pending intro/reengagement WhatsApp drafts for VERIFIED leads — go-live *message generation* was retired 2026-08-14 as dead code (see next bullet); this cleanup step alone remains, now itself a no-op for the same reason
 3. PROSPECT → COLD (`last_outreach > 7 days ago`)
 4. REENGAGEMENT message (`lead_state = COLD`, 7-day silence) — deletes any pending intro WhatsApp draft first
 5. INTRODUCTION message (`last_outreach IS NULL`, 24h after signup)
+
+**Known structural issue, not yet fixed (flagged 2026-08-14, left as-is per explicit decision):** Step 1's `converted = false` condition can never be satisfied at the moment KYC completes — `transfer_pioneer_from_lead()` (`20260705000002`+) sets `vendor_leads.converted = TRUE` at vendor-row-creation time (signup), long before KYC starts. `lead_state` can therefore never actually reach `'VERIFIED'`. This is why go-live message generation (previously Step 2's WhatsApp/email inserts) was retired outright rather than fixed — `vendor-kyc-webhook` now sends the verified WhatsApp instantly and directly instead (see §9). WARN if this is ever "fixed" by changing Step 1's condition without also re-auditing for duplicate sends against the webhook.
 
 Return type: `TABLE(transitions integer, queued integer)` — FAIL if it returns void or a single scalar
 
@@ -382,7 +389,7 @@ Return type: `TABLE(transitions integer, queued integer)` — FAIL if it returns
 - Phone number must be normalised to E.164 (`+234XXXXXXXXXX`) before insert — FAIL if raw local format (`080XXXXXXXXXX`) is stored
 - WARN if `DELIVERY_LIVE=true` but 360dialog/Resend secrets are unset
 
-**Auth OTP consistency:** `auth-send-sms` (despite its name) delivers OTP via 360dialog WhatsApp using the same `DIALOG360_API_KEY`/`DIALOG360_BASE_URL` as outreach — FAIL if auth OTP and outreach ever diverge onto different WhatsApp providers/credentials.
+**Auth OTP consistency:** two separate functions send OTP over WhatsApp — `auth-send-sms` (despite its name, the Supabase "Send SMS" hook for phone-based auth) and `auth-send-email` (the "Send Email" hook, which dual-delivers to WhatsApp if a phone is found for the user). Both use the same `DIALOG360_API_KEY`/`DIALOG360_BASE_URL` as outreach, and both send the same `vars_login_otp` Authentication-category template with the same 2-component payload (`body` with the OTP text param, `button` with `sub_type: 'copy_code'` and a `coupon_code` param carrying the same OTP) — FAIL if auth OTP and outreach ever diverge onto different WhatsApp providers/credentials, if the two OTP functions diverge onto different template names, or if either drops the button component (the approved template requires a mandatory Copy Code button, confirmed 2026-08-14 — a body-only send will be rejected as a component-count mismatch).
 
 ---
 
@@ -440,7 +447,7 @@ Four utilities must exist and match spec — FAIL for each deviation:
 - `vendor-lead-tick` — must be registered hourly. WARN until confirmed in Dashboard.
 - `deliver-outreach-cron` — deployed and confirmed active at `*/10 * * * *`. Delivery is stubbed — set `DELIVERY_LIVE=true` in Supabase secrets to activate real 360dialog/Resend delivery.
 - `migrate-raw-kyc-images` — one-time idempotent ops function. Run if any vendor has `profile_image_raw_url LIKE 'http%'` (legacy records where raw image was stored in the public bucket before the bucket split). Invoke with `Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>`. Safe to re-run — skips vendors already using storage paths. Run `SELECT id FROM vendors WHERE profile_image_raw_url LIKE 'http%'` first to determine whether a run is needed.
-- WhatsApp delivery — blocked on Meta HSM template approval via 360dialog. Templates required: intro, reengagement, go-live, plus the auth-OTP template used by `auth-send-sms`. Free-form WhatsApp messages are silently discarded by Meta. WARN until all templates are approved and `DIALOG360_API_KEY`/`DIALOG360_BASE_URL` are set in Supabase secrets.
+- WhatsApp delivery — code now sends `type: 'template'` (not free text) for all business-initiated sends: `vars_vendor_intro`, `vars_vendor_reengagement`, `vars_vendor_golive` (outreach, `lead-copy.ts`) and `vars_login_otp` (auth OTP, `auth-send-sms`, Authentication category). Blocked only on Meta HSM approval of these 4 templates via 360dialog, plus `DIALOG360_API_KEY`/`DIALOG360_BASE_URL` set in Supabase secrets. FAIL if any of these send paths reverts to `type: 'text'`. `sendTransactionalWhatsApp()` in `notifications.ts` (phone-reveal) is intentionally still free-form — that's a session-initiated send, not covered by this requirement.
 - Youverify webhook schema — unconfirmed with vendor. WARN until confirmed with their team.
 - Monnify — no code action; note only if Paystack live mode is blocked at launch.
 - `DELIVERY_LIVE` secret — WARN if unset in production and outreach delivery is expected.

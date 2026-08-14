@@ -46,7 +46,7 @@ export async function sendNotification(payload: NotificationPayload): Promise<vo
         pushData.screen = `/booking/detail/${payload.bookingId}`;
       }
       if (payload.recipientType === 'vendor' && payload.bookingId) {
-        pushData.screen = `/vendor-tabs`;
+        pushData.screen = `/(vendor-tabs)/profile`;
       }
 
       await fetch('https://exp.host/--/api/v2/push/send', {
@@ -319,6 +319,13 @@ export function msg_vendor_verificationFailed(reason: string) {
   };
 }
 
+export function msg_vendor_needsReview() {
+  return {
+    title: 'Confirming your details',
+    body: `Your verification needs a closer look from our team. Most stylists are confirmed within 24 hours — we'll let you know the moment it's done.`,
+  };
+}
+
 // Auto-accept messages
 export function msg_autoAccepted(vendorName: string, date: string, time: string) {
   return {
@@ -546,6 +553,53 @@ export async function sendTransactionalWhatsApp(
     console.log('[notify] WhatsApp sent:', data.messages?.[0]?.id, '→', to);
   } catch (err) {
     console.error('[notify] sendTransactionalWhatsApp failed:', err);
+  }
+}
+
+/**
+ * Sends a Meta-approved HSM WhatsApp template (business-initiated messages
+ * can't be free-form — see sendTransactionalWhatsApp above for the
+ * session-initiated case). `name`/`params` must match what's approved in
+ * the 360dialog/Meta template manager — a mismatch causes 360dialog to
+ * reject the send outright.
+ */
+export async function sendWhatsAppTemplate(
+  to: string,
+  template: { name: string; params: string[] },
+): Promise<void> {
+  if (!_DIALOG360_API_KEY) {
+    console.warn('[notify] DIALOG360_API_KEY not set — skipping WhatsApp template to', to);
+    return;
+  }
+  try {
+    const res = await fetch(`${_DIALOG360_BASE_URL}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'D360-API-KEY': _DIALOG360_API_KEY,
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to,
+        type: 'template',
+        template: {
+          name:     template.name,
+          language: { code: 'en' },
+          components: [{
+            type:       'body',
+            parameters: template.params.map((text) => ({ type: 'text', text })),
+          }],
+        },
+      }),
+    });
+    if (!res.ok) {
+      console.error('[notify] 360dialog WhatsApp template error for', to, ':', await res.text());
+      return;
+    }
+    const data = await res.json();
+    console.log('[notify] WhatsApp template sent:', data.messages?.[0]?.id, '→', to);
+  } catch (err) {
+    console.error('[notify] sendWhatsAppTemplate failed:', err);
   }
 }
 

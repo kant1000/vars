@@ -58,7 +58,7 @@ Deno.serve(async (req: Request) => {
       // Confirm vendor exists
       const { data: vendor, error: vendorError } = await supabase
         .from('vendors')
-        .select('id, full_name')
+        .select('id, full_name, kyc_status')
         .eq('id', user.id)
         .single();
 
@@ -79,6 +79,9 @@ Deno.serve(async (req: Request) => {
         primary_contact_name: vendor.full_name,
       });
 
+      // is_active only flips true here if KYC is already verified — mirrors the
+      // check in vendor-kyc-webhook, since bank setup and KYC can complete in
+      // either order and a vendor must not be bookable/payable until both are done.
       await supabase
         .from('vendors')
         .update({
@@ -86,6 +89,7 @@ Deno.serve(async (req: Request) => {
           bank_name,
           bank_account_name: account_name,
           paystack_subaccount_code: subaccount.subaccount_code,
+          ...(vendor.kyc_status === 'verified' ? { is_active: true } : {}),
         })
         .eq('id', user.id);
 

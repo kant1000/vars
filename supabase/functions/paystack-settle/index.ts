@@ -278,7 +278,7 @@ Deno.serve(async (req: Request) => {
           body: msg.body,
           bookingId: b.id,
           pushToken: (b as any).vendors?.push_token ?? null,
-          data: { bookingId: b.id, screen: '/vendor-tabs' },
+          data: { bookingId: b.id, screen: '/(vendor-tabs)/profile' },
         });
         remindedCount++;
       }

@@ -3,6 +3,20 @@
 // Replaces Supabase's default SMS sending for phone OTP auth.
 // Delivers the OTP via 360dialog (WhatsApp) instead of SMS.
 // Configured in: Supabase Dashboard → Authentication → Hooks → Send SMS
+//
+// Sends a Meta-approved AUTHENTICATION-category HSM template
+// (template name below), not free text — business-initiated WhatsApp
+// messages are rejected otherwise. Authentication templates are mostly
+// Meta-authored: "vars_login_otp" body is fixed by Meta as
+// "{{1}} is your verification code." — custom phrasing isn't allowed
+// for this category. The "Copy Code" button is mandatory in 360dialog's
+// Authentication flow (couldn't be turned off), so the send payload
+// includes a matching `button` component alongside the body — both
+// carry the same OTP value. Per Meta's WhatsApp Cloud API docs for
+// copy-code authentication buttons: sub_type "copy_code", parameter
+// type "coupon_code". If sends start failing with a button/component
+// shape error, double check this against 360dialog's own API reference,
+// since this wasn't verified against a live send.
 // ============================================================
 
 const DIALOG360_API_KEY  = Deno.env.get('DIALOG360_API_KEY')  ?? '';
@@ -86,8 +100,23 @@ Deno.serve(async (req: Request) => {
       body: JSON.stringify({
         messaging_product: 'whatsapp',
         to: phone,
-        type: 'text',
-        text: { body: `Your VARS login code is: *${otp}*\n\nExpires in 10 minutes. Do not share this with anyone.` },
+        type: 'template',
+        template: {
+          name:     'vars_login_otp',
+          language: { code: 'en' },
+          components: [
+            {
+              type:       'body',
+              parameters: [{ type: 'text', text: otp }],
+            },
+            {
+              type:       'button',
+              sub_type:   'copy_code',
+              index:      '0',
+              parameters: [{ type: 'coupon_code', coupon_code: otp }],
+            },
+          ],
+        },
       }),
     });
 

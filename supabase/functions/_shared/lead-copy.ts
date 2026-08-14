@@ -7,14 +7,25 @@
 export type ServiceType = 'hair_styling' | 'barbing' | 'makeovers' | 'other';
 
 // Launch month used in all outreach copy — set LAUNCH_MONTH in Supabase secrets to change
-// without a redeploy (e.g. "September" if the date slips).
-const LAUNCH_MONTH = Deno.env.get('LAUNCH_MONTH') ?? 'August';
+// without a redeploy. Defaults to 'October', matching "Both Sides Open" (customer
+// launch) on the roadmap (apps/landing/src/app/roadmap/data/milestones.ts) — update
+// this default if that date ever slips.
+const LAUNCH_MONTH = Deno.env.get('LAUNCH_MONTH') ?? 'October';
 
 const SERVICE_LABEL: Record<ServiceType, string> = {
   hair_styling: 'hair styling',
   barbing:      'barbering',
   makeovers:    'makeovers',
   other:        'beauty services',
+};
+
+// Occupation-noun form — reads naturally after "a", unlike SERVICE_LABEL
+// (e.g. "a hair stylist", not "a hair styling").
+const PROFESSION_LABEL: Record<ServiceType, string> = {
+  hair_styling: 'hair stylist',
+  barbing:      'barber',
+  makeovers:    'makeup artist',
+  other:        'beauty professional',
 };
 
 // One-line hook per category, used in email subject + body opener
@@ -31,6 +42,10 @@ export function getFirstName(fullName: string): string {
 
 function serviceLabel(serviceType: string): string {
   return SERVICE_LABEL[serviceType as ServiceType] ?? 'beauty services';
+}
+
+function professionLabel(serviceType: string): string {
+  return PROFESSION_LABEL[serviceType as ServiceType] ?? 'beauty professional';
 }
 
 function serviceHook(serviceType: string): string {
@@ -85,7 +100,7 @@ You keep your existing clients. When VARS opens in ${LAUNCH_MONTH}, customers wi
 Verification (KYC) takes 2–3 minutes. It works the same way banks verify identity. Once you're verified, your profile goes live and you start showing up in customer searches.
 
 Complete your profile here:
-https://vars.app/activate
+https://bookwithvars.com/activate
 
 Questions? Reply to this email — we read every one.
 
@@ -128,7 +143,7 @@ ${pioneerLine}
 Payment is held by VARS until you confirm the service is done. You're protected from the moment they book. We have your back on disputes.
 
 Complete your profile in 5 minutes:
-https://vars.app/activate
+https://bookwithvars.com/activate
 
 If you have questions before you start, just reply here.
 
@@ -136,58 +151,95 @@ If you have questions before you start, just reply here.
   };
 }
 
-// ── WhatsApp templates (short, conversational) ────────────────────────────────
-// Pidgin-forward, reads like a message from a person, not a broadcast.
+// ── WhatsApp HSM templates (Meta-approved, sent once DELIVERY_LIVE is on) ─────
+// `name` and `params` order below must match exactly what's approved in the
+// 360dialog/Meta template manager — a mismatch causes 360dialog to reject the
+// send outright. Update both together if the approved wording ever changes.
+// Body skeletons (submit verbatim when requesting HSM approval):
+//   vars_vendor_intro:        "Hi {{1}}! You registered to be a {{3}} on VARS.
+//     Customer go live is {{2}}. Set up your profile now to be ready from day
+//     one. {{4}} Complete your profile: https://bookwithvars.com/activate"
+//     params: [firstName, launchMonth, professionLabel, earningsLine]
+//   vars_vendor_reengagement: "{{1}}, VARS opens to customers in {{2}}. Set up
+//     your {{3}} profile. {{4}} Complete your profile: https://bookwithvars.com/activate"
+//     params: [firstName, launchMonth, serviceLabel, highlightLine]
+//   vars_vendor_golive:       "Congrats {{1}}! You're verified on VARS. Your
+//     profile is live. Make sure you're online on the app to start accepting
+//     bookings." — single variable, no pioneer/earnings mention on this one
+//     (dropped deliberately — user's call).
+//     params: [firstName]
+// `bookwithvars.com` (not vars.app, which isn't a real hosted domain anywhere
+// in this repo) — /activate is a new route the user is adding on that domain,
+// not live yet as of this edit. Go-live has no link, so no page needed there.
 
-/**
- * WhatsApp intro — first phone contact, 24h after sign-up (PROSPECT state).
- */
-export function whatsappIntro(
+export interface WhatsAppTemplate {
+  name:   string;
+  params: string[];
+}
+
+/** WhatsApp intro — first phone contact, 24h after sign-up (PROSPECT state). */
+export function whatsappIntroTemplate(
   fullName: string,
   serviceType: string,
   isPioneer: boolean,
-): string {
-  const firstName    = getFirstName(fullName);
-  const label        = serviceLabel(serviceType);
-  const earningNote  = isPioneer
-    ? 'Your Pioneer spot is confirmed — first 3 bookings are 0% commission.'
+): WhatsAppTemplate {
+  const firstName = getFirstName(fullName);
+  const profession = professionLabel(serviceType);
+  const earnings   = isPioneer
+    ? 'Your Pioneer spot is confirmed. First 3 bookings are 0% commission.'
     : 'You keep 80% of every booking.';
 
-  return `Hi ${firstName}! VARS opens to customers in ${LAUNCH_MONTH} — set up your ${label} profile now to be ready from day one. ${earningNote} Complete your profile: https://vars.app/activate`;
+  return {
+    name:   'vars_vendor_intro',
+    params: [firstName, LAUNCH_MONTH, profession, earnings],
+  };
 }
 
-/**
- * WhatsApp reengagement — sent to COLD leads, 7+ days after last phone outreach.
- */
-export function whatsappReengagement(
+/** WhatsApp reengagement — sent to COLD leads, 7+ days after last phone outreach. */
+export function whatsappReengagementTemplate(
   fullName: string,
   serviceType: string,
   isPioneer: boolean,
-): string {
+): WhatsAppTemplate {
   const firstName = getFirstName(fullName);
-  const label     = serviceLabel(serviceType);
+  const label      = serviceLabel(serviceType);
+  const highlight  = isPioneer
+    ? 'Your Pioneer spot is still reserved. First 3 bookings: 0% commission.'
+    : 'Vendors who set up now will be first in customer searches. Takes 5 minutes.';
 
-  if (isPioneer) {
-    return `${firstName}, VARS opens to ${label} customers in ${LAUNCH_MONTH} and your Pioneer spot is still reserved. First 3 bookings: 0% commission. Set up before we go live: https://vars.app/activate`;
-  }
-  return `${firstName}, VARS opens to ${label} customers in ${LAUNCH_MONTH}. Vendors who set up now will be first in customer searches. Takes 5 minutes: https://vars.app/activate`;
+  return {
+    name:   'vars_vendor_reengagement',
+    params: [firstName, LAUNCH_MONTH, label, highlight],
+  };
 }
 
-/**
- * WhatsApp go-live — sent when a lead completes KYC and is verified.
- */
-export function whatsappGoLive(
-  fullName: string,
-  serviceType: string,
-  isPioneer: boolean,
-): string {
-  const firstName   = getFirstName(fullName);
-  const label       = serviceLabel(serviceType);
-  const pioneerNote = isPioneer
-    ? ' Your first 3 bookings are 0% commission — you keep everything.'
-    : '';
+/** WhatsApp go-live — sent when a lead completes KYC and is verified.
+ *  Also reused directly by vendor-kyc-webhook for the instant, authoritative
+ *  "verified" WhatsApp send — the lead-nurture pipeline's own go-live
+ *  generation in vendor_lead_tick() was retired as dead code (a lead's
+ *  `converted` flag is already true by the time KYC can complete, so it
+ *  could never satisfy the tick's VERIFIED transition condition). */
+export function whatsappGoLiveTemplate(fullName: string): WhatsAppTemplate {
+  const firstName = getFirstName(fullName);
 
-  return `Congrats ${firstName}! You're verified on VARS as a ${label} professional. Your profile is live.${pioneerNote} Start accepting bookings: https://vars.app/go-live`;
+  return {
+    name:   'vars_vendor_golive',
+    params: [firstName],
+  };
+}
+
+/** WhatsApp KYC rejected — sent by vendor-kyc-webhook when Youverify fails a vendor.
+ *  Body skeleton (submit to Meta verbatim, category Utility):
+ *    "Hi {{1}}, we couldn't verify your details on VARS. {{2}} Retry from
+ *    the app, it takes 2 minutes to get verified and go live."
+ *  params: [firstName, reason] */
+export function whatsappKycRejectedTemplate(fullName: string, reason: string): WhatsAppTemplate {
+  const firstName = getFirstName(fullName);
+
+  return {
+    name:   'vars_vendor_kyc_rejected',
+    params: [firstName, reason],
+  };
 }
 
 // ── HTML email template parts ─────────────────────────────────────────────────

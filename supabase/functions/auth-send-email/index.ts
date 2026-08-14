@@ -6,6 +6,13 @@
 //   2. Looks up their phone from vendor_leads (or vendors table)
 //      and sends the same code to WhatsApp via 360dialog
 // Configured in: Supabase Dashboard → Authentication → Hooks → Send Email
+//
+// The WhatsApp leg sends the Meta-approved AUTHENTICATION-category
+// template `vars_login_otp` (same template as auth-send-sms — see that
+// file's header for why Authentication-category wording is mostly
+// Meta-authored, not custom), not free text. It's reused here for both
+// login and password-reset codes: Authentication templates don't carry
+// an "action type" distinction, only the code itself.
 // ============================================================
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -147,10 +154,6 @@ Deno.serve(async (req: Request) => {
       }
 
       if (phone) {
-        const waText = actionType === 'recovery'
-          ? `Your VARS reset code is: *${otp}*\n\nExpires in 10 minutes. Do not share this with anyone.`
-          : `Your VARS login code is: *${otp}*\n\nExpires in 10 minutes. Do not share this with anyone.`;
-
         const phoneTo = phone.replace(/^\+/, '');
 
         const res = await fetch(`${DIALOG360_BASE_URL}/messages`, {
@@ -162,8 +165,23 @@ Deno.serve(async (req: Request) => {
           body: JSON.stringify({
             messaging_product: 'whatsapp',
             to: phoneTo,
-            type: 'text',
-            text: { body: waText },
+            type: 'template',
+            template: {
+              name:     'vars_login_otp',
+              language: { code: 'en' },
+              components: [
+                {
+                  type:       'body',
+                  parameters: [{ type: 'text', text: otp }],
+                },
+                {
+                  type:       'button',
+                  sub_type:   'copy_code',
+                  index:      '0',
+                  parameters: [{ type: 'coupon_code', coupon_code: otp }],
+                },
+              ],
+            },
           }),
         });
         if (!res.ok) {

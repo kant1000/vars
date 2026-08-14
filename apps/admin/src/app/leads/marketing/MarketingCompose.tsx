@@ -256,7 +256,7 @@ export default function MarketingCompose() {
           {field('Body paragraph 2 (optional)', 'body2', 'Additional context…', false, true)}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             {field('CTA button label (optional)', 'cta_label', 'e.g. Complete your profile')}
-            {field('CTA URL (optional)', 'cta_url', 'https://vars.app/activate')}
+            {field('CTA URL (optional)', 'cta_url', 'https://bookwithvars.com/activate')}
           </div>
           <p style={{ margin: 0, fontSize: 12, color: 'var(--text2)' }}>
             The email opens with "Hi {'{{first_name}}'}," personalised per lead. Leave CTA fields empty to omit the button.

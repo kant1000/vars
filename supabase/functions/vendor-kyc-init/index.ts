@@ -29,11 +29,18 @@ Deno.serve(async (req: Request) => {
     const adminClient = createAdminClient();
     const { data: vendor, error: vendorErr } = await adminClient
       .from('vendors')
-      .select('full_name, phone_number')
+      .select('full_name, phone_number, kyc_status')
       .eq('id', vendor_id)
       .single();
 
     if (vendorErr || !vendor) return errorResponse('Vendor not found', 404);
+
+    // A verified vendor re-hitting this (stale nav, deep link, notification
+    // retap) must not regress kyc_status back to 'pending' — that would drop
+    // them from discovery without ever resetting is_active to match.
+    if (vendor.kyc_status === 'verified') {
+      return errorResponse('You are already verified — no need to restart identity check.', 400);
+    }
 
     // Initialize Youverify hosted KYC link
     const yvRes = await fetch(YOUVERIFY_API_URL, {
