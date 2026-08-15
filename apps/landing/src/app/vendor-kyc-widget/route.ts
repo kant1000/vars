@@ -156,9 +156,16 @@ function html(
             tasks: [{ id: 'passive' }],
             user: { firstName: ${JSON.stringify(firstName)}, lastName: ${JSON.stringify(lastName)} },
             onSuccess: (result) => {
-              log('onSuccess: ' + stringify(result));
+              const fi = result?.faceImage ?? '';
+              // Don't log the full faceImage — it's a huge base64 string that
+              // would flood the debug panel. Just enough to see its shape.
+              log('onSuccess: passed=' + result?.passed + ' faceImage.length=' + fi.length + ' prefix=' + fi.slice(0, 40));
               setStatus('Done.');
-              post({ type: 'liveness_success', faceImage: result?.faceImage ?? null });
+              post({
+                type: 'liveness_success',
+                faceImage: fi || null,
+                faceImageInfo: 'len=' + fi.length + ' prefix=' + fi.slice(0, 30),
+              });
             },
             onFailure: (err) => {
               log('onFailure: ' + stringify(err), true);

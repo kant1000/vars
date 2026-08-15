@@ -273,7 +273,13 @@ export default function Step4Kyc() {
       }
     } catch (err: any) {
       setKycState('failed');
-      setKycErrorReason(err.message ?? null);
+      // TEMP: prefix with the captured selfie's format/size — vendor-kyc-verify
+      // errors here have so far been Youverify rejecting the image itself
+      // (e.g. "must be <= 1MB"), and this is the only way to see what was
+      // actually captured without devtools access on the test device.
+      setKycErrorReason(
+        (msg.faceImageInfo ? `[selfie ${msg.faceImageInfo}] ` : '') + (err.message ?? '')
+      );
     }
   };
 

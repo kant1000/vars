@@ -65,7 +65,10 @@ Deno.serve(async (req: Request) => {
     if (!yvRes.ok) {
       const errText = await yvRes.text();
       console.error('vendor-kyc-verify: Youverify NIN error', yvRes.status, errText);
-      return errorResponse('Could not verify your identity. Please try again.', 502);
+      // TEMP diagnostic — surfaces the real Youverify NIN-endpoint error to
+      // the app instead of a generic message, same pattern used to diagnose
+      // vendor-kyc-init earlier. Revert once diagnosed.
+      return errorResponse(`Youverify NIN ${yvRes.status}: ${errText.slice(0, 400)}`, 502);
     }
 
     const yvJson = await yvRes.json();
