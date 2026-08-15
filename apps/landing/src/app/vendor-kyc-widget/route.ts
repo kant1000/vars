@@ -21,6 +21,12 @@
 // window.ReactNativeWebView.postMessage — apps/mobile's step-4-kyc.tsx
 // listens for { type: 'liveness_success', faceImage } or
 // { type: 'liveness_failed' }.
+//
+// TEMP: on-page debug log panel (bottom overlay) — this SDK integration
+// was pieced together from partial npm README fragments (no devtools
+// access on the test device to see real console errors), so every
+// console.*/window.onerror/unhandledrejection is mirrored on-screen until
+// the flow is confirmed working end-to-end. Remove once verified.
 // ============================================================
 import { NextResponse } from 'next/server';
 
@@ -36,46 +42,96 @@ function html(sessionId: string, token: string): string {
   <style>
     html, body { margin: 0; padding: 0; height: 100%; background: #000; }
     #status {
-      position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
-      color: #fff; font-family: -apple-system, Roboto, sans-serif; font-size: 15px;
-      text-align: center; padding: 24px; box-sizing: border-box;
+      color: #fff; font-family: -apple-system, Roboto, sans-serif; font-size: 14px;
+      text-align: center; padding: 12px 16px; box-sizing: border-box;
     }
+    #debug {
+      position: fixed; left: 0; right: 0; bottom: 0; max-height: 45vh; overflow-y: auto;
+      background: rgba(0,0,0,0.85); color: #0f0; font-family: monospace; font-size: 11px;
+      padding: 8px; box-sizing: border-box; white-space: pre-wrap; word-break: break-all;
+      border-top: 1px solid #333;
+    }
+    .debug-err { color: #f66; }
   </style>
 </head>
 <body>
   <div id="status">Loading identity check…</div>
+  <div id="debug"></div>
   <script type="module">
+    const debugEl = document.getElementById('debug');
+    const log = (text, isErr) => {
+      const line = document.createElement('div');
+      if (isErr) line.className = 'debug-err';
+      line.textContent = (isErr ? '[err] ' : '[log] ') + text;
+      debugEl.appendChild(line);
+      debugEl.scrollTop = debugEl.scrollHeight;
+    };
+    const stringify = (a) => {
+      try { return typeof a === 'string' ? a : JSON.stringify(a); }
+      catch { return String(a); }
+    };
+    ['log', 'warn', 'error'].forEach((level) => {
+      const orig = console[level];
+      console[level] = (...args) => {
+        log(args.map(stringify).join(' '), level === 'error');
+        orig.apply(console, args);
+      };
+    });
+    window.onerror = (msg, src, line, col, err) => {
+      log('window.onerror: ' + msg + ' @' + line + ':' + col + (err && err.stack ? '\\n' + err.stack : ''), true);
+    };
+    window.addEventListener('unhandledrejection', (e) => {
+      log('unhandledrejection: ' + stringify(e.reason), true);
+    });
+
     const post = (msg) => {
       if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify(msg));
+      log('post: ' + JSON.stringify(msg));
     };
     const setStatus = (text) => {
       const el = document.getElementById('status');
       if (el) el.textContent = text;
     };
 
+    log('sessionId=' + ${JSON.stringify(sessionId)} + ' hasToken=' + !!${JSON.stringify(token)});
+
     if (!${JSON.stringify(sessionId)} || !${JSON.stringify(token)}) {
       setStatus('Missing verification session. Please go back and try again.');
       post({ type: 'liveness_failed' });
     } else {
+      log('importing SDK...');
       import('https://cdn.jsdelivr.net/npm/youverify-passive-liveness-web/+esm')
-        .then(({ default: YouverifyPassiveLiveness }) => {
+        .then((mod) => {
+          log('SDK module loaded, keys=' + Object.keys(mod).join(','));
+          const YouverifyPassiveLiveness = mod.default ?? mod.YouverifyPassiveLiveness ?? mod;
+          if (typeof YouverifyPassiveLiveness !== 'function') {
+            log('YouverifyPassiveLiveness is not a constructor: ' + typeof YouverifyPassiveLiveness, true);
+            setStatus('Could not load identity check (bad SDK export).');
+            post({ type: 'liveness_failed' });
+            return;
+          }
           const yv = new YouverifyPassiveLiveness({
             sessionId: ${JSON.stringify(sessionId)},
             sessionToken: ${JSON.stringify(token)},
             publicMerchantKey: ${JSON.stringify(YOUVERIFY_PUBLIC_MERCHANT_KEY)},
             onSuccess: (result) => {
+              log('onSuccess: ' + stringify(result));
               setStatus('Done.');
               post({ type: 'liveness_success', faceImage: result?.faceImage ?? null });
             },
-            onFailure: () => {
+            onFailure: (err) => {
+              log('onFailure: ' + stringify(err), true);
               setStatus('Identity check failed.');
               post({ type: 'liveness_failed' });
             },
           });
+          log('SDK instance created, calling start()...');
           setStatus('');
           yv.start();
+          log('start() called.');
         })
         .catch((err) => {
+          log('SDK import failed: ' + stringify(err && err.message ? err.message : err), true);
           setStatus('Could not load identity check. Please try again.');
           post({ type: 'liveness_failed' });
         });

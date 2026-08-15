@@ -72,6 +72,18 @@ Deno.serve(async (req: Request) => {
     const data = yvJson?.data ?? {};
     const found = data.status === 'found';
 
+    // kyc_submitted_at marks a real, completed verification attempt (we have
+    // a definitive answer from Youverify at this point) — set here, not at
+    // session-generation time in vendor-kyc-init, so an app reload between
+    // opening the identity-check screen and actually finishing it doesn't
+    // get misrouted to the "pending review" screen for a check that never
+    // ran. See vendor-kyc-init's doc comment for the bug this fixes.
+    const adminClient = createAdminClient();
+    await adminClient
+      .from('vendors')
+      .update({ kyc_submitted_at: new Date().toISOString() })
+      .eq('id', user.id);
+
     // Shaped to match what vendor-kyc-webhook already parses from Youverify's
     // async KYC Link callback — reuses its image crop/upload, legal-name
     // extraction, notifications, and is_active-flip logic unchanged.

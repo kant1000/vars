@@ -31,7 +31,13 @@ export function useBiometricLock(active: boolean) {
       const prev = appState.current;
       appState.current = next;
 
-      if (prev === 'active' && next.match(/inactive|background/)) {
+      // 'inactive' is a transient state for system dialogs (permission
+      // prompts, share sheets, the app switcher preview) — not a real
+      // departure. Only 'background' means the app actually left the
+      // foreground. Treating 'inactive' the same way fired a spurious
+      // re-lock every time any system dialog appeared (confirmed live:
+      // the camera permission prompt during KYC triggered it).
+      if (prev === 'active' && next === 'background') {
         hasBackgrounded.current = true;
       }
 

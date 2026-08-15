@@ -14,6 +14,7 @@ import {
   ScrollView, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
+import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -205,6 +206,17 @@ export default function Step4Kyc() {
     setKycState('loading');
     setKycErrorReason(null);
     try {
+      // The WebView's onPermissionRequest can only grant the page's request
+      // for a resource the app is already OS-permitted to use — it can't
+      // itself trigger the Android runtime permission prompt. Without this,
+      // the liveness widget's camera access fails silently (blank screen,
+      // no error) even though onPermissionRequest grants its side cleanly.
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Camera needed', 'Please allow camera access to complete identity verification.');
+        setKycState('prep');
+        return;
+      }
       const data = await callEdgeFn('vendor-kyc-init', { vendor_id: user.id });
       setKycUrl(data.verification_url);
       setKycState('webview');

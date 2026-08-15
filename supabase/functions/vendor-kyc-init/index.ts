@@ -18,6 +18,14 @@
 // being served that way (confirmed live, 2026-08-16). See the widget
 // route's own comment for detail.
 //
+// Does NOT touch vendors.kyc_submitted_at — that's set by vendor-kyc-verify
+// once a real verification attempt actually happens. Setting it here (at
+// session-generation time, before the vendor has done anything) meant any
+// app reload between opening this screen and finishing the liveness/NIN
+// check got routed straight to the "pending review" screen, since the
+// routing logic reads kyc_submitted_at as "a real attempt was made."
+// Confirmed live, 2026-08-16.
+//
 // Called by: step-4-kyc.tsx → handleStartKyc()
 // ============================================================
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
@@ -84,15 +92,6 @@ Deno.serve(async (req: Request) => {
 
     const verificationUrl =
       `${KYC_WIDGET_URL}?sessionId=${encodeURIComponent(sessionId)}&token=${encodeURIComponent(authToken)}`;
-
-    // Mark kyc_status as 'pending', clear any previous rejection reason, and
-    // record kyc_submitted_at — the only unambiguous signal that KYC was
-    // actually started (kyc_status alone defaults to 'pending' at row
-    // creation, so it can't distinguish "never started" from "submitted").
-    await adminClient
-      .from('vendors')
-      .update({ kyc_status: 'pending', kyc_rejection_reason: null, kyc_submitted_at: new Date().toISOString() })
-      .eq('id', vendor_id);
 
     return jsonResponse({ verification_url: verificationUrl });
   } catch (err: any) {

@@ -129,7 +129,19 @@ export function VarsButton({
       ]}
     >
       {loading ? (
-        <ScissorsLoader size="small" color={isPrimary ? 'light' : 'dark'} />
+        <ScissorsLoader
+          size="small"
+          // ink inverts between themes, so the loader's fixed light/dark SVG
+          // fill must flip too — see docs/VARS_PROJECT_CONTEXT.md's Loading
+          // animation note. Ink-filled (primary) button: dark loader in dark
+          // mode (ink itself is light there), light loader in light mode.
+          // Outline/transparent (secondary/ghost) button: the inverse.
+          color={
+            isPrimary
+              ? (theme.appearance === 'dark' ? 'dark' : 'light')
+              : (theme.appearance === 'dark' ? 'light' : 'dark')
+          }
+        />
       ) : (
         <>
           {icon ? <VarsIcon name={icon} size={16} color={fg} theme={theme} /> : null}
