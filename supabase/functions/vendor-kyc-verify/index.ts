@@ -48,9 +48,18 @@ Deno.serve(async (req: Request) => {
     }
     if (!selfie) return errorResponse('Missing selfie image.', 400);
 
-    const selfieImage = String(selfie).startsWith('data:image')
-      ? selfie
-      : `data:image/jpeg;base64,${selfie}`;
+    // The Passive Liveness SDK's onSuccess.faceImage is a Youverify-hosted
+    // URL (e.g. https://cdn.youverify.co/17868), not base64 — confirmed live,
+    // 2026-08-16 ("[selfie len=64 prefix=https://cdn.youverify.co/17868]").
+    // Wrapping it as `data:image/jpeg;base64,${url}` produced a malformed
+    // value Youverify's NIN endpoint rejected as "Invalid Image". The NIN
+    // endpoint's validations.selfie.image field accepts either a URL or
+    // base64, so pass a URL through unchanged.
+    const selfieStr = String(selfie);
+    const selfieImage =
+      selfieStr.startsWith('data:image') || selfieStr.startsWith('http')
+        ? selfieStr
+        : `data:image/jpeg;base64,${selfieStr}`;
 
     const yvRes = await fetch(`${YOUVERIFY_BASE_URL}/v2/api/identity/ng/nin`, {
       method: 'POST',
