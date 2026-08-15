@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as LocalAuthentication from 'expo-local-authentication';
+import { isBiometricLockSuspended } from './biometricLockSuspend';
 
 const BIOMETRIC_KEY = 'vars_biometric_lock';
 
@@ -42,6 +43,7 @@ export function useBiometricLock(active: boolean) {
       }
 
       if (hasBackgrounded.current && prev !== 'active' && next === 'active') {
+        if (isBiometricLockSuspended()) return;
         AsyncStorage.getItem(BIOMETRIC_KEY).then((stored) => {
           if (stored === 'true') {
             setLocked(true);

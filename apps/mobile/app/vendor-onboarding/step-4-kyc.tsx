@@ -16,6 +16,7 @@ import {
 import { WebView } from 'react-native-webview';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
+import { suspendBiometricLock, resumeBiometricLock } from '@/lib/biometricLockSuspend';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { VarsButton, VarsInput, VarsSurface, VarsCheckbox } from '@/components/ui';
@@ -44,6 +45,18 @@ export default function Step4Kyc() {
   const [kycErrorReason, setKycErrorReason] = useState<string | null>(null);
   const [nin, setNin] = useState('');
   const [ninConsent, setNinConsent] = useState(false);
+
+  // Camera permission + the liveness widget's camera access can cause a real
+  // AppState background transition (not just the transient 'inactive' used
+  // for simple dialogs — confirmed live on this device), which would
+  // otherwise trigger a spurious Face ID re-lock mid-flow. Suspended for the
+  // whole screen's lifetime, not just while the WebView is open, since the
+  // camera permission prompt itself (in launchKyc, before 'webview' state)
+  // is what triggers it.
+  useEffect(() => {
+    suspendBiometricLock();
+    return () => resumeBiometricLock();
+  }, []);
 
   // Bank account state
   const [accountNumber, setAccountNumber] = useState('');

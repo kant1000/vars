@@ -67,6 +67,22 @@ function html(sessionId: string, token: string): string {
       debugEl.scrollTop = debugEl.scrollHeight;
     };
     const stringify = (a) => {
+      // Error objects JSON.stringify to '{}' — message/stack aren't enumerable.
+      if (a instanceof Error) return a.name + ': ' + a.message + (a.stack ? '\\n' + a.stack : '');
+      if (a && typeof a === 'object') {
+        try {
+          const plain = JSON.stringify(a);
+          if (plain && plain !== '{}') return plain;
+        } catch {}
+        // Empty-looking object (e.g. DOMException, a custom error-like shape)
+        // — pull out anything that looks like a message across common shapes.
+        const parts = [];
+        if (a.name) parts.push('name=' + a.name);
+        if (a.message) parts.push('message=' + a.message);
+        if (a.code !== undefined) parts.push('code=' + a.code);
+        if (a.toString && a.toString() !== '[object Object]') parts.push('toString=' + a.toString());
+        return parts.length ? parts.join(' ') : Object.prototype.toString.call(a);
+      }
       try { return typeof a === 'string' ? a : JSON.stringify(a); }
       catch { return String(a); }
     };
