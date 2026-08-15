@@ -1,5 +1,14 @@
 export { fmtPrice, fmtDuration, fmtTime, fmtDate, fmtLongDate, fmtDateTime } from '@vars/shared';
 
+// Youverify returns legal names in ALL CAPS — display standard is Title Case.
+export function titleCase(text: string): string {
+  return text
+    .toLowerCase()
+    .split(' ')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
 // Strips phone-number patterns from customer-visible free-text fields
 // (bio, service name, service description). Rules: no @, no 5+ consecutive
 // digits (years like 2025 are 4 digits and pass), no 7+ digit cluster with

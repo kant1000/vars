@@ -15,6 +15,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { uploadSinglePortfolioPhoto, deletePortfolioPhoto } from '@/lib/storage';
+import { titleCase } from '@/lib/format';
 import { VarsSkeleton } from '@/components/ui';
 import { useVarsTheme } from '@/contexts/ThemeContext';
 import { Colors, BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
@@ -394,7 +395,7 @@ export default function VendorProfileScreen() {
             </View>
 
             {kycLegalName ? (
-              <Text style={s.heroLegalText} numberOfLines={1}>{kycLegalName}</Text>
+              <Text style={s.heroLegalText} numberOfLines={1}>{titleCase(kycLegalName)}</Text>
             ) : null}
           </View>
         </View>

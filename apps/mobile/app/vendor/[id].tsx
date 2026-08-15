@@ -23,7 +23,7 @@ import { Colors, BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { StarFilledIcon, StarEmptyIcon } from '@/components/icons';
 import { CATEGORY_L2_LABELS } from '@vars/shared';
-import { sanitizeContent } from '@/lib/format';
+import { sanitizeContent, titleCase } from '@/lib/format';
 import { StatusDot, VendorStatus } from '@/components/StatusDot';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -342,7 +342,7 @@ export default function VendorProfileScreen() {
           <View style={styles.profileInfo}>
             <Text style={styles.name} numberOfLines={1}>{vendor.full_name}</Text>
             {vendor.kyc_legal_name ? (
-              <Text style={styles.legalNameText} numberOfLines={1}>{vendor.kyc_legal_name}</Text>
+              <Text style={styles.legalNameText} numberOfLines={1}>{titleCase(vendor.kyc_legal_name)}</Text>
             ) : null}
             <View style={styles.ratingRow}>
               {vendor.total_reviews === 0 ? (

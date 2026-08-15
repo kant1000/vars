@@ -128,19 +128,21 @@ async function fetchIdentityFromApi(identityId: string): Promise<any | null> {
   }
 }
 
-// Centre-square crop, resized to 400×400. Starts a little below the very
-// top of the frame (less empty headroom, more chin/neck included — raises
-// the face within the crop) and spans more of the frame's height than a
-// tight 65% did, then shrinks slightly for a small margin around the face
-// instead of an edge-to-edge crop.
+// Centre-square crop, resized to 400×400. Uses nearly the full smaller
+// dimension of the frame as the crop size — the least zoomed-in square
+// achievable without padding beyond the source image's actual bounds
+// (shrinking the crop window and upscaling it, as a previous version of
+// this did, makes the face appear MORE zoomed in, not less — confirmed
+// wrong live, 2026-08-16). Leans the window toward the top third of the
+// available vertical slack, since a selfie's face usually sits in the
+// upper-middle of frame with more room below (chin/neck/shoulders) than
+// above (hair/forehead).
 async function cropPassportStyle(rawBuffer: Uint8Array): Promise<Uint8Array> {
   const img = await Image.decode(rawBuffer);
-  const cropTop  = Math.floor(img.height * 0.04);
-  const cropH    = Math.floor(img.height * 0.78);
-  const baseSize = Math.min(img.width, cropH);
-  const size     = Math.floor(baseSize * 0.92);
-  const cropX    = Math.floor((img.width - size) / 2);
-  const cropY    = cropTop + Math.floor((baseSize - size) / 2);
+  const size  = Math.floor(Math.min(img.width, img.height) * 0.98);
+  const cropX = Math.floor((img.width - size) / 2);
+  const slack = img.height - size;
+  const cropY = Math.max(0, Math.floor(slack * 0.35));
   img.crop(cropX, cropY, size, size);
   img.resize(400, 400);
   return await img.encode(1); // 1 = JPEG
