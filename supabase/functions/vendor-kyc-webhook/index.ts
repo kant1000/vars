@@ -313,6 +313,12 @@ Deno.serve(async (req: Request) => {
     kyc_status:           'verified',
     kyc_rejection_reason: null,
     kyc_legal_name:       legalName,
+    // Never actually set on this path before — kyc_verified_at stayed NULL
+    // for every verified vendor. Also used by the app as a cache-busting
+    // key for the profile photo URL (same storage path every time, so
+    // without a changing key a re-verified vendor's fresh photo stays
+    // hidden behind a stale cached copy). Confirmed live, 2026-08-16.
+    kyc_verified_at:      new Date().toISOString(),
   };
   if (vendorForNotify?.paystack_subaccount_code) {
     dbUpdate.is_active = true;
