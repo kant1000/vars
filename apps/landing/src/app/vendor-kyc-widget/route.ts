@@ -7,19 +7,22 @@
 // Supabase's Edge Functions platform forces GET responses to
 // Content-Type: text/plain with a locked-down CSP sandbox — a deliberate
 // anti-XSS guardrail that blocks serving browser-navigable HTML from an
-// edge function entirely (confirmed live, 2026-08-16: curl -I showed
+// edge function entirely (confirmed live, 2026-08-15: curl -I showed
 // text/html, but an actual GET always came back text/plain regardless of
 // what the function set). Next.js route handlers have no such restriction.
 //
 // sessionId + token (Youverify's authToken, used as the SDK's sessionToken)
 // are generated server-side by supabase/functions/vendor-kyc-init (using
 // the Youverify secret API key) and passed through as query params, along
-// with the vendor's firstName/lastName (the SDK's user.firstName is a
-// required constructor field). The SDK itself only needs the PUBLIC merchant
+// with whether they were generated against sandbox or live. The SDK defaults
+// to sandboxEnvironment: true, so live api.youverify.co credentials must pass
+// sandboxEnvironment: false or the SDK rejects the session before camera
+// activation. firstName/lastName are included because user.firstName is a
+// required constructor field. The SDK itself only needs the PUBLIC merchant
 // key (constructor field name: publicKey), which is safe to embed directly
 // (it identifies the merchant, not a secret). tasks: [{id:'passive'}] is
 // also required — the SDK throws "Tasks cannot be empty" without it
-// (confirmed live, 2026-08-16 — passive liveness is the only documented
+// (confirmed live, 2026-08-15 — passive liveness is the only documented
 // task type as of writing).
 //
 // Results are bridged back to the RN WebView via
@@ -35,9 +38,16 @@
 // ============================================================
 import { NextResponse } from 'next/server';
 
-const YOUVERIFY_PUBLIC_MERCHANT_KEY = '69d20542692e328ab9726969';
+const YOUVERIFY_PUBLIC_MERCHANT_KEY =
+  process.env.YOUVERIFY_PUBLIC_MERCHANT_KEY ?? '69d20542692e328ab9726969';
 
-function html(sessionId: string, token: string, firstName: string, lastName: string): string {
+function html(
+  sessionId: string,
+  token: string,
+  sandboxEnvironment: boolean,
+  firstName: string,
+  lastName: string,
+): string {
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -107,7 +117,7 @@ function html(sessionId: string, token: string, firstName: string, lastName: str
       log('unhandledrejection: ' + stringify(e.reason), true);
       // Without this, a rejected promise (e.g. the SDK's own start() throwing
       // asynchronously) left the app hanging on the WebView forever — nothing
-      // ever told it the flow had failed. Confirmed live, 2026-08-16.
+      // ever told it the flow had failed. Confirmed live, 2026-08-15.
       post({ type: 'liveness_failed' });
     });
 
@@ -121,7 +131,7 @@ function html(sessionId: string, token: string, firstName: string, lastName: str
       if (el) el.textContent = text;
     };
 
-    log('sessionId=' + ${JSON.stringify(sessionId)} + ' hasToken=' + !!${JSON.stringify(token)});
+    log('sessionId=' + ${JSON.stringify(sessionId)} + ' hasToken=' + !!${JSON.stringify(token)} + ' sandbox=' + ${JSON.stringify(sandboxEnvironment)});
 
     if (!${JSON.stringify(sessionId)} || !${JSON.stringify(token)}) {
       setStatus('Missing verification session. Please go back and try again.');
@@ -141,6 +151,7 @@ function html(sessionId: string, token: string, firstName: string, lastName: str
           const yv = new YouverifyPassiveLiveness({
             sessionId: ${JSON.stringify(sessionId)},
             sessionToken: ${JSON.stringify(token)},
+            sandboxEnvironment: ${JSON.stringify(sandboxEnvironment)},
             publicKey: ${JSON.stringify(YOUVERIFY_PUBLIC_MERCHANT_KEY)},
             tasks: [{ id: 'passive' }],
             user: { firstName: ${JSON.stringify(firstName)}, lastName: ${JSON.stringify(lastName)} },
@@ -175,10 +186,11 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const sessionId = searchParams.get('sessionId') ?? '';
   const token = searchParams.get('token') ?? '';
+  const sandboxEnvironment = searchParams.get('sandbox') === 'true';
   const firstName = searchParams.get('firstName') ?? '';
   const lastName = searchParams.get('lastName') ?? '';
 
-  return new NextResponse(html(sessionId, token, firstName, lastName), {
+  return new NextResponse(html(sessionId, token, sandboxEnvironment, firstName, lastName), {
     headers: { 'Content-Type': 'text/html; charset=utf-8' },
   });
 }

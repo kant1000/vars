@@ -234,7 +234,7 @@ export default function EditServiceScreen() {
       />
 
       {/* Price */}
-      <Text style={styles.fieldLabel}>Display price <Text style={styles.required}>*</Text></Text>
+      <Text style={styles.fieldLabel}>Price <Text style={styles.required}>*</Text></Text>
       <VendorPriceInput
         value={formPrice}
         onChangeText={setFormPrice}

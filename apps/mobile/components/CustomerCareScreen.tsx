@@ -124,7 +124,7 @@ export function CustomerCareScreen({ audience }: { audience: CustomerCareAudienc
     try {
       await Linking.openURL(`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`);
     } catch {
-      showNotice("Couldn't open WhatsApp on this device.");
+      showNotice("WhatsApp isn't available on this device.");
     }
   }, [identity, showNotice]);
 

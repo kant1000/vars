@@ -506,7 +506,7 @@ function GateModal({
           {stage === 'error' && (
             <>
               <XCircleIcon size={32} color={theme.color.accentRed} />
-              <Text style={gm.errorTitle}>Something went wrong</Text>
+              <Text style={gm.errorTitle}>Let's try that again</Text>
               <Text style={gm.errorBody}>{error}</Text>
               <TouchableOpacity style={gm.primaryBtn} onPress={onConfirm}>
                 <Text style={gm.primaryBtnText}>Try again</Text>
@@ -1003,8 +1003,8 @@ export default function VendorJobsScreen() {
       {!isOnline && blockReason && (
         <View style={c.blockBanner}>
           <Text style={c.blockBannerText}>
-            {blockReason === 'kyc' && 'Complete your identity check to go live.'}
-            {blockReason === 'no_services' && 'Add at least one service to your profile to go live.'}
+            {blockReason === 'kyc' && 'Complete identity verification to go online.'}
+            {blockReason === 'no_services' && 'Add at least one service to your profile to go online.'}
             {blockReason === 'no_notifications' && 'Turn on notifications to receive booking requests.'}
           </Text>
           {blockReason === 'no_notifications' && (

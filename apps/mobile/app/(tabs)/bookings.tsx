@@ -52,7 +52,7 @@ interface BookingSummary {
 }
 
 const STATUS_LABEL: Record<BookingStatus, { text: string; color: string }> = {
-  pending:          { text: 'Awaiting stylist',   color: Colors.statusPending   },
+  pending:          { text: 'Confirming...',      color: Colors.statusPending   },
   accepted:         { text: 'Confirmed',          color: Colors.statusAccepted  },
   on_way:           { text: 'On the way',         color: Colors.statusOnWay     },
   arrived:          { text: 'Arrived',            color: Colors.statusArrived   },

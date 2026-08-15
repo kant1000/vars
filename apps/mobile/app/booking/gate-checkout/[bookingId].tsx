@@ -199,7 +199,7 @@ export default function GateCheckoutScreen() {
   if (phase === 'error') {
     return (
       <View style={[s.container, s.centered, { paddingTop: insets.top, paddingHorizontal: 32 }]}>
-        <Text style={s.errorTitle}>Something went wrong</Text>
+        <Text style={s.errorTitle}>Trouble loading checkout</Text>
         <Text style={s.errorBody}>{errorMsg}</Text>
         <VarsButton theme={theme} onPress={fetchCheckout} label="Try again" style={s.retryBtn} />
         <VarsButton

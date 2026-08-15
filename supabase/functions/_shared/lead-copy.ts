@@ -30,10 +30,10 @@ const PROFESSION_LABEL: Record<ServiceType, string> = {
 
 // One-line hook per category, used in email subject + body opener
 const SERVICE_HOOK: Record<ServiceType, string> = {
-  hair_styling: `VARS launches to customers in Lagos this ${LAUNCH_MONTH} — the first platform where clients book hair stylists directly to their home.`,
-  barbing:      `VARS launches to customers in Lagos this ${LAUNCH_MONTH} — bringing barbers directly to clients who book and pay online.`,
-  makeovers:    `VARS launches in Lagos this ${LAUNCH_MONTH} — where makeup artists come to clients who book and pay upfront.`,
-  other:        `VARS launches in Lagos this ${LAUNCH_MONTH} — connecting home service beauty professionals with clients who book and pay online.`,
+  hair_styling: `VARS launches to customers in Lagos this ${LAUNCH_MONTH}, the first platform where clients book hair stylists directly to their home.`,
+  barbing:      `VARS launches to customers in Lagos this ${LAUNCH_MONTH}, bringing barbers directly to clients who book and pay online.`,
+  makeovers:    `VARS launches in Lagos this ${LAUNCH_MONTH}, where makeup artists come to clients who book and pay upfront.`,
+  other:        `VARS launches in Lagos this ${LAUNCH_MONTH}, connecting home service beauty professionals with clients who book and pay online.`,
 };
 
 export function getFirstName(fullName: string): string {
@@ -74,11 +74,11 @@ export function welcomeEmail(
   const hook       = serviceHook(serviceType);
 
   const earningsLine = isPioneer
-    ? `You've secured a Pioneer spot. Your first 3 bookings on VARS are 0% commission — you keep 100% of what you earn to start. After that, you keep 80% of every booking.`
+    ? `You've secured a Pioneer spot. Your first 3 bookings on VARS are 0% commission, you keep 100% of what you earn to start. After that, you keep 80% of every booking.`
     : `You keep 80% of every booking. On a ₦20,000 service, that's ₦16,000 straight to you.`;
 
   const urgencyLine = isPioneer && spotsRemaining <= 10 && spotsRemaining > 0
-    ? `\nOnly ${spotsRemaining} Pioneer spot${spotsRemaining === 1 ? '' : 's'} left — yours is confirmed.`
+    ? `\nOnly ${spotsRemaining} Pioneer spot${spotsRemaining === 1 ? '' : 's'} left. Yours is confirmed.`
     : '';
 
   const subject = isPioneer
@@ -95,16 +95,16 @@ You signed up to offer ${label} on VARS. Here's what that means:
 
 ${earningsLine}${urgencyLine}
 
-You keep your existing clients. When VARS opens in ${LAUNCH_MONTH}, customers will start booking — they pay upfront online, you show up and do the work. Set up now to be live from day one.
+You keep your existing clients. When VARS opens in ${LAUNCH_MONTH}, customers will start booking. They pay upfront online, you show up and do the work. Set up now to be live from day one.
 
 Verification (KYC) takes 2–3 minutes. It works the same way banks verify identity. Once you're verified, your profile goes live and you start showing up in customer searches.
 
 Complete your profile here:
 https://bookwithvars.com/activate
 
-Questions? Reply to this email — we read every one.
+Questions? Reply to this email, we read every one.
 
-— The VARS Team`,
+The VARS Team`,
   };
 }
 
@@ -122,16 +122,16 @@ export function reengagementEmail(
 
   const pioneerLine = isPioneer
     ? `Your Pioneer spot is still reserved. First 3 bookings: 0% commission, you keep 100%.`
-    : `You keep 80% per booking — ₦16,000 on a ₦20,000 service.`;
+    : `You keep 80% per booking: ₦16,000 on a ₦20,000 service.`;
 
   return {
-    subject: `Still thinking, ${firstName}? We open in ${LAUNCH_MONTH} — don't miss it`,
+    subject: `Still thinking, ${firstName}? We open in ${LAUNCH_MONTH}, don't miss it`,
     text: `Hi ${firstName},
 
-You signed up to offer ${label} on VARS but haven't completed your profile yet. We open to customers in ${LAUNCH_MONTH} — vendors who complete setup now will be live from day one. Here are the questions most vendors had before they joined.
+You signed up to offer ${label} on VARS but haven't completed your profile yet. We open to customers in ${LAUNCH_MONTH}, vendors who complete setup now will be live from day one. Here are the questions most vendors had before they joined.
 
 "Is the KYC safe?"
-VARS uses Youverify — the same identity verification trusted by banks and fintechs across Nigeria. We don't store your ID. Youverify confirms you're a real professional and returns a verified badge to your profile. It takes 2–3 minutes.
+VARS uses Youverify, the same identity verification trusted by banks and fintechs across Nigeria. We don't store your ID. Youverify confirms you're a real professional and returns a verified badge to your profile. It takes 2–3 minutes.
 
 "Why do customers care if I'm verified?"
 Customers on VARS pay upfront. They only book vendors with a verified badge. Without it, your profile isn't visible to them. Verification is your professional credibility on the platform.
@@ -147,7 +147,7 @@ https://bookwithvars.com/activate
 
 If you have questions before you start, just reply here.
 
-— The VARS Team`,
+The VARS Team`,
   };
 }
 
@@ -263,11 +263,11 @@ export function welcomeEmailHtmlParts(
   const hook      = serviceHook(serviceType);
 
   const earningsLine = isPioneer
-    ? `You've secured a Pioneer spot. Your first 3 bookings on VARS are 0% commission — you keep 100% of what you earn to start. After that, you keep 80% of every booking.`
+    ? `You've secured a Pioneer spot. Your first 3 bookings on VARS are 0% commission, you keep 100% of what you earn to start. After that, you keep 80% of every booking.`
     : `You keep 80% of every booking. On a ₦20,000 service, that's ₦16,000 straight to you.`;
 
   const urgencyClause = isPioneer && spotsRemaining <= 10 && spotsRemaining > 0
-    ? ` Only ${spotsRemaining} Pioneer spot${spotsRemaining === 1 ? '' : 's'} left — yours is confirmed.`
+    ? ` Only ${spotsRemaining} Pioneer spot${spotsRemaining === 1 ? '' : 's'} left. Yours is confirmed.`
     : '';
 
   const heading = isPioneer
@@ -277,7 +277,7 @@ export function welcomeEmailHtmlParts(
   return {
     heading,
     body1: `${hook} You signed up to offer ${label} on VARS. ${earningsLine}${urgencyClause}`,
-    body2: `You keep your existing clients. When we open in ${LAUNCH_MONTH}, customers will start booking — they pay upfront online, you show up and do the work. Set up now to be live from day one.`,
+    body2: `You keep your existing clients. When we open in ${LAUNCH_MONTH}, customers will start booking. They pay upfront online, you show up and do the work. Set up now to be live from day one.`,
   };
 }
 
@@ -291,11 +291,11 @@ export function reengagementEmailHtmlParts(
 
   const pioneerLine = isPioneer
     ? `Your Pioneer spot is still reserved. First 3 bookings: 0% commission, you keep 100%.`
-    : `You keep 80% per booking — ₦16,000 on a ₦20,000 service.`;
+    : `You keep 80% per booking: ₦16,000 on a ₦20,000 service.`;
 
   return {
-    heading: `Still thinking, ${firstName}? We open in ${LAUNCH_MONTH} — here's what you need to know`,
-    body1:   `You signed up to offer ${label} on VARS but haven't completed your profile yet. We open to customers in ${LAUNCH_MONTH} — vendors who complete setup now will be live from day one. KYC uses Youverify — the same verification trusted by banks across Nigeria — and takes 2–3 minutes. Customers only book verified vendors, and payment is held by VARS until you confirm the job is done. ${pioneerLine}`,
+    heading: `Still thinking, ${firstName}? We open in ${LAUNCH_MONTH}, here's what you need to know`,
+    body1:   `You signed up to offer ${label} on VARS but haven't completed your profile yet. We open to customers in ${LAUNCH_MONTH}, vendors who complete setup now will be live from day one. KYC uses Youverify, the same verification trusted by banks across Nigeria, and takes 2–3 minutes. Customers only book verified vendors, and payment is held by VARS until you confirm the job is done. ${pioneerLine}`,
     body2:   '',
   };
 }
