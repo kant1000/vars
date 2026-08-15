@@ -28,7 +28,7 @@ async function getAlerts(): Promise<SystemAlert[]> {
 async function getStats() {
   const db = adminClient();
   const [vendors, bookings, disputes] = await Promise.all([
-    db.from('vendors').select('id, kyc_status', { count: 'exact', head: false }),
+    db.from('vendors').select('id, kyc_status, kyc_submitted_at', { count: 'exact', head: false }),
     db.from('bookings').select('id, status, total_amount', { count: 'exact', head: false }),
     db.from('disputes').select('id, status', { count: 'exact', head: false }),
   ]);
@@ -38,7 +38,10 @@ async function getStats() {
   const disputeData   = disputes.data   ?? [];
 
   const totalVendors    = vendorData.length;
-  const pendingKyc      = vendorData.filter((v) => v.kyc_status === 'pending').length;
+  // kyc_status defaults to 'pending' at row creation, so it alone can't tell a
+  // vendor who genuinely submitted for review apart from one who never started —
+  // kyc_submitted_at is only set once vendor-kyc-init actually fires.
+  const pendingKyc      = vendorData.filter((v) => v.kyc_status === 'pending' && v.kyc_submitted_at).length;
   const verifiedVendors = vendorData.filter((v) => v.kyc_status === 'verified').length;
 
   const totalBookings   = bookingData.length;

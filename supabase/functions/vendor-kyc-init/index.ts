@@ -1,18 +1,36 @@
 // ============================================================
 // VARS Edge Function: vendor-kyc-init
-// Initialises a Youverify verification session for a vendor.
-// Returns { verification_url } — opened in the app's WebView.
+// Initialises a Youverify liveness session and returns the URL of the
+// widget page (apps/landing/src/app/vendor-kyc-widget) to open in the
+// app's WebView.
+//
+// Youverify has no "hosted verification link" API — their product is
+// a client-side SDK widget (confirmed against their public docs and
+// npm package README, 2026-08-16). This function's job is just to
+// generate the sessionId + authToken their Passive Liveness Web SDK
+// needs (requires our secret API key, so must happen server-side) and
+// hand the widget page a URL carrying them.
+//
+// The widget itself lives on the landing app, not a Supabase Edge
+// Function — Supabase's Edge Functions platform forces GET responses
+// to Content-Type: text/plain with a locked-down CSP sandbox regardless
+// of what the function sets, blocking any browser-navigable HTML from
+// being served that way (confirmed live, 2026-08-16). See the widget
+// route's own comment for detail.
+//
 // Called by: step-4-kyc.tsx → handleStartKyc()
 // ============================================================
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAuthClient, createAdminClient } from '../_shared/supabase.ts';
 
 const YOUVERIFY_BASE_URL = Deno.env.get('YOUVERIFY_BASE_URL') ?? 'https://api.youverify.co';
-const YOUVERIFY_API_URL  = `${YOUVERIFY_BASE_URL}/v2/identity/kyc/link`;
 const YOUVERIFY_API_KEY  = Deno.env.get('YOUVERIFY_API_KEY') ?? '';
+const YOUVERIFY_PUBLIC_MERCHANT_KEY = Deno.env.get('YOUVERIFY_PUBLIC_MERCHANT_KEY') ?? '';
+const KYC_WIDGET_URL = 'https://www.bookwithvars.com/vendor-kyc-widget';
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') return handleCors(req);
+  const cors = handleCors(req);
+  if (cors) return cors;
 
   try {
     const authHeader = req.headers.get('Authorization');
@@ -25,11 +43,10 @@ Deno.serve(async (req: Request) => {
     const { vendor_id } = await req.json();
     if (!vendor_id || vendor_id !== user.id) return errorResponse('Invalid vendor_id', 400);
 
-    // Fetch vendor record for pre-filling Youverify form
     const adminClient = createAdminClient();
     const { data: vendor, error: vendorErr } = await adminClient
       .from('vendors')
-      .select('full_name, phone_number, kyc_status')
+      .select('kyc_status')
       .eq('id', vendor_id)
       .single();
 
@@ -42,45 +59,39 @@ Deno.serve(async (req: Request) => {
       return errorResponse('You are already verified — no need to restart identity check.', 400);
     }
 
-    // Initialize Youverify hosted KYC link
-    const yvRes = await fetch(YOUVERIFY_API_URL, {
+    // Generate the liveness session — requires our secret key, so must
+    // happen here rather than client-side in the widget.
+    const yvRes = await fetch(`${YOUVERIFY_BASE_URL}/v2/api/identity/sdk/liveness/token`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        token: YOUVERIFY_API_KEY,
-      },
-      body: JSON.stringify({
-        // Youverify widget config
-        issuedId: vendor_id,          // our internal reference
-        callbackUrl: `${Deno.env.get('SUPABASE_URL')}/functions/v1/vendor-kyc-webhook`,
-        metadata: { vendor_id },
-        // Pre-fill
-        firstName: vendor.full_name?.split(' ')[0] ?? '',
-        lastName: vendor.full_name?.split(' ').slice(1).join(' ') ?? '',
-        phone: vendor.phone_number ?? '',
-        // KYC type: BVN or NIN or gov ID
-        verificationType: 'identity',
-      }),
+      headers: { 'Content-Type': 'application/json', token: YOUVERIFY_API_KEY },
+      body: JSON.stringify({ publicMerchantID: YOUVERIFY_PUBLIC_MERCHANT_KEY }),
     });
 
     if (!yvRes.ok) {
       const errText = await yvRes.text();
-      console.error('Youverify error:', errText);
+      console.error('vendor-kyc-init: Youverify liveness token error', yvRes.status, errText);
       return errorResponse('Could not start verification. Please try again.', 502);
     }
 
     const yvData = await yvRes.json();
-    const verificationUrl: string = yvData?.data?.url ?? yvData?.url;
+    const sessionId: string | undefined = yvData?.data?.sessionId;
+    const authToken: string | undefined = yvData?.data?.authToken;
 
-    if (!verificationUrl) {
-      console.error('Youverify: no URL in response', JSON.stringify(yvData));
-      return errorResponse('Could not obtain verification URL.', 502);
+    if (!sessionId || !authToken) {
+      console.error('vendor-kyc-init: missing sessionId/authToken in response', JSON.stringify(yvData));
+      return errorResponse('Could not start verification. Please try again.', 502);
     }
 
-    // Mark kyc_status as 'pending' and clear any previous rejection reason
+    const verificationUrl =
+      `${KYC_WIDGET_URL}?sessionId=${encodeURIComponent(sessionId)}&token=${encodeURIComponent(authToken)}`;
+
+    // Mark kyc_status as 'pending', clear any previous rejection reason, and
+    // record kyc_submitted_at — the only unambiguous signal that KYC was
+    // actually started (kyc_status alone defaults to 'pending' at row
+    // creation, so it can't distinguish "never started" from "submitted").
     await adminClient
       .from('vendors')
-      .update({ kyc_status: 'pending', kyc_rejection_reason: null })
+      .update({ kyc_status: 'pending', kyc_rejection_reason: null, kyc_submitted_at: new Date().toISOString() })
       .eq('id', vendor_id);
 
     return jsonResponse({ verification_url: verificationUrl });

@@ -1,8 +1,12 @@
 // ============================================================
 // VARS — Vendor Onboarding Step 4: Bank Account + KYC (§6.1)
 // Sub-step A (bank first): quick win via Paystack account verify.
-// Sub-step B (KYC second): Youverify hosted WebView.
-// VARS never stores raw ID data — Youverify handles it.
+// Sub-step B (KYC second): NIN + selfie liveness via Youverify's SDK,
+// embedded in a WebView-hosted widget page (vendor-kyc-liveness-widget) —
+// Youverify has no simple hosted-link API, their product is a client-side
+// SDK widget. Liveness capture happens in the widget; the actual NIN
+// match+verification call happens server-side (vendor-kyc-verify).
+// VARS never stores the raw NIN or ID data — Youverify handles it.
 // ============================================================
 import React, { useState, useEffect, useMemo } from 'react';
 import {
@@ -13,7 +17,7 @@ import { WebView } from 'react-native-webview';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import { VarsButton, VarsInput, VarsSurface } from '@/components/ui';
+import { VarsButton, VarsInput, VarsSurface, VarsCheckbox } from '@/components/ui';
 import { useVarsTheme } from '@/contexts/ThemeContext';
 import { BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
@@ -37,6 +41,8 @@ export default function Step4Kyc() {
   const [kycUrl, setKycUrl] = useState('');
   const [kycVerified, setKycVerified] = useState(false);
   const [kycErrorReason, setKycErrorReason] = useState<string | null>(null);
+  const [nin, setNin] = useState('');
+  const [ninConsent, setNinConsent] = useState(false);
 
   // Bank account state
   const [accountNumber, setAccountNumber] = useState('');
@@ -48,6 +54,7 @@ export default function Step4Kyc() {
   const [bankAlreadySaved, setBankAlreadySaved] = useState(false);
   const [banks, setBanks] = useState<{ name: string; code: string }[]>([]);
   const [showBankPicker, setShowBankPicker] = useState(false);
+  const [bankSearch, setBankSearch] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   // On mount: if previously rejected, pre-load existing bank details
@@ -56,7 +63,7 @@ export default function Step4Kyc() {
     (async () => {
       const { data } = await supabase
         .from('vendors')
-        .select('kyc_status, kyc_rejection_reason, bank_account_number, bank_name, bank_account_name, paystack_subaccount_code')
+        .select('kyc_status, kyc_submitted_at, kyc_rejection_reason, bank_account_number, bank_name, bank_account_name, paystack_subaccount_code')
         .eq('id', user.id)
         .single();
       if (!data) return;
@@ -69,8 +76,10 @@ export default function Step4Kyc() {
       } else if (data.kyc_status === 'needs_review') {
         setKycState('review');
         setSubStep('kyc');
-      } else if (!data.kyc_status && data.paystack_subaccount_code) {
-        // Bank done, KYC never submitted (e.g. app closed during WebView) — skip to KYC sub-step
+      } else if (!data.kyc_submitted_at && data.paystack_subaccount_code) {
+        // Bank done, KYC never actually submitted (e.g. app closed during WebView,
+        // or never started) — skip to KYC sub-step. kyc_status alone can't signal
+        // this: it defaults to 'pending' at row creation, so it's never falsy.
         setSubStep('kyc');
         setKycState('idle');
       }
@@ -146,22 +155,53 @@ export default function Step4Kyc() {
     }
   };
 
-  // Bank verified — advance to KYC sub-step
-  const handleBankContinue = () => {
+  // Bank verified — save it now (creates the Paystack subaccount) and advance
+  // to the KYC sub-step. Saving here rather than deferring to the final combined
+  // submit means a verified bank survives the app being closed mid-KYC — it used
+  // to only persist to the DB alongside KYC completion, so an interruption before
+  // finishing Youverify silently lost the bank progress entirely.
+  const handleBankContinue = async () => {
     if (!bankVerified) return Alert.alert('Required', 'Please verify your bank account first.');
-    setSubStep('kyc');
-    setKycState('idle');
+    if (bankAlreadySaved) {
+      setSubStep('kyc');
+      setKycState('idle');
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await callEdgeFn('paystack-verify-bank', {
+        action: 'save',
+        account_number: accountNumber,
+        bank_code: bankCode,
+        bank_name: bankName,
+        account_name: accountName,
+      });
+      setBankAlreadySaved(true);
+      setSubStep('kyc');
+      setKycState('idle');
+    } catch (err: any) {
+      Alert.alert('Error', err.message ?? 'Could not save bank account. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // ---- KYC via Youverify ----
+  // Always shows the prep screen, including on retry — it now also collects
+  // the NIN + consent, which must be (re)confirmed each attempt (e.g. a
+  // mistyped NIN causing a "not found" rejection needs correcting, not replaying).
   const handleStartKyc = () => {
-    // On retry, skip the prep screen — they've already seen it
-    if (kycState === 'failed') { launchKyc(); return; }
     setKycState('prep');
   };
 
   const launchKyc = async () => {
     if (!user) return;
+    if (!/^\d{11}$/.test(nin)) {
+      return Alert.alert('Required', 'Enter your 11-digit NIN.');
+    }
+    if (!ninConsent) {
+      return Alert.alert('Required', 'Please confirm you consent to identity verification.');
+    }
     setKycState('loading');
     setKycErrorReason(null);
     try {
@@ -174,43 +214,47 @@ export default function Step4Kyc() {
     }
   };
 
-  const handleWebViewMessage = (event: any) => {
+  // The widget only captures the selfie/liveness (see vendor-kyc-liveness-widget) —
+  // the actual NIN match+verification happens server-side in vendor-kyc-verify,
+  // called here once the widget hands back a live face image.
+  const handleWebViewMessage = async (event: any) => {
+    let msg: any;
     try {
-      const msg = JSON.parse(event.nativeEvent.data);
-      if (msg.type === 'kyc_complete' || msg.status === 'success') {
+      msg = JSON.parse(event.nativeEvent.data);
+    } catch {
+      return; // Non-JSON WebView messages — ignore
+    }
+
+    if (msg.type === 'liveness_failed') {
+      setKycState('failed');
+      setKycErrorReason(null);
+      return;
+    }
+    if (msg.type !== 'liveness_success' || !msg.faceImage) return;
+
+    setKycState('loading');
+    try {
+      const result = await callEdgeFn('vendor-kyc-verify', { nin, selfie: msg.faceImage });
+      if (result.allValidationPassed) {
         setKycState('done');
         setKycVerified(true);
-      } else if (msg.type === 'kyc_failed') {
+      } else {
         setKycState('failed');
-        setKycErrorReason(null);
+        setKycErrorReason(result.reason ?? null);
       }
-    } catch {
-      // Non-JSON WebView messages — ignore
+    } catch (err: any) {
+      setKycState('failed');
+      setKycErrorReason(err.message ?? null);
     }
   };
 
-  const handleSaveBankAndContinue = async () => {
+  // Bank is already saved by handleBankContinue by the time this is reachable
+  // (kycVerified only becomes true after the KYC sub-step, which only starts
+  // after a successful bank save) — this just confirms and routes onward.
+  const handleSubmitForReview = () => {
     if (!bankVerified) return Alert.alert('Required', 'Please verify your bank account first.');
     if (!kycVerified) return Alert.alert('Required', 'Please complete identity verification first.');
-    if (!user) return;
-
-    setIsSaving(true);
-    try {
-      if (!bankAlreadySaved) {
-        await callEdgeFn('paystack-verify-bank', {
-          action: 'save',
-          account_number: accountNumber,
-          bank_code: bankCode,
-          bank_name: bankName,
-          account_name: accountName,
-        });
-      }
-      router.replace('/vendor-onboarding/step-5-pending');
-    } catch (err: any) {
-      Alert.alert('Error', err.message);
-    } finally {
-      setIsSaving(false);
-    }
+    router.replace('/vendor-onboarding/step-5-pending');
   };
 
   // ---- Render: Youverify WebView ----
@@ -221,6 +265,12 @@ export default function Step4Kyc() {
           source={{ uri: kycUrl }}
           onMessage={handleWebViewMessage}
           javaScriptEnabled
+          mediaPlaybackRequiresUserAction={false}
+          allowsInlineMediaPlayback
+          // Liveness capture needs the camera — Android WebView permission
+          // requests are a separate JS-bridge grant from the app-level OS
+          // permission (already declared in AndroidManifest.xml/app.config.js).
+          onPermissionRequest={(request: any) => request.grant(request.resources)}
           style={{ flex: 1 }}
         />
         <TouchableOpacity
@@ -276,23 +326,42 @@ export default function Step4Kyc() {
 
             {showBankPicker && (
               <View style={styles.bankPicker}>
-                <ScrollView style={{ maxHeight: 200 }}>
-                  {banks.map((b) => (
-                    <TouchableOpacity
-                      key={b.code}
-                      style={styles.bankOption}
-                      onPress={() => {
-                        setBankCode(b.code);
-                        setBankName(b.name);
-                        setShowBankPicker(false);
-                        setBankVerified(false);
-                        setBankAlreadySaved(false);
-                        setAccountName('');
-                      }}
-                    >
-                      <Text style={styles.bankOptionText}>{b.name}</Text>
-                    </TouchableOpacity>
-                  ))}
+                <View style={styles.bankPickerHeader}>
+                  <VarsInput
+                    theme={theme}
+                    placeholder="Search banks"
+                    value={bankSearch}
+                    onChangeText={setBankSearch}
+                    autoFocus
+                    containerStyle={styles.bankSearchInput}
+                  />
+                  <TouchableOpacity
+                    onPress={() => { setShowBankPicker(false); setBankSearch(''); }}
+                    style={styles.bankPickerCancel}
+                  >
+                    <Text style={styles.bankPickerCancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+                <ScrollView style={{ maxHeight: 200 }} keyboardShouldPersistTaps="handled">
+                  {banks
+                    .filter((b) => b.name.toLowerCase().includes(bankSearch.trim().toLowerCase()))
+                    .map((b) => (
+                      <TouchableOpacity
+                        key={b.code}
+                        style={styles.bankOption}
+                        onPress={() => {
+                          setBankCode(b.code);
+                          setBankName(b.name);
+                          setShowBankPicker(false);
+                          setBankSearch('');
+                          setBankVerified(false);
+                          setBankAlreadySaved(false);
+                          setAccountName('');
+                        }}
+                      >
+                        <Text style={styles.bankOptionText}>{b.name}</Text>
+                      </TouchableOpacity>
+                    ))}
                 </ScrollView>
               </View>
             )}
@@ -323,8 +392,9 @@ export default function Step4Kyc() {
 
             <VarsButton
               theme={theme}
+              loading={isSaving}
               onPress={handleBankContinue}
-              disabled={!bankVerified}
+              disabled={!bankVerified || isSaving}
               label="Continue · Identity check"
             />
           </View>
@@ -360,10 +430,27 @@ export default function Step4Kyc() {
             {kycState === 'prep' && (
               <VarsSurface theme={theme} elevation={1} style={styles.prepCard}>
                 <Text style={styles.prepTitle}>Before you start</Text>
-                <Text style={styles.prepItem}>· Your NIN, BVN, or a government-issued ID</Text>
+                <Text style={styles.prepItem}>· Your 11-digit National Identification Number (NIN)</Text>
                 <Text style={styles.prepItem}>· A clear selfie in good lighting, face the camera directly</Text>
-                <Text style={styles.prepItem}>· Takes about 3 minutes</Text>
+                <Text style={styles.prepItem}>· Takes about a minute</Text>
                 <View style={styles.prepDivider} />
+
+                <VarsInput
+                  theme={theme}
+                  placeholder="NIN (11 digits)"
+                  value={nin}
+                  onChangeText={(t) => setNin(t.replace(/\D/g, '').slice(0, 11))}
+                  keyboardType="number-pad"
+                  maxLength={11}
+                />
+
+                <VarsCheckbox
+                  theme={theme}
+                  checked={ninConsent}
+                  onChange={setNinConsent}
+                  label="I consent to my identity being verified using this NIN."
+                />
+
                 <Text style={styles.prepNote}>
                   Your identity is verified by Youverify, a licensed verification service. VARS does not store your raw ID documents.
                 </Text>
@@ -371,6 +458,7 @@ export default function Step4Kyc() {
                   theme={theme}
                   size="md"
                   onPress={launchKyc}
+                  disabled={nin.length !== 11 || !ninConsent}
                   label="Start identity check →"
                 />
                 <TouchableOpacity onPress={() => setKycState('idle')} style={styles.prepBack}>
@@ -396,9 +484,8 @@ export default function Step4Kyc() {
             {kycVerified && (
               <VarsButton
                 theme={theme}
-                loading={isSaving}
-                onPress={handleSaveBankAndContinue}
-                disabled={!kycVerified || !bankVerified || isSaving}
+                onPress={handleSubmitForReview}
+                disabled={!kycVerified || !bankVerified}
                 label="Submit for review"
               />
             )}
@@ -458,6 +545,10 @@ function makeStyles(theme: VarsTheme) {
     inputPlaceholder: { fontSize: 16, color: theme.color.inkMuted },
 
     bankPicker: { borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint, borderRadius: BORDER_RADIUS, overflow: 'hidden', backgroundColor: theme.color.bg },
+    bankPickerHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10 },
+    bankSearchInput: { flex: 1, marginBottom: 0 },
+    bankPickerCancel: { paddingHorizontal: 4, paddingVertical: 10 },
+    bankPickerCancelText: { fontSize: 14, fontWeight: '600', color: theme.color.ink },
     bankOption: { padding: 14, borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint },
     bankOptionText: { fontSize: 15, color: theme.color.ink },
 

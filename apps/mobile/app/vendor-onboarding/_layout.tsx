@@ -4,8 +4,8 @@
 // Shows Pioneer banner when vendor.pioneer = TRUE.
 // ============================================================
 import React, { useMemo } from 'react';
-import { Stack } from 'expo-router';
-import { View, Text, StyleSheet } from 'react-native';
+import { Stack, router } from 'expo-router';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useSegments } from 'expo-router';
 import { BORDER_RADIUS } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
@@ -18,6 +18,15 @@ const STEPS = [
   'Portfolio',
   'Verify',
   'Pending',
+];
+
+// Only the first 4 steps are tappable — step 5 (Pending) is a terminal
+// review state, not a form step to jump back into.
+const STEP_ROUTES = [
+  '/vendor-onboarding/step-1-profile',
+  '/vendor-onboarding/step-2-services',
+  '/vendor-onboarding/step-3-portfolio',
+  '/vendor-onboarding/step-4-kyc',
 ];
 
 function getStepIndex(segments: string[]): number {
@@ -53,8 +62,10 @@ function OnboardingHeader() {
           </Text>
           <View style={styles.track}>
             {STEPS.slice(0, total).map((_, i) => (
-              <View
+              <TouchableOpacity
                 key={i}
+                disabled={i > current}
+                onPress={() => router.navigate(STEP_ROUTES[i] as any)}
                 style={[
                   styles.segment,
                   i <= current ? styles.segmentFilled : styles.segmentEmpty,
@@ -78,9 +89,10 @@ export default function VendorOnboardingLayout() {
           headerShown: true,
           headerTitle: () => <OnboardingHeader />,
           headerLeft: () => null,
+          headerBackVisible: false,
           headerStyle: { backgroundColor: theme.color.bg },
           headerShadowVisible: false,
-          gestureEnabled: false,
+          gestureEnabled: true,
         }}
       >
         <Stack.Screen name="step-1-profile" options={{ title: '' }} />

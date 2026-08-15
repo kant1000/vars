@@ -78,6 +78,11 @@ Deno.serve(async (req: Request) => {
   const phone    = rawPhone.replace(/^\+/, '');
   const otp      = body.sms?.otp   ?? '';
 
+  // TEMP diagnostic — remove once the (#100) Invalid parameter signup-path
+  // issue is root-caused. Logs the raw and post-strip phone value GoTrue
+  // handed the hook so we can compare signup vs login invocations.
+  console.error('[auth-send-sms] DEBUG rawPhone=', JSON.stringify(rawPhone), 'phone=', JSON.stringify(phone), 'userId=', body.user?.id);
+
   if (!phone || !otp) {
     console.error('[auth-send-sms] Missing phone or otp in payload');
     return new Response(JSON.stringify({ error: 'Missing phone or otp' }), {

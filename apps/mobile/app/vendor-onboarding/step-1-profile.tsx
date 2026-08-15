@@ -6,7 +6,7 @@
 // ============================================================
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  View, Text, StyleSheet,
+  View, Text, StyleSheet, TouchableOpacity,
   ScrollView, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import * as Location from 'expo-location';
@@ -18,6 +18,35 @@ import { useVarsTheme } from '@/contexts/ThemeContext';
 import { BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { sanitizeContent } from '@/lib/format';
+
+// Same area names as the landing page's "Area you operate in" select
+// (apps/landing/src/components/PioneerSection.tsx), minus "Other" (no
+// coordinate to map it to). Coordinates are approximate neighborhood
+// centroids, not precise addresses — consistent with the app's existing
+// center + radius zone model (see vendor-zone-setup.tsx), not a street-level
+// pin. Used as the fallback picker when GPS detection isn't usable (indoors,
+// permission denied, wrong location) — no Google Places/Geocoding API
+// involved, fully static.
+const LAGOS_AREAS: { name: string; lat: number; lng: number }[] = [
+  { name: 'Victoria Island', lat: 6.4281, lng: 3.4219 },
+  { name: 'Lekki', lat: 6.4698, lng: 3.5852 },
+  { name: 'Ikoyi', lat: 6.4541, lng: 3.4316 },
+  { name: 'Ajah', lat: 6.4698, lng: 3.6015 },
+  { name: 'Surulere', lat: 6.5059, lng: 3.3629 },
+  { name: 'Yaba', lat: 6.5158, lng: 3.3707 },
+  { name: 'Ikeja', lat: 6.6018, lng: 3.3515 },
+  { name: 'Gbagada', lat: 6.5533, lng: 3.3891 },
+  { name: 'Ogba', lat: 6.6280, lng: 3.3459 },
+  { name: 'Maryland', lat: 6.5700, lng: 3.3667 },
+  { name: 'Magodo', lat: 6.6167, lng: 3.3833 },
+  { name: 'Mushin', lat: 6.5333, lng: 3.3500 },
+  { name: 'Festac', lat: 6.4667, lng: 3.2833 },
+  { name: 'Isolo', lat: 6.5333, lng: 3.3167 },
+  { name: 'Ikorodu', lat: 6.6194, lng: 3.5106 },
+  { name: 'Alimosho', lat: 6.5833, lng: 3.2500 },
+  { name: 'Agege', lat: 6.6167, lng: 3.3167 },
+  { name: 'Oshodi', lat: 6.5500, lng: 3.3500 },
+];
 
 export default function Step1Profile() {
   const { user } = useAuth();
@@ -31,6 +60,8 @@ export default function Step1Profile() {
   const [locationCoords, setLocationCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+  const [hasTriedDetect, setHasTriedDetect] = useState(false);
+  const [showAreaPicker, setShowAreaPicker] = useState(false);
 
   // Pre-fill from vendor row — trigger copies data from vendor_leads at registration
   useEffect(() => {
@@ -74,7 +105,25 @@ export default function Step1Profile() {
       Alert.alert('Error', err.message === 'timeout' ? 'Location timed out. Try again.' : 'Could not detect location.');
     } finally {
       setIsLocating(false);
+      setHasTriedDetect(true);
     }
+  };
+
+  // First tap auto-detects via GPS. Once that's been tried (success or not),
+  // further taps open the area picker instead — lets a vendor correct a bad
+  // GPS read or set up from somewhere other than their actual base.
+  const handleLocationPress = () => {
+    if (!hasTriedDetect) {
+      handleDetectLocation();
+    } else {
+      setShowAreaPicker((v) => !v);
+    }
+  };
+
+  const handleSelectArea = (area: { name: string; lat: number; lng: number }) => {
+    setLocationLabel(area.name);
+    setLocationCoords({ lat: area.lat, lng: area.lng });
+    setShowAreaPicker(false);
   };
 
   const handleNext = async () => {
@@ -123,7 +172,7 @@ export default function Step1Profile() {
               maxLength={25}
             />
             <Text style={styles.fieldCaption}>
-              This is how you'll appear to customers. Your legal name is confirmed during identity verification.
+              This is how you'll appear to customers.
             </Text>
           </View>
 
@@ -159,12 +208,26 @@ export default function Step1Profile() {
             variant="secondary"
             size="lg"
             loading={isLocating}
-            onPress={handleDetectLocation}
+            onPress={handleLocationPress}
             label={locationCoords ? `📍 ${locationLabel}` : 'Set your base location'}
           />
           <Text style={styles.locationHelper}>
-            Your primary operating area. Clients nearby will discover you.
+            Your primary operating area.
           </Text>
+
+          {showAreaPicker && (
+            <VarsSurface theme={theme} elevation={1} style={styles.areaPicker}>
+              {LAGOS_AREAS.map((area) => (
+                <TouchableOpacity
+                  key={area.name}
+                  style={styles.areaRow}
+                  onPress={() => handleSelectArea(area)}
+                >
+                  <Text style={styles.areaRowText}>{area.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </VarsSurface>
+          )}
 
           {/* Bio — optional, 150 char max per spec §4.3 */}
           <View>
@@ -213,8 +276,17 @@ function makeStyles(theme: VarsTheme) {
       paddingHorizontal: 6, paddingVertical: 2,
     },
     fieldCaption: { fontSize: 12, color: theme.color.inkMuted, marginTop: 6, lineHeight: 16 },
-    bioInput: { height: 90, paddingTop: 14, textAlignVertical: 'top' },
+    bioInput: {
+      height: 90, paddingTop: 12, paddingBottom: 12, lineHeight: 20,
+      textAlignVertical: 'top', includeFontPadding: false,
+    },
     charCount: { fontSize: 12, color: theme.color.inkMuted, textAlign: 'right', marginTop: 4 },
     locationHelper: { fontSize: 13, color: theme.color.inkMuted, marginTop: -4, marginLeft: 4 },
+    areaPicker: { marginTop: -4, overflow: 'hidden' },
+    areaRow: {
+      height: 48, paddingHorizontal: 16, justifyContent: 'center',
+      borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
+    },
+    areaRowText: { fontSize: 15, color: theme.color.ink },
   });
 }

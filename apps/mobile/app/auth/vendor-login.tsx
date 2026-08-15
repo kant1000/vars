@@ -32,6 +32,7 @@ import { PhoneInput } from '@/components/PhoneInput';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { CountryCode, normalizePhone } from '@vars/shared';
+import { getVendorOnboardingStep, resumeOnboardingAt } from '@/lib/vendorOnboarding';
 import { BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { useVarsTheme } from '@/contexts/ThemeContext';
@@ -247,7 +248,7 @@ export default function VendorLoginScreen() {
     const [{ data: vendor }, { count: serviceCount }] = await Promise.all([
       supabase
         .from('vendors')
-        .select('phone_number, paystack_subaccount_code, kyc_status')
+        .select('phone_number, paystack_subaccount_code, kyc_status, kyc_submitted_at')
         .eq('id', user.id)
         .maybeSingle(),
       supabase
@@ -261,20 +262,10 @@ export default function VendorLoginScreen() {
       return;
     }
 
-    if (!vendor.phone_number) {
-      router.replace('/vendor-onboarding/step-1-profile'); return;
-    }
-    if (!serviceCount) {
-      router.replace('/vendor-onboarding/step-2-services'); return;
-    }
-    if (vendor.kyc_status === 'pending' || vendor.kyc_status === 'needs_review') {
-      router.replace('/vendor-onboarding/step-5-pending'); return;
-    }
-    if (!vendor.paystack_subaccount_code || !vendor.kyc_status || vendor.kyc_status === 'rejected') {
-      router.replace('/vendor-onboarding/step-4-kyc'); return;
-    }
-    if (vendor.kyc_status !== 'verified') {
-      router.replace('/vendor-onboarding/step-5-pending'); return;
+    const onboardingStep = getVendorOnboardingStep(vendor, !!serviceCount);
+    if (onboardingStep) {
+      resumeOnboardingAt(onboardingStep);
+      return;
     }
     router.replace('/(vendor-tabs)/profile');
   };
