@@ -26,6 +26,12 @@
 // routing logic reads kyc_submitted_at as "a real attempt was made."
 // Confirmed live, 2026-08-16.
 //
+// sessionId and the SDK's sessionToken (Youverify calls it authToken) come
+// from two SEPARATE endpoints, not one — confirmed against the npm package
+// README, 2026-08-16, after "Invalid or expired sessionId" errors live: the
+// sessionId embedded in the /liveness/token response is NOT the one the
+// Passive Liveness widget actually validates against.
+//
 // Called by: step-4-kyc.tsx → handleStartKyc()
 // ============================================================
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
@@ -67,26 +73,46 @@ Deno.serve(async (req: Request) => {
       return errorResponse('You are already verified — no need to restart identity check.', 400);
     }
 
-    // Generate the liveness session — requires our secret key, so must
-    // happen here rather than client-side in the widget.
-    const yvRes = await fetch(`${YOUVERIFY_BASE_URL}/v2/api/identity/sdk/liveness/token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', token: YOUVERIFY_API_KEY },
-      body: JSON.stringify({ publicMerchantID: YOUVERIFY_PUBLIC_MERCHANT_KEY }),
-    });
+    // Two separate calls, both requiring our secret key so must happen here
+    // rather than client-side in the widget: one for the actual sessionId
+    // the Passive Liveness widget validates, one for the auth token
+    // (SDK constructor field: sessionToken).
+    const [sessionRes, tokenRes] = await Promise.all([
+      fetch(`${YOUVERIFY_BASE_URL}/v2/api/identity/sdk/session/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', token: YOUVERIFY_API_KEY },
+        body: JSON.stringify({ publicMerchantID: YOUVERIFY_PUBLIC_MERCHANT_KEY, metadata: {} }),
+      }),
+      fetch(`${YOUVERIFY_BASE_URL}/v2/api/identity/sdk/liveness/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', token: YOUVERIFY_API_KEY },
+        body: JSON.stringify({ publicMerchantID: YOUVERIFY_PUBLIC_MERCHANT_KEY }),
+      }),
+    ]);
 
-    if (!yvRes.ok) {
-      const errText = await yvRes.text();
-      console.error('vendor-kyc-init: Youverify liveness token error', yvRes.status, errText);
+    if (!sessionRes.ok) {
+      const errText = await sessionRes.text();
+      console.error('vendor-kyc-init: Youverify session/generate error', sessionRes.status, errText);
+      return errorResponse('Could not start verification. Please try again.', 502);
+    }
+    if (!tokenRes.ok) {
+      const errText = await tokenRes.text();
+      console.error('vendor-kyc-init: Youverify liveness/token error', tokenRes.status, errText);
       return errorResponse('Could not start verification. Please try again.', 502);
     }
 
-    const yvData = await yvRes.json();
-    const sessionId: string | undefined = yvData?.data?.sessionId;
-    const authToken: string | undefined = yvData?.data?.authToken;
+    const sessionData = await sessionRes.json();
+    const tokenData = await tokenRes.json();
+    // Response shapes vary between a flat body and one nested under `data` —
+    // handle both rather than guess which this endpoint uses.
+    const sessionId: string | undefined = sessionData?.sessionId ?? sessionData?.data?.sessionId;
+    const authToken: string | undefined = tokenData?.authToken ?? tokenData?.data?.authToken;
 
     if (!sessionId || !authToken) {
-      console.error('vendor-kyc-init: missing sessionId/authToken in response', JSON.stringify(yvData));
+      console.error(
+        'vendor-kyc-init: missing sessionId/authToken',
+        JSON.stringify(sessionData), JSON.stringify(tokenData),
+      );
       return errorResponse('Could not start verification. Please try again.', 502);
     }
 
