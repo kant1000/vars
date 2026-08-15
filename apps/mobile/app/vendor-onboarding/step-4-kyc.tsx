@@ -441,7 +441,7 @@ export default function Step4Kyc() {
                   <Text style={styles.errorCalloutBody}>{kycErrorReason}</Text>
                 ) : null}
                 <Text style={styles.errorCalloutHint}>
-                  For best results: ID well-lit with all four corners visible, selfie in natural light.
+                  For best results: check your NIN is entered correctly, and take your selfie in good, natural light.
                 </Text>
               </View>
             )}
@@ -481,7 +481,7 @@ export default function Step4Kyc() {
                 />
 
                 <Text style={styles.prepNote}>
-                  Your identity is verified by Youverify, a licensed verification service. VARS does not store your raw ID documents.
+                  Your identity is verified by Youverify, a licensed verification service. Your NIN is never stored, only used to verify you.
                 </Text>
                 <VarsButton
                   theme={theme}
