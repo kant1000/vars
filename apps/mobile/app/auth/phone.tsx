@@ -10,7 +10,6 @@ import {
   View,
   Text,
   StyleSheet,
-  TextInput,
   TouchableOpacity,
   Alert,
   KeyboardAvoidingView,
@@ -18,24 +17,28 @@ import {
   StatusBar,
 } from 'react-native';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
+import { PhoneInput } from '@/components/PhoneInput';
 import { router } from 'expo-router';
+import { CountryCode, normalizePhone } from '@vars/shared';
 import { VarsTheme } from '@/constants/visualSystem';
 import { useVarsTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { savePhoneNumber } from '@/lib/auth';
 import { hasAcceptedCurrentTerms } from '@/lib/termsGate';
-import { BORDER_WIDTH } from '@/constants/colors';
+import { BORDER_RADIUS } from '@/constants/colors';
 
 export default function PhoneScreen() {
   const { theme } = useVarsTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { user, refreshProfile } = useAuth();
-  const [phone, setPhone] = useState('');
+  const [phoneLocal, setPhoneLocal] = useState('');
+  const [phoneCountry, setPhoneCountry] = useState<CountryCode>('+234');
   const [isLoading, setIsLoading] = useState(false);
 
+  const normalizedPhone = normalizePhone(phoneLocal, phoneCountry);
+
   const handleSave = async () => {
-    const cleaned = phone.replace(/\s/g, '');
-    if (cleaned.length < 10) {
+    if (!normalizedPhone) {
       Alert.alert('Invalid number', 'Please enter a valid phone number.');
       return;
     }
@@ -44,7 +47,7 @@ export default function PhoneScreen() {
     setIsLoading(true);
 
     try {
-      await savePhoneNumber(user.id, cleaned);
+      await savePhoneNumber(user.id, normalizedPhone);
       await refreshProfile();
       // Terms gate — new OAuth customers haven't seen the acceptance screen yet
       const termsOk = await hasAcceptedCurrentTerms(user.id, 'customer');
@@ -79,23 +82,20 @@ export default function PhoneScreen() {
         {/* Helper text from spec §4.4 */}
         <Text style={styles.helper}>So your stylist can reach you on the day.</Text>
 
-        <TextInput
-          style={styles.input}
-          placeholder="+234 800 000 0000"
-          placeholderTextColor={theme.color.inkMuted}
-          value={phone}
-          onChangeText={setPhone}
-          keyboardType="phone-pad"
-          autoComplete="tel"
-          autoFocus
-          returnKeyType="done"
-          onSubmitEditing={handleSave}
-        />
+        <View style={styles.phoneInputWrap}>
+          <PhoneInput
+            value={phoneLocal}
+            country={phoneCountry}
+            onChangeValue={setPhoneLocal}
+            onChangeCountry={setPhoneCountry}
+            autoFocus
+          />
+        </View>
 
         <TouchableOpacity
-          style={[styles.button, (!phone.trim() || isLoading) && styles.buttonDisabled]}
+          style={[styles.button, (!normalizedPhone || isLoading) && styles.buttonDisabled]}
           onPress={handleSave}
-          disabled={!phone.trim() || isLoading}
+          disabled={!normalizedPhone || isLoading}
           activeOpacity={0.85}
         >
           {isLoading ? (
@@ -144,20 +144,13 @@ function makeStyles(theme: VarsTheme) {
       color: theme.color.inkMuted,
       marginBottom: 32,
     },
-    input: {
-      height: 58,
-      borderWidth: BORDER_WIDTH.regular,
-      borderColor: theme.color.inkFaint,
-      borderRadius: 5,
-      paddingHorizontal: 16,
-      fontSize: 18,
-      color: theme.color.ink,
+    phoneInputWrap: {
       marginBottom: 16,
     },
     button: {
       height: 56,
       backgroundColor: theme.color.accentBlue,
-      borderRadius: 5,
+      borderRadius: BORDER_RADIUS,
       alignItems: 'center',
       justifyContent: 'center',
     },

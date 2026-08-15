@@ -30,8 +30,10 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { ConfirmModal } from '@/components/ConfirmModal';
+import { PhoneInput } from '@/components/PhoneInput';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
+import { CountryCode, normalizePhone } from '@vars/shared';
 import { BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { useVarsTheme } from '@/contexts/ThemeContext';
@@ -44,20 +46,14 @@ const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
 const LANDING_URL = 'https://www.bookwithvars.com';
 
-function normalizePhone(raw: string): string {
-  const digits = raw.replace(/\D/g, '');
-  if (digits.startsWith('0') && digits.length === 11) return '+234' + digits.slice(1);
-  if (digits.startsWith('234') && digits.length === 13) return '+' + digits;
-  if (raw.trim().startsWith('+')) return raw.trim();
-  return raw.trim();
-}
-
 export default function VendorLoginScreen() {
   const { theme } = useVarsTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const [screen, setScreen] = useState<Screen>('entry');
   const [identifierType, setIdentifierType] = useState<IdentifierType>('email');
   const [identifier, setIdentifier] = useState('');
+  const [phoneLocal, setPhoneLocal] = useState('');
+  const [phoneCountry, setPhoneCountry] = useState<CountryCode>('+234');
   const [password, setPassword] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -67,14 +63,16 @@ export default function VendorLoginScreen() {
   // Tracks whether OTP was triggered from "forgot password" on the password screen
   const forgotMode = useRef(false);
 
+  const normalizedPhone = normalizePhone(phoneLocal, phoneCountry);
   const canonical = identifierType === 'email'
     ? identifier.trim().toLowerCase()
-    : normalizePhone(identifier);
+    : (normalizedPhone ?? '');
+  const canSubmitIdentity = identifierType === 'email' ? !!identifier.trim() : !!normalizedPhone;
 
   // ── Identity check ────────────────────────────────────────
 
   const handleCheckIdentity = async () => {
-    if (!identifier.trim()) return;
+    if (!canSubmitIdentity) return;
     setIsLoading(true);
     try {
       const res = await fetch(`${SUPABASE_URL}/functions/v1/vendor-check-identity`, {
@@ -120,7 +118,18 @@ export default function VendorLoginScreen() {
     setIsLoading(true);
     try {
       if (identifierType === 'phone') {
-        const { error } = await supabase.auth.signInWithOtp({ phone: canonical });
+        // shouldCreateUser: false — phone OTP here is only ever a login for an
+        // existing has_account vendor, never a signup. Without this, a phone
+        // that doesn't yet match auth.users.phone would silently create a
+        // second, disconnected auth identity instead of failing loudly. See
+        // supabase/migrations/20260815*.sql for the full identity-sync fix
+        // this depends on (auth.users.phone/phone_confirmed_at/identities
+        // must exist, digits-only, no leading '+', for GoTrue to recognize
+        // an existing vendor by phone).
+        const { error } = await supabase.auth.signInWithOtp({
+          phone: canonical,
+          options: { shouldCreateUser: false },
+        });
         if (error) throw error;
       } else {
         const { error } = await supabase.auth.signInWithOtp({
@@ -317,7 +326,7 @@ export default function VendorLoginScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.tab, identifierType === 'phone' && styles.tabActive]}
-                onPress={() => { setIdentifierType('phone'); setIdentifier(''); }}
+                onPress={() => { setIdentifierType('phone'); setPhoneLocal(''); }}
               >
                 <Text style={[styles.tabText, identifierType === 'phone' && styles.tabTextActive]}>Phone</Text>
               </TouchableOpacity>
@@ -337,25 +346,23 @@ export default function VendorLoginScreen() {
                 onSubmitEditing={handleCheckIdentity}
               />
             ) : (
-              <TextInput
-                style={styles.input}
-                placeholder="Phone number (e.g. 08012345678)"
-                placeholderTextColor={theme.color.inkMuted}
-                value={identifier}
-                onChangeText={setIdentifier}
-                keyboardType="phone-pad"
-                returnKeyType="done"
-                onSubmitEditing={handleCheckIdentity}
-              />
+              <View style={styles.phoneInputWrap}>
+                <PhoneInput
+                  value={phoneLocal}
+                  country={phoneCountry}
+                  onChangeValue={setPhoneLocal}
+                  onChangeCountry={setPhoneCountry}
+                />
+              </View>
             )}
 
             <TouchableOpacity
               style={[
                 styles.button,
-                (!identifier.trim() || isLoading) && styles.buttonDisabled,
+                (!canSubmitIdentity || isLoading) && styles.buttonDisabled,
               ]}
               onPress={handleCheckIdentity}
-              disabled={!identifier.trim() || isLoading}
+              disabled={!canSubmitIdentity || isLoading}
               activeOpacity={0.85}
             >
               {isLoading
@@ -414,7 +421,7 @@ export default function VendorLoginScreen() {
               {identifierType === 'phone' ? 'Check your WhatsApp.' : 'Check your email.'}
             </Text>
             <Text style={styles.sub}>
-              We sent a 6-digit code to{'\n'}{identifier.trim()}.
+              We sent a 6-digit code to{'\n'}{canonical}.
             </Text>
 
             <TextInput
@@ -515,7 +522,7 @@ export default function VendorLoginScreen() {
 
             <TouchableOpacity
               style={styles.secondaryAction}
-              onPress={() => { setIdentifier(''); setScreen('entry'); }}
+              onPress={() => { setIdentifier(''); setPhoneLocal(''); setScreen('entry'); }}
             >
               <Text style={styles.secondaryActionText}>
                 Try a different {identifierType === 'phone' ? 'number' : 'email'}
@@ -581,6 +588,7 @@ function makeStyles(theme: VarsTheme) {
       backgroundColor: theme.color.bg,
     },
     inputDisabled: { backgroundColor: theme.color.surface2, color: theme.color.inkMuted },
+    phoneInputWrap: { marginBottom: 14 },
     otpInput: { textAlign: 'center', fontSize: 24, fontWeight: '700', letterSpacing: 6 },
 
     button: {

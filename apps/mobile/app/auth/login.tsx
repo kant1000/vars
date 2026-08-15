@@ -23,8 +23,10 @@ import {
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
+import { PhoneInput } from '@/components/PhoneInput';
 import { router, useLocalSearchParams } from 'expo-router';
 import { supabase } from '@/lib/supabase';
+import { CountryCode, normalizePhone } from '@vars/shared';
 import { BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { useVarsTheme } from '@/contexts/ThemeContext';
@@ -46,7 +48,8 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [phoneLocal, setPhoneLocal] = useState('');
+  const [phoneCountry, setPhoneCountry] = useState<CountryCode>('+234');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
 
@@ -89,6 +92,8 @@ export default function LoginScreen() {
     }
   };
 
+  const normalizedPhone = normalizePhone(phoneLocal, phoneCountry);
+
   const handleEmailSubmit = async () => {
     if (!email.trim() || !password.trim()) {
       Alert.alert('Required', 'Please enter your email and password.');
@@ -98,15 +103,15 @@ export default function LoginScreen() {
       Alert.alert('Required', 'Please enter your full name.');
       return;
     }
-    if (mode === 'signup' && !phone.trim()) {
-      Alert.alert('Required', 'Please enter your phone number.');
+    if (mode === 'signup' && !normalizedPhone) {
+      Alert.alert('Required', 'Please enter a valid phone number.');
       return;
     }
 
     setIsLoading(true);
     try {
       if (mode === 'signup') {
-        const { needsConfirmation } = await signUpWithEmail({ email, password, fullName, phoneNumber: phone });
+        const { needsConfirmation } = await signUpWithEmail({ email, password, fullName, phoneNumber: normalizedPhone! });
         if (needsConfirmation) {
           Alert.alert(
             'Check your email',
@@ -423,16 +428,11 @@ export default function LoginScreen() {
           {/* Phone — required at sign-up for all methods (§4.4) */}
           {mode === 'signup' && (
             <>
-              <TextInput
-                style={styles.input}
-                placeholder="Phone number"
-                placeholderTextColor={theme.color.inkMuted}
-                value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
-                autoComplete="tel"
-                returnKeyType="done"
-                onSubmitEditing={handleEmailSubmit}
+              <PhoneInput
+                value={phoneLocal}
+                country={phoneCountry}
+                onChangeValue={setPhoneLocal}
+                onChangeCountry={setPhoneCountry}
               />
               {/* Helper text per spec §4.4 */}
               <Text style={styles.phoneHelper}>So your stylist can reach you on the day</Text>
@@ -440,9 +440,12 @@ export default function LoginScreen() {
           )}
 
           <TouchableOpacity
-            style={[styles.submitButton, (isLoading || !!loadingProvider) && styles.submitDisabled]}
+            style={[
+              styles.submitButton,
+              (isLoading || !!loadingProvider || (mode === 'signup' && !normalizedPhone)) && styles.submitDisabled,
+            ]}
             onPress={handleEmailSubmit}
-            disabled={isLoading || !!loadingProvider}
+            disabled={isLoading || !!loadingProvider || (mode === 'signup' && !normalizedPhone)}
             activeOpacity={0.85}
           >
             {isLoading ? (

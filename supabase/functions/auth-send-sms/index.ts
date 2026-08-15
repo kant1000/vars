@@ -11,12 +11,16 @@
 // "{{1}} is your verification code." — custom phrasing isn't allowed
 // for this category. The "Copy Code" button is mandatory in 360dialog's
 // Authentication flow (couldn't be turned off), so the send payload
-// includes a matching `button` component alongside the body — both
-// carry the same OTP value. Per Meta's WhatsApp Cloud API docs for
-// copy-code authentication buttons: sub_type "copy_code", parameter
-// type "coupon_code". If sends start failing with a button/component
-// shape error, double check this against 360dialog's own API reference,
-// since this wasn't verified against a live send.
+// includes a matching `button` component alongside the body.
+//
+// Verified against a live send (2026-08-15): the button component uses
+// sub_type "url" (not "copy_code" despite the button's own type) — omitting
+// this or using sub_type "copy_code" produces Meta error (#100) "buttons:
+// Button at index 0 must be of type Url". The button's text parameter must
+// be the OTP itself (same value as the body parameter) — 360dialog's own
+// docs example shows a literal "COPY_CODE" placeholder there, which is
+// misleading: sending that literal string makes the button copy the text
+// "COPY_CODE" instead of the real code (confirmed live, don't repeat).
 // ============================================================
 
 const DIALOG360_API_KEY  = Deno.env.get('DIALOG360_API_KEY')  ?? '';
@@ -111,9 +115,9 @@ Deno.serve(async (req: Request) => {
             },
             {
               type:       'button',
-              sub_type:   'copy_code',
+              sub_type:   'url',
               index:      '0',
-              parameters: [{ type: 'coupon_code', coupon_code: otp }],
+              parameters: [{ type: 'text', text: otp }],
             },
           ],
         },

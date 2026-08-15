@@ -17,28 +17,9 @@
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient } from '../_shared/supabase.ts';
 import { welcomeEmail, getFirstName } from '../_shared/lead-copy.ts';
+import { normalizeNigerianPhone } from '../_shared/phone.ts';
 
 const PIONEER_MAX = 50;
-
-/**
- * Normalise a Nigerian phone number to E.164 (+234XXXXXXXXXX).
- * Accepts: 080XXXXXXXX, 070XXXXXXXX, 090XXXXXXXX (11-digit local)
- *          2348XXXXXXXX (13-digit without +), +2348XXXXXXXX (already E.164)
- * Unknown formats are returned trimmed and unchanged.
- */
-function normalisePhone(raw: string): string {
-  const digits = raw.replace(/\D/g, '');
-  if (digits.startsWith('0') && digits.length === 11) {
-    return '+234' + digits.slice(1);          // 080... → +234 80...
-  }
-  if (digits.startsWith('234') && digits.length === 13) {
-    return '+' + digits;                       // 2348... → +2348...
-  }
-  if (raw.trim().startsWith('+')) {
-    return raw.trim();                         // Already E.164
-  }
-  return raw.trim();                           // Unknown — pass through unchanged
-}
 
 Deno.serve(async (req: Request) => {
   const cors = handleCors(req);
@@ -91,12 +72,17 @@ Deno.serve(async (req: Request) => {
       return errorResponse('Invalid email address');
     }
 
+    const normalisedPhone = normalizeNigerianPhone(phone);
+    if (!normalisedPhone) {
+      return errorResponse('Invalid phone number');
+    }
+
     // Atomic pioneer slot grant via DB function — prevents race conditions
     const { data: regRows, error: regError } = await supabase
       .rpc('register_vendor_lead', {
         p_full_name:    full_name.trim(),
         p_email:        email.toLowerCase().trim(),
-        p_phone:        normalisePhone(phone),
+        p_phone:        normalisedPhone,
         p_service_type: service_type.trim(),
         p_location:     location.trim(),
         p_pioneer_max:  PIONEER_MAX,
