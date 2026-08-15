@@ -54,7 +54,7 @@ Deno.serve(async (req: Request) => {
     const adminClient = createAdminClient();
     const { data: vendor, error: vendorErr } = await adminClient
       .from('vendors')
-      .select('kyc_status')
+      .select('kyc_status, full_name')
       .eq('id', vendor_id)
       .single();
 
@@ -90,8 +90,15 @@ Deno.serve(async (req: Request) => {
       return errorResponse('Could not start verification. Please try again.', 502);
     }
 
+    // The SDK's `user.firstName` is a required constructor field.
+    const [firstName, ...rest] = (vendor.full_name ?? '').trim().split(/\s+/).filter(Boolean);
+    const lastName = rest.join(' ');
+
     const verificationUrl =
-      `${KYC_WIDGET_URL}?sessionId=${encodeURIComponent(sessionId)}&token=${encodeURIComponent(authToken)}`;
+      `${KYC_WIDGET_URL}?sessionId=${encodeURIComponent(sessionId)}` +
+      `&token=${encodeURIComponent(authToken)}` +
+      `&firstName=${encodeURIComponent(firstName || 'Vendor')}` +
+      `&lastName=${encodeURIComponent(lastName)}`;
 
     return jsonResponse({ verification_url: verificationUrl });
   } catch (err: any) {

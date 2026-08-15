@@ -13,9 +13,14 @@
 //
 // sessionId + token (Youverify's authToken, used as the SDK's sessionToken)
 // are generated server-side by supabase/functions/vendor-kyc-init (using
-// the Youverify secret API key) and passed through as query params. The
-// SDK itself only needs the PUBLIC merchant key, which is safe to embed
-// directly (it identifies the merchant, not a secret).
+// the Youverify secret API key) and passed through as query params, along
+// with the vendor's firstName/lastName (the SDK's user.firstName is a
+// required constructor field). The SDK itself only needs the PUBLIC merchant
+// key (constructor field name: publicKey), which is safe to embed directly
+// (it identifies the merchant, not a secret). tasks: [{id:'passive'}] is
+// also required — the SDK throws "Tasks cannot be empty" without it
+// (confirmed live, 2026-08-16 — passive liveness is the only documented
+// task type as of writing).
 //
 // Results are bridged back to the RN WebView via
 // window.ReactNativeWebView.postMessage — apps/mobile's step-4-kyc.tsx
@@ -32,7 +37,7 @@ import { NextResponse } from 'next/server';
 
 const YOUVERIFY_PUBLIC_MERCHANT_KEY = '69d20542692e328ab9726969';
 
-function html(sessionId: string, token: string): string {
+function html(sessionId: string, token: string, firstName: string, lastName: string): string {
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -129,7 +134,9 @@ function html(sessionId: string, token: string): string {
           const yv = new YouverifyPassiveLiveness({
             sessionId: ${JSON.stringify(sessionId)},
             sessionToken: ${JSON.stringify(token)},
-            publicMerchantKey: ${JSON.stringify(YOUVERIFY_PUBLIC_MERCHANT_KEY)},
+            publicKey: ${JSON.stringify(YOUVERIFY_PUBLIC_MERCHANT_KEY)},
+            tasks: [{ id: 'passive' }],
+            user: { firstName: ${JSON.stringify(firstName)}, lastName: ${JSON.stringify(lastName)} },
             onSuccess: (result) => {
               log('onSuccess: ' + stringify(result));
               setStatus('Done.');
@@ -161,8 +168,10 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const sessionId = searchParams.get('sessionId') ?? '';
   const token = searchParams.get('token') ?? '';
+  const firstName = searchParams.get('firstName') ?? '';
+  const lastName = searchParams.get('lastName') ?? '';
 
-  return new NextResponse(html(sessionId, token), {
+  return new NextResponse(html(sessionId, token, firstName, lastName), {
     headers: { 'Content-Type': 'text/html; charset=utf-8' },
   });
 }
