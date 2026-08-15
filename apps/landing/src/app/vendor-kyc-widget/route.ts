@@ -64,7 +64,9 @@ function html(sessionId: string, token: string, firstName: string, lastName: str
   <div id="debug"></div>
   <script type="module">
     const debugEl = document.getElementById('debug');
+    const logLines = [];
     const log = (text, isErr) => {
+      logLines.push((isErr ? '[err] ' : '[log] ') + text);
       const line = document.createElement('div');
       if (isErr) line.className = 'debug-err';
       line.textContent = (isErr ? '[err] ' : '[log] ') + text;
@@ -103,10 +105,15 @@ function html(sessionId: string, token: string, firstName: string, lastName: str
     };
     window.addEventListener('unhandledrejection', (e) => {
       log('unhandledrejection: ' + stringify(e.reason), true);
+      // Without this, a rejected promise (e.g. the SDK's own start() throwing
+      // asynchronously) left the app hanging on the WebView forever — nothing
+      // ever told it the flow had failed. Confirmed live, 2026-08-16.
+      post({ type: 'liveness_failed' });
     });
 
     const post = (msg) => {
-      if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify(msg));
+      const withDebug = msg.type === 'liveness_failed' ? { ...msg, debug: msg.debug ?? logLines.join('\\n') } : msg;
+      if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify(withDebug));
       log('post: ' + JSON.stringify(msg));
     };
     const setStatus = (text) => {

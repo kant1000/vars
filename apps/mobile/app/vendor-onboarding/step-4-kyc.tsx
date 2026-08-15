@@ -252,7 +252,11 @@ export default function Step4Kyc() {
 
     if (msg.type === 'liveness_failed') {
       setKycState('failed');
-      setKycErrorReason(null);
+      // TEMP: surfaces the widget's on-page debug log here too — the WebView
+      // unmounts the instant kycState changes, so its debug panel disappears
+      // before it can be read/screenshotted. Remove once the SDK integration
+      // is confirmed working end-to-end.
+      setKycErrorReason(msg.debug ?? null);
       return;
     }
     if (msg.type !== 'liveness_success' || !msg.faceImage) return;
