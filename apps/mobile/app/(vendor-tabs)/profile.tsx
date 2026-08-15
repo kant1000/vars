@@ -90,7 +90,7 @@ export default function VendorProfileScreen() {
     const [vendorRes, servicesRes, photosRes] = await Promise.all([
       supabase
         .from('vendors')
-        .select('full_name, kyc_legal_name, profile_image_url, pioneer, pioneer_bookings_completed')
+        .select('full_name, kyc_legal_name, profile_image_url, kyc_verified_at, pioneer, pioneer_bookings_completed')
         .eq('id', user.id)
         .single(),
 
@@ -111,7 +111,16 @@ export default function VendorProfileScreen() {
 
     setVendorName(vendorRes.data?.full_name ?? '');
     setKycLegalName(vendorRes.data?.kyc_legal_name ?? null);
-    setProfileImageUrl(vendorRes.data?.profile_image_url ?? null);
+    // expo-image caches by URL — without a cache-busting param, a vendor
+    // whose photo is regenerated (e.g. re-verification) keeps seeing the
+    // stale cached image indefinitely, since the storage path never
+    // changes. kyc_verified_at only changes when the photo actually could.
+    const rawUrl = vendorRes.data?.profile_image_url ?? null;
+    setProfileImageUrl(
+      rawUrl && vendorRes.data?.kyc_verified_at
+        ? `${rawUrl}?v=${encodeURIComponent(vendorRes.data.kyc_verified_at)}`
+        : rawUrl
+    );
     setIsPioneer(
       vendorRes.data?.pioneer === true &&
       (vendorRes.data?.pioneer_bookings_completed ?? PIONEER_BOOKINGS_THRESHOLD) < PIONEER_BOOKINGS_THRESHOLD

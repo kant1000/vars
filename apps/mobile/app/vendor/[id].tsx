@@ -60,6 +60,7 @@ interface VendorProfile {
   kyc_legal_name: string | null;
   bio: string | null;
   profile_image_url: string | null;
+  kyc_verified_at: string | null;
   avg_rating: number;
   total_reviews: number;
   base_location_text: string | null;
@@ -177,7 +178,7 @@ export default function VendorProfileScreen() {
 
     const [vendorRes, servicesRes, portfolioRes, reviewsRes, favRes] = await Promise.all([
       supabase.from('vendors')
-        .select('id, full_name, kyc_legal_name, bio, profile_image_url, avg_rating, total_reviews, base_location_text, badge_vars_choice, badge_top_rated, pioneer, avg_response_minutes, is_online, is_busy')
+        .select('id, full_name, kyc_legal_name, bio, profile_image_url, kyc_verified_at, avg_rating, total_reviews, base_location_text, badge_vars_choice, badge_top_rated, pioneer, avg_response_minutes, is_online, is_busy')
         .eq('id', id)
         .single(),
 
@@ -321,7 +322,15 @@ export default function VendorProfileScreen() {
           <View style={styles.avatarWrap}>
             {vendor.profile_image_url ? (
               <Image
-                source={{ uri: vendor.profile_image_url }}
+                // expo-image caches by URL — cache-bust with kyc_verified_at
+                // (only changes when the photo actually could) so a
+                // re-verified vendor's fresh photo isn't hidden behind a
+                // stale cached copy of the same storage path.
+                source={{
+                  uri: vendor.kyc_verified_at
+                    ? `${vendor.profile_image_url}?v=${encodeURIComponent(vendor.kyc_verified_at)}`
+                    : vendor.profile_image_url,
+                }}
                 style={styles.avatar}
                 contentFit="cover"
                 cachePolicy="memory-disk"
