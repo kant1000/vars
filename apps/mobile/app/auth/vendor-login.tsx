@@ -1,14 +1,13 @@
 // ============================================================
 // VARS — Vendor Sign In / Sign Up
-// Flow (email):
-//   1. Enter email → vendor-check-identity
-//      has_account  → password screen (forgot → OTP → dashboard)
+// Both email and phone are full, symmetric identifiers: either one can
+// start a signup (lead_only) or a login (has_account), and once an account
+// exists it can always be reached by either channel.
+// Flow (email or phone):
+//   1. Enter identifier → vendor-check-identity
+//      has_account  → email: password screen (forgot → OTP → dashboard)
+//                     phone: WhatsApp OTP → dashboard
 //      lead_only    → OTP → create password → onboarding
-//      not_found    → error with link to bookwithvars.com
-// Flow (phone):
-//   1. Enter phone → vendor-check-identity
-//      has_account  → WhatsApp OTP → dashboard
-//      lead_only    → prompt to use email to set up first
 //      not_found    → error with link to bookwithvars.com
 // OTP delivery: email (via Resend) + WhatsApp (via 360dialog hook)
 // ============================================================
@@ -29,7 +28,6 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
-import { ConfirmModal } from '@/components/ConfirmModal';
 import { PhoneInput } from '@/components/PhoneInput';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
@@ -59,9 +57,10 @@ export default function VendorLoginScreen() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [showSetupFirstModal, setShowSetupFirstModal] = useState(false);
-  // Tracks whether OTP was triggered from "forgot password" on the password screen
-  const forgotMode = useRef(false);
+  // Tracks whether the current OTP flow is for an existing account (login) or
+  // a lead_only signup — decides shouldCreateUser on send and the post-verify
+  // route (dashboard vs create_password), symmetrically for email and phone.
+  const isExistingAccount = useRef(false);
 
   const normalizedPhone = normalizePhone(phoneLocal, phoneCountry);
   const canonical = identifierType === 'email'
@@ -90,18 +89,14 @@ export default function VendorLoginScreen() {
       const status = json.status as IdentityStatus;
       if (status === 'has_account') {
         if (identifierType === 'phone') {
-          forgotMode.current = false;
+          isExistingAccount.current = true;
           await sendOtp();
         } else {
           setScreen('password');
         }
       } else if (status === 'lead_only') {
-        if (identifierType === 'phone') {
-          setShowSetupFirstModal(true);
-        } else {
-          forgotMode.current = false;
-          await sendOtp();
-        }
+        isExistingAccount.current = false;
+        await sendOtp();
       } else {
         setScreen('not_found');
       }
@@ -118,17 +113,21 @@ export default function VendorLoginScreen() {
     setIsLoading(true);
     try {
       if (identifierType === 'phone') {
-        // shouldCreateUser: false — phone OTP here is only ever a login for an
-        // existing has_account vendor, never a signup. Without this, a phone
-        // that doesn't yet match auth.users.phone would silently create a
-        // second, disconnected auth identity instead of failing loudly. See
-        // supabase/migrations/20260815*.sql for the full identity-sync fix
-        // this depends on (auth.users.phone/phone_confirmed_at/identities
-        // must exist, digits-only, no leading '+', for GoTrue to recognize
-        // an existing vendor by phone).
+        // shouldCreateUser mirrors isExistingAccount: has_account vendors get
+        // false (a phone that doesn't yet match an existing auth.users.phone
+        // must fail loudly, not silently create a second, disconnected auth
+        // identity), while lead_only vendors get true plus user_type metadata
+        // so this becomes a real signup, same as the email branch below. See
+        // supabase/migrations/20260815*.sql and 20260816000001*.sql for the
+        // identity-sync fixes this depends on (auth.users.phone/email,
+        // phone_confirmed_at/email_confirmed_at, and matching auth.identities
+        // rows, digits-only phone with no leading '+', for GoTrue to
+        // recognize an existing vendor by either channel).
         const { error } = await supabase.auth.signInWithOtp({
           phone: canonical,
-          options: { shouldCreateUser: false },
+          options: isExistingAccount.current
+            ? { shouldCreateUser: false }
+            : { shouldCreateUser: true, data: { user_type: 'vendor' } },
         });
         if (error) throw error;
       } else {
@@ -163,8 +162,6 @@ export default function VendorLoginScreen() {
           type: 'sms',
         });
         if (error) throw error;
-        await AsyncStorage.setItem('vars_onboarding_done', 'true');
-        await routeToVendorState();
       } else {
         const { error } = await supabase.auth.verifyOtp({
           email: canonical,
@@ -172,14 +169,15 @@ export default function VendorLoginScreen() {
           type: 'email',
         });
         if (error) throw error;
-        if (forgotMode.current) {
-          // Already authenticated — route directly to vendor state
-          await AsyncStorage.setItem('vars_onboarding_done', 'true');
-          await routeToVendorState();
-        } else {
-          // New vendor — collect password
-          setScreen('create_password');
-        }
+      }
+
+      if (isExistingAccount.current) {
+        // Already authenticated — route directly to vendor state
+        await AsyncStorage.setItem('vars_onboarding_done', 'true');
+        await routeToVendorState();
+      } else {
+        // New vendor — collect password
+        setScreen('create_password');
       }
     } catch (err: any) {
       Alert.alert('Incorrect code', err.message ?? 'The code was wrong or expired. Try again.');
@@ -209,7 +207,7 @@ export default function VendorLoginScreen() {
   };
 
   const handleForgotPassword = async () => {
-    forgotMode.current = true;
+    isExistingAccount.current = true;
     await sendOtp();
   };
 
@@ -531,16 +529,6 @@ export default function VendorLoginScreen() {
           </>
         )}
       </ScrollView>
-
-      <ConfirmModal
-        visible={showSetupFirstModal}
-        title="Set up your account first"
-        body="We found your number, but your account isn't set up yet. Use your email address to get started; you can log in with your phone once that's done."
-        confirmLabel="Got it"
-        dismissLabel={null}
-        onConfirm={() => setShowSetupFirstModal(false)}
-        onDismiss={() => setShowSetupFirstModal(false)}
-      />
     </KeyboardAvoidingView>
   );
 }
