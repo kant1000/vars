@@ -21,7 +21,7 @@ import { VarsSkeleton } from '@/components/ui';
 import { useVarsTheme } from '@/contexts/ThemeContext';
 import { Colors, BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
-import { CheckIcon, StarFilledIcon, StarEmptyIcon } from '@/components/icons';
+import { StarFilledIcon, StarEmptyIcon } from '@/components/icons';
 import { CATEGORY_L2_LABELS } from '@vars/shared';
 import { sanitizeContent } from '@/lib/format';
 import { StatusDot, VendorStatus } from '@/components/StatusDot';
@@ -342,10 +342,7 @@ export default function VendorProfileScreen() {
           <View style={styles.profileInfo}>
             <Text style={styles.name} numberOfLines={1}>{vendor.full_name}</Text>
             {vendor.kyc_legal_name ? (
-              <View style={styles.legalNameRow}>
-                <CheckIcon size={10} color={theme.color.inkMuted} />
-                <Text style={styles.legalNameText}>{vendor.kyc_legal_name} · Verified by VARS</Text>
-              </View>
+              <Text style={styles.legalNameText} numberOfLines={1}>{vendor.kyc_legal_name}</Text>
             ) : null}
             <View style={styles.ratingRow}>
               {vendor.total_reviews === 0 ? (
@@ -560,8 +557,7 @@ function makeStyles(theme: VarsTheme) {
     profileInfo: { flex: 1, paddingTop: 2 },
     skeletonInfo: { flex: 1, paddingTop: 2, gap: 8 },
     name: { fontSize: 20, fontWeight: '800', color: theme.color.ink, marginBottom: 2 },
-    legalNameRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 },
-    legalNameText: { fontSize: 12, color: theme.color.inkMuted },
+    legalNameText: { fontSize: 12, fontWeight: '600', color: theme.color.accentBlue, marginBottom: 6 },
     ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginBottom: 6 },
     starText: { color: Colors.star, fontSize: 13 },
     ratingText: { fontSize: 13, fontWeight: '700', color: theme.color.ink },

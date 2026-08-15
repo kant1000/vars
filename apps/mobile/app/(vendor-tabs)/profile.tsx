@@ -19,7 +19,7 @@ import { VarsSkeleton } from '@/components/ui';
 import { useVarsTheme } from '@/contexts/ThemeContext';
 import { Colors, BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
-import { CheckIcon, CloseIcon, EditIcon, GearIcon } from '@/components/icons';
+import { CloseIcon, EditIcon, GearIcon } from '@/components/icons';
 import { CATEGORY_L2_LABELS, MAX_VENDOR_SERVICES, PIONEER_BOOKINGS_THRESHOLD } from '@vars/shared';
 import { useVendorOnline } from '@/contexts/VendorOnlineContext';
 import { StatusDot } from '@/components/StatusDot';
@@ -394,10 +394,7 @@ export default function VendorProfileScreen() {
             </View>
 
             {kycLegalName ? (
-              <View style={s.heroLegalRow}>
-                <CheckIcon size={10} color={theme.color.inkMuted} />
-                <Text style={s.heroLegalText}>{kycLegalName} · Verified by VARS</Text>
-              </View>
+              <Text style={s.heroLegalText} numberOfLines={1}>{kycLegalName}</Text>
             ) : null}
           </View>
         </View>
@@ -560,8 +557,7 @@ function makeStyles(theme: VarsTheme) {
     heroNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     heroName: { fontSize: 18, fontWeight: '700', color: theme.color.ink, flex: 1 },
     heroEditBtn: { padding: 8 },
-    heroLegalRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 5 },
-    heroLegalText: { fontSize: 12, color: theme.color.inkMuted },
+    heroLegalText: { fontSize: 12, fontWeight: '600', color: theme.color.accentBlue, marginTop: 5 },
 
     section: {
       marginTop: 8, borderTopWidth: BORDER_WIDTH.thin, borderTopColor: theme.color.inkFaint,

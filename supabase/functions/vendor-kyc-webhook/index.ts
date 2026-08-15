@@ -128,13 +128,20 @@ async function fetchIdentityFromApi(identityId: string): Promise<any | null> {
   }
 }
 
-// Centre-square crop of the top 65% of frame, resized to 400×400.
+// Centre-square crop, resized to 400×400. Starts a little below the very
+// top of the frame (less empty headroom, more chin/neck included — raises
+// the face within the crop) and spans more of the frame's height than a
+// tight 65% did, then shrinks slightly for a small margin around the face
+// instead of an edge-to-edge crop.
 async function cropPassportStyle(rawBuffer: Uint8Array): Promise<Uint8Array> {
   const img = await Image.decode(rawBuffer);
-  const cropH = Math.floor(img.height * 0.65);
-  const size  = Math.min(img.width, cropH);
-  const cropX = Math.floor((img.width - size) / 2);
-  img.crop(cropX, 0, size, size);
+  const cropTop  = Math.floor(img.height * 0.04);
+  const cropH    = Math.floor(img.height * 0.78);
+  const baseSize = Math.min(img.width, cropH);
+  const size     = Math.floor(baseSize * 0.92);
+  const cropX    = Math.floor((img.width - size) / 2);
+  const cropY    = cropTop + Math.floor((baseSize - size) / 2);
+  img.crop(cropX, cropY, size, size);
   img.resize(400, 400);
   return await img.encode(1); // 1 = JPEG
 }
