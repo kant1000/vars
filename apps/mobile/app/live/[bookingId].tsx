@@ -637,7 +637,7 @@ export default function LiveScreen() {
               style={s.disputeBtn}
               onPress={() => setDisputeVisible(true)}
             >
-              <Text style={s.disputeBtnText}>Something's wrong</Text>
+              <Text style={s.disputeBtnText}>Report an issue</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -665,7 +665,7 @@ export default function LiveScreen() {
       <ConfirmModal
         visible={showCancelModal}
         title="Cancel booking?"
-        body="A cancellation fee may apply depending on timing. Check the policy in your booking."
+        body="Your stylist hasn't set off yet, cancellation is free. No payment has been taken."
         confirmLabel="Cancel"
         dismissLabel="Keep booking"
         destructive

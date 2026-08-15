@@ -250,8 +250,8 @@ export default function MarketingCompose() {
         <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 16 }}>Email content</div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {field('Subject line', 'subject', 'e.g. VARS opens to customers in August', true)}
-          {field('Heading (shown large in email)', 'heading', 'e.g. Get ready for VARS this August', true)}
+          {field('Subject line', 'subject', 'e.g. VARS is opening to customers soon', true)}
+          {field('Heading (shown large in email)', 'heading', 'e.g. Get ready for VARS', true)}
           {field('Body paragraph 1', 'body1', 'Main message…', true, true)}
           {field('Body paragraph 2 (optional)', 'body2', 'Additional context…', false, true)}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>

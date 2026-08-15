@@ -450,7 +450,7 @@ export default function Step4Kyc() {
               <View style={styles.reviewCallout}>
                 <Text style={styles.reviewCalloutTitle}>Confirming your details</Text>
                 <Text style={styles.reviewCalloutBody}>
-                  This usually takes a few minutes. You'll get a notification once you're verified.
+                  Our team is reviewing your details. Most stylists are confirmed within 24 hours. We'll notify you the moment you're approved.
                 </Text>
               </View>
             )}

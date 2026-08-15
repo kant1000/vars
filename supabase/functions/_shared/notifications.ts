@@ -99,7 +99,7 @@ export async function sendNotification(payload: NotificationPayload): Promise<vo
 export function msg_paymentAuthorized(vendorName: string) {
   return {
     title: 'Booking confirmed',
-    body: `You're all set — ${vendorName} has 1 hour to confirm your booking. We'll let you know.`,
+    body: `You're all set. ${vendorName} has 1 hour to confirm your booking. We'll let you know.`,
   };
 }
 
@@ -112,7 +112,7 @@ export function msg_vendorAccepts(vendorName: string, date: string, time: string
 
 export function msg_vendorDeclines(vendorName: string) {
   return {
-    title: 'Vendor unavailable',
+    title: 'Stylist unavailable',
     body: `${vendorName} isn't available for this slot. Let's find you another one.`,
   };
 }
@@ -169,14 +169,14 @@ export function msg_autoReleaseWarning(vendorName: string) {
 export function msg_paymentReleased(vendorName: string) {
   return {
     title: 'Payment released',
-    body: `Payment released. Hope you're feeling fresh — leave ${vendorName} a review.`,
+    body: `Payment released. Hope you're feeling fresh, leave ${vendorName} a review.`,
   };
 }
 
 export function msg_cancelFree() {
   return {
     title: 'Booking cancelled',
-    body: `Your booking has been cancelled. No charge was made — you're all set.`,
+    body: `Your booking has been cancelled. No charge was made, you're all set.`,
   };
 }
 
@@ -190,7 +190,7 @@ export function msg_vendor_newBooking(
 ) {
   return {
     title: 'New booking request',
-    body: `New booking from ${clientFirstName} · ₦${earningsFormatted} — tap to review.`,
+    body: `New booking from ${clientFirstName} · ₦${earningsFormatted}, tap to review.`,
   };
 }
 
@@ -211,7 +211,7 @@ export function msg_vendor_bookingExpired() {
 export function msg_vendor_reminder24h(time: string, service: string, clientFirstName: string) {
   return {
     title: 'Tomorrow\'s job',
-    body: `Tomorrow at ${time} — ${service} for ${clientFirstName}. Make sure you're ready.`,
+    body: `Tomorrow at ${time}: ${service} for ${clientFirstName}. Make sure you're ready.`,
   };
 }
 
@@ -249,7 +249,7 @@ export function msg_vendor_customerCancelledFree(clientFirstName: string) {
 export function msg_gatePaymentNeeded(vendorName: string) {
   return {
     title: 'Complete your payment',
-    body: `${vendorName} is heading your way — tap to confirm your payment and secure the booking.`,
+    body: `${vendorName} is heading your way, tap to confirm your payment and secure the booking.`,
   };
 }
 
@@ -257,7 +257,7 @@ export function msg_gatePaymentNeeded(vendorName: string) {
 export function msg_gatePaymentFailed() {
   return {
     title: 'Payment needs attention',
-    body: `Your payment didn't go through. Open the app to try a different card — your booking is held for a few minutes.`,
+    body: `Let's try that payment again. Open the app for a different card, your booking is held for a few minutes.`,
   };
 }
 
@@ -265,7 +265,7 @@ export function msg_gatePaymentFailed() {
 export function msg_gatePaymentExpired() {
   return {
     title: 'Booking cancelled',
-    body: `The payment window closed before the charge completed. No money was taken. Let's find you another vendor.`,
+    body: `The payment window closed before the charge completed. No money was taken. Let's find you another stylist.`,
   };
 }
 
@@ -280,7 +280,7 @@ export function msg_vendor_gatePaymentPending() {
 /** Vendor push when charge succeeded and they're officially on their way. */
 export function msg_vendor_gateCharged() {
   return {
-    title: 'Payment confirmed — you\'re on your way',
+    title: 'Payment confirmed, you\'re on your way',
     body: `Payment secured. Your customer is expecting you.`,
   };
 }
@@ -290,7 +290,7 @@ export function msg_vendor_gateCharged() {
 export function msg_vendor_gatePaymentExpired(clientFirstName: string) {
   return {
     title: 'Payment window closed',
-    body: `${clientFirstName}'s payment window closed — that slot is yours again.`,
+    body: `${clientFirstName}'s payment window closed. That slot is yours again.`,
   };
 }
 
@@ -306,7 +306,7 @@ export function msg_vendor_restricted(amountFormatted: string) {
 export function msg_vendor_restrictionLifted() {
   return {
     title: 'Account restored',
-    body: `Your repayment has been confirmed. Your account is active again — you're good to go.`,
+    body: `Your repayment has been confirmed. Your account is active again, you're good to go.`,
   };
 }
 
@@ -335,14 +335,14 @@ export function msg_vendor_verificationApproved() {
 export function msg_vendor_verificationFailed(reason: string) {
   return {
     title: 'Let\'s finish your verification',
-    body: `One thing held your verification back: ${reason}. Tap to retry — it takes 2 minutes and we'll get you live.`,
+    body: `One thing held your verification back: ${reason}. Tap to retry, it takes 2 minutes and we'll get you live.`,
   };
 }
 
 export function msg_vendor_needsReview() {
   return {
     title: 'Confirming your details',
-    body: `Your verification needs a closer look from our team. Most stylists are confirmed within 24 hours — we'll let you know the moment it's done.`,
+    body: `Your verification needs a closer look from our team. Most stylists are confirmed within 24 hours. We'll let you know the moment it's done.`,
   };
 }
 
@@ -350,14 +350,14 @@ export function msg_vendor_needsReview() {
 export function msg_autoAccepted(vendorName: string, date: string, time: string) {
   return {
     title: 'Booking confirmed',
-    body: `Your booking with ${vendorName} is confirmed for ${date} at ${time}. No waiting — you're all set.`,
+    body: `Your booking with ${vendorName} is confirmed for ${date} at ${time}. No waiting, you're all set.`,
   };
 }
 
 export function msg_bookingCancelledByVendor(date: string, time: string) {
   return {
     title: 'Booking cancelled',
-    body: `Your booking for ${date} at ${time} was cancelled by your vendor. You've been fully refunded.`,
+    body: `Your booking for ${date} at ${time} was cancelled by your stylist. You've been fully refunded.`,
   };
 }
 
@@ -378,7 +378,7 @@ export function msg_vendor_serviceRenderReminder(clientFirstName: string) {
 export function msg_bookingCancelledFullRefund(date: string, time: string) {
   return {
     title: 'Booking cancelled',
-    body: `Your booking for ${date} at ${time} has been cancelled by your vendor. You've been fully refunded — no charges applied.`,
+    body: `Your booking for ${date} at ${time} has been cancelled by your stylist. You've been fully refunded, no charges applied.`,
   };
 }
 
@@ -452,7 +452,7 @@ export function msg_vendor_consentExpired() {
 export function msg_reschedule_suggested_customer(vendorName: string, day: string, time: string) {
   return {
     title: 'New time suggested',
-    body: `${vendorName} has suggested a new time for your booking — ${day} at ${time}. Accept or find another vendor.`,
+    body: `${vendorName} has suggested a new time for your booking: ${day} at ${time}. Accept or find another stylist.`,
   };
 }
 
@@ -659,7 +659,7 @@ export function email_bookingConfirmed_vendor(params: {
   amount: string;
 }): { subject: string; body: string } {
   return {
-    subject: `Booking confirmed — ${params.date} at ${params.time}`,
+    subject: `Booking confirmed for ${params.date} at ${params.time}`,
     body:
 `Hi ${params.vendorName},
 
@@ -685,13 +685,13 @@ export function email_serviceComplete_customer(params: {
   amount: string;
 }): { subject: string; body: string } {
   return {
-    subject: 'All done — thanks for using VARS',
+    subject: 'All done, thanks for using VARS',
     body:
 `Hi ${params.customerFirstName},
 
 Your session with ${params.vendorName} is complete. Payment has been released from escrow and is on its way to them.
 
-${params.service} — ${params.amount}
+${params.service}: ${params.amount}
 
 If you haven't already, take 30 seconds to leave a review. It helps ${params.vendorName} build their reputation on VARS.
 
@@ -706,7 +706,7 @@ export function email_serviceComplete_vendor(params: {
   amount: string;
 }): { subject: string; body: string } {
   return {
-    subject: `Payment on the way — ${params.amount}`,
+    subject: `Payment on the way: ${params.amount}`,
     body:
 `Hi ${params.vendorName},
 

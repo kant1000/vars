@@ -97,7 +97,7 @@ export default function ReviewScreen() {
             onDone: () => router.back(),
           });
         } else {
-          Alert.alert('Error', data.error ?? 'Something went wrong. Please try again.');
+          Alert.alert('Error', data.error ?? 'Please try again.');
         }
         return;
       }
@@ -107,7 +107,7 @@ export default function ReviewScreen() {
         onDone: () => router.replace('/(tabs)/profile'),
       });
     } catch {
-      Alert.alert('Error', 'Something went wrong. Please try again.');
+      Alert.alert('Error', 'Please try again.');
     } finally {
       setSubmitting(false);
     }

@@ -82,7 +82,7 @@ export default function TermsAcceptanceScreen() {
     } catch (err: any) {
       const isNetwork = err.message?.includes('Network') || err.message?.includes('fetch');
       Alert.alert(
-        isNetwork ? 'No connection' : 'Something went wrong',
+        isNetwork ? 'No connection' : 'Let\'s try that again',
         isNetwork
           ? 'Connect to the internet and try again. Your acceptance must be recorded before you can continue.'
           : err.message ?? 'Please try again.',

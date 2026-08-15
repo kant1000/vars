@@ -383,7 +383,7 @@ function Step2Review({
         </VarsSurface>
 
         <Text style={s.sectionHeading}>Access details <Text style={s.optionalTag}>(optional)</Text></Text>
-        <Text style={s.accessHint}>Help your vendor find you faster.</Text>
+        <Text style={s.accessHint}>Help your stylist find you faster.</Text>
 
         <VarsInput
           theme={theme}
@@ -428,7 +428,7 @@ function Step2Review({
 
         <View style={s.accessPrivacyNote}>
           <Text style={s.accessPrivacyText}>
-            Access details are only shared with your vendor 15 minutes before their arrival.
+            Access details are only shared with your stylist 15 minutes before their arrival.
           </Text>
         </View>
 
@@ -558,7 +558,7 @@ function Step2Location({
             <Text style={[s.infoText, isAutoAccept && s.infoTextAutoAccept]}>
               {isAutoAccept
                 ? '⚡ Instant confirm: your booking is confirmed right away.'
-                : 'Your payment will be taken when your vendor sets off to you, not before.'}
+                : 'Your payment will be taken when your stylist sets off to you, not before.'}
             </Text>
           </View>
         </View>
@@ -605,9 +605,9 @@ function CardVerifyView({
       <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 24, gap: 20, justifyContent: 'center' }}>
         <Text style={[s.stepTitle, { textAlign: 'center' }]}>Card verification</Text>
         <Text style={{ fontSize: 15, color: theme.color.inkMuted, lineHeight: 23, textAlign: 'center' }}>
-          To protect you and your vendor, VARS requires a one-time, non-refundable{' '}
+          To protect you and your stylist, VARS requires a one-time, non-refundable{' '}
           <Text style={{ fontWeight: '800', color: theme.color.ink }}>{fmtPrice(amountKobo)}</Text>{' '}
-          card verification. This confirms your card is active before your vendor travels to you.
+          card verification. This confirms your card is active before your stylist travels to you.
         </Text>
         <Text style={{ fontSize: 13, color: theme.color.inkMuted, textAlign: 'center', lineHeight: 19 }}>
           This is charged once per account, not per booking. It is not refundable.

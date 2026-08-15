@@ -126,7 +126,7 @@ export default function LoginScreen() {
       }
       handleSuccess();
     } catch (err: any) {
-      Alert.alert('Error', err.message ?? 'Something went wrong. Please try again.');
+      Alert.alert('Error', err.message ?? 'Please try again.');
     } finally {
       setIsLoading(false);
     }

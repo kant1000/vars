@@ -198,7 +198,7 @@ export default function EarningsScreen() {
             <View style={s.heroSplit}>
               <View style={s.heroChip}>
                 <View style={[s.heroDot, { backgroundColor: theme.color.accentAmber }]} />
-                <Text style={s.heroChipText}>Pending {hidden ? '···' : fmtPrice(confirmingKobo)}</Text>
+                <Text style={s.heroChipText}>Confirming {hidden ? '···' : fmtPrice(confirmingKobo)}</Text>
               </View>
               <View style={s.heroChip}>
                 <View style={[s.heroDot, { backgroundColor: theme.color.accentRed }]} />
@@ -256,7 +256,7 @@ export default function EarningsScreen() {
           const pillLabel =
             r.status === 'completed' ? 'Cleared'      :
             r.status === 'disputed'  ? 'Under review' :
-            'Pending';
+            'Confirming';
           return (
             <View style={s.row}>
               <View style={s.rowLeft}>

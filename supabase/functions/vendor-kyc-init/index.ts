@@ -6,7 +6,7 @@
 //
 // Youverify has no "hosted verification link" API — their product is
 // a client-side SDK widget (confirmed against their public docs and
-// npm package README, 2026-08-16). This function's job is just to
+// npm package README, 2026-08-15). This function's job is just to
 // generate the sessionId + authToken their Passive Liveness Web SDK
 // needs (requires our secret API key, so must happen server-side) and
 // hand the widget page a URL carrying them.
@@ -15,7 +15,7 @@
 // Function — Supabase's Edge Functions platform forces GET responses
 // to Content-Type: text/plain with a locked-down CSP sandbox regardless
 // of what the function sets, blocking any browser-navigable HTML from
-// being served that way (confirmed live, 2026-08-16). See the widget
+// being served that way (confirmed live, 2026-08-15). See the widget
 // route's own comment for detail.
 //
 // Does NOT touch vendors.kyc_submitted_at — that's set by vendor-kyc-verify
@@ -24,13 +24,15 @@
 // app reload between opening this screen and finishing the liveness/NIN
 // check got routed straight to the "pending review" screen, since the
 // routing logic reads kyc_submitted_at as "a real attempt was made."
-// Confirmed live, 2026-08-16.
+// Confirmed live, 2026-08-15.
 //
 // sessionId and the SDK's sessionToken (Youverify calls it authToken) come
 // from two SEPARATE endpoints, not one — confirmed against the npm package
-// README, 2026-08-16, after "Invalid or expired sessionId" errors live: the
+// README, 2026-08-15, after "Invalid or expired sessionId" errors live: the
 // sessionId embedded in the /liveness/token response is NOT the one the
-// Passive Liveness widget actually validates against.
+// Passive Liveness widget actually validates against. The SDK also defaults
+// to sandbox mode, so the widget must be told whether these server-generated
+// credentials came from sandbox or live.
 //
 // Called by: step-4-kyc.tsx → handleStartKyc()
 // ============================================================
@@ -77,16 +79,25 @@ Deno.serve(async (req: Request) => {
     // rather than client-side in the widget: one for the actual sessionId
     // the Passive Liveness widget validates, one for the auth token
     // (SDK constructor field: sessionToken).
+    const isSandbox = YOUVERIFY_BASE_URL.includes('sandbox');
+    const deviceCorrelationId = crypto.randomUUID();
+
     const [sessionRes, tokenRes] = await Promise.all([
       fetch(`${YOUVERIFY_BASE_URL}/v2/api/identity/sdk/session/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', token: YOUVERIFY_API_KEY },
-        body: JSON.stringify({ publicMerchantID: YOUVERIFY_PUBLIC_MERCHANT_KEY, metadata: {} }),
+        body: JSON.stringify({
+          publicMerchantID: YOUVERIFY_PUBLIC_MERCHANT_KEY,
+          metadata: { vendor_id, deviceCorrelationId },
+        }),
       }),
       fetch(`${YOUVERIFY_BASE_URL}/v2/api/identity/sdk/liveness/token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', token: YOUVERIFY_API_KEY },
-        body: JSON.stringify({ publicMerchantID: YOUVERIFY_PUBLIC_MERCHANT_KEY }),
+        body: JSON.stringify({
+          publicMerchantID: YOUVERIFY_PUBLIC_MERCHANT_KEY,
+          deviceCorrelationId,
+        }),
       }),
     ]);
 
@@ -123,6 +134,7 @@ Deno.serve(async (req: Request) => {
     const verificationUrl =
       `${KYC_WIDGET_URL}?sessionId=${encodeURIComponent(sessionId)}` +
       `&token=${encodeURIComponent(authToken)}` +
+      `&sandbox=${encodeURIComponent(String(isSandbox))}` +
       `&firstName=${encodeURIComponent(firstName || 'Vendor')}` +
       `&lastName=${encodeURIComponent(lastName)}`;
 

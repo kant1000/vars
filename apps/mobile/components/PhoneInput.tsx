@@ -68,7 +68,7 @@ export function PhoneInput({ value, country, onChangeValue, onChangeCountry, aut
         <Text style={styles.helper}>{10 - value.length} more digit{10 - value.length === 1 ? '' : 's'}</Text>
       )}
       {showError && (
-        <Text style={styles.error}>Doesn't look like a valid {selected.label} mobile number</Text>
+        <Text style={styles.error}>Check this is a valid {selected.label} mobile number</Text>
       )}
 
       <Modal transparent visible={pickerOpen} animationType="fade" onRequestClose={() => setPickerOpen(false)}>
