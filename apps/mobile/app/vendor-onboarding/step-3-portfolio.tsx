@@ -6,8 +6,9 @@
 import React, { useMemo, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ScrollView, Alert,
+  ScrollView, Alert, Dimensions,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router } from 'expo-router';
@@ -22,10 +23,17 @@ import { CloseIcon } from '@/components/icons';
 
 const MAX_UNVERIFIED = 3;
 
+// Tile width computed from the real screen width instead of a '%' string —
+// '30%' of an unbounded-width flex-wrap row doesn't reliably fill/fit 3-up.
+const GRID_PADDING = 24;
+const GRID_GAP = 10;
+const TILE_WIDTH = (Dimensions.get('window').width - GRID_PADDING * 2 - GRID_GAP * 2) / 3;
+
 export default function Step3Portfolio() {
   const { user } = useAuth();
   const { theme } = useVarsTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
   const [photos, setPhotos] = useState<PortfolioUpload[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -79,7 +87,8 @@ export default function Step3Portfolio() {
   const canContinue = photos.length > 0 && consentChecked && !isSaving && !isUploading;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scroll}>
+    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.scroll}>
       <Text style={styles.title}>Show your work.</Text>
       <Text style={styles.sub}>
         Add at least one photo so clients know what to expect. Up to {MAX_UNVERIFIED} photos.
@@ -134,31 +143,38 @@ export default function Step3Portfolio() {
         onChange={setConsentChecked}
         label="These are photos of my own professional work"
       />
+    </ScrollView>
 
+    <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
       <VarsButton
         theme={theme}
         loading={isSaving}
         onPress={handleNext}
         disabled={!canContinue}
         label="Continue"
-        style={styles.buttonSpacing}
       />
-    </ScrollView>
+    </View>
+    </View>
   );
 }
 
 function makeStyles(theme: VarsTheme) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.color.bg },
-    scroll: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 40 },
+    scroll: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24 },
+    footer: {
+      borderTopWidth: BORDER_WIDTH.thin, borderTopColor: theme.color.inkFaint,
+      backgroundColor: theme.color.bg,
+      paddingHorizontal: 24, paddingTop: 12,
+    },
     title: { fontSize: 26, fontWeight: '700', color: theme.color.ink, marginBottom: 6 },
     sub: { fontSize: 15, color: theme.color.inkMuted, marginBottom: 16 },
 
     guidanceCard: { padding: 14, marginBottom: 20 },
     guidanceText: { fontSize: 13, color: theme.color.inkMuted, lineHeight: 19 },
 
-    grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
-    photoWrapper: { position: 'relative', width: '30%', aspectRatio: 1 },
+    grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GRID_GAP, marginBottom: 20 },
+    photoWrapper: { position: 'relative', width: TILE_WIDTH, height: TILE_WIDTH },
     photo: { width: '100%', height: '100%', borderRadius: BORDER_RADIUS },
     // Overlay sits on top of arbitrary photo content — stays fixed-contrast.
     removeButton: {
@@ -168,7 +184,7 @@ function makeStyles(theme: VarsTheme) {
       alignItems: 'center', justifyContent: 'center',
     },
     addButton: {
-      width: '30%', aspectRatio: 1, borderRadius: BORDER_RADIUS,
+      width: TILE_WIDTH, height: TILE_WIDTH, borderRadius: BORDER_RADIUS,
       borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint, borderStyle: 'dashed',
       alignItems: 'center', justifyContent: 'center', gap: 4,
     },
@@ -177,7 +193,5 @@ function makeStyles(theme: VarsTheme) {
 
     note: { padding: 14, marginBottom: 20 },
     noteText: { fontSize: 13, color: theme.color.inkMuted, lineHeight: 18 },
-
-    buttonSpacing: { marginTop: 28 },
   });
 }

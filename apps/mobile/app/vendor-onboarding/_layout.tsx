@@ -51,9 +51,9 @@ function OnboardingHeader() {
   return (
     <View style={styles.headerContainer}>
       {isPioneer && (
-        <View style={styles.pioneerBanner}>
-          <Text style={styles.pioneerText}>VARS Pioneer · 0% commission on your first 3 bookings</Text>
-        </View>
+        <Text style={styles.pioneerText}>
+          You're a VARS Pioneer. 0% commission on your first 3 bookings.
+        </Text>
       )}
       {showProgress && (
         <View style={styles.progressContainer}>
@@ -92,6 +92,7 @@ export default function VendorOnboardingLayout() {
           headerBackVisible: false,
           headerStyle: { backgroundColor: theme.color.bg },
           headerShadowVisible: false,
+          headerTitleAlign: 'center',
           gestureEnabled: true,
         }}
       >
@@ -107,29 +108,24 @@ export default function VendorOnboardingLayout() {
 
 function makeStyles(theme: VarsTheme) {
   return StyleSheet.create({
-    headerContainer: { alignItems: 'center', gap: 6 },
+    headerContainer: { alignItems: 'center', gap: 6, width: '100%', paddingHorizontal: 24 },
 
-    pioneerBanner: {
-      backgroundColor: theme.color.ink,
-      borderRadius: BORDER_RADIUS,
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-    },
     pioneerText: {
-      color: theme.color.inverseInk,
+      color: theme.color.accentBlue,
       fontSize: 11,
       fontWeight: '500',
       letterSpacing: 0.1,
+      textAlign: 'center',
     },
 
-    progressContainer: { alignItems: 'center', paddingVertical: 2 },
+    progressContainer: { alignItems: 'center', paddingVertical: 2, width: '100%' },
     progressLabel: {
       fontSize: 12,
       color: theme.color.inkMuted,
       marginBottom: 6,
       fontWeight: '500',
     },
-    track: { flexDirection: 'row', gap: 4, width: 200 },
+    track: { flexDirection: 'row', gap: 4, width: '100%' },
     segment: { flex: 1, height: 3, borderRadius: BORDER_RADIUS },
     segmentFilled: { backgroundColor: theme.color.ink },
     segmentEmpty: { backgroundColor: theme.color.inkFaint },

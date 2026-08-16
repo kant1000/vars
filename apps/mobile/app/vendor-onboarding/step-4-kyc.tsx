@@ -13,6 +13,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity,
   ScrollView, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
@@ -34,6 +35,7 @@ export default function Step4Kyc() {
   const { user } = useAuth();
   const { theme } = useVarsTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
 
   // Sub-step navigation
   const [subStep, setSubStep] = useState<SubStep>('bank');
@@ -424,14 +426,6 @@ export default function Step4Kyc() {
                 label="Verify account"
               />
             )}
-
-            <VarsButton
-              theme={theme}
-              loading={isSaving}
-              onPress={handleBankContinue}
-              disabled={!bankVerified || isSaving}
-              label="Continue · Identity check"
-            />
           </View>
         )}
 
@@ -502,32 +496,47 @@ export default function Step4Kyc() {
               </VarsSurface>
             )}
 
-            {kycVerified ? (
+            {kycVerified && (
               <View style={styles.verifiedBadge}>
                 <Text style={styles.verifiedText}>✓ Identity verified</Text>
               </View>
-            ) : kycState !== 'review' && kycState !== 'prep' ? (
-              <VarsButton
-                theme={theme}
-                size="md"
-                loading={kycState === 'loading'}
-                onPress={handleStartKyc}
-                label={kycState === 'failed' ? 'Try again' : 'Start identity check'}
-              />
-            ) : null}
-
-            {kycVerified && (
-              <VarsButton
-                theme={theme}
-                onPress={handleSubmitForReview}
-                disabled={!kycVerified || !bankVerified}
-                label="Submit for review"
-              />
             )}
           </View>
         )}
       </ScrollView>
 
+      {subStep === 'bank' && (
+        <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
+          <VarsButton
+            theme={theme}
+            loading={isSaving}
+            onPress={handleBankContinue}
+            disabled={!bankVerified || isSaving}
+            label="Continue · Identity check"
+          />
+        </View>
+      )}
+
+      {subStep === 'kyc' && kycState !== 'prep' && kycState !== 'review' && (
+        <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
+          {kycVerified ? (
+            <VarsButton
+              theme={theme}
+              onPress={handleSubmitForReview}
+              disabled={!kycVerified || !bankVerified}
+              label="Submit for review"
+            />
+          ) : (
+            <VarsButton
+              theme={theme}
+              size="md"
+              loading={kycState === 'loading'}
+              onPress={handleStartKyc}
+              label={kycState === 'failed' ? 'Try again' : 'Start identity check'}
+            />
+          )}
+        </View>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -535,7 +544,12 @@ export default function Step4Kyc() {
 function makeStyles(theme: VarsTheme) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.color.bg },
-    scroll: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 40 },
+    scroll: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24 },
+    footer: {
+      borderTopWidth: BORDER_WIDTH.thin, borderTopColor: theme.color.inkFaint,
+      backgroundColor: theme.color.bg,
+      paddingHorizontal: 24, paddingTop: 12,
+    },
     title: { fontSize: 26, fontWeight: '700', color: theme.color.ink, marginBottom: 20 },
 
     subStepRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },

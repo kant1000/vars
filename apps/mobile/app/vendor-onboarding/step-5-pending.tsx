@@ -8,6 +8,7 @@ import {
   View, Text, StyleSheet,
   Animated, Easing,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,6 +26,7 @@ export default function Step5Pending() {
   const { user } = useAuth();
   const { theme } = useVarsTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
   const pulse = useRef(new Animated.Value(1)).current;
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [status, setStatus] = useState<KycStatus>('pending');
@@ -83,6 +85,7 @@ export default function Step5Pending() {
     : 'This usually takes under a minute. Stay on this screen.';
 
   return (
+    <View style={styles.outer}>
     <View style={styles.container}>
       <Animated.View style={[styles.orb, { transform: [{ scale: pulse }] }]} />
 
@@ -108,10 +111,11 @@ export default function Step5Pending() {
           Your first client could find you today. Make sure notifications are on.
         </Text>
       )}
+    </View>
 
+    <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
       <VarsButton
         theme={theme}
-        style={styles.button}
         onPress={async () => {
           if (!isLive) { router.replace('/'); return; }
           // Terms gate — newly verified vendors haven't seen the acceptance screen yet
@@ -130,6 +134,7 @@ export default function Step5Pending() {
         }}
         label={isLive ? 'Let\'s go' : 'Back to home'}
       />
+    </View>
     </View>
   );
 }
@@ -169,10 +174,15 @@ function CheckRow({ label, done, pulse: shouldPulse }: { label: string; done?: b
 
 function makeStyles(theme: VarsTheme) {
   return StyleSheet.create({
+    outer: { flex: 1, backgroundColor: theme.color.bg },
     container: {
-      flex: 1, backgroundColor: theme.color.bg,
+      flex: 1,
       paddingHorizontal: 28, alignItems: 'center', justifyContent: 'center',
-      paddingBottom: 40,
+    },
+    footer: {
+      borderTopWidth: BORDER_WIDTH.thin, borderTopColor: theme.color.inkFaint,
+      backgroundColor: theme.color.bg,
+      paddingHorizontal: 28, paddingTop: 12,
     },
     orb: {
       width: 80, height: 80, borderRadius: 40,
@@ -188,7 +198,6 @@ function makeStyles(theme: VarsTheme) {
       fontSize: 13, color: theme.color.inkMuted,
       textAlign: 'center', lineHeight: 19, marginBottom: 32,
     },
-    button: { width: '100%' },
   });
 }
 

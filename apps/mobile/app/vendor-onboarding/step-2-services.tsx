@@ -7,6 +7,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { VendorPriceInput } from '@/components/VendorPriceInput';
 import { router } from 'expo-router';
@@ -63,6 +64,7 @@ export default function Step2Services() {
   const { user } = useAuth();
   const { theme } = useVarsTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
 
   const [formL1, setFormL1] = useState<string>(CATEGORY_L1.HAIR);
   const [formL2, setFormL2] = useState<string>(CATEGORY_L2_MAP[CATEGORY_L1.HAIR][0]);
@@ -185,8 +187,8 @@ export default function Step2Services() {
   const durationOptions = formL2 === 'braids' ? BRAIDS_DURATIONS : BASE_DURATIONS;
 
   return (
+    <View style={styles.container}>
     <ScrollView
-      style={styles.container}
       contentContainerStyle={styles.scroll}
       keyboardShouldPersistTaps="handled"
     >
@@ -322,24 +324,30 @@ export default function Step2Services() {
           ))}
         </View>
       )}
+      </ScrollView>
 
-      {/* Next */}
-      <VarsButton
-        theme={theme}
-        loading={isSaving}
-        onPress={handleNext}
-        disabled={isSaving || draftServices.length === 0}
-        label="Next · Add portfolio photos"
-        style={styles.nextBtnSpacing}
-      />
-    </ScrollView>
+      <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
+        <VarsButton
+          theme={theme}
+          loading={isSaving}
+          onPress={handleNext}
+          disabled={isSaving || draftServices.length === 0}
+          label="Next · Add portfolio photos"
+        />
+      </View>
+    </View>
   );
 }
 
 function makeStyles(theme: VarsTheme) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.color.bg },
-    scroll: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 60 },
+    scroll: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24 },
+    footer: {
+      borderTopWidth: BORDER_WIDTH.thin, borderTopColor: theme.color.inkFaint,
+      backgroundColor: theme.color.bg,
+      paddingHorizontal: 24, paddingTop: 12,
+    },
     center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.color.bg },
     title: { fontSize: 26, fontWeight: '700', color: theme.color.ink, marginBottom: 6 },
     sub: { fontSize: 15, color: theme.color.inkMuted, marginBottom: 24 },
@@ -388,7 +396,5 @@ function makeStyles(theme: VarsTheme) {
     draftName: { fontSize: 15, fontWeight: '600', color: theme.color.ink, marginBottom: 2 },
     draftDetail: { fontSize: 13, color: theme.color.inkMuted },
     draftRemove: { padding: 8 },
-
-    nextBtnSpacing: { marginTop: 16 },
   });
 }

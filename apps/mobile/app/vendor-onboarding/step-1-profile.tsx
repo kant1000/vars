@@ -9,6 +9,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity,
   ScrollView, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
@@ -52,6 +53,7 @@ export default function Step1Profile() {
   const { user } = useAuth();
   const { theme } = useVarsTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
   const [displayName, setDisplayName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -244,7 +246,9 @@ export default function Step1Profile() {
             <Text style={styles.charCount}>{bio.length}/150</Text>
           </View>
         </View>
+      </ScrollView>
 
+      <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
         <VarsButton
           theme={theme}
           size="lg"
@@ -252,7 +256,7 @@ export default function Step1Profile() {
           onPress={handleNext}
           label="Continue"
         />
-      </ScrollView>
+      </View>
     </KeyboardAvoidingView>
   );
 }
@@ -260,10 +264,15 @@ export default function Step1Profile() {
 function makeStyles(theme: VarsTheme) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.color.bg },
-    scroll: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 40 },
+    scroll: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24 },
     title: { fontSize: 26, fontWeight: '700', color: theme.color.ink, marginBottom: 6 },
-    sub: { fontSize: 15, color: theme.color.inkMuted, marginBottom: 28 },
-    form: { gap: 12, marginBottom: 28 },
+    sub: { fontSize: 15, color: theme.color.inkMuted, marginBottom: 20 },
+    form: { gap: 12 },
+    footer: {
+      borderTopWidth: BORDER_WIDTH.thin, borderTopColor: theme.color.inkFaint,
+      backgroundColor: theme.color.bg,
+      paddingHorizontal: 24, paddingTop: 12,
+    },
     lockedField: {
       height: 54, paddingHorizontal: 16,
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
