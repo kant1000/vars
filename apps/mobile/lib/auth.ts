@@ -6,17 +6,19 @@ import { supabase } from './supabase';
 WebBrowser.maybeCompleteAuthSession();
 
 /**
- * Detects the cross-role phone_number rejection from fn_check_cross_role_phone_unique
- * (see supabase/migrations/20260816000009_cross_role_phone_uniqueness.sql). Direct
- * table writes (savePhoneNumber, via PostgREST) surface the trigger's own message
- * text; auth.users inserts (signUpWithEmail, vendor OTP signup) go through GoTrue,
- * which wraps any AFTER INSERT trigger failure as a generic "Database error saving
- * new user" — that constraint is currently the only thing that can fail there, so
- * matching on GoTrue's generic wrapper is safe in practice today.
+ * Detects the duplicate-phone rejection from fn_sync_phone_identity_registry
+ * (see supabase/migrations/20260816201838_phone_identity_registry.sql), which
+ * blocks a phone already claimed by any other account — same role or cross-role.
+ * Direct table writes (savePhoneNumber, via PostgREST) surface the trigger's own
+ * message text; auth.users inserts (signUpWithEmail, vendor OTP signup) go
+ * through GoTrue, which wraps any AFTER INSERT trigger failure as a generic
+ * "Database error saving new user" — that constraint is currently the only
+ * thing that can fail there, so matching on GoTrue's generic wrapper is safe
+ * in practice today.
  */
 function isDuplicatePhoneAccountError(err: any): boolean {
   const msg = (err?.message ?? '').toLowerCase();
-  return msg.includes('already registered under a different account type')
+  return msg.includes('already registered to another account')
     || msg.includes('database error saving new user');
 }
 

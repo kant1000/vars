@@ -144,12 +144,14 @@ export default function VendorLoginScreen() {
       setOtpCode('');
       setScreen('otp_input');
     } catch (err: any) {
-      // fn_check_cross_role_phone_unique (see
-      // supabase/migrations/20260816000009_cross_role_phone_uniqueness.sql)
-      // rejects a phone already on a customer profile; GoTrue wraps that
-      // trigger failure as a generic "Database error saving new user".
+      // fn_sync_phone_identity_registry (see
+      // supabase/migrations/20260816201838_phone_identity_registry.sql)
+      // rejects a phone already claimed by any other account, customer or
+      // vendor; GoTrue wraps that trigger failure as a generic "Database
+      // error saving new user". Kept role-agnostic since the collision could
+      // be with either account type.
       const msg = (err.message ?? '').toLowerCase().includes('database error saving new user')
-        ? "This phone number's already on VARS, try signing in as a customer instead."
+        ? "This phone number's already on VARS, try logging in instead."
         : err.message ?? 'Failed to send code. Please try again.';
       Alert.alert('Error', msg);
     } finally {
