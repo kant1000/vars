@@ -262,9 +262,9 @@ Deno.serve(async (req: Request) => {
     .single();
 
   // Detects the same NIN already verified on a DIFFERENT vendor account (see
-  // 20260816000010_vendor_kyc_nin_hash.sql). Only set when this call came
-  // through vendor-kyc-verify — a real Youverify async callback wouldn't
-  // know about it, so this check is skipped for that path.
+  // 20260816000010_vendor_kyc_nin_hash.sql). Set by vendor-kyc-verify; any
+  // payload missing it (e.g. a callback route that doesn't go through that
+  // function) is routed to needs_review below rather than skipping dedup.
   const ninHash: string | undefined = payload?.metadata?.nin_hash;
 
   async function notifyNeedsReview() {
@@ -285,21 +285,30 @@ Deno.serve(async (req: Request) => {
   // review rather than marking this account verified too. Generic
   // needs_review copy (msg_vendor_needsReview) avoids revealing to the
   // vendor that this NIN is already registered elsewhere.
-  if (ninHash) {
-    const { data: ninCollision } = await adminClient
-      .from('vendors')
-      .select('id')
-      .eq('kyc_nin_hash', ninHash)
-      .eq('kyc_status', 'verified')
-      .neq('id', vendorId)
-      .maybeSingle();
+  //
+  // nin_hash is required, not optional, to reach 'verified' — a payload
+  // without it (e.g. any callback route that doesn't go through
+  // vendor-kyc-verify) must never silently skip the dedup check.
+  if (!ninHash) {
+    console.warn(`vendor-kyc-webhook: no nin_hash in payload for vendor ${vendorId} — cannot confirm NIN uniqueness, routing to needs_review`);
+    await adminClient.from('vendors').update({ kyc_status: 'needs_review' }).eq('id', vendorId);
+    await notifyNeedsReview();
+    return jsonResponse({ received: true });
+  }
 
-    if (ninCollision) {
-      console.warn(`vendor-kyc-webhook: NIN hash collision for vendor ${vendorId} — routing to needs_review`);
-      await adminClient.from('vendors').update({ kyc_status: 'needs_review', kyc_nin_hash: ninHash }).eq('id', vendorId);
-      await notifyNeedsReview();
-      return jsonResponse({ received: true });
-    }
+  const { data: ninCollision } = await adminClient
+    .from('vendors')
+    .select('id')
+    .eq('kyc_nin_hash', ninHash)
+    .eq('kyc_status', 'verified')
+    .neq('id', vendorId)
+    .maybeSingle();
+
+  if (ninCollision) {
+    console.warn(`vendor-kyc-webhook: NIN hash collision for vendor ${vendorId} — routing to needs_review`);
+    await adminClient.from('vendors').update({ kyc_status: 'needs_review', kyc_nin_hash: ninHash }).eq('id', vendorId);
+    await notifyNeedsReview();
+    return jsonResponse({ received: true });
   }
 
   // 1. Try extracting from webhook payload
@@ -347,9 +356,7 @@ Deno.serve(async (req: Request) => {
     // hidden behind a stale cached copy). Confirmed live, 2026-08-16.
     kyc_verified_at:      new Date().toISOString(),
   };
-  if (ninHash) {
-    dbUpdate.kyc_nin_hash = ninHash;
-  }
+  dbUpdate.kyc_nin_hash = ninHash;
   if (vendorForNotify?.paystack_subaccount_code) {
     dbUpdate.is_active = true;
   } else {

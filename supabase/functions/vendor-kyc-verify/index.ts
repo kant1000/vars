@@ -56,6 +56,15 @@ Deno.serve(async (req: Request) => {
     }
     if (!selfie) return errorResponse('Missing selfie image.', 400);
 
+    // Fail closed: a missing pepper must never silently downgrade every NIN
+    // hash to a deterministic function of an 11-digit ID with no secret
+    // input. Better to break loudly than to quietly weaken dedup for every
+    // verification until someone notices.
+    if (!NIN_HASH_PEPPER) {
+      console.error('vendor-kyc-verify: NIN_HASH_PEPPER is not set');
+      return errorResponse('Verification is temporarily unavailable. Please try again shortly.', 500);
+    }
+
     // Detects the same NIN verifying multiple vendor accounts (see
     // 20260816000010_vendor_kyc_nin_hash.sql) without ever storing the raw
     // NIN — only this hash rides through to vendor-kyc-webhook.
