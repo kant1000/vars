@@ -18,15 +18,23 @@ const YOUVERIFY_BASE_URL       = Deno.env.get('YOUVERIFY_BASE_URL') ?? 'https://
 const YOUVERIFY_API_KEY        = Deno.env.get('YOUVERIFY_API_KEY') ?? '';
 const YOUVERIFY_WEBHOOK_SECRET = Deno.env.get('YOUVERIFY_WEBHOOK_SECRET') ?? '';
 const SUPABASE_URL             = Deno.env.get('SUPABASE_URL') ?? '';
+// Separate from YOUVERIFY_WEBHOOK_SECRET on purpose: rotating the webhook
+// signing secret shouldn't silently change every stored NIN hash, and a
+// leaked webhook secret shouldn't double as a NIN-guessing key.
+const NIN_HASH_PEPPER          = Deno.env.get('NIN_HASH_PEPPER') ?? '';
 
-async function signPayload(body: string): Promise<string> {
+async function hmacHex(secret: string, message: string): Promise<string> {
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
-    'raw', encoder.encode(YOUVERIFY_WEBHOOK_SECRET),
+    'raw', encoder.encode(secret),
     { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
   );
-  const sigBuf = await crypto.subtle.sign('HMAC', key, encoder.encode(body));
+  const sigBuf = await crypto.subtle.sign('HMAC', key, encoder.encode(message));
   return Array.from(new Uint8Array(sigBuf)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function signPayload(body: string): Promise<string> {
+  return hmacHex(YOUVERIFY_WEBHOOK_SECRET, body);
 }
 
 Deno.serve(async (req: Request) => {
@@ -47,6 +55,11 @@ Deno.serve(async (req: Request) => {
       return errorResponse('Enter a valid 11-digit NIN.', 400);
     }
     if (!selfie) return errorResponse('Missing selfie image.', 400);
+
+    // Detects the same NIN verifying multiple vendor accounts (see
+    // 20260816000010_vendor_kyc_nin_hash.sql) without ever storing the raw
+    // NIN — only this hash rides through to vendor-kyc-webhook.
+    const ninHash = await hmacHex(NIN_HASH_PEPPER, String(nin));
 
     // The Passive Liveness SDK's onSuccess.faceImage is a Youverify-hosted
     // URL (e.g. https://cdn.youverify.co/17868), not base64 — confirmed live,
@@ -109,7 +122,7 @@ Deno.serve(async (req: Request) => {
         ...data,
         image: selfieImage, // the live selfie just captured, not the official NIN photo
       },
-      metadata: { vendor_id: user.id },
+      metadata: { vendor_id: user.id, nin_hash: ninHash },
       issuedId: user.id,
       id: data.id,
     };

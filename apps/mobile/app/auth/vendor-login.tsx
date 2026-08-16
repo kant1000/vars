@@ -144,7 +144,14 @@ export default function VendorLoginScreen() {
       setOtpCode('');
       setScreen('otp_input');
     } catch (err: any) {
-      Alert.alert('Error', err.message ?? 'Failed to send code. Please try again.');
+      // fn_check_cross_role_phone_unique (see
+      // supabase/migrations/20260816000009_cross_role_phone_uniqueness.sql)
+      // rejects a phone already on a customer profile; GoTrue wraps that
+      // trigger failure as a generic "Database error saving new user".
+      const msg = (err.message ?? '').toLowerCase().includes('database error saving new user')
+        ? "This phone number's already on VARS, try signing in as a customer instead."
+        : err.message ?? 'Failed to send code. Please try again.';
+      Alert.alert('Error', msg);
     } finally {
       setIsLoading(false);
     }
