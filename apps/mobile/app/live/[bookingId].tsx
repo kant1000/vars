@@ -24,7 +24,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Colors, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { useVarsTheme } from '@/contexts/ThemeContext';
-import { fmtPrice, fmtTime, fmtDateTime } from '@/lib/format';
+import { fmtPrice, fmtTime, fmtDateTime, titleCase } from '@/lib/format';
 import { CheckIcon, HourglassIcon, CheckCircleIcon, CarIcon, PinIcon, SparkleIcon, StarIcon, XCircleIcon, ClockIcon, WarningIcon } from '@/components/icons';
 import { fetchWithRetry } from '@/lib/fetchWithRetry';
 import { useNetworkState } from '@/lib/useNetworkState';
@@ -55,6 +55,8 @@ interface BookingData {
   vendor_id: string;
   vendor_name: string;
   vendor_phone: string | null;
+  vendor_legal_name: string | null;
+  reveal_pending: boolean;
   vendor_live_lat: number | null;
   vendor_live_lng: number | null;
 }
@@ -319,7 +321,7 @@ export default function LiveScreen() {
         phone_revealed, phone_reveal_at, auto_release_at,
         accepted_at, on_way_at, arrived_at, service_rendered_at, completed_at,
         vendor_id,
-        vendors(full_name, phone_number, live_location)
+        vendors(full_name, live_location)
       `)
       .eq('id', bookingId)
       .single();
@@ -341,6 +343,15 @@ export default function LiveScreen() {
       } catch { /* ignore */ }
     }
 
+    // Legal name + phone number only ever reach the client through this RPC,
+    // which returns null for either field until its own gate has fired for
+    // this customer+vendor — never fetched via an open join. See
+    // get_vendor_reveal_state (supabase/migrations/20260816000007).
+    const { data: revealData } = await supabase
+      .rpc('get_vendor_reveal_state', { p_vendor_id: v.vendor_id })
+      .maybeSingle();
+    const reveal = revealData as { legal_name: string | null; phone_number: string | null; pending: boolean } | null;
+
     const fresh: BookingData = {
       id: v.id,
       status: v.status,
@@ -359,7 +370,9 @@ export default function LiveScreen() {
       completed_at: v.completed_at,
       vendor_id: v.vendor_id,
       vendor_name: vendor?.full_name ?? 'Your vendor',
-      vendor_phone: vendor?.phone_number ?? null,
+      vendor_phone: reveal?.phone_number ?? null,
+      vendor_legal_name: reveal?.legal_name ?? null,
+      reveal_pending: reveal?.pending ?? false,
       vendor_live_lat: vendorLat,
       vendor_live_lng: vendorLng,
     };
@@ -569,6 +582,18 @@ export default function LiveScreen() {
           </View>
         )}
 
+        {/* Legal name reveal */}
+        {booking.vendor_legal_name ? (
+          <View style={s.legalNameCard}>
+            <Text style={s.legalNameCardText}>{titleCase(booking.vendor_legal_name)}</Text>
+          </View>
+        ) : booking.reveal_pending ? (
+          <View style={s.legalNameCard}>
+            <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
+            <Text style={s.legalNameCardTextPending}>Confirming legal name</Text>
+          </View>
+        ) : null}
+
         {/* Phone reveal */}
         {showPhone && (
           <TouchableOpacity
@@ -732,6 +757,14 @@ function makeStyles(theme: VarsTheme) {
       backgroundColor: Colors.warning + '15', borderRadius: 5, padding: 12,
     },
     phoneCountdownText: { fontSize: 13, color: Colors.warning, fontWeight: '500' },
+    legalNameCard: {
+      marginHorizontal: 16, marginBottom: 12,
+      flexDirection: 'row', alignItems: 'center', gap: 8,
+      backgroundColor: theme.color.surface2, borderRadius: 5,
+      padding: 12, borderWidth: BORDER_WIDTH.thin, borderColor: theme.color.inkFaint,
+    },
+    legalNameCardText: { fontSize: 13, fontWeight: '600', color: theme.color.accentBlue },
+    legalNameCardTextPending: { fontSize: 13, color: theme.color.inkMuted },
 
     autoReleaseBox: {
       marginHorizontal: 16, marginBottom: 12,

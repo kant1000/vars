@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import ImageViewing from 'react-native-image-viewing';
+import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets, EdgeInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
@@ -58,6 +59,8 @@ interface VendorProfile {
   id: string;
   full_name: string;
   kyc_legal_name: string | null;
+  phone_number: string | null;
+  reveal_pending: boolean;
   bio: string | null;
   profile_image_url: string | null;
   kyc_verified_at: string | null;
@@ -176,9 +179,9 @@ export default function VendorProfileScreen() {
     if (!id) return;
     setLoading(true);
 
-    const [vendorRes, servicesRes, portfolioRes, reviewsRes, favRes] = await Promise.all([
+    const [vendorRes, servicesRes, portfolioRes, reviewsRes, favRes, revealRes] = await Promise.all([
       supabase.from('vendors')
-        .select('id, full_name, kyc_legal_name, bio, profile_image_url, kyc_verified_at, avg_rating, total_reviews, base_location_text, badge_vars_choice, badge_top_rated, pioneer, avg_response_minutes, is_online, is_busy')
+        .select('id, full_name, bio, profile_image_url, kyc_verified_at, avg_rating, total_reviews, base_location_text, badge_vars_choice, badge_top_rated, pioneer, avg_response_minutes, is_online, is_busy')
         .eq('id', id)
         .single(),
 
@@ -208,6 +211,10 @@ export default function VendorProfileScreen() {
             .eq('vendor_id', id)
             .maybeSingle()
         : Promise.resolve({ data: null }),
+
+      user
+        ? supabase.rpc('get_vendor_reveal_state', { p_vendor_id: id }).maybeSingle()
+        : Promise.resolve({ data: null }),
     ]);
 
     if (vendorRes.error || !vendorRes.data) { setLoading(false); return; }
@@ -236,11 +243,35 @@ export default function VendorProfileScreen() {
       reviewer_name: r.profiles?.full_name ?? 'Customer',
     }));
 
-    setVendor({ ...v, avg_response_minutes: v.avg_response_minutes ?? null, services, portfolio, reviews, is_favourited: !!favRes.data });
+    const reveal = revealRes.data as { legal_name: string | null; phone_number: string | null; pending: boolean } | null;
+
+    setVendor({
+      ...v,
+      kyc_legal_name: reveal?.legal_name ?? null,
+      phone_number: reveal?.phone_number ?? null,
+      reveal_pending: reveal?.pending ?? false,
+      avg_response_minutes: v.avg_response_minutes ?? null,
+      services, portfolio, reviews, is_favourited: !!favRes.data,
+    });
     setLoading(false);
   }, [id, user]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Live-update the pending legal-name/phone reveal without requiring the
+  // customer to leave and reopen the profile — mirrors the Realtime pattern
+  // already used on the booking-tracking screen (live/[bookingId].tsx).
+  useEffect(() => {
+    if (!id || !user) return;
+    const channel = supabase
+      .channel(`vendor_reveal:${id}:${user.id}`)
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'bookings',
+        filter: `vendor_id=eq.${id}`,
+      }, () => load())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [id, user, load]);
 
   const toggleService = (serviceId: string) => {
     setSelectedServiceIds((prev) => {
@@ -352,6 +383,19 @@ export default function VendorProfileScreen() {
             <Text style={styles.name} numberOfLines={1}>{vendor.full_name}</Text>
             {vendor.kyc_legal_name ? (
               <Text style={styles.legalNameText} numberOfLines={1}>{titleCase(vendor.kyc_legal_name)}</Text>
+            ) : vendor.reveal_pending ? (
+              <View style={styles.revealPendingRow}>
+                <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
+                <Text style={styles.revealPendingText}>Confirming legal name</Text>
+              </View>
+            ) : null}
+            {vendor.phone_number ? (
+              <Text style={styles.legalNameText} numberOfLines={1}>{vendor.phone_number}</Text>
+            ) : vendor.reveal_pending ? (
+              <View style={styles.revealPendingRow}>
+                <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
+                <Text style={styles.revealPendingText}>Confirming phone number</Text>
+              </View>
             ) : null}
             <View style={styles.ratingRow}>
               {vendor.total_reviews === 0 ? (
@@ -567,6 +611,8 @@ function makeStyles(theme: VarsTheme) {
     skeletonInfo: { flex: 1, paddingTop: 2, gap: 8 },
     name: { fontSize: 20, fontWeight: '800', color: theme.color.ink, marginBottom: 2 },
     legalNameText: { fontSize: 12, fontWeight: '600', color: theme.color.accentBlue, marginBottom: 6 },
+    revealPendingRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
+    revealPendingText: { fontSize: 12, color: theme.color.inkMuted },
     ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginBottom: 6 },
     starText: { color: Colors.star, fontSize: 13 },
     ratingText: { fontSize: 13, fontWeight: '700', color: theme.color.ink },

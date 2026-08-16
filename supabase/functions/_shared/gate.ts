@@ -57,6 +57,8 @@ export async function advanceGateToOnWay(
       status: BOOKING_STATUS.ON_WAY,
       gate_charged_at: now,
       gate_retry_expires_at: null,
+      legal_name_revealed: true,
+      legal_name_reveal_at: now,
     })
     .eq('id', ctx.bookingId)
     .is('gate_charged_at', null) // idempotency guard
