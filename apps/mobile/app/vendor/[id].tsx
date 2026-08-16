@@ -531,7 +531,7 @@ function makeStyles(theme: VarsTheme) {
     container: { flex: 1, backgroundColor: theme.color.bg },
     loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.color.bg },
     errorText: { fontSize: 16, color: theme.color.ink, marginBottom: 12 },
-    backLink: { fontSize: 15, color: theme.color.accentBlue, fontWeight: '600' },
+    backLink: { fontSize: 15, color: theme.color.ink, fontWeight: '600' },
 
     // Floating nav buttons — sit on top of the portfolio photo, stay fixed-contrast.
     backBtn: {

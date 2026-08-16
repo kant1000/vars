@@ -1057,14 +1057,14 @@ function makeStyles(theme: VarsTheme) {
     slotRow: { flexDirection: 'row', gap: 8 },
     slot: {
       paddingVertical: 10,
-      borderRadius: 5, borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.accentBlue,
+      borderRadius: 5, borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint,
       alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 4,
     },
     slotUnavailable: { borderColor: theme.color.inkFaint, backgroundColor: theme.color.surface2 },
     slotAutoAccept: { borderColor: Colors.pioneerGold, backgroundColor: Colors.pioneerGoldSurface },
-    slotSelected: { backgroundColor: theme.color.accentBlue, borderColor: theme.color.accentBlue },
-    slotCovered: { backgroundColor: theme.color.accentBlue + '22', borderColor: theme.color.accentBlue + '55' },
-    slotText: { fontSize: 13, fontWeight: '700', color: theme.color.accentBlue },
+    slotSelected: { backgroundColor: theme.color.ink, borderColor: theme.color.ink },
+    slotCovered: { backgroundColor: theme.color.ink + '15', borderColor: theme.color.ink + '40' },
+    slotText: { fontSize: 13, fontWeight: '700', color: theme.color.ink },
     slotTextUnavailable: { color: theme.color.inkMuted },
     slotTextAutoAccept: { color: Colors.pioneerGoldDark },
     slotTextSelected: { color: theme.color.inverseInk },
@@ -1107,7 +1107,7 @@ function makeStyles(theme: VarsTheme) {
       paddingVertical: 14, borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
     },
     pickerOptionText: { fontSize: 16, color: theme.color.ink },
-    pickerOptionSelected: { color: theme.color.accentBlue, fontWeight: '700' },
+    pickerOptionSelected: { color: theme.color.ink, fontWeight: '700' },
 
     // Map + location
     mapThumb: { width: SCREEN_W, height: 200 },

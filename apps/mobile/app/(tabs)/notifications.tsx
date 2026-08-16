@@ -282,7 +282,7 @@ function makeStyles(theme: VarsTheme) {
       paddingHorizontal: 7, paddingVertical: 2, minWidth: 20, alignItems: 'center',
     },
     badgeText: { fontSize: 11, fontWeight: '800', color: theme.color.inverseInk },
-    markAllText: { fontSize: 14, fontWeight: '600', color: theme.color.accentBlue },
+    markAllText: { fontSize: 14, fontWeight: '600', color: theme.color.ink },
 
     groupLabel: {
       fontSize: 12, fontWeight: '700', color: theme.color.inkMuted,

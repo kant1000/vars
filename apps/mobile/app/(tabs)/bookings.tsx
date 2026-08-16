@@ -333,7 +333,7 @@ function makeStyles(theme: VarsTheme) {
       marginTop: 10, borderTopWidth: BORDER_WIDTH.thin, borderTopColor: theme.color.inkFaint,
       paddingTop: 10, alignItems: 'flex-start',
     },
-    reviewBtnText: { fontSize: 13, fontWeight: '700', color: theme.color.accentBlue },
+    reviewBtnText: { fontSize: 13, fontWeight: '700', color: theme.color.ink },
     reviewedRow: {
       marginTop: 10, borderTopWidth: BORDER_WIDTH.thin, borderTopColor: theme.color.inkFaint,
       paddingTop: 10, flexDirection: 'row', alignItems: 'center', gap: 8,

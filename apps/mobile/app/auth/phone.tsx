@@ -73,8 +73,6 @@ export default function PhoneScreen() {
     >
       <StatusBar barStyle={theme.appearance === 'dark' ? 'light-content' : 'dark-content'} />
       <View style={styles.inner}>
-        <Text style={styles.wordmark}>VARS</Text>
-
         <Text style={styles.title}>One last thing.</Text>
         <Text style={styles.subtitle}>
           What's your phone number?
@@ -120,13 +118,6 @@ function makeStyles(theme: VarsTheme) {
       paddingHorizontal: 24,
       paddingTop: 100,
     },
-    wordmark: {
-      fontSize: 32,
-      fontWeight: '800',
-      color: theme.color.accentBlue,
-      letterSpacing: -1,
-      marginBottom: 40,
-    },
     title: {
       fontSize: 28,
       fontWeight: '700',
@@ -149,7 +140,7 @@ function makeStyles(theme: VarsTheme) {
     },
     button: {
       height: 56,
-      backgroundColor: theme.color.accentBlue,
+      backgroundColor: theme.color.ink,
       borderRadius: BORDER_RADIUS,
       alignItems: 'center',
       justifyContent: 'center',

@@ -1169,7 +1169,7 @@ function makeStylesC(theme: VarsTheme) {
     declineBtnText: { fontSize: 14, fontWeight: '700', color: theme.color.inkMuted },
     acceptBtn: {
       flex: 2, height: 44, borderRadius: 5,
-      backgroundColor: theme.color.accentBlue,
+      backgroundColor: theme.color.ink,
       alignItems: 'center', justifyContent: 'center',
     },
     acceptBtnText: { fontSize: 14, fontWeight: '700', color: theme.color.inverseInk },
@@ -1237,7 +1237,7 @@ function makeStylesC(theme: VarsTheme) {
     restrictTitle: { fontSize: 22, fontWeight: '800', color: theme.color.accentRed, marginBottom: 16, textAlign: 'center' },
     restrictBody: { fontSize: 14, color: theme.color.inkMuted, lineHeight: 22, textAlign: 'center', marginBottom: 28 },
     restrictClaimBtn: {
-      width: '100%', height: 52, backgroundColor: theme.color.accentBlue,
+      width: '100%', height: 52, backgroundColor: theme.color.ink,
       borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center',
     },
     restrictClaimBtnText: { color: theme.color.inverseInk, fontSize: 16, fontWeight: '800' },

@@ -691,7 +691,7 @@ function makeStyles(theme: VarsTheme) {
     container: { flex: 1, backgroundColor: theme.color.bg },
     centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.color.bg },
     errorText: { fontSize: 16, color: theme.color.ink, marginBottom: 12 },
-    link: { fontSize: 15, color: theme.color.accentBlue, fontWeight: '600' },
+    link: { fontSize: 15, color: theme.color.ink, fontWeight: '600' },
 
     header: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',

@@ -95,7 +95,6 @@ export default function TermsAcceptanceScreen() {
   return (
     <View style={[s.container, { paddingTop: insets.top }]}>
       <View style={s.header}>
-        <Text style={s.wordmark}>VARS</Text>
         <Text style={s.headerSub}>Before you continue</Text>
       </View>
 
@@ -202,17 +201,10 @@ function makeStyles(theme: VarsTheme) {
     container: { flex: 1, backgroundColor: theme.color.bg },
     header: {
       paddingHorizontal: 24,
-      paddingTop: 24,
+      paddingTop: 20,
       paddingBottom: 16,
       borderBottomWidth: BORDER_WIDTH.thin,
       borderBottomColor: theme.color.inkFaint,
-    },
-    wordmark: {
-      fontSize: 24,
-      fontWeight: '800',
-      color: theme.color.accentBlue,
-      letterSpacing: -0.5,
-      marginBottom: 4,
     },
     headerSub: { fontSize: 20, fontWeight: '700', color: theme.color.ink },
     scroll: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 40 },
@@ -254,7 +246,7 @@ function makeStyles(theme: VarsTheme) {
     },
     agreeBtn: {
       height: 56,
-      backgroundColor: theme.color.accentBlue,
+      backgroundColor: theme.color.ink,
       borderRadius: BORDER_RADIUS,
       alignItems: 'center',
       justifyContent: 'center',
