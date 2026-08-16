@@ -95,6 +95,7 @@ Keep this file under 200 lines total. Add project-specific rules below these 12.
 - Circular elements (avatars, status dots) are exempt: they use `borderRadius = width / 2` to remain circular.
 - When adding any new component or style, set `borderRadius: BORDER_RADIUS` (not `borderRadius: 5` inline — import the constant).
 - **Every screen/component change must be light-and-dark and both-platform-icon complete.** Full checklist: `docs/MOBILE_THEME_CHECKLIST.md` — read it before adding a style or icon, don't re-derive the rules from scratch.
+- **`accentBlue` is reserved for non-interactive "VARS is speaking" moments only** — verification/confirmation copy, tiny accent glyphs/dots. Never a button fill, border, or clickable link/selector. Interactive elements use the standard ink-fill convention instead.
 
 ### ScissorsLoader Convention
 - The only scissors loader is `apps/mobile/components/ScissorsLoader.tsx`. Import from `@/components/ScissorsLoader` — never recreate inline.

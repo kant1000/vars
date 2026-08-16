@@ -101,7 +101,7 @@ Trust signals to surface at every opportunity:
 - **Secure payments** — name how the split works in confirmations: the stylist's share is already secured at payment time, not held back by VARS.
 - **Verified by VARS** — the badge is the proof; use the phrase.
 - **The 2-hour dispute window** — frame it as protection, not a deadline.
-- **Phone reveal at 15 min** — frame it as connection, not exposure.
+- **Phone reveal at 15 min** — frame it as connection, not exposure. Separately, vendor legal name (and, on the vendor profile page, phone number) is gated behind `get_vendor_reveal_state` — it only reveals once the specific customer+vendor booking has reached "on my way" (payment captured), regardless of the 15-min timer.
 - **Cancellation fees** — frame as fairness to the stylist, not penalty to the customer.
 
 ### Locked terminology
@@ -164,6 +164,7 @@ These decisions were made deliberately. Flag explicitly before suggesting any re
 | Auto-release timing | **2 hours** after `service_rendered_at` — set by DB trigger in migration `001`. | Ties release to when service actually finishes. The DB trigger is authoritative: `NEW.auto_release_at := NEW.service_rendered_at + INTERVAL '2 hours'`. |
 | Transport buffer | Two 30-min blocks AFTER the booking only — not before. | Vendor travels from wherever they are, not a fixed location. After-only is correct. |
 | User verification | Customers are NOT KYC'd. Phone number collected as plain text after login — not verified via OTP. | Trust infrastructure is concentrated on the vendor side via Youverify. Behavioural flags in admin handle bad actors. |
+| Phone numbers are unique across roles | `phone_identity_registry` (migration `20260816201838`) enforces one phone number per person across `profiles` and `vendors` combined — a customer and vendor account can't share a phone. Backed by a real primary key so duplicate inserts fail atomically, no race window. | Closes a gap where the same person could hold both a customer and vendor account on one phone. |
 | Auth methods | Google, Facebook, email — three methods only. Phone is collected as a text field after auth, not as an OTP login method. | |
 | Status flow is rigid | Vendors cannot skip On My Way → Arrived → Service Rendered. | Each step triggers phone reveal, location sharing, and escrow release. Skippable steps would break the trust architecture. |
 | Dispute freezes vendor settlement | Disputes set `settlement_on_hold = true` on the vendor row (not on the booking). The settle cron skips the entire vendor for that cycle. | Paystack controls dispute holds on subaccount funds; VARS mirrors this in the vendor flag. |
@@ -245,11 +246,13 @@ All push and in-app notification copy lives here as exported functions. Never wr
 **Status: Live. Production credentials set in Supabase secrets (19 June 2026). Webhook URL configured in Youverify dashboard.**
 
 What is built:
-- `vendor-kyc-init` initiates a Youverify hosted KYC session; returns a URL opened in a WebView.
+- Youverify has no hosted "verification link" API (confirmed 404 against their real API, 2026-08-15) — their product is a client-side SDK widget. The flow is three parts: `vendor-kyc-init` generates a liveness session server-side (requires the secret API key) and returns a URL to a widget page; the widget (`apps/landing/src/app/vendor-kyc-widget/route.ts` — a Next.js route, not a Supabase Edge Function, because Edge Functions force `text/plain` + a locked CSP on GET responses, blocking browser-navigable HTML) runs Youverify's Passive Liveness Web SDK to capture a selfie; `vendor-kyc-verify` then checks that selfie + a vendor-entered NIN against Youverify's **synchronous** NIN eIDV endpoint, and internally calls `vendor-kyc-webhook` with a payload shaped like its expected async callback, reusing its storage/notification/is_active logic rather than duplicating it.
+- `kyc_submitted_at` (migration `20260816000004`) is the real "a verification attempt actually happened" signal — `kyc_status` defaults to `pending` at row creation, so it alone can't distinguish "never started" from "in progress." Onboarding-resume routing and the admin "Pending KYC" stat both key off `kyc_submitted_at`, not `kyc_status`, to avoid mistaking a fresh vendor for one mid-review.
 - `vendor-kyc-webhook` receives the result and handles three outcomes:
   - **Verified** (`status: "found"`, `allValidationPassed: true`): extracts liveness face image (base64 data URI at `data.image`) and legal name (`data.firstName/middleName/lastName`), crops to passport-style 400×400, uploads the raw original to the **private** `vendor-identity-raw` bucket (storage path stored in `profile_image_raw_url`) and the cropped version to the **public** `vendor-identity-images` bucket (public URL stored in `profile_image_url`), sets `kyc_status = verified`, `is_active = true`, `profile_image_locked = true`.
   - **Rejected** (`status: "found"`, `allValidationPassed: false`, or `failed/rejected/declined`): sets `kyc_status = rejected`, stores reason, sends "try again" push notification.
   - **needs_review**: if face image or legal name is missing from the webhook payload, the webhook calls `GET /v2/api/identity/:id` as a fallback. If data is still missing after the GET, sets `kyc_status = needs_review` — vendor stays unverified; admin resolves manually using the Youverify dashboard.
+  - **needs_review (NIN collision)**: `vendor-kyc-verify` computes an HMAC hash of the submitted NIN (`kyc_nin_hash`, keyed by `NIN_HASH_PEPPER` — fails closed if unset, never defaults to an empty secret) and passes it through to the webhook. If that hash already belongs to a different `verified` vendor, or a concurrent verification loses the race (caught via the `uq_vendors_kyc_nin_hash_verified` partial unique index, Postgres error `23505`), the newer account routes to `needs_review` with generic copy — the vendor is never told their NIN is already registered elsewhere. A payload missing `nin_hash` entirely is also routed to `needs_review` rather than silently verified.
 - Webhook authenticated via HMAC-SHA256 (`YOUVERIFY_WEBHOOK_SECRET`).
 - `kyc_status_enum` includes: `pending`, `verified`, `rejected`, `needs_review` (migration `20260619000001`).
 - All three Supabase secrets are set to production values: `YOUVERIFY_API_KEY`, `YOUVERIFY_BASE_URL`, `YOUVERIFY_WEBHOOK_SECRET`.
