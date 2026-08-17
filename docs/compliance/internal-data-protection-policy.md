@@ -152,7 +152,7 @@ VARS uses third-party processors to deliver its service (see the ROPA for the fu
 - If a processor is discontinued, confirm data deletion or return within 30 days
 
 **Current processors requiring DPAs:**
-Supabase, Paystack, Youverify, Resend, 360dialog, Expo (push notifications), Google (OAuth), Facebook/Meta (OAuth), Apple (OAuth), Vercel.
+Supabase, Paystack, Youverify, Resend, 360dialog, Expo (push notifications), Google (Maps API, FCM), Apple (APNs), Vercel.
 
 ## 11. Training and Awareness
 

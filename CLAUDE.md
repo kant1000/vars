@@ -103,11 +103,9 @@ Keep this file under 200 lines total. Add project-specific rules below these 12.
 - Sizes: `small` in buttons/inline states, `large` for full-screen loading states, `medium` for mid-weight contexts (e.g. zone map). Color: `light` on dark/filled backgrounds, `dark` on white/surface.
 
 ### Brand Color Exceptions — Do Not Audit or Replace
-The social auth buttons in `apps/mobile/app/auth/login.tsx` use **mandatory third-party brand colours** that must never be replaced with VARS design tokens:
-- **Google**: `backgroundColor: '#ffffff'`, `borderColor: '#dadce0'`, text `'#3c4043'` — required by Google Identity Branding Guidelines.
-- **Facebook**: `backgroundColor: '#1877F2'`, text `'#ffffff'` — required by Meta Brand Resources.
+`apps/mobile/app/auth/login.tsx` is customer WhatsApp-phone-only (Google/Facebook sign-in was removed) — there are no third-party social auth buttons left on the customer entry screen, so there is no brand-color exception for it.
 The Customer Care "Ask your AI" tiles (`apps/mobile/constants/aiPlatforms.ts`) use each platform's recognisable accent colour for its badge, plus a fixed white monogram — deliberately theme-invariant so each tile stays recognisable regardless of light/dark mode, same rationale as the fixed-warning-banner exception in the theme checklist.
-These, plus the ones above, are the **only** hardcoded colour strings permitted in the mobile codebase. All other colours must use `Colors.*` tokens from `constants/colors.ts`.
+These are the **only** hardcoded colour strings permitted in the mobile codebase. All other colours must use `Colors.*` tokens from `constants/colors.ts`.
 
 ### Constants and Types
 - `BookingStatus` type and `BOOKING_STATUS` constant live in `packages/shared/src/constants.ts` and `types.ts`.

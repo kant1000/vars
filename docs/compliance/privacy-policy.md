@@ -26,9 +26,8 @@ We collect different data depending on whether you are a customer, a vendor (bea
 
 | Data | When we collect it |
 |---|---|
-| Name, email address | When you create your account |
-| Phone number | When you add it to your profile |
-| Google or Facebook profile info (name, email) | If you sign in with Google or Facebook |
+| Name, phone number | When you create your account (phone is verified via a WhatsApp code) |
+| Email address | Optional, if you choose to add one for receipts and updates |
 | Payment card details | When you verify your card (processed by Paystack; we store only a reusable token, never your full card number) |
 | Location (GPS coordinates) | When you set your location for vendor discovery and when you place a booking |
 | Booking access details (building name, floor, flat number, gate code) | When you confirm a booking |
@@ -116,9 +115,8 @@ We use the following service providers to operate the platform. Each processes d
 | **Resend** | Email delivery (outreach, marketing, transactional) | United States |
 | **360dialog** | WhatsApp message delivery (transactional messages) | European Union / Meta infrastructure |
 | **Expo** | Push notification delivery (via Apple APNs and Google FCM) | United States |
-| **Google** | OAuth sign-in (customers) | United States |
-| **Facebook / Meta** | OAuth sign-in (customers) | United States |
-| **Apple** | OAuth sign-in (customers); push notification delivery (APNs) | United States |
+| **Google** | Maps API (vendor discovery, address geocoding) | United States |
+| **Apple** | Push notification delivery (APNs) | United States |
 | **Vercel** | Website and admin panel hosting | United States / edge network |
 
 ### 4.3 Other Disclosures

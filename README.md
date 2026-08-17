@@ -51,7 +51,7 @@ The platform operates a **two-sided marketplace**:
 | Mobile app | Expo SDK 52, React Native 0.76, Expo Router 4 |
 | Maps | react-native-maps |
 | Animations | React Native `Animated` API, react-native-svg 15.8.0 |
-| Auth | Supabase Auth — customers: email/password + Google/Facebook OAuth; vendors: email OTP (phone OTP coming soon) |
+| Auth | Supabase Auth — customers: WhatsApp phone number + OTP only (Google/Facebook removed, email is optional metadata); vendors: email (password login, OTP for new signups) or phone (always OTP) |
 | Database | Supabase Postgres (PostGIS enabled) |
 | Realtime | Supabase Realtime (booking status + vendor location) |
 | Edge functions | Deno (Supabase Edge Functions) |

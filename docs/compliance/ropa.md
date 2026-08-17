@@ -29,13 +29,13 @@
 |---|---|
 | Activity | Customer creates an account via the mobile app |
 | Data subjects | Customers (Lagos residents, adults 18+) |
-| Data categories | Name, email, phone number |
+| Data categories | Name, phone number, email (optional) |
 | Sensitive data? | No |
 | Lawful basis | Contract (NDPA s.25) |
 | Purpose | Create and manage customer account; enable booking |
 | Source of data | Data subject (direct collection via app) |
-| Recipients/processors | Supabase (storage + auth), Google (OAuth provider), Facebook (OAuth provider) |
-| Cross-border transfer? | Yes: Supabase infrastructure (US/EU), Google (US), Facebook (US) |
+| Recipients/processors | Supabase (storage + auth), 360dialog (WhatsApp OTP delivery) |
+| Cross-border transfer? | Yes: Supabase infrastructure (US/EU), 360dialog (EU / Meta infrastructure) |
 | Transfer safeguard | DPA with each processor; consent-based derogation pending NDPC SCC approval |
 | Retention | Life of account + 6 months |
 | Security measures | Supabase Auth (bcrypt hashing), RLS, HTTPS/TLS in transit, encrypted at rest |
@@ -257,8 +257,7 @@
 | Resend | Email delivery | Email addresses, names, message content | US | Review | **Needed** |
 | 360dialog | WhatsApp delivery | Phone numbers, message content | Confirm region | Review | **Needed** |
 | Expo | Push notification delivery | Push tokens, notification payloads | US | Standard terms | **Review needed** |
-| Google | OAuth (customer auth), Maps API | Email (OAuth), API calls (no PII stored by Google) | US | Standard terms | **Review needed** |
-| Facebook/Meta | OAuth (customer auth) | Email (OAuth) | US | Standard terms | **Review needed** |
+| Google | Maps API (vendor discovery, address geocoding) | API calls (no PII stored by Google) | US | Standard terms | **Review needed** |
 | Apple | Push delivery (APNs) | Push tokens | US | Standard terms | **Review needed** |
 | Vercel | Hosting (landing page, admin dashboard) | No PII stored; serves static/SSR pages | US | SOC 2 Type II | **Review needed** |
 

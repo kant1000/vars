@@ -7,7 +7,7 @@ Checklist for every new screen, component, or style change in `apps/mobile`. Thi
 - Any new style must read from `theme.color.*` via `useVarsTheme()` + `useMemo(() => makeStyles(theme), [theme])` — the established pattern in every screen (see `apps/mobile/app/(tabs)/index.tsx` for a reference implementation).
 - **Deliberate exceptions** — these stay on the static `Colors` object on purpose, not by oversight. Don't "fix" these into theme tokens without a real reason:
   - Per-status semantic color maps (`STATUS_CONFIG`, `STATE_STYLE` — object keys stay string literals, see `CLAUDE.md` Constants and Types).
-  - Brand accent colors (Google/Facebook auth buttons, pioneer gold) — see `CLAUDE.md` Brand Color Exceptions.
+  - Brand accent colors (pioneer gold) — see `CLAUDE.md` Brand Color Exceptions.
   - Fixed-warning banners (`OfflineBanner`, the home screen's location-permission banner, vendor grace-period/service-rendered reminders) — amber `Colors.warning`, deliberately theme-invariant so a warning reads as a warning regardless of appearance mode.
   - Fixed-contrast overlays on photos, maps, or WebViews — the underlying content isn't theme-aware, so the overlay can't be either.
 - If you're not sure whether a color you're touching is a deliberate exception or a missed spot, check `docs/VARS_PROJECT_CONTEXT.md`'s Visual System table before changing it either way.

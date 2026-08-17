@@ -30,7 +30,7 @@ To use VARS as a customer, you must:
 
 ## 4. Your Account
 
-You can create an account using email and password, Google sign-in, or Facebook sign-in. You are responsible for keeping your login credentials secure. If you believe your account has been compromised, contact us immediately at hello@bookwithvars.com.
+You create an account with your WhatsApp number, verified by a one-time code, plus a password you choose. You are responsible for keeping your login credentials secure. If you believe your account has been compromised, contact us immediately at hello@bookwithvars.com.
 
 We may suspend or terminate your account if you breach these terms, provide false information, or use the platform in a way that harms other users or the integrity of the service.
 
