@@ -44,11 +44,8 @@ interface VendorServiceItem {
   sort_order: number;
 }
 
-const CONSENT_LABEL: Record<string, { text: string; color: string }> = {
-  unverified: { text: 'Uploaded', color: Colors.textMuted },
-  pending:    { text: 'Sent to client', color: Colors.warning },
-  approved:   { text: 'Verified', color: Colors.success },
-};
+// unverified (plain self-upload) shows no badge — the photo itself is
+// confirmation enough. pending and approved get their own treatment below.
 
 export default function VendorProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -447,15 +444,20 @@ export default function VendorProfileScreen() {
                   const { data: { publicUrl } } = supabase.storage
                     .from('portfolio')
                     .getPublicUrl(photo.storage_path);
-                  const label = CONSENT_LABEL[photo.consent_state];
                   return (
                     <View key={photo.id} style={s.photoWrapper}>
                       <Image source={{ uri: publicUrl }} style={s.photo} contentFit="cover" cachePolicy="memory-disk" />
-                      <View style={s.photoBadge}>
-                        <Text style={[s.photoBadgeText, { color: label.color }]}>
-                          {label.text}
-                        </Text>
-                      </View>
+                      {photo.consent_state === 'approved' && (
+                        <View style={s.completedBadge}>
+                          <View style={s.completedBadgeDot} />
+                          <Text style={s.completedBadgeText}>on VARS</Text>
+                        </View>
+                      )}
+                      {photo.consent_state === 'pending' && (
+                        <View style={s.photoBadge}>
+                          <Text style={[s.photoBadgeText, { color: Colors.warning }]}>Sent to client</Text>
+                        </View>
+                      )}
                       <TouchableOpacity
                         style={s.photoDeleteBtn}
                         onPress={() => handleDeletePhoto(photo)}
@@ -621,6 +623,17 @@ function makeStyles(theme: VarsTheme) {
       paddingVertical: 3, alignItems: 'center',
     },
     photoBadgeText: { fontSize: 10, fontWeight: '700' },
+    // Approved-photo badge — same dark scrim + blue accent treatment as the
+    // customer-facing carousel badge, so a vendor sees exactly what their
+    // customers see on this photo.
+    completedBadge: {
+      position: 'absolute', top: 6, left: 6,
+      flexDirection: 'row', alignItems: 'center', gap: 4,
+      backgroundColor: 'rgba(0,0,0,0.55)',
+      borderRadius: BORDER_RADIUS, paddingHorizontal: 6, paddingVertical: 3,
+    },
+    completedBadgeDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: Colors.accentBlue },
+    completedBadgeText: { fontSize: 10, fontWeight: '700', color: '#FFF' },
     photoDeleteBtn: {
       position: 'absolute', top: 4, right: 4,
       width: 22, height: 22, borderRadius: 11,

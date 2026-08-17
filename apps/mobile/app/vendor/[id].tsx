@@ -45,6 +45,7 @@ interface VendorService {
 interface PortfolioPhoto {
   id: string;
   storage_path: string;
+  consent_state: 'unverified' | 'pending' | 'approved' | 'declined';
 }
 
 interface Review {
@@ -143,12 +144,9 @@ function VendorProfileSkeleton({
       <View style={styles.section}>
         {Array.from({ length: 3 }).map((_, i) => (
           <View key={i} style={styles.serviceCard}>
-            <View style={styles.serviceCardLeft}>
-              <VarsSkeleton theme={theme} height={11} width="30%" />
-              <VarsSkeleton theme={theme} height={15} width="60%" style={{ marginTop: 6 }} />
-              <VarsSkeleton theme={theme} height={12} width="40%" style={{ marginTop: 6 }} />
-            </View>
-            <VarsSkeleton theme={theme} height={16} width={50} />
+            <VarsSkeleton theme={theme} height={11} width="30%" />
+            <VarsSkeleton theme={theme} height={15} width="60%" style={{ marginTop: 6 }} />
+            <VarsSkeleton theme={theme} height={12} width="80%" style={{ marginTop: 6 }} />
           </View>
         ))}
       </View>
@@ -190,9 +188,9 @@ export default function VendorProfileScreen() {
         .order('sort_order', { ascending: true }),
 
       supabase.from('portfolio_photos')
-        .select('id, storage_path')
+        .select('id, storage_path, consent_state')
         .eq('vendor_id', id)
-        .eq('consent_state', 'approved')
+        .neq('consent_state', 'declined')
         .order('created_at', { ascending: false })
         .limit(30),
 
@@ -228,10 +226,17 @@ export default function VendorProfileScreen() {
       category_l2: vs.category_l2,
     }));
 
-    const portfolio: PortfolioPhoto[] = (portfolioRes.data ?? []).map((p: any) => ({
-      id: p.id,
-      storage_path: p.storage_path,
-    }));
+    const portfolio: PortfolioPhoto[] = (portfolioRes.data ?? [])
+      .map((p: any) => ({
+        id: p.id,
+        storage_path: p.storage_path,
+        consent_state: p.consent_state,
+      }))
+      // Verified (approved) photos always lead the scroller; within each
+      // group the query's created_at desc order is preserved (stable sort).
+      .sort((a: PortfolioPhoto, b: PortfolioPhoto) =>
+        (a.consent_state === 'approved' ? 0 : 1) - (b.consent_state === 'approved' ? 0 : 1)
+      );
 
     const reviews: Review[] = (reviewsRes.data ?? []).map((r: any) => ({
       id: r.id,
@@ -317,10 +322,11 @@ export default function VendorProfileScreen() {
     );
   }
 
-  const carouselUris: string[] = vendor.portfolio.map((p) => {
+  const carouselPhotos: { uri: string; approved: boolean }[] = vendor.portfolio.map((p) => {
     const { data } = supabase.storage.from('portfolio').getPublicUrl(p.storage_path);
-    return data.publicUrl;
+    return { uri: data.publicUrl, approved: p.consent_state === 'approved' };
   });
+  const carouselUris: string[] = carouselPhotos.map((p) => p.uri);
 
   const selectedServices = vendor.services.filter((s) => selectedServiceIds.has(s.id));
   const totalKobo = selectedServices.reduce((sum, s) => sum + s.price_kobo, 0);
@@ -430,7 +436,7 @@ export default function VendorProfileScreen() {
           {carouselUris.length > 0 && (
             <>
               <FlatList
-                data={carouselUris}
+                data={carouselPhotos}
                 horizontal
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
@@ -445,11 +451,17 @@ export default function VendorProfileScreen() {
                     onPress={() => { setLightboxIndex(index); setLightboxVisible(true); }}
                   >
                     <Image
-                      source={{ uri: item }}
+                      source={{ uri: item.uri }}
                       style={{ width: SCREEN_W, height: CAROUSEL_H }}
                       contentFit="cover"
                       cachePolicy="memory-disk"
                     />
+                    {item.approved && (
+                      <View style={styles.completedBadge}>
+                        <View style={styles.completedBadgeDot} />
+                        <Text style={styles.completedBadgeText}>Completed on VARS</Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
                 )}
               />
@@ -497,20 +509,19 @@ export default function VendorProfileScreen() {
                       onPress={() => toggleService(svc.id)}
                       activeOpacity={0.8}
                     >
-                      <View style={styles.serviceCardLeft}>
-                        <Text style={styles.serviceL2}>{l2Label}</Text>
-                        <Text style={styles.serviceName}>{sanitizeContent(svc.service_name, 20)}</Text>
-                        {svc.description ? (
-                          <Text style={styles.serviceDesc} numberOfLines={2}>{sanitizeContent(svc.description, 60)}</Text>
-                        ) : null}
-                        <Text style={styles.serviceDuration}>{formatDuration(svc.duration_blocks)}</Text>
-                      </View>
-                      <View style={styles.serviceCardRight}>
-                        <Text style={styles.servicePrice}>{formatPrice(svc.price_kobo)}</Text>
-                        <View style={[styles.checkbox, selected && styles.checkboxSelected]}>
-                          {selected && <Text style={styles.checkmark}>✓</Text>}
+                      <View style={styles.serviceTopRow}>
+                        <View style={styles.serviceCardLeft}>
+                          <Text style={styles.serviceL2}>{l2Label}</Text>
+                          <Text style={styles.serviceName} numberOfLines={1}>{sanitizeContent(svc.service_name, 20)}</Text>
+                        </View>
+                        <View style={styles.serviceCardRight}>
+                          <Text style={styles.serviceDuration}>{formatDuration(svc.duration_blocks)}</Text>
+                          <Text style={styles.servicePrice}>{formatPrice(svc.price_kobo)}</Text>
                         </View>
                       </View>
+                      <Text style={styles.serviceDesc} numberOfLines={1}>
+                        {svc.description ? sanitizeContent(svc.description, 60) : ' '}
+                      </Text>
                     </TouchableOpacity>
                   );
                 })
@@ -649,6 +660,17 @@ function makeStyles(theme: VarsTheme) {
     dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: theme.color.inkFaint },
     dotActive: { width: 18, backgroundColor: theme.color.ink },
 
+    // "Completed on VARS" badge — dark scrim so the blue dot + white text
+    // stay legible over any live photo, bright or busy alike.
+    completedBadge: {
+      position: 'absolute', top: 10, left: 10,
+      flexDirection: 'row', alignItems: 'center', gap: 5,
+      backgroundColor: 'rgba(0,0,0,0.55)',
+      borderRadius: BORDER_RADIUS, paddingHorizontal: 8, paddingVertical: 5,
+    },
+    completedBadgeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.accentBlue },
+    completedBadgeText: { fontSize: 11, fontWeight: '600', color: '#FFF' },
+
     // Tabs
     tabRow: {
       flexDirection: 'row', backgroundColor: theme.color.bg,
@@ -661,32 +683,25 @@ function makeStyles(theme: VarsTheme) {
 
     section: { paddingHorizontal: 16, paddingTop: 8 },
 
-    // Service card
+    // Service card — selection is shown by the card border/tint alone,
+    // no separate checkbox control.
     serviceCard: {
-      flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
       paddingVertical: 14, paddingHorizontal: 12,
-      borderWidth: BORDER_WIDTH.thin, borderColor: theme.color.inkFaint, borderRadius: 5,
+      borderWidth: BORDER_WIDTH.thin, borderColor: theme.color.inkFaint, borderRadius: BORDER_RADIUS,
       marginBottom: 8, backgroundColor: theme.color.bg,
     },
     serviceCardSelected: {
       borderColor: theme.color.ink,
       backgroundColor: theme.color.ink + '08',
     },
-    serviceCardLeft: { flex: 1, marginRight: 12 },
-    serviceCardRight: { alignItems: 'flex-end', gap: 8 },
+    serviceTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 },
+    serviceCardLeft: { flexShrink: 1, marginRight: 12 },
+    serviceCardRight: { alignItems: 'flex-end' },
     serviceL2: { fontSize: 11, color: theme.color.inkMuted, fontWeight: '500', marginBottom: 2 },
-    serviceName: { fontSize: 15, fontWeight: '700', color: theme.color.ink, marginBottom: 2 },
-    serviceDesc: { fontSize: 13, color: theme.color.inkMuted, lineHeight: 18, marginBottom: 4 },
-    serviceDuration: { fontSize: 12, color: theme.color.inkMuted, fontWeight: '500' },
-    servicePrice: { fontSize: 16, fontWeight: '800', color: theme.color.ink },
-    checkbox: {
-      width: 22, height: 22, borderRadius: 11,
-      borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint,
-      alignItems: 'center', justifyContent: 'center',
-      backgroundColor: theme.color.bg,
-    },
-    checkboxSelected: { backgroundColor: theme.color.ink, borderColor: theme.color.ink },
-    checkmark: { color: theme.color.inverseInk, fontSize: 13, fontWeight: '800' },
+    serviceName: { fontSize: 15, fontWeight: '700', color: theme.color.ink },
+    serviceDuration: { fontSize: 12, color: theme.color.inkMuted, fontWeight: '500', marginBottom: 2 },
+    servicePrice: { fontSize: 15, fontWeight: '800', color: theme.color.ink },
+    serviceDesc: { fontSize: 13, color: theme.color.inkMuted, lineHeight: 18 },
 
     // Reviews
     reviewCard: { paddingVertical: 14, borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint },
