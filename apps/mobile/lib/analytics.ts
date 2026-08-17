@@ -10,5 +10,4 @@ export const EVENTS = {
   VENDOR_TAB_OPENED: 'vendor_tab_opened',
 } as const;
 
-export type EventName = typeof EVENTS[keyof typeof EVENTS];
 export { usePostHog };

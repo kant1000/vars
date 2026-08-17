@@ -196,7 +196,7 @@ export default function VendorZoneSetup() {
             ref={mapRef}
             style={s.map}
             region={region}
-            onRegionChangeComplete={(r) => {
+            onRegionChangeComplete={() => {
               // Don't follow region changes — pin is draggable
             }}
           >

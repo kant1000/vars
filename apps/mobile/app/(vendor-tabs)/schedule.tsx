@@ -215,10 +215,9 @@ function toLocalDateStr(d: Date): string {
 
 // ── BookingBottomSheet ────────────────────────────────────────
 function BookingBottomSheet({
-  booking, session, onClose, onAction,
+  booking, onClose, onAction,
 }: {
   booking: VendorBooking;
-  session: any;
   onClose: () => void;
   onAction: () => void;
 }) {
@@ -1826,7 +1825,6 @@ export default function ScheduleScreen() {
       {selectedBooking && (
         <BookingBottomSheet
           booking={selectedBooking}
-          session={session}
           onClose={() => setSelectedBooking(null)}
           onAction={() => { setSelectedBooking(null); loadData(); }}
         />

@@ -366,7 +366,7 @@ function Step1({
 // ── Step 2a: Review + details (recipient / location / other) ─
 function Step2Review({
   serviceSummary, totalDurationBlocks, totalServiceKobo,
-  slot, isAutoAccept,
+  slot,
   access, setAccess,
   recipient, setRecipient, onToggleForSelf, customerName,
   coords, locAddress, onLocationConfirm,
@@ -376,7 +376,6 @@ function Step2Review({
   totalDurationBlocks: number;
   totalServiceKobo: number;
   slot: Date;
-  isAutoAccept: boolean;
   access: AccessDetails;
   setAccess: (a: AccessDetails) => void;
   recipient: RecipientDetails;
@@ -1067,7 +1066,6 @@ export default function BookingFlow() {
               totalDurationBlocks={totalDurationBlocks}
               totalServiceKobo={totalServiceKobo}
               slot={slot}
-              isAutoAccept={slotIsAutoAccept}
               access={access}
               setAccess={setAccess}
               recipient={recipient}

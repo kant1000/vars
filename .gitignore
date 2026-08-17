@@ -9,6 +9,9 @@ supabase/.temp/
 .tmp/
 docs/*.png
 docs/*.jpg
+metro.log
+metro-err.log
+*.tsbuildinfo
 
 # Expo local state
 .expo/

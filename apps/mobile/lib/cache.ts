@@ -29,7 +29,3 @@ export async function cacheGet<T>(cacheKey: string): Promise<T | null> {
     return null;
   }
 }
-
-export async function cacheInvalidate(cacheKey: string): Promise<void> {
-  await AsyncStorage.removeItem(key(cacheKey));
-}

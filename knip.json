@@ -1,0 +1,22 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignore": [
+    "apps/mobile/components/ui/VarsIconRenderer.android.tsx",
+    "apps/mobile/components/ui/VarsIconRenderer.ios.tsx"
+  ],
+  "workspaces": {
+    ".": {
+      "entry": ["supabase/functions/*/index.ts"],
+      "project": ["supabase/functions/**/*.ts"]
+    },
+    "apps/mobile": {
+      "entry": [
+        "plugins/**/*.js",
+        "app/**/*.{ts,tsx}"
+      ]
+    },
+    "apps/admin": {},
+    "apps/landing": {},
+    "packages/shared": {}
+  }
+}

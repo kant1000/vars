@@ -108,49 +108,6 @@ The VARS Team`,
   };
 }
 
-/**
- * Day 7+ — sent to COLD leads who haven't completed their profile.
- * Addresses the three main objections: KYC safety, real earnings, customer disputes.
- */
-export function reengagementEmail(
-  fullName: string,
-  serviceType: string,
-  isPioneer: boolean,
-): EmailTemplate {
-  const firstName = getFirstName(fullName);
-  const label     = serviceLabel(serviceType);
-
-  const pioneerLine = isPioneer
-    ? `Your Pioneer spot is still reserved. First 3 bookings: 0% commission, you keep 100%.`
-    : `You keep 80% per booking: ₦16,000 on a ₦20,000 service.`;
-
-  return {
-    subject: `Still thinking, ${firstName}? We open in ${LAUNCH_MONTH}, don't miss it`,
-    text: `Hi ${firstName},
-
-You signed up to offer ${label} on VARS but haven't completed your profile yet. We open to customers in ${LAUNCH_MONTH}, vendors who complete setup now will be live from day one. Here are the questions most vendors had before they joined.
-
-"Is the KYC safe?"
-VARS uses Youverify, the same identity verification trusted by banks and fintechs across Nigeria. We don't store your ID. Youverify confirms you're a real professional and returns a verified badge to your profile. It takes 2–3 minutes.
-
-"Why do customers care if I'm verified?"
-Customers on VARS pay upfront. They only book vendors with a verified badge. Without it, your profile isn't visible to them. Verification is your professional credibility on the platform.
-
-"How much do I actually earn?"
-${pioneerLine}
-
-"What if a customer disputes or doesn't pay?"
-Payment is held by VARS until you confirm the service is done. You're protected from the moment they book. We have your back on disputes.
-
-Complete your profile in 5 minutes:
-https://bookwithvars.com/activate
-
-If you have questions before you start, just reply here.
-
-The VARS Team`,
-  };
-}
-
 // ── WhatsApp HSM templates (Meta-approved, sent once DELIVERY_LIVE is on) ─────
 // `name` and `params` order below must match exactly what's approved in the
 // 360dialog/Meta template manager — a mismatch causes 360dialog to reject the
@@ -297,13 +254,5 @@ export function reengagementEmailHtmlParts(
     heading: `Still thinking, ${firstName}? We open in ${LAUNCH_MONTH}, here's what you need to know`,
     body1:   `You signed up to offer ${label} on VARS but haven't completed your profile yet. We open to customers in ${LAUNCH_MONTH}, vendors who complete setup now will be live from day one. KYC uses Youverify, the same verification trusted by banks across Nigeria, and takes 2–3 minutes. Customers only book verified vendors, and payment is held by VARS until you confirm the job is done. ${pioneerLine}`,
     body2:   '',
-  };
-}
-
-export function goLiveEmailHtmlParts(): HtmlEmailParts {
-  return {
-    heading: "You're live on VARS.",
-    body1:   'Your profile is now visible to customers in your area. Bookings will come straight to you.',
-    body2:   'Open the app to check your schedule and get ready for your first booking.',
   };
 }

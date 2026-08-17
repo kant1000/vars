@@ -74,8 +74,6 @@ export const Colors = {
   accentRed:   '#DC2626',  // blocked ✕ icon
 } as const;
 
-export type ColorKey = keyof typeof Colors;
-
 // ── Design system token ────────────────────────────────────────
 // All borderRadius values in the app must use this. No other values allowed.
 export const BORDER_RADIUS = 5;

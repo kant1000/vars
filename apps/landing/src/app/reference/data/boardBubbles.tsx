@@ -1,4 +1,3 @@
-import { Callout } from '../components/content/Callout';
 import { DataTable } from '../components/content/DataTable';
 import { Tag } from '../components/content/Tag';
 import type { Bubble } from './types';

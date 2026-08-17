@@ -116,23 +116,3 @@ export async function deletePortfolioPhoto(storagePath: string): Promise<void> {
   const { error } = await supabase.storage.from('portfolio').remove([storagePath]);
   if (error) throw error;
 }
-
-/**
- * Upload a local image URI as the vendor's profile photo.
- * Overwrites any existing profile photo (upsert).
- * Returns the public URL.
- */
-export async function uploadProfilePhotoFromUri(userId: string, uri: string): Promise<string> {
-  const resized = await resizeToSquare(uri);
-  const { buffer } = await readUriAsArrayBuffer(resized);
-  const filePath = `vendors/${userId}/profile.jpg`;
-
-  const { error } = await supabase.storage
-    .from('portfolio')
-    .upload(filePath, buffer, { upsert: true, contentType: 'image/jpeg' });
-
-  if (error) throw error;
-
-  const { data } = supabase.storage.from('portfolio').getPublicUrl(filePath);
-  return data.publicUrl;
-}

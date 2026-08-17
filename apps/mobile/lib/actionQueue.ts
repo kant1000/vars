@@ -29,25 +29,9 @@ async function writeQueue(queue: QueuedAction[]): Promise<void> {
   await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
 }
 
-export async function enqueueAction(
-  action: Omit<QueuedAction, 'id' | 'enqueuedAt'>,
-): Promise<void> {
-  const queue = await readQueue();
-  queue.push({
-    ...action,
-    id: `${Date.now()}_${Math.random().toString(36).slice(2)}`,
-    enqueuedAt: Date.now(),
-  });
-  await writeQueue(queue);
-}
-
 export async function removeFromQueue(id: string): Promise<void> {
   const queue = await readQueue();
   await writeQueue(queue.filter((a) => a.id !== id));
-}
-
-export async function getQueue(): Promise<QueuedAction[]> {
-  return readQueue();
 }
 
 /**

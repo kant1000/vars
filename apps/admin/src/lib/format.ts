@@ -1,1 +1,1 @@
-export { fmtPrice, fmtDuration, fmtTime, fmtDate, fmtLongDate, fmtDateTime } from '@vars/shared';
+export { fmtPrice } from '@vars/shared';

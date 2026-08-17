@@ -15,7 +15,7 @@ import {
 import { CheckIcon } from '@/components/icons';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { VarsIconRenderer } from './VarsIconRenderer';
-import { iconSystemNames, VarsIconName } from './iconMap';
+import { VarsIconName } from './iconMap';
 import {
   VARS_RADIUS,
   VarsElevation,
@@ -25,7 +25,6 @@ import {
 } from '@/constants/visualSystem';
 import { BORDER_WIDTH } from '@/constants/colors';
 
-export { iconSystemNames };
 export type { VarsIconName };
 
 type Tone = 'neutral' | 'success' | 'warning' | 'danger' | 'info';
@@ -299,70 +298,6 @@ export function VarsSwitch({
   );
 }
 
-export function VarsSegmentedControl<T extends string>({
-  value,
-  options,
-  onChange,
-  theme = varsLight,
-}: {
-  value: T;
-  options: { value: T; label: string }[];
-  onChange: (value: T) => void;
-  theme?: VarsTheme;
-}) {
-  return (
-    <View style={[styles.segmentWrap, { borderColor: theme.color.inkFaint }]}>
-      {options.map((option) => {
-        const selected = option.value === value;
-        return (
-          <Pressable
-            key={option.value}
-            accessibilityRole="tab"
-            accessibilityState={{ selected }}
-            onPress={() => onChange(option.value)}
-            style={[styles.segment, selected && { backgroundColor: theme.color.ink }]}
-          >
-            <Text
-              style={[
-                styles.segmentText,
-                { color: selected ? theme.color.inverseInk : theme.color.inkMuted },
-              ]}
-              numberOfLines={1}
-            >
-              {option.label}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-
-export function VarsTabItem({
-  focused,
-  icon,
-  label,
-  theme = varsLight,
-}: {
-  focused: boolean;
-  icon: VarsIconName;
-  label: string;
-  theme?: VarsTheme;
-}) {
-  const color = focused ? theme.color.ink : theme.color.inkMuted;
-  return (
-    <View style={styles.tabItem}>
-      <VarsIcon name={icon} size={22} color={color} theme={theme} />
-      <Text
-        style={[styles.tabItemLabel, { color, fontWeight: focused ? '700' : '400' }]}
-        numberOfLines={1}
-      >
-        {label}
-      </Text>
-    </View>
-  );
-}
-
 export function VarsSkeleton({
   theme = varsLight,
   width = '100%',
@@ -520,33 +455,6 @@ const styles = StyleSheet.create({
     borderRadius: SWITCH_THUMB_SIZE / 2,
     borderWidth: BORDER_WIDTH.thin,
     backgroundColor: '#FFFFFF',
-  },
-  segmentWrap: {
-    minHeight: 44,
-    flexDirection: 'row',
-    borderRadius: VARS_RADIUS,
-    borderWidth: BORDER_WIDTH.regular,
-    overflow: 'hidden',
-  },
-  segment: {
-    flex: 1,
-    minWidth: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 8,
-  },
-  segmentText: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  tabItem: {
-    minWidth: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
-  },
-  tabItemLabel: {
-    fontSize: 11,
   },
   toast: {
     minHeight: 52,
