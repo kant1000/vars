@@ -19,6 +19,7 @@ import { useVarsTheme } from '@/contexts/ThemeContext';
 import { BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { LocationPicker, ResolvedLocation, reverseGeocode } from '@/components/LocationPicker';
+import { setPendingLocation, migratePendingLocation } from '@/lib/pendingLocation';
 
 const SKELETON_ROWS = 6;
 
@@ -71,8 +72,14 @@ function useConfirmedLocation(userId: string | undefined) {
   // mount and silently no-op'd the update (RLS matches zero rows on a
   // mismatched/empty id, no error thrown), which is why session_location
   // was never actually landing in the database.
-  const persist = useCallback(async (lat: number, lng: number) => {
-    if (!userId) return;
+  // No account exists yet for a guest — nothing to attach session_location
+  // to — so their confirmation is stashed locally instead and migrated in
+  // by loadInitial() the moment userId shows up (see pendingLocation.ts).
+  const persist = useCallback(async (lat: number, lng: number, address: string) => {
+    if (!userId) {
+      await setPendingLocation({ lat, lng, address });
+      return;
+    }
     const { error, data } = await supabase
       .from('profiles')
       .update({ session_location: `POINT(${lng} ${lat})` })
@@ -84,6 +91,20 @@ function useConfirmedLocation(userId: string | undefined) {
   }, [userId]);
 
   const loadInitial = useCallback(async () => {
+    // 0. A location confirmed as a guest, now that there's finally an
+    // account to attach it to — takes priority over everything below,
+    // since it's what the customer was actually just looking at (e.g. on
+    // the way back from a deferred-login signup mid-booking).
+    if (userId) {
+      const migrated = await migratePendingLocation(userId);
+      if (migrated) {
+        setCoords({ lat: migrated.lat, lng: migrated.lng });
+        setAddress(migrated.address || 'Current area');
+        setLoaded(true);
+        return;
+      }
+    }
+
     // 1. Previously confirmed location wins — same one used last session.
     // Distinguishing a genuine "nothing saved yet" (data null, no error)
     // from a failed read (error set) matters: treating a transient RPC
@@ -116,21 +137,23 @@ function useConfirmedLocation(userId: string | undefined) {
     }
     try {
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const resolvedAddress = await reverseGeocode(loc.coords.latitude, loc.coords.longitude);
       setCoords({ lat: loc.coords.latitude, lng: loc.coords.longitude });
-      setAddress(await reverseGeocode(loc.coords.latitude, loc.coords.longitude));
-      await persist(loc.coords.latitude, loc.coords.longitude);
+      setAddress(resolvedAddress);
+      await persist(loc.coords.latitude, loc.coords.longitude, resolvedAddress);
     } catch {
       // keep default Lagos coords/address — nothing to persist
     }
     setLoaded(true);
-  }, [persist]);
+  }, [persist, userId]);
 
   useEffect(() => { loadInitial(); }, [loadInitial]);
 
   const confirm = useCallback(async (loc: ResolvedLocation) => {
+    const resolvedAddress = loc.address || 'Current area';
     setCoords({ lat: loc.lat, lng: loc.lng });
-    setAddress(loc.address || 'Current area');
-    await persist(loc.lat, loc.lng);
+    setAddress(resolvedAddress);
+    await persist(loc.lat, loc.lng, resolvedAddress);
   }, [persist]);
 
   return { coords, address, loaded, confirm };

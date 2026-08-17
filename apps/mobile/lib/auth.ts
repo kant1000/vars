@@ -74,7 +74,7 @@ export async function finishCustomerSignup(params: {
   const { error: pwError } = await supabase.auth.updateUser({ password: params.password });
   if (pwError) throw pwError;
 
-  const updates: Record<string, string> = { full_name: params.fullName };
+  const updates: Record<string, string | boolean> = { full_name: params.fullName, password_set: true };
   if (params.email) updates.email = params.email;
 
   const { error } = await supabase.from('profiles').update(updates).eq('id', params.userId);

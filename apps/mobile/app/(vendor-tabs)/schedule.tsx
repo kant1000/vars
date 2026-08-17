@@ -23,7 +23,7 @@ import { useVendorOnline } from '@/contexts/VendorOnlineContext';
 import { VarsButton, VarsSurface, VarsToast } from '@/components/ui';
 import { useVarsTheme } from '@/contexts/ThemeContext';
 import { fmtPrice, fmtDuration, fmtTime, fmtDate } from '@/lib/format';
-import { CheckIcon, CloseIcon, PinIcon, LockIcon, LightningIcon } from '@/components/icons';
+import { CheckIcon, CloseIcon, PinIcon, LockIcon, LightningIcon, ChevronDownIcon } from '@/components/icons';
 import * as Haptics from 'expo-haptics';
 import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import type { CalendarProps } from '@marceloterreiro/flash-calendar';
@@ -71,7 +71,6 @@ export interface VendorBooking {
   service_price_kobo: number;
   scheduled_at: string;
   client_name: string;
-  client_phone: string | null;
   phone_revealed: boolean;
   user_location_lat: number | null;
   user_location_lng: number | null;
@@ -237,6 +236,27 @@ function BookingBottomSheet({
 
   const [acting, setActing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  // ── Contact reveal state ────────────────────────────────────
+  // Phone digits never arrive in the booking list payload (see
+  // get_booking_client_contact) — fetched here instead. Names come back
+  // unconditionally (never gated); the RPC itself nulls out both phone
+  // columns server-side until booking.phone_revealed flips, so it's safe
+  // to fetch as soon as the sheet opens rather than waiting on the flag.
+  const [contact, setContact] = useState<{
+    recipient_phone: string | null;
+    booker_name: string | null;
+    booker_phone: string | null;
+    has_different_recipient: boolean;
+  } | null>(null);
+  const [showBooker, setShowBooker] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase.rpc('get_booking_client_contact', { p_booking_id: booking.id }).maybeSingle()
+      .then(({ data }) => { if (!cancelled) setContact(data as typeof contact); });
+    return () => { cancelled = true; };
+  }, [booking.id, booking.phone_revealed]);
 
   // ── Reschedule state ────────────────────────────────────────
   const [showReschedulePicker, setShowReschedulePicker] = useState(false);
@@ -439,12 +459,12 @@ function BookingBottomSheet({
               <Text style={bs.sectionTitle}>Access details</Text>
               {accessRevealed ? (
                 <>
-                  {booking.client_phone && <DetailRow label="Phone" value={booking.client_phone} bs={bs} />}
+                  {contact?.recipient_phone && <DetailRow label="Phone" value={contact.recipient_phone} bs={bs} />}
                   {booking.access_building && <DetailRow label="Address details" value={booking.access_building} bs={bs} />}
                   {booking.access_floor   && <DetailRow label="Floor"    value={booking.access_floor} bs={bs} />}
                   {booking.access_flat    && <DetailRow label="Flat"     value={booking.access_flat} bs={bs} />}
                   {booking.access_code    && <DetailRow label="Gate code" value={booking.access_code} bs={bs} />}
-                  {!booking.client_phone && !booking.access_building && !booking.access_floor && !booking.access_flat && !booking.access_code && (
+                  {!contact?.recipient_phone && !booking.access_building && !booking.access_floor && !booking.access_flat && !booking.access_code && (
                     <Text style={bs.mutedText}>No access details provided.</Text>
                   )}
                 </>
@@ -455,6 +475,38 @@ function BookingBottomSheet({
                 </View>
               )}
             </VarsSurface>
+
+            {/* Original booker fallback — only for "booking for someone
+                else" jobs, so the vendor can still reach the person who
+                actually made and paid for the booking if the recipient
+                turns out to be unreachable. */}
+            {contact?.has_different_recipient && (
+              <VarsSurface theme={theme} style={bs.card}>
+                <TouchableOpacity
+                  style={bs.bookerLinkRow}
+                  onPress={() => setShowBooker(v => !v)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={bs.bookerLinkText}>
+                    Can't reach {getFirstName(booking.client_name)}? View original booker's details
+                  </Text>
+                  <ChevronDownIcon size={16} color={theme.color.inkMuted} />
+                </TouchableOpacity>
+                {showBooker && (
+                  accessRevealed ? (
+                    <>
+                      {contact.booker_name && <DetailRow label="Name" value={contact.booker_name} bs={bs} />}
+                      {contact.booker_phone && <DetailRow label="Phone" value={contact.booker_phone} bs={bs} />}
+                    </>
+                  ) : (
+                    <View style={bs.lockedRow}>
+                      <LockIcon size={16} color={theme.color.inkMuted} />
+                      <Text style={bs.lockedText}>Locked until access details unlock, 15 minutes before your arrival.</Text>
+                    </View>
+                  )
+                )}
+              </VarsSurface>
+            )}
 
             {actionError && (
               <View style={bs.errorBox}>
@@ -1220,10 +1272,10 @@ export default function ScheduleScreen() {
     service_duration_blocks: b.service_duration_blocks,
     service_price_kobo: b.service_price_kobo,
     scheduled_at: b.scheduled_at,
-    // A "booking for someone else" carries its own name/phone — show the
-    // actual recipient the vendor will meet, not the account holder's.
+    // A "booking for someone else" carries its own name — show the actual
+    // recipient the vendor will meet, not the account holder's. Phone
+    // numbers are never in this payload — see get_booking_client_contact.
     client_name: b.recipient_name || b.profiles?.full_name || 'Client',
-    client_phone: b.recipient_name ? b.recipient_phone : (b.profiles?.phone_number ?? null),
     phone_revealed: b.phone_revealed ?? false,
     user_location_lat: b.user_location_lat ?? null,
     user_location_lng: b.user_location_lng ?? null,
@@ -1256,8 +1308,8 @@ export default function ScheduleScreen() {
           id, status, service_name, service_duration_blocks, service_price_kobo,
           scheduled_at, suggested_scheduled_at, phone_revealed, user_location_lat, user_location_lng,
           user_location_address, access_building, access_floor, access_flat, access_code,
-          auto_accepted, recipient_name, recipient_phone,
-          profiles:user_id(full_name, phone_number)
+          auto_accepted, recipient_name,
+          profiles:user_id(full_name)
         `)
         .eq('vendor_id', vendorId)
         .in('status', ACTIVE_STATUSES)
@@ -1689,9 +1741,12 @@ export default function ScheduleScreen() {
                   >
                     {isFirstSlot ? (
                       <>
-                        <Text style={s.slotBookedName} numberOfLines={1}>
-                          {getFirstName(booking.client_name)}
-                        </Text>
+                        <View style={s.slotBookedNameRow}>
+                          {!booking.phone_revealed && <LockIcon size={9} color={theme.color.inverseInk} />}
+                          <Text style={s.slotBookedName} numberOfLines={1}>
+                            {getFirstName(booking.client_name)}
+                          </Text>
+                        </View>
                         <Text style={s.slotBookedService} numberOfLines={1}>
                           {booking.service_name}
                         </Text>
@@ -2067,6 +2122,7 @@ function makeStylesS(theme: VarsTheme) {
       justifyContent: 'center', alignItems: 'center',
       paddingHorizontal: 3,
     },
+    slotBookedNameRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
     slotBookedName: { fontSize: 10, fontWeight: '700', color: theme.color.inverseInk, textAlign: 'center' },
     slotBookedService: {
       fontSize: 9,
@@ -2145,6 +2201,9 @@ function makeStylesBs(theme: VarsTheme) {
     lockedRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
     lockedText: { fontSize: 13, color: theme.color.inkMuted, fontStyle: 'italic', flex: 1 },
     mutedText: { fontSize: 13, color: theme.color.inkMuted },
+
+    bookerLinkRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+    bookerLinkText: { flex: 1, fontSize: 13, fontWeight: '600', color: theme.color.ink },
 
     errorBox: { backgroundColor: theme.color.accentRed + '15', borderRadius: 5, padding: 12, marginBottom: 12 },
     errorText: { fontSize: 13, color: theme.color.accentRed, fontWeight: '500' },

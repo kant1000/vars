@@ -35,7 +35,7 @@ Deno.serve(async (req: Request) => {
   const { data: bookings, error } = await supabase
     .from('bookings')
     .select(`
-      id, vendor_id, user_id, scheduled_at,
+      id, vendor_id, user_id, scheduled_at, recipient_name,
       profiles:user_id (full_name, push_token, phone_number),
       vendors:vendor_id (full_name, push_token, phone_number)
     `)
@@ -70,8 +70,13 @@ Deno.serve(async (req: Request) => {
     const profile = booking.profiles as { full_name: string; push_token: string | null; phone_number: string | null } | null;
     const vendor  = booking.vendors  as { full_name: string; push_token: string | null; phone_number: string | null } | null;
 
-    const vendorName      = vendor?.full_name ?? 'Your vendor';
-    const clientFirstName = (profile?.full_name ?? 'Client').split(' ')[0];
+    const vendorName = vendor?.full_name ?? 'Your vendor';
+    // The vendor is meeting whoever this booking is actually for — if it
+    // carries its own recipient, that's who the vendor-facing notification
+    // should name, not the account holder who booked and paid. The
+    // customer-facing message doesn't need this: they already know who
+    // they booked for.
+    const clientFirstName = ((booking.recipient_name as string | null) ?? profile?.full_name ?? 'Client').split(' ')[0];
 
     // Notify customer: vendor has your number now
     if (profile) {

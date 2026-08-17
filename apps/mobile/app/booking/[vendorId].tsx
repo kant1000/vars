@@ -13,13 +13,12 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Dimensions, FlatList, LayoutAnimation,
   ScrollView, StyleSheet, Text, TouchableOpacity,
-  View, Platform,
+  View,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { VarsButton, VarsInput, VarsSurface, VarsSwitch } from '@/components/ui';
@@ -34,6 +33,7 @@ import * as Haptics from 'expo-haptics';
 import { usePostHog, EVENTS } from '@/lib/analytics';
 import { LocationPicker, ResolvedLocation, reverseGeocode } from '@/components/LocationPicker';
 import { clearPendingReturnTo } from '@/lib/pendingReturnTo';
+import { migratePendingLocation } from '@/lib/pendingLocation';
 
 const SCREEN_W = Dimensions.get('window').width;
 const BLOCK_MINS = 30;
@@ -395,9 +395,13 @@ function Step2Review({
     recipient.name.trim().length > 0 && isValidPhone(recipient.phone, recipient.phoneCountry)
   );
   // Address details (full address/building/landmarks) are how the stylist
-  // actually finds the place — required. Gate/access code stays optional,
-  // most addresses don't have one.
-  const canContinue = !!coords && recipientReady && access.building.trim().length > 0;
+  // actually finds the place — required, and long enough to actually be
+  // useful (a single word isn't a findable address). Gate/access code
+  // stays optional, most addresses don't have one.
+  const ADDRESS_MIN_LENGTH = 10;
+  const addressTrimmed = access.building.trim();
+  const addressTooShort = addressTrimmed.length > 0 && addressTrimmed.length < ADDRESS_MIN_LENGTH;
+  const canContinue = !!coords && recipientReady && addressTrimmed.length >= ADDRESS_MIN_LENGTH;
 
   return (
     <>
@@ -459,14 +463,15 @@ function Step2Review({
         {/* ── Other details ── */}
         <Text style={s.subHeading}>Other details</Text>
 
+        <Text style={s.fieldLabel}>Address details <Text style={s.required}>*</Text></Text>
         <VarsInput
           theme={theme}
-          label="Address details"
           placeholder="e.g. full address, building name, floor, landmarks"
           value={access.building}
           onChangeText={(t) => setAccess({ ...access, building: sanitize(t, 200) })}
           multiline
           style={s.addressDetailsInput}
+          error={addressTooShort ? `Please add a bit more detail (min. ${ADDRESS_MIN_LENGTH} characters)` : undefined}
         />
 
         <View>
@@ -519,7 +524,6 @@ function Step2Location({
 }) {
   const { theme } = useVarsTheme();
   const s = useMemo(() => makeStyles(theme), [theme]);
-  const [mapReady, setMapReady] = useState(false);
 
   const hasAccess = access.building || access.gateCode;
 
@@ -532,25 +536,6 @@ function Step2Location({
   return (
     <>
       <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
-        <MapView
-          style={s.mapThumb}
-          provider={PROVIDER_DEFAULT}
-          region={{
-            latitude: coords.lat,
-            longitude: coords.lng,
-            latitudeDelta: 0.003,
-            longitudeDelta: 0.003,
-          }}
-          scrollEnabled={false}
-          zoomEnabled={false}
-          rotateEnabled={false}
-          pitchEnabled={false}
-          onMapReady={() => setMapReady(true)}
-          liteMode={Platform.OS === 'android'}
-        >
-          <Marker coordinate={{ latitude: coords.lat, longitude: coords.lng }} />
-        </MapView>
-
         <View style={{ padding: 20, gap: 16 }}>
           <VarsSurface theme={theme} elevation={1} style={s.addressRow}>
             <PinIcon size={16} color={theme.color.ink} />
@@ -600,7 +585,7 @@ function Step2Location({
           theme={theme}
           loading={paying}
           onPress={onPay}
-          disabled={!mapReady || paying}
+          disabled={paying}
           label={`Confirm booking · ${fmtPrice(totalKobo)}`}
         />
       </View>
@@ -730,7 +715,7 @@ export default function BookingFlow() {
   const { theme } = useVarsTheme();
   const s = useMemo(() => makeStyles(theme), [theme]);
   const posthog = usePostHog();
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
 
   // Parse incoming params from vendor profile
   const serviceIds: string[] = serviceIdsParam ? JSON.parse(serviceIdsParam) : [];
@@ -794,6 +779,17 @@ export default function BookingFlow() {
   useEffect(() => {
     (async () => {
       try {
+        // A location confirmed as a guest on the Discover tab, then landed
+        // straight here via the deferred-login route (pendingReturnTo) —
+        // this screen may be the very first one to mount post-signup, so
+        // it can't assume the Discover tab already migrated it.
+        if (user?.id) {
+          const migrated = await migratePendingLocation(user.id);
+          if (migrated) {
+            setDefaultLocation(migrated);
+            return;
+          }
+        }
         const res = await supabase.rpc('get_my_session_location').maybeSingle();
         const data = res.data as { lat: number; lng: number } | null;
         if (data?.lat == null || data?.lng == null) return;
@@ -803,7 +799,7 @@ export default function BookingFlow() {
         console.warn('[BookingFlow] failed to load session location', err);
       }
     })();
-  }, []);
+  }, [user?.id]);
 
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -850,6 +846,15 @@ export default function BookingFlow() {
   };
 
   const handleBack = () => {
+    // The header's back button stays mounted above CardVerifyView regardless
+    // of phase (disclosure/webview/polling/failed) — without this check it
+    // fell through to the step/router logic below, popping the screen stack
+    // out from under the still-visible verification view instead of just
+    // cancelling it.
+    if (cardVerify) {
+      setCardVerify(null);
+      return;
+    }
     if (step === 2 && step2View === 'location') {
       setStep2View('review');
       return;
@@ -1166,6 +1171,7 @@ function makeStyles(theme: VarsTheme) {
     summaryValueBold: { fontSize: 16, fontWeight: '800', color: theme.color.accentBlue },
     divider: { height: BORDER_WIDTH.thin, backgroundColor: theme.color.inkFaint, marginVertical: 6 },
     fieldLabel: { fontSize: 14, fontWeight: '600', color: theme.color.ink, marginBottom: 6 },
+    required: { color: theme.color.accentRed },
     addressDetailsInput: {
       height: 90, paddingTop: 12, paddingBottom: 12, lineHeight: 20,
       textAlignVertical: 'top', includeFontPadding: false,
@@ -1175,7 +1181,6 @@ function makeStyles(theme: VarsTheme) {
     inputDisabled: { opacity: 0.5 },
 
     // Map + location
-    mapThumb: { width: SCREEN_W, height: 200 },
     addressRow: {
       flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 12,
     },

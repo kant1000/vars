@@ -208,7 +208,7 @@ export default function CustomerSettings() {
                 <Text style={s.avatarInitial}>{profile?.full_name?.[0]?.toUpperCase() ?? '?'}</Text>
               </View>
             )}
-            <Text style={s.photoRowLabel}>Change photo</Text>
+            <View style={s.photoRowLabel} />
             {uploadingPhoto
               ? <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
               : <EditIcon size={16} color={theme.color.inkMuted} />
@@ -251,8 +251,7 @@ export default function CustomerSettings() {
           </TouchableOpacity>
         </View>
         <Text style={s.helperText}>
-          Changing your number requires a quick WhatsApp verification — that's how your
-          stylist reaches you on the day.
+          Changing your number requires WhatsApp verification.
         </Text>
       </ScrollView>
 
@@ -368,11 +367,12 @@ function makeStyles(theme: VarsTheme) {
 
     photoRow: {
       flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14,
-      minHeight: 64, borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
+      minHeight: 80, borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
     },
-    avatar: { width: 40, height: 40, borderRadius: 20 },
+    // Matches heroAvatar on (tabs)/profile.tsx — same size on both pages.
+    avatar: { width: 56, height: 56, borderRadius: 28 },
     avatarFallback: { backgroundColor: theme.color.ink, alignItems: 'center', justifyContent: 'center' },
-    avatarInitial: { fontSize: 16, fontWeight: '800', color: theme.color.inverseInk },
+    avatarInitial: { fontSize: 22, fontWeight: '800', color: theme.color.inverseInk },
     photoRowLabel: { flex: 1, fontSize: 15, color: theme.color.ink },
 
     fieldRow: {
