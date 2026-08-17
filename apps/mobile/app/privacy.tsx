@@ -55,7 +55,7 @@ export default function PrivacyScreen() {
       </View>
 
       <ScrollView contentContainerStyle={s.scroll}>
-        <Text style={s.updated}>Last updated: 31 July 2026</Text>
+        <Text style={s.updated}>Last updated: 17 August 2026</Text>
 
         <Section title="Who we are">
           <Body>
@@ -75,9 +75,8 @@ export default function PrivacyScreen() {
         </Section>
 
         <Section title="Information we collect">
-          <Bullet>Name and email address when you create your account</Bullet>
-          <Bullet>Phone number when you add it to your profile</Bullet>
-          <Bullet>Name and email from Google or Facebook if you sign in that way</Bullet>
+          <Bullet>Name and phone number when you create your account, verified by a WhatsApp code</Bullet>
+          <Bullet>Email address, if you choose to add one for receipts and updates</Bullet>
           <Bullet>A secure payment token when you verify a card through Paystack, not your full card number</Bullet>
           <Bullet>Your GPS location when you set a booking location</Bullet>
           <Bullet>Access details (building name, floor, flat number, gate code) when you confirm a booking, visible only to your matched stylist and VARS admin</Bullet>
@@ -86,7 +85,8 @@ export default function PrivacyScreen() {
 
         <Section title="How you sign in">
           <Body>
-            VARS supports sign-in via email and password, Google, and Facebook.
+            VARS uses your WhatsApp number as your sign-in identity: a one-time code verifies it,
+            then you set a password for future logins.
           </Body>
         </Section>
 
@@ -121,8 +121,7 @@ export default function PrivacyScreen() {
           <Bullet><Bold>Paystack</Bold> — payment processing and card verification (Nigeria)</Bullet>
           <Bullet><Bold>Resend</Bold> — transactional email delivery (United States)</Bullet>
           <Bullet><Bold>Expo</Bold> — push notification delivery via Apple APNs and Google FCM (United States)</Bullet>
-          <Bullet><Bold>Google</Bold> — sign-in (United States)</Bullet>
-          <Bullet><Bold>Facebook / Meta</Bold> — sign-in (United States)</Bullet>
+          <Bullet><Bold>Google</Bold> — Maps API for vendor discovery and address lookup (United States)</Bullet>
           <Bullet><Bold>Apple</Bold> — push notification delivery via APNs (United States)</Bullet>
           <Bullet><Bold>Vercel</Bold> — website hosting (United States)</Bullet>
           <Bullet><Bold>Sentry</Bold> — crash reporting and error monitoring (United States / EU)</Bullet>

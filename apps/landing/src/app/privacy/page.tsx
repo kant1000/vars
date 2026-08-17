@@ -17,7 +17,7 @@ export default function PrivacyPage() {
         <Link href="/" className="legal-back">Back to VARS</Link>
         <p className="legal-kicker">Privacy Policy</p>
         <h1>How VARS handles your data</h1>
-        <p className="legal-updated">Last updated: 31 July 2026</p>
+        <p className="legal-updated">Last updated: 17 August 2026</p>
 
         <section>
           <h2>Who we are</h2>
@@ -45,9 +45,8 @@ export default function PrivacyPage() {
 
           <h3>Customers</h3>
           <ul>
-            <li>Name and email address when you create your account</li>
-            <li>Phone number when you add it to your profile</li>
-            <li>Name and email from Google or Facebook if you sign in that way</li>
+            <li>Name and phone number when you create your account, verified by a WhatsApp code</li>
+            <li>Email address, if you choose to add one for receipts and updates</li>
             <li>A secure payment token when you verify a card through Paystack (not your full card number)</li>
             <li>Your GPS location when you set a booking location</li>
             <li>Access details (building name, floor, flat number, gate code) when you confirm a booking</li>
@@ -141,10 +140,7 @@ export default function PrivacyPage() {
               Google FCM (United States)
             </li>
             <li>
-              <strong>Google</strong> — sign-in (United States)
-            </li>
-            <li>
-              <strong>Facebook / Meta</strong> — sign-in (United States)
+              <strong>Google</strong> — Maps API for vendor discovery and address lookup (United States)
             </li>
             <li>
               <strong>Apple</strong> — push notification delivery via APNs (United States)

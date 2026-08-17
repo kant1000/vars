@@ -55,7 +55,7 @@ export default function PrivacyScreen() {
       </View>
 
       <ScrollView contentContainerStyle={s.scroll}>
-        <Text style={s.updated}>Last updated: 31 July 2026</Text>
+        <Text style={s.updated}>Last updated: 17 August 2026</Text>
 
         <Section title="Who we are">
           <Body>
@@ -86,7 +86,7 @@ export default function PrivacyScreen() {
 
         <Section title="How you sign in">
           <Body>
-            VARS supports sign-in via email (OTP). Phone number sign-in is not yet available.
+            VARS supports sign-in via email or phone number, both verified by a one-time code.
           </Body>
         </Section>
 
