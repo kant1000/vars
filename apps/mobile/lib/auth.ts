@@ -1,9 +1,4 @@
-import * as WebBrowser from 'expo-web-browser';
-import * as AuthSession from 'expo-auth-session';
-import * as Linking from 'expo-linking';
 import { supabase } from './supabase';
-
-WebBrowser.maybeCompleteAuthSession();
 
 /**
  * Detects the duplicate-phone rejection from fn_sync_phone_identity_registry
@@ -23,75 +18,6 @@ function isDuplicatePhoneAccountError(err: any): boolean {
 }
 
 const DUPLICATE_PHONE_MESSAGE = "This phone number's already on VARS, try logging in instead.";
-
-/**
- * Sign in with Google via Supabase OAuth.
- * Uses Expo AuthSession for the OAuth redirect flow.
- */
-export async function signInWithGoogle(): Promise<boolean> {
-  const redirectUrl = AuthSession.makeRedirectUri({ scheme: 'vars', path: 'auth/callback' });
-
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: redirectUrl,
-      skipBrowserRedirect: true,
-    },
-  });
-
-  if (error) throw error;
-  if (!data.url) throw new Error('No OAuth URL returned');
-
-  const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
-
-  if (result.type !== 'success' || !result.url) return false;
-
-  const { queryParams } = Linking.parse(result.url);
-  const oauthError = queryParams?.error;
-  const errorDescription = queryParams?.error_description;
-  if (typeof oauthError === 'string') {
-    throw new Error(typeof errorDescription === 'string' ? errorDescription : oauthError);
-  }
-
-  const { error: sessionError } = await supabase.auth.exchangeCodeForSession(result.url);
-  if (sessionError) throw sessionError;
-
-  return true;
-}
-
-/**
- * Sign in with Facebook via Supabase OAuth.
- */
-export async function signInWithFacebook(): Promise<boolean> {
-  const redirectUrl = AuthSession.makeRedirectUri({ scheme: 'vars', path: 'auth/callback' });
-
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'facebook',
-    options: {
-      redirectTo: redirectUrl,
-      skipBrowserRedirect: true,
-    },
-  });
-
-  if (error) throw error;
-  if (!data.url) throw new Error('No OAuth URL returned');
-
-  const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
-
-  if (result.type !== 'success' || !result.url) return false;
-
-  const { queryParams } = Linking.parse(result.url);
-  const oauthError = queryParams?.error;
-  const errorDescription = queryParams?.error_description;
-  if (typeof oauthError === 'string') {
-    throw new Error(typeof errorDescription === 'string' ? errorDescription : oauthError);
-  }
-
-  const { error: sessionError } = await supabase.auth.exchangeCodeForSession(result.url);
-  if (sessionError) throw sessionError;
-
-  return true;
-}
 
 /**
  * Sign in with email and password.
@@ -133,14 +59,25 @@ export async function signUpWithEmail(params: {
 }
 
 /**
- * Update phone number on existing profile.
- * Called after social login when phone is not yet set.
+ * Finish a brand-new customer account after their phone number has already
+ * been OTP-verified: set a password, and record full name plus an optional
+ * email (comms/receipts only, never re-verified). phone_number is never
+ * written here — it's populated only by the DB trigger that syncs a
+ * confirmed auth.users.phone (see supabase/migrations/20260819010001).
  */
-export async function savePhoneNumber(userId: string, phoneNumber: string) {
-  const { error } = await supabase
-    .from('profiles')
-    .update({ phone_number: phoneNumber })
-    .eq('id', userId);
+export async function finishCustomerSignup(params: {
+  userId: string;
+  fullName: string;
+  email?: string | null;
+  password: string;
+}) {
+  const { error: pwError } = await supabase.auth.updateUser({ password: params.password });
+  if (pwError) throw pwError;
+
+  const updates: Record<string, string> = { full_name: params.fullName };
+  if (params.email) updates.email = params.email;
+
+  const { error } = await supabase.from('profiles').update(updates).eq('id', params.userId);
   if (error) {
     if (isDuplicatePhoneAccountError(error)) throw new Error(DUPLICATE_PHONE_MESSAGE);
     throw error;

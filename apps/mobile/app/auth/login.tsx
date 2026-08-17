@@ -1,184 +1,179 @@
 // ============================================================
-// VARS — Sign Up / Login Screen (§4.4)
-// Triggered ONLY when unauthenticated user taps "Book Now"
-// Returns user to same vendor profile on completion — momentum never broken
-// Options: Google · Facebook · Email
-// Sign up / Sign in: same screen, toggled
-// Phone collected after social login if not present
-// Design: VARS logo prominent, everything else minimal
+// VARS — Customer Sign In / Sign Up
+// WhatsApp-first: phone number is the only identifier. No email/social
+// login for customers (matches the vendor side, which never had social
+// auth either) — email is optional profile metadata only, collected in
+// finish_account, never used to identify or log in to an account.
+// Flow:
+//   1. Enter WhatsApp number → customer-check-identity
+//      has_account + password set → password screen (forgot → OTP → signed in)
+//      has_account, no password yet (abandoned an earlier signup) → OTP → finish_account
+//      not_found → OTP → finish_account (name + password + optional email)
+// Customers have no waitlist/lead concept, so not_found always means
+// "let's create your account" — never an error screen.
+// profiles.phone_number is populated only by a DB trigger syncing a
+// confirmed auth.users.phone (see supabase/migrations/20260819010001) —
+// this screen never writes it directly.
 // ============================================================
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
   StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { PhoneInput } from '@/components/PhoneInput';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 import { CountryCode, normalizePhone } from '@vars/shared';
 import { BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { useVarsTheme } from '@/contexts/ThemeContext';
-import {
-  signInWithGoogle,
-  signInWithFacebook,
-  signInWithEmail,
-  signUpWithEmail,
-} from '@/lib/auth';
+import { finishCustomerSignup } from '@/lib/auth';
+import { hasAcceptedCurrentTerms } from '@/lib/termsGate';
+import { getPendingReturnTo } from '@/lib/pendingReturnTo';
 
-type Mode = 'signin' | 'signup';
-type ForgotStep = 'otp' | 'reset';
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
+
+type Screen = 'entry' | 'password' | 'otp_input' | 'finish_account';
 
 export default function LoginScreen() {
   const { theme } = useVarsTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
-  const [mode, setMode] = useState<Mode>('signin');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
+  const { refreshProfile } = useAuth();
+
+  const [screen, setScreen] = useState<Screen>('entry');
   const [phoneLocal, setPhoneLocal] = useState('');
   const [phoneCountry, setPhoneCountry] = useState<CountryCode>('+234');
-  const [isLoading, setIsLoading] = useState(false);
-  const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
-
-  // ── Forgot password ──
-  const [forgotStep, setForgotStep] = useState<ForgotStep | null>(null);
+  const [password, setPassword] = useState('');
   const [otpCode, setOtpCode] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSuccess = () => {
-    // Return user to vendor profile they came from — momentum never broken (§4.4)
-    if (returnTo) {
-      router.replace(returnTo as any);
-    } else {
-      router.replace('/(tabs)');
-    }
-  };
+  // accountExistsRef drives shouldCreateUser on OTP send.
+  // otpPurposeRef decides what happens right after a successful verify:
+  // 'recover' = existing account with a password, just proving identity
+  //   via "forgot password" → sign them straight in.
+  // 'signup' = either a brand-new account or an existing one that never
+  //   finished setting a name/password the first time around → collect
+  //   the rest in finish_account.
+  const accountExistsRef = useRef(false);
+  const otpPurposeRef = useRef<'signup' | 'recover'>('signup');
 
-  const handleGoogle = async () => {
-    setLoadingProvider('google');
-    try {
-      const completed = await signInWithGoogle();
-      if (completed) handleSuccess();
-    } catch (err: any) {
-      Alert.alert('Error', err.message ?? 'Sign in failed. Please try again.');
-    } finally {
-      setLoadingProvider(null);
-    }
-  };
-
-  const handleFacebook = async () => {
-    setLoadingProvider('facebook');
-    try {
-      const completed = await signInWithFacebook();
-      if (completed) handleSuccess();
-    } catch (err: any) {
-      Alert.alert('Error', err.message ?? 'Sign in failed. Please try again.');
-    } finally {
-      setLoadingProvider(null);
-    }
-  };
+  // ── finish_account fields ──
+  const [finishFullName, setFinishFullName] = useState('');
+  const [finishEmail, setFinishEmail] = useState('');
+  const [finishPassword, setFinishPassword] = useState('');
+  const [finishConfirmPassword, setFinishConfirmPassword] = useState('');
 
   const normalizedPhone = normalizePhone(phoneLocal, phoneCountry);
+  const canonical = normalizedPhone ?? '';
+  const canSubmitIdentity = !!normalizedPhone;
 
-  const handleEmailSubmit = async () => {
-    if (!email.trim() || !password.trim()) {
-      Alert.alert('Required', 'Please enter your email and password.');
+  // ── Post-auth: resolve wherever the guest was trying to go ──
+  const finishIfNeeded = async (userId: string) => {
+    const pendingReturnTo = await getPendingReturnTo();
+    const termsOk = await hasAcceptedCurrentTerms(userId, 'customer');
+    if (!termsOk) {
+      router.replace({
+        pathname: '/terms-acceptance',
+        params: { userType: 'customer', destination: pendingReturnTo ?? '/(tabs)' },
+      } as any);
       return;
     }
-    if (mode === 'signup' && !fullName.trim()) {
-      Alert.alert('Required', 'Please enter your full name.');
-      return;
-    }
-    if (mode === 'signup' && !normalizedPhone) {
-      Alert.alert('Required', 'Please enter a valid phone number.');
-      return;
-    }
+    router.replace((pendingReturnTo ?? '/(tabs)') as any);
+  };
 
+  // ── Identity check ────────────────────────────────────────
+
+  const handleCheckIdentity = async () => {
+    if (!canSubmitIdentity) return;
     setIsLoading(true);
     try {
-      if (mode === 'signup') {
-        const { needsConfirmation } = await signUpWithEmail({ email, password, fullName, phoneNumber: normalizedPhone! });
-        if (needsConfirmation) {
-          Alert.alert(
-            'Check your email',
-            'We sent a confirmation link to ' + email + '. Click it to activate your account, then sign in.',
-          );
-          setMode('signin');
-          setPassword('');
-          return;
-        }
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/customer-check-identity`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ phone: canonical }),
+      });
+      const json = await res.json();
+      if (!res.ok || json.error) throw new Error(json.error ?? json.message ?? 'Identity check failed.');
+
+      const status = json.status as 'has_account' | 'not_found';
+      const hasPassword = !!json.has_password;
+      accountExistsRef.current = status === 'has_account';
+
+      if (status === 'has_account' && hasPassword) {
+        setScreen('password');
       } else {
-        await signInWithEmail(email, password);
+        otpPurposeRef.current = 'signup';
+        await sendOtp();
       }
-      handleSuccess();
     } catch (err: any) {
-      Alert.alert('Error', err.message ?? 'Please try again.');
+      Alert.alert('Error', err.message ?? 'Something went wrong. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // ── Forgot password ──────────────────────────────────────────
-  // Email OTP re-auth, then set a new password — same mechanism vendor-login
-  // uses for OTP verification (auth.signInWithOtp / verifyOtp), but customers
-  // have no other screen to set a password, so this flow ends by setting one
-  // rather than just signing them in.
+  // ── OTP ───────────────────────────────────────────────────
 
-  const sendForgotOtp = async () => {
-    if (!email.trim()) {
-      Alert.alert('Enter your email', 'Enter your email address above, then tap "Forgot password?" again.');
-      return;
-    }
+  const sendOtp = async () => {
     setIsLoading(true);
     try {
-      // shouldCreateUser: false — this is a password reset, not sign-up; a
-      // mistyped email should fail loudly, not silently provision a new account.
       const { error } = await supabase.auth.signInWithOtp({
-        email: email.trim().toLowerCase(),
-        options: { shouldCreateUser: false },
+        phone: canonical,
+        options: accountExistsRef.current
+          ? { shouldCreateUser: false }
+          : { shouldCreateUser: true, data: { user_type: 'user' } },
       });
       if (error) throw error;
       setOtpCode('');
-      setForgotStep('otp');
+      setScreen('otp_input');
     } catch (err: any) {
-      Alert.alert(
-        'Error',
-        err.message?.includes('Signups not allowed')
-          ? "We don't have an account with that email."
-          : err.message ?? 'Could not send code. Please try again.',
-      );
+      const msg = (err.message ?? '').toLowerCase().includes('database error saving new user')
+        ? "This number's already on VARS, try logging in instead."
+        : err.message ?? 'Failed to send code. Please try again.';
+      Alert.alert('Error', msg);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleVerifyForgotOtp = async () => {
+  const handleVerifyOtp = async () => {
     if (otpCode.trim().length !== 6) {
       return Alert.alert('Required', 'Enter the 6-digit code.');
     }
     setIsLoading(true);
     try {
       const { error } = await supabase.auth.verifyOtp({
-        email: email.trim().toLowerCase(),
+        phone: canonical,
         token: otpCode.trim(),
-        type: 'email',
+        type: 'sms',
       });
       if (error) throw error;
-      setForgotStep('reset');
+
+      if (otpPurposeRef.current === 'recover') {
+        await finishIfNeeded((await supabase.auth.getUser()).data.user?.id ?? '');
+      } else {
+        setFinishFullName('');
+        setFinishEmail('');
+        setFinishPassword('');
+        setFinishConfirmPassword('');
+        setScreen('finish_account');
+      }
     } catch (err: any) {
       Alert.alert('Incorrect code', err.message ?? 'The code was wrong or expired. Try again.');
     } finally {
@@ -186,35 +181,76 @@ export default function LoginScreen() {
     }
   };
 
-  const handleResetPassword = async () => {
-    if (newPassword.length < 8) {
-      return Alert.alert('Too short', 'Password must be at least 8 characters.');
-    }
-    if (newPassword !== confirmNewPassword) {
-      return Alert.alert('Mismatch', 'Passwords do not match.');
-    }
+  // ── Password screen (returning account with a password on file) ──
+
+  const handlePasswordSignIn = async () => {
+    if (!password.trim()) return;
     setIsLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        Alert.alert('Session expired', 'Please start over.');
-        setForgotStep(null);
-        return;
-      }
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      const { error } = await supabase.auth.signInWithPassword({
+        phone: canonical,
+        password,
+      });
       if (error) throw error;
-      setForgotStep(null);
-      setOtpCode('');
-      setPassword('');
-      setNewPassword('');
-      setConfirmNewPassword('');
-      handleSuccess();
+      await finishIfNeeded((await supabase.auth.getUser()).data.user?.id ?? '');
     } catch (err: any) {
-      Alert.alert('Error', err.message ?? 'Could not set password. Please try again.');
+      Alert.alert('Sign in failed', err.message ?? 'Check your password and try again.');
     } finally {
       setIsLoading(false);
     }
   };
+
+  const handleForgotPassword = async () => {
+    accountExistsRef.current = true;
+    otpPurposeRef.current = 'recover';
+    await sendOtp();
+  };
+
+  // ── finish_account (new signup, or an account that never finished one) ──
+
+  const canSubmitFinish = !!finishFullName.trim()
+    && finishPassword.length >= 8
+    && finishPassword === finishConfirmPassword;
+
+  const handleFinishAccount = async () => {
+    setIsLoading(true);
+    try {
+      if (!finishFullName.trim()) {
+        Alert.alert('Required', 'Please enter your full name.');
+        return;
+      }
+      if (finishPassword.length < 8) {
+        Alert.alert('Too short', 'Password must be at least 8 characters.');
+        return;
+      }
+      if (finishPassword !== finishConfirmPassword) {
+        Alert.alert('Mismatch', 'Passwords do not match.');
+        return;
+      }
+
+      const { data: { user: freshUser } } = await supabase.auth.getUser();
+      if (!freshUser) {
+        Alert.alert('Session expired', 'Please start over.');
+        setScreen('entry');
+        return;
+      }
+
+      await finishCustomerSignup({
+        userId: freshUser.id,
+        fullName: finishFullName.trim(),
+        email: finishEmail.trim() ? finishEmail.trim().toLowerCase() : null,
+        password: finishPassword,
+      });
+      await refreshProfile();
+      await finishIfNeeded(freshUser.id);
+    } catch (err: any) {
+      Alert.alert('Error', err.message ?? 'Could not finish setting up your account.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ── Render ────────────────────────────────────────────────
 
   return (
     <KeyboardAvoidingView
@@ -227,29 +263,115 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* VARS logo — prominent per spec §4.4 */}
         <View style={styles.header}>
           <Text style={styles.wordmark}>VARS</Text>
           <Text style={styles.tagline}>Beauty at your door.</Text>
         </View>
 
-        {forgotStep && (
+        {screen !== 'entry' && (
           <TouchableOpacity
-            onPress={() => { setForgotStep(null); setOtpCode(''); }}
+            onPress={() => {
+              setScreen('entry');
+              setPassword('');
+              setOtpCode('');
+            }}
             hitSlop={8}
-            style={styles.forgotBackBtn}
-            accessibilityLabel="Back to sign in"
+            style={styles.backBtn}
+            accessibilityLabel="Back"
             accessibilityRole="button"
           >
-            <Text style={styles.forgotBackText}>‹ Back to sign in</Text>
+            <Text style={styles.backText}>‹ Back</Text>
           </TouchableOpacity>
         )}
 
-        {/* ── Forgot password: OTP step ── */}
-        {forgotStep === 'otp' && (
+        {/* ── Entry screen ── */}
+        {screen === 'entry' && (
           <>
-            <Text style={styles.title}>Check your email.</Text>
-            <Text style={styles.sub}>We sent a 6-digit code to{'\n'}{email.trim()}.</Text>
+            <Text style={styles.title}>Continue with your WhatsApp number.</Text>
+
+            <View style={styles.phoneInputWrap}>
+              <PhoneInput
+                value={phoneLocal}
+                country={phoneCountry}
+                onChangeValue={setPhoneLocal}
+                onChangeCountry={setPhoneCountry}
+                autoFocus
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.submitButton,
+                (!canSubmitIdentity || isLoading) && styles.submitDisabled,
+              ]}
+              onPress={handleCheckIdentity}
+              disabled={!canSubmitIdentity || isLoading}
+              activeOpacity={0.85}
+            >
+              {isLoading
+                ? <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} />
+                : <Text style={styles.submitText}>Continue</Text>}
+            </TouchableOpacity>
+
+            <Text style={styles.terms}>
+              By continuing, you agree to VARS' Terms of Service and Privacy Policy.
+            </Text>
+
+            <TouchableOpacity onPress={() => router.push('/auth/vendor-login')} style={styles.vendorLink}>
+              <Text style={styles.vendorLinkText}>STYLIST LOGIN  ›</Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        {/* ── Password screen (returning account with a password on file) ── */}
+        {screen === 'password' && (
+          <>
+            <Text style={styles.title}>Welcome back.</Text>
+            <Text style={styles.sub}>{canonical}</Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              placeholderTextColor={theme.color.inkMuted}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoComplete="current-password"
+              returnKeyType="done"
+              onSubmitEditing={handlePasswordSignIn}
+              autoFocus
+            />
+
+            <TouchableOpacity
+              style={[styles.submitButton, (!password.trim() || isLoading) && styles.submitDisabled]}
+              onPress={handlePasswordSignIn}
+              disabled={!password.trim() || isLoading}
+              activeOpacity={0.85}
+            >
+              {isLoading
+                ? <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} />
+                : <Text style={styles.submitText}>Sign in</Text>}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.secondaryAction}
+              onPress={handleForgotPassword}
+              disabled={isLoading}
+            >
+              <Text style={styles.secondaryActionText}>
+                {isLoading ? 'Sending…' : 'Forgot password? Send me a code instead'}
+              </Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        {/* ── OTP input screen ── */}
+        {screen === 'otp_input' && (
+          <>
+            <Text style={styles.title}>Check your WhatsApp.</Text>
+            <Text style={styles.sub}>
+              We sent a 6-digit code to{'\n'}{canonical}.
+            </Text>
 
             <TextInput
               style={[styles.input, styles.otpInput]}
@@ -259,290 +381,96 @@ export default function LoginScreen() {
               onChangeText={(t) => setOtpCode(t.replace(/\D/g, '').slice(0, 6))}
               keyboardType="number-pad"
               returnKeyType="done"
-              onSubmitEditing={handleVerifyForgotOtp}
+              onSubmitEditing={handleVerifyOtp}
               autoFocus
             />
 
             <TouchableOpacity
               style={[styles.submitButton, (otpCode.length !== 6 || isLoading) && styles.submitDisabled]}
-              onPress={handleVerifyForgotOtp}
+              onPress={handleVerifyOtp}
               disabled={otpCode.length !== 6 || isLoading}
               activeOpacity={0.85}
             >
-              {isLoading ? (
-                <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} />
-              ) : (
-                <Text style={styles.submitText}>Verify</Text>
-              )}
+              {isLoading
+                ? <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} />
+                : <Text style={styles.submitText}>Verify</Text>}
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.forgotLink} onPress={sendForgotOtp} disabled={isLoading}>
-              <Text style={styles.forgotLinkText}>Resend code</Text>
+            <TouchableOpacity
+              style={styles.secondaryAction}
+              onPress={sendOtp}
+              disabled={isLoading}
+            >
+              <Text style={styles.secondaryActionText}>Resend code</Text>
             </TouchableOpacity>
           </>
         )}
 
-        {/* ── Forgot password: set new password ── */}
-        {forgotStep === 'reset' && (
+        {/* ── finish_account: new signup, or an account that never finished one ── */}
+        {screen === 'finish_account' && (
           <>
-            <Text style={styles.title}>Set a new password.</Text>
-            <Text style={styles.sub}>Choose a new password for your account.</Text>
+            <Text style={styles.title}>You're almost set.</Text>
+            <Text style={styles.sub}>Finish setting up your account.</Text>
 
-            <View style={styles.form}>
-              <TextInput
-                style={styles.input}
-                placeholder="New password (min. 8 characters)"
-                placeholderTextColor={theme.color.inkMuted}
-                value={newPassword}
-                onChangeText={setNewPassword}
-                secureTextEntry
-                autoComplete="new-password"
-                returnKeyType="next"
-                autoFocus
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Confirm password"
-                placeholderTextColor={theme.color.inkMuted}
-                value={confirmNewPassword}
-                onChangeText={setConfirmNewPassword}
-                secureTextEntry
-                autoComplete="new-password"
-                returnKeyType="done"
-                onSubmitEditing={handleResetPassword}
-              />
-
-              <TouchableOpacity
-                style={[
-                  styles.submitButton,
-                  (newPassword.length < 8 || newPassword !== confirmNewPassword || isLoading) && styles.submitDisabled,
-                ]}
-                onPress={handleResetPassword}
-                disabled={newPassword.length < 8 || newPassword !== confirmNewPassword || isLoading}
-                activeOpacity={0.85}
-              >
-                {isLoading ? (
-                  <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} />
-                ) : (
-                  <Text style={styles.submitText}>Set new password</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </>
-        )}
-
-        {!forgotStep && (
-        <>
-        {/* Mode toggle: Sign in / Sign up — same screen */}
-        <View style={styles.modeToggle}>
-          <TouchableOpacity
-            style={[styles.modeButton, mode === 'signin' && styles.modeButtonActive]}
-            onPress={() => setMode('signin')}
-          >
-            <Text style={[styles.modeText, mode === 'signin' && styles.modeTextActive]}>
-              Sign in
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.modeButton, mode === 'signup' && styles.modeButtonActive]}
-            onPress={() => setMode('signup')}
-          >
-            <Text style={[styles.modeText, mode === 'signup' && styles.modeTextActive]}>
-              Sign up
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Social auth buttons */}
-        <View style={styles.socialButtons}>
-          <SocialButton
-            provider="google"
-            label="Continue with Google"
-            onPress={handleGoogle}
-            isLoading={loadingProvider === 'google'}
-            disabled={!!loadingProvider || isLoading}
-            styles={styles}
-          />
-          <SocialButton
-            provider="facebook"
-            label="Continue with Facebook"
-            onPress={handleFacebook}
-            isLoading={loadingProvider === 'facebook'}
-            disabled={!!loadingProvider || isLoading}
-            styles={styles}
-          />
-        </View>
-
-        {/* Divider */}
-        <View style={styles.divider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or continue with email</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        {/* Email form */}
-        <View style={styles.form}>
-          {mode === 'signup' && (
             <TextInput
               style={styles.input}
               placeholder="Full name"
               placeholderTextColor={theme.color.inkMuted}
-              value={fullName}
-              onChangeText={setFullName}
+              value={finishFullName}
+              onChangeText={setFinishFullName}
               autoCapitalize="words"
               autoComplete="name"
               returnKeyType="next"
             />
-          )}
 
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            placeholderTextColor={theme.color.inkMuted}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoComplete="email"
-            returnKeyType="next"
-          />
+            <TextInput
+              style={styles.input}
+              placeholder="Email (optional)"
+              placeholderTextColor={theme.color.inkMuted}
+              value={finishEmail}
+              onChangeText={setFinishEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              returnKeyType="next"
+            />
 
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            placeholderTextColor={theme.color.inkMuted}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-            returnKeyType={mode === 'signup' ? 'next' : 'done'}
-            onSubmitEditing={mode === 'signin' ? handleEmailSubmit : undefined}
-          />
+            <TextInput
+              style={styles.input}
+              placeholder="Password (min. 8 characters)"
+              placeholderTextColor={theme.color.inkMuted}
+              value={finishPassword}
+              onChangeText={setFinishPassword}
+              secureTextEntry
+              autoComplete="new-password"
+              returnKeyType="next"
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Confirm password"
+              placeholderTextColor={theme.color.inkMuted}
+              value={finishConfirmPassword}
+              onChangeText={setFinishConfirmPassword}
+              secureTextEntry
+              autoComplete="new-password"
+              returnKeyType="done"
+              onSubmitEditing={handleFinishAccount}
+            />
 
-          {mode === 'signin' && (
-            <TouchableOpacity style={styles.forgotLinkInline} onPress={sendForgotOtp} disabled={isLoading}>
-              <Text style={styles.forgotLinkText}>Forgot password?</Text>
+            <TouchableOpacity
+              style={[styles.submitButton, (!canSubmitFinish || isLoading) && styles.submitDisabled]}
+              onPress={handleFinishAccount}
+              disabled={!canSubmitFinish || isLoading}
+              activeOpacity={0.85}
+            >
+              {isLoading
+                ? <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} />
+                : <Text style={styles.submitText}>Continue</Text>}
             </TouchableOpacity>
-          )}
-
-          {/* Phone — required at sign-up for all methods (§4.4) */}
-          {mode === 'signup' && (
-            <>
-              <PhoneInput
-                value={phoneLocal}
-                country={phoneCountry}
-                onChangeValue={setPhoneLocal}
-                onChangeCountry={setPhoneCountry}
-              />
-              {/* Helper text per spec §4.4 */}
-              <Text style={styles.phoneHelper}>So your stylist can reach you on the day</Text>
-            </>
-          )}
-
-          <TouchableOpacity
-            style={[
-              styles.submitButton,
-              (isLoading || !!loadingProvider || (mode === 'signup' && !normalizedPhone)) && styles.submitDisabled,
-            ]}
-            onPress={handleEmailSubmit}
-            disabled={isLoading || !!loadingProvider || (mode === 'signup' && !normalizedPhone)}
-            activeOpacity={0.85}
-          >
-            {isLoading ? (
-              <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} />
-            ) : (
-              <Text style={styles.submitText}>
-                {mode === 'signin' ? 'Sign in' : 'Create account'}
-              </Text>
-            )}
-          </TouchableOpacity>
-        </View>
-
-        {/* Terms */}
-        <Text style={styles.terms}>
-          By continuing, you agree to VARS' Terms of Service and Privacy Policy.
-        </Text>
-
-        {/* Vendor portal cross-link */}
-        <TouchableOpacity onPress={() => router.push('/auth/vendor-login')} style={styles.vendorLink}>
-          <Text style={styles.vendorLinkText}>STYLIST LOGIN  ›</Text>
-        </TouchableOpacity>
-        </>
+          </>
         )}
       </ScrollView>
     </KeyboardAvoidingView>
-  );
-}
-
-// ---- Brand icons ----
-// GoogleG and FacebookF use MANDATORY third-party brand colours per Google Identity Branding
-// Guidelines and Meta Brand Resources. These colours are NOT VARS design system colours and
-// must NEVER be replaced with VARS tokens or BORDER_RADIUS values during design audits.
-//   Google button: bg #ffffff, border #dadce0, text #3c4043
-//   Facebook button: bg #1877F2, text #ffffff
-// Ref: https://developers.google.com/identity/branding-guidelines
-//      https://developers.facebook.com/docs/facebook-login/userexperience#buttondesign
-function GoogleG({ size = 20 }: { size?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 533.5 544.3">
-      <Path fill="#4285F4" d="M533.5 278.4c0-18.5-1.5-37.1-4.7-55.3H272.1v104.8h147c-6.1 33.8-25.7 63.7-54.4 82.7v68h87.7c51.5-47.4 81.1-117.4 81.1-200.2z"/>
-      <Path fill="#34A853" d="M272.1 544.3c73.4 0 135.3-24.1 180.4-65.7l-87.7-68c-24.4 16.6-55.9 26-92.6 26-71 0-131.2-47.9-152.8-112.3H28.9v70.1c46.2 91.9 140.3 149.9 243.2 149.9z"/>
-      <Path fill="#FBBC05" d="M119.3 324.3c-11.4-33.8-11.4-70.4 0-104.2V150H28.9c-38.6 76.9-38.6 167.5 0 244.4l90.4-70.1z"/>
-      <Path fill="#EA4335" d="M272.1 107.7c38.8-.6 76.3 14 104.4 40.8l77.7-77.7C405 24.6 339.7-.8 272.1 0 169.2 0 75.1 58 28.9 150l90.4 70.1c21.5-64.5 81.8-112.4 152.8-112.4z"/>
-    </Svg>
-  );
-}
-
-function FacebookF({ size = 20 }: { size?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 10 18">
-      <Path
-        fill="white"
-        d="M6.558 17.854v-8.14h2.735l.41-3.178H6.558V4.328c0-.92.255-1.546 1.573-1.546l1.68-.001V.125C9.51.087 8.474 0 7.27 0 4.83 0 3.155 1.492 3.155 4.23v2.307H.42v3.178H3.155v8.14h3.403z"
-      />
-    </Svg>
-  );
-}
-
-// ---- Social auth button ----
-function SocialButton({
-  provider,
-  label,
-  onPress,
-  isLoading,
-  disabled,
-  styles,
-}: {
-  provider: 'google' | 'facebook';
-  label: string;
-  onPress: () => void;
-  isLoading: boolean;
-  disabled: boolean;
-  styles: ReturnType<typeof makeStyles>;
-}) {
-  const isGoogle = provider === 'google';
-  return (
-    <TouchableOpacity
-      style={[
-        styles.socialButton,
-        isGoogle ? styles.socialButtonGoogle : styles.socialButtonFacebook,
-        disabled && styles.socialButtonDisabled,
-      ]}
-      onPress={onPress}
-      disabled={disabled}
-      activeOpacity={0.85}
-    >
-      {isLoading ? (
-        <ScissorsLoader size="small" color={isGoogle ? 'dark' : 'light'} />
-      ) : (
-        <View style={styles.socialButtonInner}>
-          {isGoogle ? <GoogleG size={20} /> : <FacebookF size={20} />}
-          <Text style={[styles.socialButtonText, !isGoogle && styles.socialButtonTextLight]}>
-            {label}
-          </Text>
-        </View>
-      )}
-    </TouchableOpacity>
   );
 }
 
@@ -555,11 +483,11 @@ function makeStyles(theme: VarsTheme) {
     scroll: {
       flexGrow: 1,
       paddingHorizontal: 24,
-      paddingTop: 80,
+      paddingTop: 60,
       paddingBottom: 40,
     },
     header: {
-      marginBottom: 40,
+      marginBottom: 32,
     },
     wordmark: {
       fontSize: 40,
@@ -572,106 +500,13 @@ function makeStyles(theme: VarsTheme) {
       fontSize: 16,
       color: theme.color.inkMuted,
     },
-    modeToggle: {
-      flexDirection: 'row',
-      backgroundColor: theme.color.surface2,
-      borderRadius: BORDER_RADIUS,
-      padding: 4,
-      marginBottom: 28,
-    },
-    modeButton: {
-      flex: 1,
-      paddingVertical: 10,
-      borderRadius: BORDER_RADIUS,
-      alignItems: 'center',
-    },
-    modeButtonActive: {
-      backgroundColor: theme.color.bg,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.06,
-      shadowRadius: 4,
-      elevation: 2,
-    },
-    modeText: {
-      fontSize: 15,
-      fontWeight: '500',
-      color: theme.color.inkMuted,
-    },
-    modeTextActive: {
-      color: theme.color.ink,
-      fontWeight: '600',
-    },
-    socialButtons: {
-      gap: 12,
-      marginBottom: 28,
-    },
-    socialButton: {
-      height: 54,
-      borderRadius: BORDER_RADIUS,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    // Mandatory third-party brand colours (Google Identity Branding Guidelines,
-    // Meta Brand Resources) — never replace with VARS design tokens, light or dark.
-    socialButtonGoogle: {
-      backgroundColor: '#ffffff',
-      borderWidth: 1,
-      borderColor: '#dadce0',
-    },
-    socialButtonFacebook: {
-      backgroundColor: '#1877F2',
-    },
-    socialButtonDisabled: {
-      opacity: 0.5,
-    },
-    socialButtonInner: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-    },
-    socialButtonText: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: '#3c4043',
-    },
-    socialButtonTextLight: {
-      color: '#ffffff',
-    },
-    divider: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      marginBottom: 24,
-    },
-    dividerLine: {
-      flex: 1,
-      height: BORDER_WIDTH.thin,
-      backgroundColor: theme.color.inkFaint,
-    },
-    dividerText: {
-      fontSize: 13,
-      color: theme.color.inkMuted,
-    },
-    form: {
-      gap: 12,
+    backBtn: {
       marginBottom: 20,
     },
-    input: {
-      height: 54,
-      borderWidth: BORDER_WIDTH.regular,
-      borderColor: theme.color.inkFaint,
-      borderRadius: BORDER_RADIUS,
-      paddingHorizontal: 16,
-      fontSize: 16,
+    backText: {
+      fontSize: 14,
+      fontWeight: '600',
       color: theme.color.ink,
-      backgroundColor: theme.color.bg,
-    },
-    phoneHelper: {
-      fontSize: 13,
-      color: theme.color.inkMuted,
-      marginTop: -4,
-      marginLeft: 4,
     },
     title: {
       fontSize: 26,
@@ -685,33 +520,26 @@ function makeStyles(theme: VarsTheme) {
       marginBottom: 28,
       lineHeight: 22,
     },
+    input: {
+      height: 54,
+      borderWidth: BORDER_WIDTH.regular,
+      borderColor: theme.color.inkFaint,
+      borderRadius: BORDER_RADIUS,
+      paddingHorizontal: 16,
+      fontSize: 16,
+      color: theme.color.ink,
+      marginBottom: 14,
+      backgroundColor: theme.color.bg,
+    },
+    phoneInputWrap: {
+      marginTop: 24,
+      marginBottom: 14,
+    },
     otpInput: {
       textAlign: 'center',
       fontSize: 24,
       fontWeight: '700',
       letterSpacing: 6,
-      marginBottom: 14,
-    },
-    forgotBackBtn: {
-      marginBottom: 20,
-    },
-    forgotBackText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: theme.color.ink,
-    },
-    forgotLinkInline: {
-      alignItems: 'flex-end',
-      marginTop: -4,
-    },
-    forgotLink: {
-      alignItems: 'center',
-      paddingVertical: 16,
-    },
-    forgotLinkText: {
-      fontSize: 14,
-      color: theme.color.ink,
-      fontWeight: '500',
     },
     submitButton: {
       height: 54,
@@ -722,22 +550,25 @@ function makeStyles(theme: VarsTheme) {
       marginTop: 4,
     },
     submitDisabled: {
-      opacity: 0.6,
+      opacity: 0.5,
     },
     submitText: {
       color: theme.color.inverseInk,
       fontSize: 16,
       fontWeight: '700',
     },
+    secondaryAction: { alignItems: 'center', paddingVertical: 16 },
+    secondaryActionText: { fontSize: 14, color: theme.color.ink, fontWeight: '500' },
     terms: {
       fontSize: 12,
       color: theme.color.inkMuted,
       textAlign: 'center',
       lineHeight: 18,
+      marginTop: 16,
     },
     vendorLink: {
       alignItems: 'center',
-      marginTop: 28,
+      marginTop: 20,
       paddingVertical: 14,
     },
     vendorLinkText: {

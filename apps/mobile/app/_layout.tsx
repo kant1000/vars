@@ -24,6 +24,7 @@ import { ThemeProvider, useVarsTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/lib/supabase';
 import { hasAcceptedCurrentTerms } from '@/lib/termsGate';
 import { getVendorOnboardingStep, resumeOnboardingAt } from '@/lib/vendorOnboarding';
+import { getPendingReturnTo } from '@/lib/pendingReturnTo';
 import { useBiometricLock } from '@/lib/useBiometricLock';
 import { BiometricLockOverlay } from '@/components/BiometricLockOverlay';
 
@@ -103,7 +104,7 @@ function RootNavigator() {
     SplashScreen.hideAsync();
 
     if (isAuthenticated && needsPhone) {
-      router.replace('/auth/phone');
+      router.replace('/auth/login');
       return;
     }
     const route = segments.join('/');
@@ -180,13 +181,13 @@ function RootNavigator() {
 
   // Phone gate — handles auth state changes after the initial route is set.
   // Skips vendor routes: new vendors collect their phone in step-1-profile onboarding,
-  // not the customer /auth/phone screen.
+  // not the customer login screen's finish-account step.
   useEffect(() => {
     if (!appReady || !didInitRoute.current) return;
     if (isAuthenticated && needsPhone) {
       const route = segments.join('/');
-      if (route !== 'auth/phone' && !route.includes('vendor')) {
-        router.replace('/auth/phone');
+      if (route !== 'auth/login' && !route.includes('vendor')) {
+        router.replace('/auth/login');
       }
     }
   }, [isAuthenticated, needsPhone, appReady, segments]);
@@ -208,12 +209,12 @@ function RootNavigator() {
       if (url.includes('auth/callback')) {
         const { data: { session: existing } } = await supabase.auth.getSession();
         if (existing) {
-          router.replace('/(tabs)');
+          router.replace(((await getPendingReturnTo()) ?? '/(tabs)') as any);
           return;
         }
         const { data, error } = await supabase.auth.exchangeCodeForSession(url);
         if (!error && data.session) {
-          router.replace('/(tabs)');
+          router.replace(((await getPendingReturnTo()) ?? '/(tabs)') as any);
         }
       }
     };
@@ -243,7 +244,6 @@ function RootNavigator() {
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="(vendor-tabs)" />
       <Stack.Screen name="auth/login" options={{ presentation: 'modal' }} />
-      <Stack.Screen name="auth/phone" options={{ presentation: 'modal', gestureEnabled: false }} />
       <Stack.Screen name="vendor/[id]" />
       <Stack.Screen name="booking/[vendorId]" />
       <Stack.Screen name="consent/[photoId]" />
@@ -257,6 +257,8 @@ function RootNavigator() {
       <Stack.Screen name="terms-acceptance" options={{ gestureEnabled: false }} />
       <Stack.Screen name="delete-account" />
       <Stack.Screen name="privacy-data" />
+      <Stack.Screen name="favorites" />
+      <Stack.Screen name="customer-settings" />
       <Stack.Screen name="customer-care" />
       <Stack.Screen name="vendor-customer-care" />
       <Stack.Screen name="+not-found" />
