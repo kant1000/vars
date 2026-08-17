@@ -505,7 +505,7 @@ function Step2Location({
   serviceSummary, totalDurationBlocks, totalServiceKobo,
   slot, isAutoAccept,
   coords, locAddress, access, recipient,
-  vendorZone,
+  vendorBaseLocation,
   onPay, paying,
 }: {
   serviceSummary: string;
@@ -517,7 +517,7 @@ function Step2Location({
   locAddress: string;
   access: AccessDetails;
   recipient: RecipientDetails;
-  vendorZone: { lat: number; lng: number } | null;
+  vendorBaseLocation: { lat: number; lng: number } | null;
   onPay: () => void;
   paying: boolean;
 }) {
@@ -527,8 +527,8 @@ function Step2Location({
   const hasAccess = access.building || access.gateCode;
 
   const transportFeeKobo =
-    vendorZone != null
-      ? calcPreviewSurcharge(coords.lat, coords.lng, vendorZone.lat, vendorZone.lng)
+    vendorBaseLocation != null
+      ? calcPreviewSurcharge(coords.lat, coords.lng, vendorBaseLocation.lat, vendorBaseLocation.lng)
       : 0;
   const totalKobo = totalServiceKobo + transportFeeKobo;
 
@@ -763,7 +763,7 @@ export default function BookingFlow() {
   const [step, setStep] = useState(1);
   const [slot, setSlot] = useState<Date | null>(null);
   const [slotIsAutoAccept, setSlotIsAutoAccept] = useState(false);
-  const [vendorZone, setVendorZone] = useState<{ lat: number; lng: number } | null>(null);
+  const [vendorBaseLocation, setVendorBaseLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   const [step2View, setStep2View] = useState<'review' | 'location'>('review');
   const [access, setAccess] = useState<AccessDetails>(EMPTY_ACCESS);
@@ -813,13 +813,11 @@ export default function BookingFlow() {
   useEffect(() => {
     if (!vendorId) return;
     supabase
-      .from('vendors')
-      .select('auto_accept_zone_lat, auto_accept_zone_lng')
-      .eq('id', vendorId)
+      .rpc('get_vendor_base_location', { p_vendor_id: vendorId })
       .maybeSingle()
       .then(({ data }) => {
-        if (data?.auto_accept_zone_lat != null && data?.auto_accept_zone_lng != null) {
-          setVendorZone({ lat: data.auto_accept_zone_lat, lng: data.auto_accept_zone_lng });
+        if (data?.lat != null && data?.lng != null) {
+          setVendorBaseLocation({ lat: data.lat, lng: data.lng });
         }
       });
   }, [vendorId]);
@@ -1089,7 +1087,7 @@ export default function BookingFlow() {
               locAddress={locAddress}
               access={access}
               recipient={recipient}
-              vendorZone={vendorZone}
+              vendorBaseLocation={vendorBaseLocation}
               onPay={handlePay}
               paying={paying}
             />

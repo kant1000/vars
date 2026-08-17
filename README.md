@@ -198,6 +198,7 @@ Twenty migration files build up the schema incrementally:
 | `20260816195409_vendor_kyc_nin_hash` | Adds `kyc_nin_hash TEXT` to `vendors` with a partial unique index on `verified` vendors — detects the same NIN passing KYC on more than one vendor account without ever storing the raw NIN |
 | `20260816201838_phone_identity_registry` | Replaces the `20260816195403` trigger with `phone_identity_registry`, a table backed by a real PRIMARY KEY across `profiles` + `vendors` phone numbers — resolves duplicate-key inserts atomically (closes a race the trigger version had) and catches same-table and cross-table duplicates through one mechanism. Also fixes `normalise_nigerian_phone` not stripping separators from `+`-prefixed numbers, and makes `NIN_HASH_PEPPER` fail closed instead of defaulting to `''`. |
 | `20260816203310_phone_registry_message_and_updated_at` | Reworks the duplicate-phone exception message to be role-agnostic (was misleadingly worded for cross-role-only collisions); fixes `updated_at` never refreshing on a no-op re-save of the same phone by the same account |
+| `20260819060001_get_vendor_base_location` | Creates `get_vendor_base_location(p_vendor_id)`, extracting `vendors.base_location` (PostGIS geography) as plain lat/lng via `ST_Y`/`ST_X`, mirroring the same extraction already used by `get_nearby_vendors`. Fixes the transport-surcharge calc, which was reading the unrelated `auto_accept_zone_lat/lng` instead. |
 
 ### Key Tables
 
@@ -674,7 +675,7 @@ After an auto-accepted booking is created, the vendor has a **5-minute grace win
 
 ### Transport Surcharge (Distance-Based)
 
-When a customer's location exceeds the **base operating radius of 5 km** from the vendor's zone centre, a distance-based surcharge is added to the Paystack charge. The surcharge is calculated server-side in `paystack-initialize` using the Haversine formula and stored on the booking row (`transport_fee_kobo`, `distance_km`). The client never sends the surcharge — the server derives and stores it, and `paystack-webhook` reads it back from the booking row in the database.
+When a customer's location exceeds the **base operating radius of 5 km** from the vendor's base location, a distance-based surcharge is added to the Paystack charge. The surcharge is calculated server-side in `paystack-initialize` using the Haversine formula against `vendors.base_location` (fetched via the `get_vendor_base_location` RPC, since it's a PostGIS geography column) and stored on the booking row (`transport_fee_kobo`, `distance_km`). The client never sends the surcharge — the server derives and stores it, and `paystack-webhook` reads it back from the booking row in the database. `base_location` is set once at vendor onboarding and is the same field the discovery feed uses for proximity sort — deliberately distinct from `auto_accept_zone_lat/lng`, an unrelated opt-in field for the Auto-Accept feature (see below) that used to be misread for this calculation (fixed 2026-08-18).
 
 | Distance over 5 km | Surcharge | Pre-buffer slots |
 |---|---|---|

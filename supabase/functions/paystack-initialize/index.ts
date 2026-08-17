@@ -171,9 +171,6 @@ Deno.serve(async (req: Request) => {
         is_active,
         vendor:vendors(
           id, full_name, email, push_token, is_active, is_suspended, is_online, is_restricted,
-          auto_accept_enabled, auto_accept_paused_due_to_drift,
-          auto_accept_zone_confirmed_date, auto_accept_zone_lat,
-          auto_accept_zone_lng, auto_accept_zone_radius_km,
           paystack_subaccount_code, pioneer, pioneer_bookings_completed
         )
       `)
@@ -232,12 +229,16 @@ Deno.serve(async (req: Request) => {
       return errorResponse('This time slot is no longer available');
     }
 
-    // 5. Transport surcharge
+    // 5. Transport surcharge — measured against the vendor's base location,
+    // not the unrelated (optional, ephemeral) auto-accept zone pin.
+    const { data: vendorBaseLocation } = await supabase
+      .rpc('get_vendor_base_location', { p_vendor_id: vendorIds[0] })
+      .maybeSingle();
     const { transportFeeKobo, distanceKm, preBufferSlots } = calcTransportSurcharge(
       user_location_lat as number,
       user_location_lng as number,
-      (vendor.auto_accept_zone_lat as number) ?? null,
-      (vendor.auto_accept_zone_lng as number) ?? null
+      vendorBaseLocation?.lat ?? null,
+      vendorBaseLocation?.lng ?? null
     );
     const totalKobo = totalServiceKobo + transportFeeKobo;
 
