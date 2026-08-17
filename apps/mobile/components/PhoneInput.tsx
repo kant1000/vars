@@ -64,12 +64,15 @@ export function PhoneInput({ value, country, onChangeValue, onChangeCountry, aut
         />
       </View>
 
-      {value.length > 0 && value.length < 10 && (
-        <Text style={styles.helper}>{10 - value.length} more digit{10 - value.length === 1 ? '' : 's'}</Text>
-      )}
-      {showError && (
-        <Text style={styles.error}>Check this is a valid {selected.label} mobile number</Text>
-      )}
+      {/* Always-mounted, fixed-height slot — helper/error text changes on every
+          keystroke, so the Continue button below must never jitter with it. */}
+      <View style={styles.helperSlot}>
+        {showError ? (
+          <Text style={styles.error}>Check this is a valid {selected.label} mobile number</Text>
+        ) : value.length > 0 && value.length < 10 ? (
+          <Text style={styles.helper}>{10 - value.length} more digit{10 - value.length === 1 ? '' : 's'}</Text>
+        ) : null}
+      </View>
 
       <Modal transparent visible={pickerOpen} animationType="fade" onRequestClose={() => setPickerOpen(false)}>
         <Pressable style={styles.overlay} onPress={() => setPickerOpen(false)}>
@@ -108,8 +111,9 @@ function makeStyles(theme: VarsTheme) {
       backgroundColor: theme.color.bg,
     },
     inputError: { borderColor: theme.color.accentRed },
-    helper: { fontSize: 13, color: theme.color.inkMuted, marginTop: 6, marginLeft: 4 },
-    error: { fontSize: 13, color: theme.color.accentRed, marginTop: 6, marginLeft: 4 },
+    helperSlot: { minHeight: 19, marginTop: 6, marginLeft: 4 },
+    helper: { fontSize: 13, color: theme.color.inkMuted },
+    error: { fontSize: 13, color: theme.color.accentRed },
     overlay: {
       flex: 1, backgroundColor: theme.color.overlay,
       alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28,

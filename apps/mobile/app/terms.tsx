@@ -143,7 +143,7 @@ export default function TermsScreen() {
         <Section title="Rescheduling">
           <Body>
             A stylist may propose a reschedule. You have one hour to accept or decline. If you
-            decline or don't respond, the booking is cancelled and you receive a full refund.
+            decline or don't respond, the booking is cancelled. No charge was made.
           </Body>
         </Section>
 

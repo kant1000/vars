@@ -7,9 +7,10 @@ export type VendorStatus = 'online' | 'busy' | 'offline';
 interface Props {
   status: VendorStatus;
   size?: number;
+  bordered?: boolean;
 }
 
-export function StatusDot({ status, size = 14 }: Props) {
+export function StatusDot({ status, size = 14, bordered = true }: Props) {
   const bg =
     status === 'online' ? '#22C55E'
     : status === 'busy' ? '#EF4444'
@@ -22,7 +23,7 @@ export function StatusDot({ status, size = 14 }: Props) {
         height: size,
         borderRadius: size / 2,
         backgroundColor: bg,
-        borderWidth: Math.max(BORDER_WIDTH.regular, size * 0.11),
+        borderWidth: bordered ? Math.max(BORDER_WIDTH.regular, size * 0.11) : 0,
         borderColor: '#FFFFFF',
         alignItems: 'center',
         justifyContent: 'center',

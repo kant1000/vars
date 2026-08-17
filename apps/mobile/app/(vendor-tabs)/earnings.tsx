@@ -96,6 +96,7 @@ export default function EarningsScreen() {
       .from('bookings')
       .select(`
         id, service_name, service_price_kobo, transport_fee_kobo, scheduled_at, status,
+        recipient_name,
         profiles:user_id(full_name),
         payout_history(vendor_amount_kobo)
       `)
@@ -117,7 +118,7 @@ export default function EarningsScreen() {
       const vendorAmount = payoutRow?.vendor_amount_kobo ?? (vendorIsPioneer ? totalKobo : Math.round(totalKobo * 0.8));
       return {
         id: b.id,
-        client_name: b.profiles?.full_name ?? 'Client',
+        client_name: b.recipient_name || b.profiles?.full_name || 'Client',
         service_name: b.service_name,
         scheduled_at: b.scheduled_at,
         amount_kobo: vendorAmount,

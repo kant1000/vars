@@ -10,7 +10,7 @@
 // ============================================================
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert, StyleSheet, Text,
+  Alert, LayoutAnimation, StyleSheet, Text,
   TouchableOpacity, View, ScrollView,
 } from 'react-native';
 import { ConfirmModal } from '@/components/ConfirmModal';
@@ -258,7 +258,11 @@ export default function VendorZoneSetup() {
                 You'll have 5 minutes to cancel if needed.
               </Text>
             </View>
-            <VarsSwitch value={autoEnabled} onChange={setAutoEnabled} theme={theme} />
+            <VarsSwitch
+              value={autoEnabled}
+              onChange={(v) => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setAutoEnabled(v); }}
+              theme={theme}
+            />
           </View>
 
           {/* Info note */}

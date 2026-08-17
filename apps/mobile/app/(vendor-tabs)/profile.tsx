@@ -5,7 +5,7 @@
 // ============================================================
 import React, { useCallback, useMemo, useState } from 'react';
 import {
-  Alert, Dimensions, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View,
+  Alert, Dimensions, LayoutAnimation, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
@@ -201,6 +201,7 @@ export default function VendorProfileScreen() {
         throw error;
       }
 
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       await loadAll();
     } catch (err: any) {
       Alert.alert('Upload failed', err.message ?? 'Could not upload photo.');
@@ -218,6 +219,7 @@ export default function VendorProfileScreen() {
     try {
       await deletePortfolioPhoto(photo.storage_path);
       await supabase.from('portfolio_photos').delete().eq('id', photo.id);
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setPhotos((prev) => prev.filter((p) => p.id !== photo.id));
     } catch (err: any) {
       Alert.alert('Error', err.message ?? 'Could not delete photo.');

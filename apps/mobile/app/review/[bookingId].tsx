@@ -7,7 +7,7 @@
 // ============================================================
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Alert, KeyboardAvoidingView,
+  Alert, KeyboardAvoidingView, LayoutAnimation,
   Platform, ScrollView, StyleSheet, Text,
   TextInput, TouchableOpacity, View,
 } from 'react-native';
@@ -151,7 +151,11 @@ export default function ReviewScreen() {
           <Text style={s.sectionLabel}>How would you rate your experience? <Text style={s.required}>*</Text></Text>
           <View style={s.stars}>
             {[1, 2, 3, 4, 5].map((n) => (
-              <TouchableOpacity key={n} onPress={() => setRating(n)} activeOpacity={0.7}>
+              <TouchableOpacity
+                key={n}
+                onPress={() => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setRating(n); }}
+                activeOpacity={0.7}
+              >
                 {n <= rating
                   ? <StarFilledIcon size={44} color={Colors.star} />
                   : <StarEmptyIcon size={44} color={Colors.starEmpty} />
@@ -178,14 +182,13 @@ export default function ReviewScreen() {
             multiline
             numberOfLines={4}
             maxLength={500}
+            textAlignVertical="top"
           />
           <Text style={s.charCount}>{comment.length}/500</Text>
 
-          <View style={s.note}>
-            <Text style={s.noteText}>
-              Your review is public and helps other customers choose the right stylist.
-            </Text>
-          </View>
+          <Text style={s.noteText}>
+            Your review is public and helps other customers choose the right stylist.
+          </Text>
 
           {/* Submit */}
           <TouchableOpacity
@@ -256,8 +259,7 @@ function makeStyles(theme: VarsTheme) {
     },
     charCount: { fontSize: 12, color: theme.color.inkMuted, textAlign: 'right', marginTop: -10 },
 
-    note: { backgroundColor: Colors.primaryLight, borderRadius: 5, padding: 12 },
-    noteText: { fontSize: 13, color: Colors.primary, lineHeight: 18 },
+    noteText: { fontSize: 13, color: theme.color.inkMuted, lineHeight: 18 },
 
     submitBtn: {
       height: 56, backgroundColor: theme.color.ink,

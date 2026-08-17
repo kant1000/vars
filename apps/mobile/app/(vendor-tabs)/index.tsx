@@ -421,8 +421,10 @@ function ActiveCard({
         title={isInGracePeriod ? 'Cancel penalty-free?' : 'Cancel this booking?'}
         body={
           isInGracePeriod
-            ? 'This booking was auto-accepted. Cancelling now is penalty-free: the customer gets a full refund with no impact on your record.'
-            : 'The customer will receive a full refund. Your cancellation count will be tracked.'
+            ? 'This booking was auto-accepted. Cancelling now is penalty-free: no charge has been made to the customer, and there\'s no impact on your record.'
+            : booking.status === BOOKING_STATUS.ACCEPTED
+              ? 'No charge has been made to the customer yet. Your cancellation count will be tracked.'
+              : 'The customer will receive a full refund. Your cancellation count will be tracked.'
         }
         confirmLabel="Cancel booking"
         dismissLabel="Keep booking"
@@ -751,6 +753,7 @@ export default function VendorJobsScreen() {
         id, status, service_name, service_price_kobo, transport_fee_kobo, distance_km,
         service_duration_blocks, scheduled_at, user_location_address, created_at, phone_revealed,
         auto_accepted, gate_fired, auto_accept_grace_expires_at,
+        recipient_name, recipient_phone,
         profiles(full_name, phone_number)
       `)
       .order('scheduled_at', { ascending: true })
@@ -764,6 +767,7 @@ export default function VendorJobsScreen() {
         id, status, service_name, service_price_kobo, transport_fee_kobo, distance_km,
         service_duration_blocks, scheduled_at, user_location_address, created_at, phone_revealed,
         auto_accepted, gate_fired, auto_accept_grace_expires_at,
+        recipient_name, recipient_phone,
         profiles(full_name, phone_number)
       `)
       .in('status', [BOOKING_STATUS.COMPLETED, BOOKING_STATUS.CANCELLED, BOOKING_STATUS.EXPIRED])
@@ -781,8 +785,10 @@ export default function VendorJobsScreen() {
       scheduled_at: b.scheduled_at,
       user_location_address: b.user_location_address,
       created_at: b.created_at,
-      customer_name: b.profiles?.full_name ?? 'Customer',
-      customer_phone: b.profiles?.phone_number ?? null,
+      // A "booking for someone else" carries its own name/phone — show the
+      // actual recipient the vendor will meet, not the account holder's.
+      customer_name: b.recipient_name || b.profiles?.full_name || 'Customer',
+      customer_phone: b.recipient_name ? b.recipient_phone : (b.profiles?.phone_number ?? null),
       phone_revealed: b.phone_revealed,
       auto_accepted: b.auto_accepted ?? false,
       gate_fired: b.gate_fired ?? false,
@@ -1181,12 +1187,8 @@ function makeStylesC(theme: VarsTheme) {
     // flowBtn's background is a per-status semantic color set inline (never theme-reactive) -
     // white text stays fixed to match.
     flowBtnText: { fontSize: 15, fontWeight: '700', color: '#FFF' },
-    // waitingBox/gateWindowBanner keep the static primary/primaryLight tint pair -
-    // no dark-mode-safe "tinted surface" token exists yet.
-    waitingBox: {
-      backgroundColor: Colors.primaryLight, borderRadius: 5, padding: 10, marginTop: 4,
-    },
-    waitingText: { fontSize: 12, color: Colors.primary, lineHeight: 17 },
+    waitingBox: { marginTop: 4 },
+    waitingText: { fontSize: 12, color: theme.color.inkMuted, lineHeight: 17 },
 
     btnDisabled: { opacity: 0.5 },
     inlineError: { fontSize: 12, color: theme.color.accentRed, marginTop: 6, textAlign: 'center' },
@@ -1227,11 +1229,8 @@ function makeStylesC(theme: VarsTheme) {
     gateConfirmingBody: { fontSize: 12, color: theme.color.inkMuted, lineHeight: 17 },
 
     // Gate window banner (shown when booking is accepted but gate window not yet open)
-    gateWindowBanner: {
-      backgroundColor: Colors.primaryLight, borderRadius: BORDER_RADIUS,
-      padding: 10, marginTop: 8,
-    },
-    gateWindowText: { fontSize: 12, color: Colors.primary, lineHeight: 17 },
+    gateWindowBanner: { marginTop: 8 },
+    gateWindowText: { fontSize: 12, color: theme.color.inkMuted, lineHeight: 17 },
 
     // Restriction wall
     restrictTitle: { fontSize: 22, fontWeight: '800', color: theme.color.accentRed, marginBottom: 16, textAlign: 'center' },
@@ -1241,11 +1240,8 @@ function makeStylesC(theme: VarsTheme) {
       borderRadius: BORDER_RADIUS, alignItems: 'center', justifyContent: 'center',
     },
     restrictClaimBtnText: { color: theme.color.inverseInk, fontSize: 16, fontWeight: '800' },
-    restrictClaimedBox: {
-      backgroundColor: Colors.primaryLight, borderRadius: BORDER_RADIUS,
-      padding: 16, marginTop: 8,
-    },
-    restrictClaimedText: { fontSize: 14, color: Colors.primary, textAlign: 'center', lineHeight: 20 },
+    restrictClaimedBox: { marginTop: 8 },
+    restrictClaimedText: { fontSize: 14, color: theme.color.inkMuted, textAlign: 'center', lineHeight: 20 },
 
     // Rows
     row: {
@@ -1265,11 +1261,11 @@ function makeStylesC(theme: VarsTheme) {
 
     blockBanner: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-      backgroundColor: Colors.primaryLight, paddingHorizontal: 16, paddingVertical: 10,
+      paddingHorizontal: 16, paddingVertical: 10,
       borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint, gap: 8,
     },
-    blockBannerText: { flex: 1, fontSize: 13, color: Colors.primary, fontWeight: '500', lineHeight: 18 },
-    blockBannerLink: { fontSize: 13, fontWeight: '700', color: Colors.primary, textDecorationLine: 'underline' },
+    blockBannerText: { flex: 1, fontSize: 13, color: theme.color.inkMuted, fontWeight: '500', lineHeight: 18 },
+    blockBannerLink: { fontSize: 13, fontWeight: '700', color: theme.color.ink, textDecorationLine: 'underline' },
 
     empty: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 40 },
     emptyTitle: { fontSize: 20, fontWeight: '700', color: theme.color.ink, marginBottom: 8 },

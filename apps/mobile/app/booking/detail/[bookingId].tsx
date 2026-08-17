@@ -6,7 +6,7 @@
 // ============================================================
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  RefreshControl, ScrollView,
+  Linking, RefreshControl, ScrollView,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -17,15 +17,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { supabase } from '@/lib/supabase';
-import { Colors, BORDER_WIDTH } from '@/constants/colors';
+import { Colors, BORDER_WIDTH, BORDER_RADIUS } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { useVarsTheme } from '@/contexts/ThemeContext';
-import { fmtPrice, fmtDuration, fmtTime, fmtDate, fmtDateTime } from '@/lib/format';
+import { StarFilledIcon } from '@/components/icons';
+import { StatusDot, VendorStatus } from '@/components/StatusDot';
+import { fmtPrice, fmtDuration, fmtTime, fmtDate, fmtDateTime, titleCase } from '@/lib/format';
 import { fetchWithRetry } from '@/lib/fetchWithRetry';
 import { useNetworkState } from '@/lib/useNetworkState';
 import { cacheSet, cacheGet } from '@/lib/cache';
 import { OfflineBanner } from '@/components/OfflineBanner';
-import { PinIcon } from '@/components/icons';
 import { BookingStatus, BOOKING_STATUS } from '@vars/shared';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
@@ -40,7 +41,25 @@ interface BookingDetail {
   service_price_kobo: number;
   scheduled_at: string;
   vendor_name: string;
+  // Ungated vendor profile fields (safe to read via an open join, unlike
+  // phone/legal name below) — power the vendor header card at the top.
+  vendor_profile_image_url: string | null;
+  vendor_kyc_verified_at: string | null;
+  vendor_avg_rating: number;
+  vendor_total_reviews: number;
+  vendor_pioneer: boolean;
+  vendor_is_online: boolean;
+  vendor_is_busy: boolean;
+  // vendor_phone/vendor_legal_name only ever reach the client through
+  // get_vendor_reveal_state, which returns null until its own gate has
+  // fired for this customer+vendor (e.g. 15 min before the appointment) —
+  // never fetched via an open join. See supabase/migrations/20260816000007.
   vendor_phone: string | null;
+  vendor_legal_name: string | null;
+  reveal_pending: boolean;
+  phone_revealed: boolean;
+  phone_reveal_at: string | null;
+  auto_release_at: string | null;
   user_location_address: string | null;
   user_location_lat: number | null;
   user_location_lng: number | null;
@@ -55,8 +74,10 @@ interface BookingDetail {
   arrived_at: string | null;
   service_rendered_at: string | null;
   completed_at: string | null;
-  cancelled_at: string | null;
-  expired_at: string | null;
+  // bookings has no cancelled_at/expired_at columns — updated_at doubles as
+  // the timestamp for those two terminal states (it's set at the same
+  // moment the status transitions).
+  updated_at: string;
   // Payment
   paystack_reference: string | null;
   vendor_id: string;
@@ -68,6 +89,10 @@ interface BookingDetail {
 // ── Silent input filter ───────────────────────────────────────
 function sanitize(text: string, maxLen: number) {
   return text.replace(/@/g, '').replace(/(\d[\s.\-]{0,2}){7,}/g, '').replace(/\d{7,}/g, '').slice(0, maxLen);
+}
+
+function minutesUntil(iso: string) {
+  return Math.round((new Date(iso).getTime() - Date.now()) / 60000);
 }
 
 
@@ -94,7 +119,7 @@ const STATUS_CONFIG: Record<BookingStatus, { label: string; color: string; descr
   service_rendered:     { label: 'Service complete',       color: Colors.primary,         description: 'Confirm below to release payment to your stylist.' },
   completed:            { label: 'Completed',              color: Colors.statusCompleted, description: 'Service complete. Payment has been released.' },
   cancelled:            { label: 'Cancelled',              color: Colors.statusCancelled, description: 'This booking was cancelled.' },
-  expired:              { label: 'Expired',                color: Colors.statusExpired,   description: 'This booking expired. You\'ve been fully refunded.' },
+  expired:              { label: 'Expired',                color: Colors.statusExpired,   description: 'This booking expired. No payment was taken.' },
   disputed:             { label: 'Under review',           color: Colors.statusDisputed,  description: 'This booking is under review by the VARS team.' },
   rescheduled_pending:  { label: 'New time suggested',     color: Colors.statusPending,   description: 'Your stylist suggested a new time. Review it below.' },
 };
@@ -111,14 +136,14 @@ function buildTimeline(b: BookingDetail): TimelineStep[] {
 
   if (s === BOOKING_STATUS.CANCELLED) {
     return [
-      { label: 'Booking placed',  ts: b.created_at,    reached: true  },
-      { label: 'Cancelled',       ts: b.cancelled_at,  reached: true  },
+      { label: 'Booking placed',  ts: b.created_at,   reached: true  },
+      { label: 'Cancelled',       ts: b.updated_at,   reached: true  },
     ];
   }
   if (s === BOOKING_STATUS.EXPIRED) {
     return [
       { label: 'Booking placed',  ts: b.created_at,   reached: true  },
-      { label: 'Expired',         ts: b.expired_at,   reached: true  },
+      { label: 'Expired',         ts: b.updated_at,   reached: true  },
     ];
   }
   if (s === BOOKING_STATUS.DISPUTED) {
@@ -193,23 +218,6 @@ function makeStylesTl(theme: VarsTheme) {
     labelReached: { color: theme.color.ink },
     ts: { fontSize: 12, color: theme.color.inkMuted, marginTop: 2 },
   });
-}
-
-// ── Map thumbnail (non-interactive) ──────────────────────────
-function LocationMap({ lat, lng }: { lat: number; lng: number }) {
-  const { theme } = useVarsTheme();
-  const s = useMemo(() => makeStyles(theme), [theme]);
-  return (
-    <MapView
-      style={s.mapThumb}
-      provider={PROVIDER_DEFAULT}
-      region={{ latitude: lat, longitude: lng, latitudeDelta: 0.003, longitudeDelta: 0.003 }}
-      scrollEnabled={false} zoomEnabled={false} rotateEnabled={false} pitchEnabled={false}
-      liteMode={true}
-    >
-      <Marker coordinate={{ latitude: lat, longitude: lng }} />
-    </MapView>
-  );
 }
 
 // ── Live tracking map (on_way status) ────────────────────────
@@ -299,6 +307,83 @@ function LiveTrackingMap({
           <Text style={s.liveLoadingText}>Locating your stylist…</Text>
         </View>
       )}
+    </View>
+  );
+}
+
+// ── Vendor header card (avatar + name + rating, no price line — this
+// screen already shows the booked service/price via BookingLineSummary) ──
+const VENDOR_AVATAR_SIZE = 60;
+
+function BookingVendorHeader({ booking }: { booking: BookingDetail }) {
+  const { theme } = useVarsTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
+  return (
+    <TouchableOpacity
+      style={s.vendorHeaderCard}
+      activeOpacity={0.88}
+      onPress={() => router.push({ pathname: '/vendor/[id]', params: { id: booking.vendor_id } })}
+    >
+      <View style={s.vendorHeaderAvatarWrap}>
+        {booking.vendor_profile_image_url ? (
+          <Image
+            source={{
+              uri: booking.vendor_kyc_verified_at
+                ? `${booking.vendor_profile_image_url}?v=${encodeURIComponent(booking.vendor_kyc_verified_at)}`
+                : booking.vendor_profile_image_url,
+            }}
+            style={s.vendorHeaderAvatar}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+          />
+        ) : (
+          <View style={[s.vendorHeaderAvatar, s.vendorHeaderAvatarFallback]}>
+            <Text style={s.vendorHeaderAvatarInitial}>{booking.vendor_name?.[0]?.toUpperCase() ?? '?'}</Text>
+          </View>
+        )}
+        {booking.vendor_pioneer && (
+          <View style={s.vendorHeaderPioneerDot}>
+            <StarFilledIcon size={16} color={Colors.badgePioneer} strokeColor={theme.color.ink} />
+          </View>
+        )}
+        <View style={s.vendorHeaderStatusDot}>
+          <StatusDot
+            status={(booking.vendor_is_busy ? 'busy' : booking.vendor_is_online ? 'online' : 'offline') as VendorStatus}
+            size={14}
+            bordered={false}
+          />
+        </View>
+      </View>
+      <View style={s.vendorHeaderInfo}>
+        <Text style={s.vendorHeaderName} numberOfLines={1}>{booking.vendor_name}</Text>
+        {booking.vendor_total_reviews === 0 ? (
+          <Text style={s.vendorHeaderNew}>New on VARS</Text>
+        ) : (
+          <View style={s.vendorHeaderRatingRow}>
+            <StarFilledIcon size={13} color={Colors.star} />
+            <Text style={s.vendorHeaderRatingText}>
+              {booking.vendor_avg_rating.toFixed(1)}
+              <Text style={s.vendorHeaderReviewCount}> ({booking.vendor_total_reviews})</Text>
+            </Text>
+          </View>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+// ── Compact 3-line booking summary (service + duration, date & time, total) ──
+function BookingLineSummary({ booking }: { booking: BookingDetail }) {
+  const { theme } = useVarsTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
+  return (
+    <View style={s.card}>
+      <View style={s.lineSummaryRow}>
+        <Text style={s.lineSummaryService} numberOfLines={1}>{booking.service_name}</Text>
+        <Text style={s.lineSummaryDuration}>{fmtDuration(booking.service_duration_blocks)}</Text>
+      </View>
+      <Text style={s.lineSummaryDateTime}>{fmtDate(booking.scheduled_at)} · {fmtTime(booking.scheduled_at)}</Text>
+      <Text style={s.lineSummaryAmount}>{fmtPrice(booking.service_price_kobo)}</Text>
     </View>
   );
 }
@@ -407,21 +492,43 @@ export default function BookingDetailScreen() {
       .select(`
         id, status, vendor_id, service_name, service_duration_blocks, service_price_kobo,
         scheduled_at, suggested_scheduled_at, paystack_reference,
+        phone_revealed, phone_reveal_at, auto_release_at,
         user_location_address, user_location_lat, user_location_lng,
         access_building, access_floor, access_flat, access_code,
-        created_at, accepted_at, on_way_at, arrived_at,
-        service_rendered_at, completed_at, cancelled_at, expired_at,
-        vendors:vendor_id(full_name, phone_number)
+        created_at, updated_at, accepted_at, on_way_at, arrived_at,
+        service_rendered_at, completed_at,
+        vendors:vendor_id(full_name, profile_image_url, kyc_verified_at, avg_rating, total_reviews, pioneer, is_online, is_busy)
       `)
       .eq('id', bookingId)
       .single();
 
+    if (error) {
+      console.warn('[booking/detail] failed to load booking', bookingId, error);
+    }
     if (!error && data) {
+      const vendorId = (data as any).vendor_id as string;
+      // Legal name + phone number only ever reach the client through this
+      // RPC, which returns null for either field until its own gate has
+      // fired for this customer+vendor — never fetched via an open join.
+      const { data: revealData } = await supabase
+        .rpc('get_vendor_reveal_state', { p_vendor_id: vendorId })
+        .maybeSingle();
+      const reveal = revealData as { legal_name: string | null; phone_number: string | null; pending: boolean } | null;
+
       const fresh: BookingDetail = {
         ...data,
-        vendor_id: (data as any).vendor_id,
+        vendor_id: vendorId,
         vendor_name: (data as any).vendors?.full_name ?? 'Vendor',
-        vendor_phone: (data as any).vendors?.phone_number ?? null,
+        vendor_profile_image_url: (data as any).vendors?.profile_image_url ?? null,
+        vendor_kyc_verified_at: (data as any).vendors?.kyc_verified_at ?? null,
+        vendor_avg_rating: (data as any).vendors?.avg_rating ?? 0,
+        vendor_total_reviews: (data as any).vendors?.total_reviews ?? 0,
+        vendor_pioneer: (data as any).vendors?.pioneer ?? false,
+        vendor_is_online: (data as any).vendors?.is_online ?? false,
+        vendor_is_busy: (data as any).vendors?.is_busy ?? false,
+        vendor_phone: reveal?.phone_number ?? null,
+        vendor_legal_name: reveal?.legal_name ?? null,
+        reveal_pending: reveal?.pending ?? false,
         suggested_scheduled_at: (data as any).suggested_scheduled_at ?? null,
       } as BookingDetail;
       setBooking(fresh);
@@ -486,6 +593,12 @@ export default function BookingDetailScreen() {
   const hasAccess = booking.access_building || booking.access_floor || booking.access_flat || booking.access_code;
   const isTerminal = ([BOOKING_STATUS.COMPLETED, BOOKING_STATUS.CANCELLED, BOOKING_STATUS.EXPIRED, BOOKING_STATUS.DISPUTED] as BookingStatus[]).includes(booking.status);
 
+  const minsUntil = minutesUntil(booking.scheduled_at);
+  const showPhone = booking.phone_revealed && booking.vendor_phone;
+  const showPhoneCountdown = !booking.phone_revealed
+    && booking.status === BOOKING_STATUS.ACCEPTED
+    && minsUntil > 0 && minsUntil <= 30;
+
   return (
     <View style={[s.container, { paddingTop: insets.top }]}>
       <OfflineBanner visible={!isConnected} />
@@ -511,56 +624,64 @@ export default function BookingDetailScreen() {
             <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
           </View>
         )}
-        {/* Status hero */}
-        <View style={[s.statusHero, { borderBottomColor: cfg.color + '30' }]}>
-          <View style={[s.statusPill, { backgroundColor: cfg.color + '18' }]}>
-            <Text style={[s.statusPillText, { color: cfg.color }]}>{cfg.label}</Text>
-          </View>
-          <Text style={s.statusDescription}>{cfg.description}</Text>
-          {(booking.status === BOOKING_STATUS.PENDING || booking.status === BOOKING_STATUS.ACCEPTED) && (
-            <Text style={s.escrowNote}>
-              Payment is only taken when your stylist sets off, not before.
-            </Text>
-          )}
-        </View>
+        {/* Vendor header */}
+        <BookingVendorHeader booking={booking} />
 
-        {/* Booking summary card */}
+        {/* Booking summary — service/duration, date & time, total */}
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Booking</Text>
-          <View style={s.card}>
-            <SummaryRow label="Vendor"    value={booking.vendor_name} />
-            <SummaryRow label="Service"   value={booking.service_name} />
-            <SummaryRow label="Duration"  value={fmtDuration(booking.service_duration_blocks)} />
-            <SummaryRow label="Date"      value={fmtDate(booking.scheduled_at)} />
-            <SummaryRow label="Time"      value={fmtTime(booking.scheduled_at)} />
-            <View style={s.cardDivider} />
-            <SummaryRow label="Total"     value={fmtPrice(booking.service_price_kobo)} bold />
-          </View>
+          <BookingLineSummary booking={booking} />
         </View>
 
-        {/* Location — live map for on_way, static thumbnail otherwise */}
-        {hasMap && (
-          <View style={s.section}>
-            <Text style={s.sectionTitle}>
-              {booking.status === BOOKING_STATUS.ON_WAY ? 'Stylist tracking' : 'Location'}
+        {/* Legal name reveal */}
+        {booking.vendor_legal_name ? (
+          <View style={s.revealCard}>
+            <Text style={s.revealCardText}>{titleCase(booking.vendor_legal_name)}</Text>
+          </View>
+        ) : booking.reveal_pending ? (
+          <View style={s.revealCard}>
+            <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
+            <Text style={s.revealCardTextPending}>Confirming legal name</Text>
+          </View>
+        ) : null}
+
+        {/* Phone reveal */}
+        {showPhone && (
+          <TouchableOpacity
+            style={s.phoneCard}
+            onPress={() => Linking.openURL(`tel:${booking.vendor_phone}`)}
+          >
+            <Text style={s.phoneLabel}>📞 Call {booking.vendor_name.split(' ')[0]}</Text>
+            <Text style={s.phoneNum}>{booking.vendor_phone}</Text>
+          </TouchableOpacity>
+        )}
+        {showPhoneCountdown && (
+          <View style={s.phoneCountdown}>
+            <Text style={s.phoneCountdownText}>
+              📞 {booking.vendor_name.split(' ')[0]}'s number revealed {minsUntil} min before your appointment
             </Text>
-            {booking.status === BOOKING_STATUS.ON_WAY ? (
-              <LiveTrackingMap
-                vendorId={booking.vendor_id}
-                clientLat={booking.user_location_lat!}
-                clientLng={booking.user_location_lng!}
-              />
-            ) : (
-              <>
-                <LocationMap lat={booking.user_location_lat!} lng={booking.user_location_lng!} />
-                {booking.user_location_address ? (
-                  <View style={s.addressRow}>
-                    <PinIcon size={16} color={theme.color.ink} />
-                    <Text style={s.addressText}>{booking.user_location_address}</Text>
-                  </View>
-                ) : null}
-              </>
-            )}
+          </View>
+        )}
+
+        {/* Auto-release notice */}
+        {booking.status === BOOKING_STATUS.SERVICE_RENDERED && booking.auto_release_at && (
+          <View style={s.autoReleaseBox}>
+            <Text style={s.autoReleaseText}>
+              Payment auto-releases to your vendor at {fmtTime(booking.auto_release_at)} if you don't confirm.
+            </Text>
+          </View>
+        )}
+
+        {/* Live stylist tracking — on_way only. No static map/address for other
+            statuses: the address is already right there in Access details below,
+            a non-interactive thumbnail of it added nothing. */}
+        {hasMap && booking.status === BOOKING_STATUS.ON_WAY && (
+          <View style={s.section}>
+            <Text style={s.sectionTitle}>Stylist tracking</Text>
+            <LiveTrackingMap
+              vendorId={booking.vendor_id}
+              clientLat={booking.user_location_lat!}
+              clientLng={booking.user_location_lng!}
+            />
           </View>
         )}
 
@@ -569,13 +690,23 @@ export default function BookingDetailScreen() {
           <View style={s.section}>
             <Text style={s.sectionTitle}>Access details</Text>
             <View style={s.card}>
-              {booking.access_building && <SummaryRow label="Building"  value={booking.access_building} />}
+              {booking.access_building && <SummaryRow label="Address details" value={booking.access_building} />}
               {booking.access_floor    && <SummaryRow label="Floor"     value={booking.access_floor} />}
               {booking.access_flat     && <SummaryRow label="Flat"      value={booking.access_flat} />}
               {booking.access_code     && <SummaryRow label="Gate code" value={booking.access_code} />}
             </View>
           </View>
         )}
+
+        {/* Status description — sits right above the timeline it explains */}
+        <View style={[s.section, { paddingTop: 20 }]}>
+          <Text style={s.statusDescription}>{cfg.description}</Text>
+          {(booking.status === BOOKING_STATUS.PENDING || booking.status === BOOKING_STATUS.ACCEPTED) && (
+            <Text style={[s.escrowNote, { marginTop: 6 }]}>
+              Payment is only taken when your stylist sets off, not before.
+            </Text>
+          )}
+        </View>
 
         {/* Timeline */}
         <View style={s.section}>
@@ -730,6 +861,8 @@ export default function BookingDetailScreen() {
         enableDynamicSizing
         keyboardBehavior="interactive"
         android_keyboardInputMode="adjustResize"
+        backgroundStyle={{ backgroundColor: theme.color.bg }}
+        handleIndicatorStyle={{ backgroundColor: theme.color.inkFaint }}
       >
         <BottomSheetView style={[s.modalSheet, { paddingBottom: 32 }]}>
           <Text style={s.modalTitle}>Raise a dispute</Text>
@@ -801,14 +934,34 @@ function makeStyles(theme: VarsTheme) {
     headerBackText: { fontSize: 28, color: theme.color.ink, lineHeight: 32 },
     headerTitle: { fontSize: 17, fontWeight: '700', color: theme.color.ink },
 
-    statusHero: {
-      paddingHorizontal: 20, paddingVertical: 20,
-      borderBottomWidth: BORDER_WIDTH.thin, gap: 8,
-    },
-    statusPill: { alignSelf: 'flex-start', borderRadius: 5, paddingHorizontal: 8, paddingVertical: 3 },
-    statusPillText: { fontSize: 12, fontWeight: '700' },
     statusDescription: { fontSize: 14, color: theme.color.inkMuted, lineHeight: 20 },
     escrowNote: { fontSize: 13, color: theme.color.inkMuted, lineHeight: 18 },
+
+    vendorHeaderCard: {
+      flexDirection: 'row', gap: 12, alignItems: 'center',
+      marginHorizontal: 16, marginTop: 16,
+      backgroundColor: theme.color.bg,
+      borderRadius: BORDER_RADIUS, padding: 12,
+      borderWidth: BORDER_WIDTH.thin, borderColor: theme.color.inkFaint,
+    },
+    vendorHeaderAvatarWrap: { width: VENDOR_AVATAR_SIZE, height: VENDOR_AVATAR_SIZE },
+    vendorHeaderAvatar: { width: VENDOR_AVATAR_SIZE, height: VENDOR_AVATAR_SIZE, borderRadius: VENDOR_AVATAR_SIZE / 2 },
+    vendorHeaderAvatarFallback: { backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
+    vendorHeaderAvatarInitial: { fontSize: 22, fontWeight: '700', color: Colors.primary },
+    vendorHeaderStatusDot: { position: 'absolute', bottom: 1, right: 1 },
+    vendorHeaderPioneerDot: { position: 'absolute', top: 1, right: 1 },
+    vendorHeaderInfo: { flex: 1, gap: 6 },
+    vendorHeaderName: { fontSize: 16, fontWeight: '700', color: theme.color.ink },
+    vendorHeaderNew: { fontSize: 12, fontWeight: '600', color: Colors.badgeNew },
+    vendorHeaderRatingRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+    vendorHeaderRatingText: { fontSize: 12, fontWeight: '600', color: theme.color.ink, includeFontPadding: false },
+    vendorHeaderReviewCount: { fontWeight: '400', color: theme.color.inkMuted },
+
+    lineSummaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+    lineSummaryService: { fontSize: 15, fontWeight: '700', color: theme.color.ink, flex: 1, marginRight: 8 },
+    lineSummaryDuration: { fontSize: 14, color: theme.color.inkMuted },
+    lineSummaryDateTime: { fontSize: 14, color: theme.color.inkMuted, marginTop: 6 },
+    lineSummaryAmount: { fontSize: 18, fontWeight: '800', color: theme.color.accentBlue, marginTop: 8 },
 
     section: { paddingHorizontal: 16, paddingTop: 20 },
     sectionTitle: {
@@ -826,13 +979,30 @@ function makeStyles(theme: VarsTheme) {
     summaryValue: { fontSize: 14, fontWeight: '600', color: theme.color.ink, maxWidth: '60%', textAlign: 'right' },
     summaryValueBold: { fontSize: 16, fontWeight: '800', color: theme.color.accentBlue },
 
-    mapThumb: { width: '100%', height: 180, borderRadius: 5, overflow: 'hidden', marginBottom: 8 },
-    addressRow: {
-      flexDirection: 'row', alignItems: 'flex-start', gap: 6,
+    revealCard: {
+      marginHorizontal: 16, marginTop: 12,
+      flexDirection: 'row', alignItems: 'center', gap: 8,
       backgroundColor: theme.color.surface2, borderRadius: 5,
-      padding: 10, borderWidth: BORDER_WIDTH.thin, borderColor: theme.color.inkFaint,
+      padding: 12, borderWidth: BORDER_WIDTH.thin, borderColor: theme.color.inkFaint,
     },
-    addressText: { flex: 1, fontSize: 13, color: theme.color.ink, lineHeight: 18 },
+    revealCardText: { fontSize: 13, fontWeight: '600', color: theme.color.accentBlue },
+    revealCardTextPending: { fontSize: 13, color: theme.color.inkMuted },
+
+    phoneCard: {
+      marginHorizontal: 16, marginTop: 12,
+      backgroundColor: Colors.success + '15', borderRadius: 5,
+      padding: 16, borderWidth: BORDER_WIDTH.thin, borderColor: Colors.success + '40',
+    },
+    phoneLabel: { fontSize: 15, fontWeight: '700', color: Colors.success, marginBottom: 2 },
+    phoneNum: { fontSize: 18, fontWeight: '800', color: theme.color.ink },
+    phoneCountdown: {
+      marginHorizontal: 16, marginTop: 12,
+      backgroundColor: Colors.warning + '15', borderRadius: 5, padding: 12,
+    },
+    phoneCountdownText: { fontSize: 13, color: Colors.warning, fontWeight: '500' },
+
+    autoReleaseBox: { marginHorizontal: 16, marginTop: 12 },
+    autoReleaseText: { fontSize: 13, color: theme.color.inkMuted, lineHeight: 18 },
 
     errorBanner: { backgroundColor: theme.color.accentRed + '15', marginHorizontal: 16, marginTop: 16, borderRadius: 5, padding: 12 },
     errorText: { fontSize: 13, color: theme.color.accentRed, fontWeight: '500' },

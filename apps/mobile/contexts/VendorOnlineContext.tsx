@@ -13,7 +13,7 @@
 import React, {
   createContext, useCallback, useContext, useEffect, useState,
 } from 'react';
-import { AppState } from 'react-native';
+import { AppState, LayoutAnimation } from 'react-native';
 import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
 import { supabase } from '@/lib/supabase';
@@ -139,6 +139,7 @@ export function VendorOnlineProvider({ children }: { children: React.ReactNode }
   const toggleOnline = useCallback(async () => {
     if (!isOnline && blockReason) return;
     setTogglingOnline(true);
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setToggleError(null);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
@@ -150,6 +151,7 @@ export function VendorOnlineProvider({ children }: { children: React.ReactNode }
         .eq('id', user.id);
       if (error) {
         setIsOnline(!next);
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         setToggleError("Couldn't save, tap to retry");
       }
     }

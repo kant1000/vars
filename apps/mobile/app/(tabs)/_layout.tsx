@@ -3,12 +3,14 @@
 // Tabs: Discover, Bookings, Alerts, Profile
 // ============================================================
 import { Tabs } from 'expo-router';
-import { Platform } from 'react-native';
+import { Platform, View, StyleSheet } from 'react-native';
 import { useVarsTheme } from '@/contexts/ThemeContext';
 import { SearchIcon, CalendarIcon, BellIcon, PersonIcon } from '@/components/icons';
+import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 
 export default function TabLayout() {
   const { theme } = useVarsTheme();
+  const hasUnread = useUnreadNotifications();
 
   return (
     <Tabs
@@ -52,7 +54,10 @@ export default function TabLayout() {
           title: 'Alerts',
           tabBarLabel: 'Alerts',
           tabBarIcon: ({ color, size }) => (
-            <BellIcon size={size} color={color} />
+            <View>
+              <BellIcon size={size} color={color} />
+              {hasUnread && <View style={[styles.unreadDot, { backgroundColor: theme.color.accentBlue }]} />}
+            </View>
           ),
         }}
       />
@@ -69,3 +74,10 @@ export default function TabLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  unreadDot: {
+    position: 'absolute', top: -1, right: -3,
+    width: 8, height: 8, borderRadius: 4,
+  },
+});

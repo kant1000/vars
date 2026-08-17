@@ -81,7 +81,7 @@ function timeAgo(iso: string): string {
 // Navigate to the right screen based on notification data
 function resolveDeepLink(notif: AppNotification): string | null {
   if (notif.data?.screen) return notif.data.screen;
-  if (notif.booking_id)   return `/live/${notif.booking_id}`;
+  if (notif.booking_id)   return `/booking/detail/${notif.booking_id}`;
   return null;
 }
 

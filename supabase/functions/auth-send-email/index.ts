@@ -153,6 +153,17 @@ Deno.serve(async (req: Request) => {
         phone = vendor?.phone_number ?? null;
       }
 
+      // Fall back to profiles table for customers (email OTP requests —
+      // forgot-password re-auth, or the new customer identity-first login).
+      if (!phone && user.id) {
+        const { data: profile } = await db
+          .from('profiles')
+          .select('phone_number')
+          .eq('id', user.id)
+          .maybeSingle();
+        phone = profile?.phone_number ?? null;
+      }
+
       if (phone) {
         const phoneTo = phone.replace(/^\+/, '');
 

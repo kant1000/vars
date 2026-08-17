@@ -43,12 +43,14 @@ export const Colors = {
   overlay: 'rgba(0, 0, 0, 0.5)',
   overlayLight: 'rgba(0, 0, 0, 0.2)',
 
-  // Pioneer & auto-accept gold theme
+  // Auto-accept gold theme (unrelated to the Pioneer badge below)
   pioneerGold: '#D4A017',
   pioneerGoldDark: '#A07010',
   pioneerGoldDeep: '#7A6000',
   pioneerGoldSurface: '#FFF8E6',
-  badgePioneer: '#B8860B',
+
+  // Pioneer badge — VARS Blue, matches the accentBlue "VARS speaking" accent
+  badgePioneer: '#0A7AFF',
 
   // Offline banner & amber warning surfaces
   offlineBg: '#92400E',

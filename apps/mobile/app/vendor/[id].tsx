@@ -13,7 +13,6 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import ImageViewing from 'react-native-image-viewing';
-import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets, EdgeInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
@@ -22,10 +21,11 @@ import { VarsSkeleton } from '@/components/ui';
 import { useVarsTheme } from '@/contexts/ThemeContext';
 import { Colors, BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
-import { StarFilledIcon, StarEmptyIcon } from '@/components/icons';
+import { StarFilledIcon, StarEmptyIcon, LockIcon, HeartIcon, HeartFilledIcon } from '@/components/icons';
 import { CATEGORY_L2_LABELS } from '@vars/shared';
 import { sanitizeContent, titleCase } from '@/lib/format';
 import { StatusDot, VendorStatus } from '@/components/StatusDot';
+import { setPendingReturnTo } from '@/lib/pendingReturnTo';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const CAROUSEL_H = 240;
@@ -60,13 +60,11 @@ interface VendorProfile {
   full_name: string;
   kyc_legal_name: string | null;
   phone_number: string | null;
-  reveal_pending: boolean;
   bio: string | null;
   profile_image_url: string | null;
   kyc_verified_at: string | null;
   avg_rating: number;
   total_reviews: number;
-  base_location_text: string | null;
   badge_vars_choice: boolean;
   badge_top_rated: boolean;
   pioneer: boolean;
@@ -162,7 +160,7 @@ function VendorProfileSkeleton({
 export default function VendorProfileScreen() {
   const { id, returnTo } = useLocalSearchParams<{ id: string; returnTo?: string }>();
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const { theme } = useVarsTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
@@ -181,7 +179,7 @@ export default function VendorProfileScreen() {
 
     const [vendorRes, servicesRes, portfolioRes, reviewsRes, favRes, revealRes] = await Promise.all([
       supabase.from('vendors')
-        .select('id, full_name, bio, profile_image_url, kyc_verified_at, avg_rating, total_reviews, base_location_text, badge_vars_choice, badge_top_rated, pioneer, avg_response_minutes, is_online, is_busy')
+        .select('id, full_name, bio, profile_image_url, kyc_verified_at, avg_rating, total_reviews, badge_vars_choice, badge_top_rated, pioneer, avg_response_minutes, is_online, is_busy')
         .eq('id', id)
         .single(),
 
@@ -249,7 +247,6 @@ export default function VendorProfileScreen() {
       ...v,
       kyc_legal_name: reveal?.legal_name ?? null,
       phone_number: reveal?.phone_number ?? null,
-      reveal_pending: reveal?.pending ?? false,
       avg_response_minutes: v.avg_response_minutes ?? null,
       services, portfolio, reviews, is_favourited: !!favRes.data,
     });
@@ -343,60 +340,48 @@ export default function VendorProfileScreen() {
         onPress={toggleFavourite}
         disabled={togglingFav}
       >
-        <Text style={styles.favBtnText}>{vendor.is_favourited ? '♥' : '♡'}</Text>
+        {vendor.is_favourited
+          ? <HeartFilledIcon size={20} color={theme.color.accentBlue} />
+          : <HeartIcon size={20} color="#FFF" />
+        }
       </TouchableOpacity>
 
-      <ScrollView showsVerticalScrollIndicator={false} stickyHeaderIndices={[2]}>
-
-        {/* ── [0] Profile row ── */}
-        <View style={[styles.profileRow, { paddingTop: insets.top + 52 }]}>
-          <View style={styles.avatarWrap}>
-            {vendor.profile_image_url ? (
-              <Image
-                // expo-image caches by URL — cache-bust with kyc_verified_at
-                // (only changes when the photo actually could) so a
-                // re-verified vendor's fresh photo isn't hidden behind a
-                // stale cached copy of the same storage path.
-                source={{
-                  uri: vendor.kyc_verified_at
-                    ? `${vendor.profile_image_url}?v=${encodeURIComponent(vendor.kyc_verified_at)}`
-                    : vendor.profile_image_url,
-                }}
-                style={styles.avatar}
-                contentFit="cover"
-                cachePolicy="memory-disk"
-              />
-            ) : (
-              <View style={[styles.avatar, styles.avatarFallback]}>
-                <Text style={styles.avatarInitial}>{vendor.full_name?.[0]?.toUpperCase()}</Text>
-              </View>
-            )}
-            <View style={styles.statusDotWrap}>
-              <StatusDot
-                status={(vendor.is_busy ? 'busy' : vendor.is_online ? 'online' : 'offline') as VendorStatus}
-                size={16}
-              />
+      {/* ── Profile row — fixed above the scroll, never scrolls with the rest of the page ── */}
+      <View style={[styles.profileRow, { paddingTop: insets.top + 52 }]}>
+        <View style={styles.avatarWrap}>
+          {vendor.profile_image_url ? (
+            <Image
+              // expo-image caches by URL — cache-bust with kyc_verified_at
+              // (only changes when the photo actually could) so a
+              // re-verified vendor's fresh photo isn't hidden behind a
+              // stale cached copy of the same storage path.
+              source={{
+                uri: vendor.kyc_verified_at
+                  ? `${vendor.profile_image_url}?v=${encodeURIComponent(vendor.kyc_verified_at)}`
+                  : vendor.profile_image_url,
+              }}
+              style={styles.avatar}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+            />
+          ) : (
+            <View style={[styles.avatar, styles.avatarFallback]}>
+              <Text style={styles.avatarInitial}>{vendor.full_name?.[0]?.toUpperCase()}</Text>
             </View>
+          )}
+          <View style={styles.statusDotWrap}>
+            <StatusDot
+              status={(vendor.is_busy ? 'busy' : vendor.is_online ? 'online' : 'offline') as VendorStatus}
+              size={16}
+              bordered={false}
+            />
           </View>
+        </View>
 
-          <View style={styles.profileInfo}>
+        <View style={styles.profileInfo}>
+          {vendor.pioneer && <Text style={styles.pioneerLabel}>★ VARS PIONEER</Text>}
+          <View style={styles.nameRow}>
             <Text style={styles.name} numberOfLines={1}>{vendor.full_name}</Text>
-            {vendor.kyc_legal_name ? (
-              <Text style={styles.legalNameText} numberOfLines={1}>{titleCase(vendor.kyc_legal_name)}</Text>
-            ) : vendor.reveal_pending ? (
-              <View style={styles.revealPendingRow}>
-                <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
-                <Text style={styles.revealPendingText}>Confirming legal name</Text>
-              </View>
-            ) : null}
-            {vendor.phone_number ? (
-              <Text style={styles.legalNameText} numberOfLines={1}>{vendor.phone_number}</Text>
-            ) : vendor.reveal_pending ? (
-              <View style={styles.revealPendingRow}>
-                <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
-                <Text style={styles.revealPendingText}>Confirming phone number</Text>
-              </View>
-            ) : null}
             <View style={styles.ratingRow}>
               {vendor.total_reviews === 0 ? (
                 <Text style={styles.newOnVars}>New on VARS</Text>
@@ -408,15 +393,36 @@ export default function VendorProfileScreen() {
                 </>
               )}
             </View>
-            <View style={styles.badgeRow}>
-              {vendor.pioneer && <Badge label="★ Pioneer" color={Colors.badgePioneer} styles={styles} />}
-              {vendor.badge_vars_choice && <Badge label="VARS Choice" color={Colors.badgeVarsChoice} styles={styles} />}
-              {vendor.badge_top_rated && <Badge label="Top Rated" color={Colors.badgeTopRated} styles={styles} />}
-              <Badge label="Verified" color={Colors.badgeVerified} styles={styles} />
-            </View>
-            {vendor.bio ? <Text style={styles.bio} numberOfLines={3}>{sanitizeContent(vendor.bio, 150)}</Text> : null}
-            <Text style={styles.responseTime}>{formatAcceptTime(vendor.avg_response_minutes)}</Text>
           </View>
+          {vendor.kyc_legal_name ? (
+            <Text style={styles.legalNameText} numberOfLines={1}>{titleCase(vendor.kyc_legal_name)}</Text>
+          ) : (
+            <View style={styles.revealPendingRow}>
+              <Text style={styles.revealPendingText}>Full name:</Text>
+              <LockIcon size={11} color={theme.color.inkMuted} />
+            </View>
+          )}
+          {vendor.phone_number ? (
+            <Text style={styles.legalNameText} numberOfLines={1}>{vendor.phone_number}</Text>
+          ) : (
+            <View style={styles.revealPendingRow}>
+              <Text style={styles.revealPendingText}>Phone number:</Text>
+              <LockIcon size={11} color={theme.color.inkMuted} />
+            </View>
+          )}
+          <View style={styles.badgeRow}>
+            {vendor.badge_vars_choice && <Badge label="VARS Choice" color={Colors.badgeVarsChoice} styles={styles} />}
+            {vendor.badge_top_rated && <Badge label="Top Rated" color={Colors.badgeTopRated} styles={styles} />}
+          </View>
+        </View>
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false}>
+
+        {/* ── Bio + response time — own block, full width, left-aligned under the avatar ── */}
+        <View style={styles.bioSection}>
+          {vendor.bio ? <Text style={styles.bio} numberOfLines={3}>{sanitizeContent(vendor.bio, 150)}</Text> : null}
+          <Text style={styles.responseTime}>{formatAcceptTime(vendor.avg_response_minutes)}</Text>
         </View>
 
         {/* ── [1] Portfolio carousel ── */}
@@ -543,18 +549,26 @@ export default function VendorProfileScreen() {
           <TouchableOpacity
             style={styles.ctaButton}
             activeOpacity={0.88}
-            onPress={() =>
-              router.push({
-                pathname: '/booking/[vendorId]',
-                params: {
-                  vendorId: vendor.id,
-                  service_ids: JSON.stringify([...selectedServiceIds]),
-                  total_amount: String(totalKobo),
-                },
-              })
-            }
+            onPress={async () => {
+              const bookingParams = {
+                vendorId: vendor.id,
+                service_ids: JSON.stringify([...selectedServiceIds]),
+                total_amount: String(totalKobo),
+              };
+              if (!isAuthenticated) {
+                // Guest tapped Book — send them to log in first, then land
+                // straight back here with the same services selected.
+                const path = `/booking/${bookingParams.vendorId}?service_ids=${encodeURIComponent(bookingParams.service_ids)}&total_amount=${bookingParams.total_amount}`;
+                await setPendingReturnTo(path);
+                router.push('/auth/login');
+                return;
+              }
+              router.push({ pathname: '/booking/[vendorId]', params: bookingParams });
+            }}
           >
-            <Text style={styles.ctaText}>Book for {formatPrice(totalKobo)}</Text>
+            <Text style={styles.ctaText}>
+              {isAuthenticated ? `Book for ${formatPrice(totalKobo)}` : 'Log in / Sign up to book'}
+            </Text>
           </TouchableOpacity>
         </View>
       )}
@@ -591,15 +605,14 @@ function makeStyles(theme: VarsTheme) {
       backgroundColor: 'rgba(0,0,0,0.35)',
       alignItems: 'center', justifyContent: 'center',
     },
-    favBtnText: { color: '#FFF', fontSize: 20 },
 
     // Profile row
     profileRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',
       paddingHorizontal: 16,
-      paddingBottom: 16,
-      gap: 14,
+      paddingBottom: 14,
+      gap: 12,
       backgroundColor: theme.color.bg,
     },
     avatarWrap: { width: AVATAR_SIZE, height: AVATAR_SIZE },
@@ -609,20 +622,23 @@ function makeStyles(theme: VarsTheme) {
     avatarInitial: { fontSize: 28, fontWeight: '800', color: theme.color.inverseInk },
     profileInfo: { flex: 1, paddingTop: 2 },
     skeletonInfo: { flex: 1, paddingTop: 2, gap: 8 },
-    name: { fontSize: 20, fontWeight: '800', color: theme.color.ink, marginBottom: 2 },
+    pioneerLabel: { fontSize: 11, fontWeight: '800', color: Colors.badgePioneer, marginBottom: 2 },
+    nameRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 },
+    name: { fontSize: 20, fontWeight: '800', color: theme.color.ink, flex: 1, marginRight: 8 },
     legalNameText: { fontSize: 12, fontWeight: '600', color: theme.color.accentBlue, marginBottom: 6 },
     revealPendingRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
     revealPendingText: { fontSize: 12, color: theme.color.inkMuted },
-    ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginBottom: 6 },
+    ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 },
     starText: { color: Colors.star, fontSize: 13 },
     ratingText: { fontSize: 13, fontWeight: '700', color: theme.color.ink },
     reviewCount: { fontSize: 12, color: theme.color.inkMuted },
     newOnVars: { fontSize: 12, fontWeight: '600', color: Colors.badgeNew },
-    badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginBottom: 6 },
-    badge: { borderRadius: BORDER_RADIUS, paddingHorizontal: 7, paddingVertical: 3 },
-    badgeText: { fontSize: 10, fontWeight: '700' },
-    bio: { fontSize: 13, color: theme.color.inkMuted, lineHeight: 19 },
-    responseTime: { fontSize: 12, color: theme.color.inkMuted, marginTop: 4 },
+    badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 5 },
+    badge: { borderRadius: BORDER_RADIUS, paddingHorizontal: 8, paddingVertical: 4 },
+    badgeText: { fontSize: 12, fontWeight: '700' },
+    bioSection: { paddingHorizontal: 16, paddingBottom: 16, backgroundColor: theme.color.bg },
+    bio: { fontSize: 13, fontWeight: '500', color: theme.color.ink, lineHeight: 19 },
+    responseTime: { fontSize: 11, fontStyle: 'italic', color: theme.color.inkMuted, marginTop: 3 },
 
     // Carousel
     carouselEmpty: { height: 0 },
@@ -638,7 +654,7 @@ function makeStyles(theme: VarsTheme) {
       flexDirection: 'row', backgroundColor: theme.color.bg,
       borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
     },
-    sectionTab: { flex: 1, paddingVertical: 12, alignItems: 'center' },
+    sectionTab: { width: '50%', paddingVertical: 12, alignItems: 'center' },
     sectionTabActive: { borderBottomWidth: BORDER_WIDTH.thick, borderBottomColor: theme.color.ink },
     sectionTabText: { fontSize: 14, fontWeight: '600', color: theme.color.inkMuted },
     sectionTabTextActive: { color: theme.color.ink },

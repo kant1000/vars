@@ -1,13 +1,12 @@
 // ============================================================
 // VARS — User Profile & Settings (Phase 12)
-// Sections: avatar + name header, edit name/phone,
-//   booking history, favourites shortcut, sign out.
+// Sections: avatar + name header (display-only, editing lives in
+//   /customer-settings), booking history, favourites shortcut, sign out.
 // ============================================================
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
-  Alert, KeyboardAvoidingView,
-  Platform, RefreshControl, ScrollView, StyleSheet,
-  Text, TextInput, TouchableOpacity, View,
+  RefreshControl, ScrollView, StyleSheet,
+  Text, TouchableOpacity, View,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
@@ -19,11 +18,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useVarsTheme } from '@/contexts/ThemeContext';
 import { VarsSkeleton, VarsSwitch } from '@/components/ui';
 import { signOut } from '@/lib/auth';
-import { pickAndUploadImage } from '@/lib/storage';
 import { Colors, BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { fmtPrice, fmtLongDate } from '@/lib/format';
-import { HeartIcon, BellIcon, EditIcon, ChevronRightIcon } from '@/components/icons';
+import { HeartIcon, GearIcon, ChevronRightIcon } from '@/components/icons';
 import { BookingStatus } from '@vars/shared';
 
 interface ActiveBooking {
@@ -49,29 +47,15 @@ const STATUS_COLOR: Partial<Record<BookingStatus, string>> = {
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
-  const { user, profile, refreshProfile, isAuthenticated } = useAuth();
+  const { user, profile, isAuthenticated } = useAuth();
   const { theme, appearance, override, setOverride } = useVarsTheme();
   const s = useMemo(() => makeStyles(theme), [theme]);
 
-  const [editing, setEditing]         = useState(false);
-  const [name, setName]               = useState('');
-  const [phone, setPhone]             = useState('');
-  const [saving, setSaving]           = useState(false);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [showSignOutModal, setShowSignOutModal] = useState(false);
-  const [comingSoon, setComingSoon] = useState<{ title: string; body: string } | null>(null);
 
   const [bookings, setBookings]       = useState<ActiveBooking[]>([]);
   const [loadingBookings, setLoadingBookings] = useState(true);
   const [refreshing, setRefreshing]   = useState(false);
-
-  // Seed edit fields from profile
-  useEffect(() => {
-    if (profile) {
-      setName(profile.full_name ?? '');
-      setPhone((profile as any).phone_number ?? '');
-    }
-  }, [profile]);
 
   const loadBookings = useCallback(async () => {
     if (!user) return;
@@ -98,40 +82,6 @@ export default function ProfileScreen() {
   // Reload on every focus so the review state is fresh after returning from /review/[bookingId]
   useFocusEffect(useCallback(() => { loadBookings(); }, [loadBookings]));
 
-  const saveProfile = async () => {
-    if (!user || !name.trim()) return;
-    setSaving(true);
-    const { error } = await supabase
-      .from('profiles')
-      .update({ full_name: name.trim(), phone_number: phone.trim() })
-      .eq('id', user.id);
-    if (error) Alert.alert('Error', error.message);
-    else {
-      await refreshProfile();
-      setEditing(false);
-    }
-    setSaving(false);
-  };
-
-  const changePhoto = async () => {
-    if (!user) return;
-    setUploadingPhoto(true);
-    try {
-      const url = await pickAndUploadImage({
-        bucket: 'avatars',
-        path: `users/${user.id}/avatar`,
-      });
-      if (url) {
-        await supabase.from('profiles').update({ profile_photo_url: url }).eq('id', user.id);
-        await refreshProfile();
-      }
-    } catch (e: any) {
-      Alert.alert('Upload failed', e.message);
-    } finally {
-      setUploadingPhoto(false);
-    }
-  };
-
   const handleSignOut = () => setShowSignOutModal(true);
 
   if (!isAuthenticated) {
@@ -148,7 +98,7 @@ export default function ProfileScreen() {
   const activeBookings = bookings;
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <View style={{ flex: 1 }}>
       <ScrollView
         style={s.container}
         contentContainerStyle={{ paddingBottom: 60 }}
@@ -162,67 +112,32 @@ export default function ProfileScreen() {
             <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'light' : 'dark'} />
           </View>
         )}
-        {/* ── Avatar + name header ── */}
-        <View style={[s.header, { paddingTop: insets.top + 16 }]}>
-          <TouchableOpacity onPress={changePhoto} style={s.avatarWrap} disabled={uploadingPhoto}>
+        {/* ── Title header bar ── */}
+        <View style={[s.header, { paddingTop: insets.top + 14 }]}>
+          <Text style={s.headerTitle}>Profile</Text>
+        </View>
+
+        {/* ── Hero row: avatar left (display-only), name/phone + gear right ── */}
+        <View style={s.heroRow}>
+          <View style={s.heroAvatarWrap}>
             {(profile as any)?.profile_photo_url ? (
-              <Image source={{ uri: (profile as any).profile_photo_url }} style={s.avatar} contentFit="cover" cachePolicy="memory-disk" />
+              <Image source={{ uri: (profile as any).profile_photo_url }} style={s.heroAvatar} contentFit="cover" cachePolicy="memory-disk" />
             ) : (
-              <View style={[s.avatar, s.avatarFallback]}>
-                <Text style={s.avatarInitial}>{profile?.full_name?.[0]?.toUpperCase() ?? '?'}</Text>
+              <View style={[s.heroAvatar, s.heroAvatarFallback]}>
+                <Text style={s.heroAvatarText}>{profile?.full_name?.[0]?.toUpperCase() ?? '?'}</Text>
               </View>
             )}
-            <View style={s.editPhotoBadge}>
-              {uploadingPhoto
-                ? <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} />
-                : <EditIcon size={12} color={theme.color.inverseInk} />
-              }
-            </View>
-          </TouchableOpacity>
+          </View>
 
-          {!editing ? (
-            <>
-              <Text style={s.name}>{profile?.full_name || 'Your name'}</Text>
-              <Text style={s.phoneDisplay}>{(profile as any)?.phone_number || 'No phone set'}</Text>
-              <TouchableOpacity style={s.editBtn} onPress={() => setEditing(true)}>
-                <Text style={s.editBtnText}>Edit profile</Text>
+          <View style={s.heroInfo}>
+            <View style={s.heroNameRow}>
+              <Text style={s.heroName} numberOfLines={1}>{profile?.full_name || 'Your name'}</Text>
+              <TouchableOpacity onPress={() => router.push('/customer-settings' as any)} hitSlop={8} style={s.heroEditBtn} activeOpacity={0.7}>
+                <GearIcon size={22} color={theme.color.inkMuted} />
               </TouchableOpacity>
-            </>
-          ) : (
-            <View style={s.editForm}>
-              <TextInput
-                style={s.input}
-                placeholder="Full name"
-                placeholderTextColor={theme.color.inkMuted}
-                value={name}
-                onChangeText={setName}
-                autoFocus
-              />
-              <TextInput
-                style={s.input}
-                placeholder="Phone number"
-                placeholderTextColor={theme.color.inkMuted}
-                value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
-              />
-              <View style={s.editActions}>
-                <TouchableOpacity style={s.cancelBtn} onPress={() => setEditing(false)}>
-                  <Text style={s.cancelBtnText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[s.saveBtn, (!name.trim() || saving) && s.btnDisabled]}
-                  onPress={saveProfile}
-                  disabled={!name.trim() || saving}
-                >
-                  {saving
-                    ? <ScissorsLoader size="small" color={theme.appearance === 'dark' ? 'dark' : 'light'} />
-                    : <Text style={s.saveBtnText}>Save</Text>
-                  }
-                </TouchableOpacity>
-              </View>
             </View>
-          )}
+            <Text style={s.heroPhone} numberOfLines={1}>{(profile as any)?.phone_number || 'No phone set'}</Text>
+          </View>
         </View>
 
         {/* ── Active bookings ── */}
@@ -247,7 +162,7 @@ export default function ProfileScreen() {
               <TouchableOpacity
                 key={b.id}
                 style={s.bookingRow}
-                onPress={() => router.push(`/live/${b.id}` as any)}
+                onPress={() => router.push(`/booking/detail/${b.id}` as any)}
               >
                 <View style={{ flex: 1 }}>
                   <Text style={s.bookingService}>{b.service_name}</Text>
@@ -271,14 +186,7 @@ export default function ProfileScreen() {
           <SettingsRow
             icon={<HeartIcon size={18} color={theme.color.ink} />}
             label="My favourites"
-            onPress={() => setComingSoon({ title: 'Coming soon', body: 'Save your favourite stylists. Launching soon.' })}
-            s={s}
-            theme={theme}
-          />
-          <SettingsRow
-            icon={<BellIcon size={18} color={theme.color.ink} />}
-            label="Notification preferences"
-            onPress={() => setComingSoon({ title: 'Coming soon', body: 'Notification controls are on the way.' })}
+            onPress={() => router.push('/favorites' as any)}
             s={s}
             theme={theme}
           />
@@ -289,16 +197,13 @@ export default function ProfileScreen() {
             s={s}
             theme={theme}
           />
-        </Section>
-
-        {/* ── Support ── */}
-        <Section title="Support" s={s}>
           <SettingsRow
             icon={<Text style={{ fontSize: 16 }}>💬</Text>}
             label="Customer Care"
             onPress={() => router.push('/customer-care' as any)}
             s={s}
             theme={theme}
+            last
           />
         </Section>
 
@@ -343,17 +248,7 @@ export default function ProfileScreen() {
         onConfirm={() => { setShowSignOutModal(false); signOut(); }}
         onDismiss={() => setShowSignOutModal(false)}
       />
-
-      <ConfirmModal
-        visible={!!comingSoon}
-        title={comingSoon?.title ?? ''}
-        body={comingSoon?.body ?? ''}
-        confirmLabel="Got it"
-        dismissLabel={null}
-        onConfirm={() => setComingSoon(null)}
-        onDismiss={() => setComingSoon(null)}
-      />
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -361,14 +256,14 @@ function Section({ title, children, s }: { title: string; children: React.ReactN
   return (
     <View style={s.section}>
       <Text style={s.sectionTitle}>{title}</Text>
-      <View style={s.sectionBody}>{children}</View>
+      {children}
     </View>
   );
 }
 
-function SettingsRow({ icon, label, onPress, s, theme }: { icon: React.ReactNode; label: string; onPress: () => void; s: ReturnType<typeof makeStyles>; theme: VarsTheme }) {
+function SettingsRow({ icon, label, onPress, s, theme, last }: { icon: React.ReactNode; label: string; onPress: () => void; s: ReturnType<typeof makeStyles>; theme: VarsTheme; last?: boolean }) {
   return (
-    <TouchableOpacity style={s.settingsRow} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity style={[s.settingsRow, last && s.settingsRowLast]} onPress={onPress} activeOpacity={0.7}>
       <View style={s.settingsIcon}>{icon}</View>
       <Text style={s.settingsLabel}>{label}</Text>
       <ChevronRightIcon size={18} color={theme.color.inkMuted} />
@@ -384,59 +279,36 @@ function makeStyles(theme: VarsTheme) {
     signInBtn: { paddingHorizontal: 32, paddingVertical: 14, backgroundColor: theme.color.ink, borderRadius: BORDER_RADIUS },
     signInBtnText: { color: theme.color.inverseInk, fontSize: 16, fontWeight: '700' },
 
-    // Header
+    // Title header bar
     header: {
-      alignItems: 'center', paddingHorizontal: 20, paddingBottom: 28,
-      backgroundColor: theme.color.bg, borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
+      paddingHorizontal: 20, paddingVertical: 14,
+      borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
     },
-    avatarWrap: { position: 'relative', marginBottom: 14 },
-    avatar: { width: 88, height: 88, borderRadius: 44 },
-    avatarFallback: { backgroundColor: theme.color.ink, alignItems: 'center', justifyContent: 'center' },
-    avatarInitial: { fontSize: 36, fontWeight: '800', color: theme.color.inverseInk },
-    editPhotoBadge: {
-      position: 'absolute', bottom: 0, right: 0,
-      width: 26, height: 26, borderRadius: 13,
-      backgroundColor: theme.color.ink,
-      alignItems: 'center', justifyContent: 'center',
-      borderWidth: BORDER_WIDTH.thick, borderColor: theme.color.bg,
-    },
-    name: { fontSize: 22, fontWeight: '800', color: theme.color.ink, marginBottom: 4 },
-    phoneDisplay: { fontSize: 14, color: theme.color.inkMuted, marginBottom: 12 },
-    editBtn: { paddingHorizontal: 20, paddingVertical: 8, borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint, borderRadius: 5 },
-    editBtnText: { fontSize: 13, fontWeight: '600', color: theme.color.inkMuted },
+    headerTitle: { fontSize: 24, fontWeight: '800', color: theme.color.ink },
 
-    // Edit form
-    editForm: { width: '100%', gap: 10, marginTop: 4 },
-    input: {
-      backgroundColor: theme.color.surface2, borderRadius: BORDER_RADIUS,
-      borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint,
-      paddingHorizontal: 14, paddingVertical: 11,
-      fontSize: 15, color: theme.color.ink,
+    // Hero row
+    heroRow: {
+      flexDirection: 'row', alignItems: 'center',
+      paddingHorizontal: 20, paddingVertical: 20, gap: 14,
     },
-    editActions: { flexDirection: 'row', gap: 10 },
-    cancelBtn: {
-      flex: 1, height: 46, borderRadius: 5,
-      borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint,
-      alignItems: 'center', justifyContent: 'center',
-    },
-    cancelBtnText: { fontSize: 14, fontWeight: '600', color: theme.color.inkMuted },
-    saveBtn: {
-      flex: 2, height: 46, borderRadius: BORDER_RADIUS,
-      backgroundColor: theme.color.ink,
-      alignItems: 'center', justifyContent: 'center',
-    },
-    saveBtnText: { fontSize: 14, fontWeight: '700', color: theme.color.inverseInk },
-    btnDisabled: { opacity: 0.5 },
+    heroAvatarWrap: { width: 56, height: 56 },
+    heroAvatar: { width: 56, height: 56, borderRadius: 28 },
+    heroAvatarFallback: { backgroundColor: theme.color.ink, alignItems: 'center', justifyContent: 'center' },
+    heroAvatarText: { fontSize: 22, fontWeight: '800', color: theme.color.inverseInk },
+    heroInfo: { flex: 1 },
+    heroNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    heroName: { fontSize: 18, fontWeight: '700', color: theme.color.ink, flex: 1 },
+    heroEditBtn: { padding: 4 },
+    heroPhone: { fontSize: 13, color: theme.color.inkMuted, marginTop: 2 },
 
     // Section
-    section: { paddingTop: 24, paddingHorizontal: 16 },
+    section: {
+      marginTop: 8, borderTopWidth: BORDER_WIDTH.thin, borderTopColor: theme.color.inkFaint,
+      paddingTop: 16, paddingHorizontal: 16,
+    },
     sectionTitle: {
       fontSize: 12, fontWeight: '700', color: theme.color.inkMuted,
-      textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8,
-    },
-    sectionBody: {
-      backgroundColor: theme.color.bg,
-      borderRadius: 5, borderWidth: BORDER_WIDTH.thin, borderColor: theme.color.inkFaint, overflow: 'hidden',
+      textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12,
     },
 
     // Booking rows
@@ -464,6 +336,7 @@ function makeStyles(theme: VarsTheme) {
       paddingHorizontal: 14, paddingVertical: 14,
       borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
     },
+    settingsRowLast: { borderBottomWidth: 0 },
     settingsIcon: { width: 24, alignItems: 'center' as const, justifyContent: 'center' as const },
     settingsLabel: { flex: 1, fontSize: 14, fontWeight: '600', color: theme.color.ink },
     switchRow: {

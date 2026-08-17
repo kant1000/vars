@@ -11,7 +11,7 @@
 // ============================================================
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Dimensions,
+  Dimensions, FlatList, LayoutAnimation,
   ScrollView, StyleSheet, Text, TouchableOpacity,
   View, Platform,
 } from 'react-native';
@@ -20,19 +20,20 @@ import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
-import * as Location from 'expo-location';
 import { supabase } from '@/lib/supabase';
-import { VarsButton, VarsInput, VarsSurface } from '@/components/ui';
+import { useAuth } from '@/contexts/AuthContext';
+import { VarsButton, VarsInput, VarsSurface, VarsSwitch } from '@/components/ui';
+import { PhoneInput } from '@/components/PhoneInput';
 import { useVarsTheme } from '@/contexts/ThemeContext';
 import { Colors, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { fmtPrice, fmtDuration, fmtTime, fmtDate } from '@/lib/format';
-import { LightningIcon, CheckIcon, PinIcon } from '@/components/icons';
-import { Calendar, toDateId, fromDateId } from '@marceloterreiro/flash-calendar';
-import { BottomSheetModal, BottomSheetFlatList } from '@gorhom/bottom-sheet';
-import { BOOKING_STATUS, TRANSPORT_FEE_TIERS, BASE_RADIUS_KM } from '@vars/shared';
+import { LightningIcon, PinIcon } from '@/components/icons';
+import { BOOKING_STATUS, TRANSPORT_FEE_TIERS, BASE_RADIUS_KM, CountryCode, normalizePhone, isValidPhone } from '@vars/shared';
 import * as Haptics from 'expo-haptics';
 import { usePostHog, EVENTS } from '@/lib/analytics';
+import { LocationPicker, ResolvedLocation, reverseGeocode } from '@/components/LocationPicker';
+import { clearPendingReturnTo } from '@/lib/pendingReturnTo';
 
 const SCREEN_W = Dimensions.get('window').width;
 const BLOCK_MINS = 30;
@@ -42,19 +43,20 @@ const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
 // ── Types ────────────────────────────────────────────────────
 interface AccessDetails {
-  building: string;
-  floor: string;
-  flat: string;
+  building: string; // consolidated free-text: address, building, floor, landmarks
   gateCode: string;
 }
 
-// ── Constants ────────────────────────────────────────────────
-const FLOOR_OPTIONS = [
-  'Ground', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th',
-  '8th', '9th', '10th', '11th', '12th', '13th', '14th', '15th', 'Penthouse',
-];
+interface RecipientDetails {
+  forSelf: boolean;
+  name: string;
+  phone: string; // local digits only, see PhoneInput
+  phoneCountry: CountryCode;
+}
 
-const EMPTY_ACCESS: AccessDetails = { building: '', floor: '', flat: '', gateCode: '' };
+// ── Constants ────────────────────────────────────────────────
+const EMPTY_ACCESS: AccessDetails = { building: '', gateCode: '' };
+const EMPTY_RECIPIENT: RecipientDetails = { forSelf: true, name: '', phone: '', phoneCountry: '+234' };
 
 // ── Haversine distance (km) — client-side preview only ───────
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -244,28 +246,36 @@ function Step1({
       <ScrollView contentContainerStyle={{ paddingBottom: selectedSlot ? CONFIRM_BAR_HEIGHT + 16 : 40 }}>
         <Text style={[s.stepTitle, { margin: 16 }]}>When works for you?</Text>
 
-        <Calendar
-          calendarMonthId={toDateId(new Date(days[0].getFullYear(), days[0].getMonth(), 1))}
-          calendarMinDateId={toDateId(days[0])}
-          calendarMaxDateId={toDateId(days[days.length - 1])}
-          calendarActiveDateRanges={[{
-            startId: toDateId(selectedDay),
-            endId: toDateId(selectedDay),
-          }]}
-          onCalendarDayPress={(dateId) => setSelectedDay(fromDateId(dateId))}
-          theme={{
-            itemDay: {
-              active: () => ({
-                container: { backgroundColor: theme.color.accentBlue },
-                content: { color: theme.color.inverseInk },
-              }),
-              today: () => ({
-                content: { color: theme.color.accentBlue, fontWeight: '700' },
-              }),
-            },
-            rowMonth: {
-              content: { color: theme.color.ink, fontWeight: '700', fontSize: 15 },
-            },
+        {/* 14-day horizontal strip — every date shown is always inside the
+            bookable window, so there's no "past/disabled week" clutter or
+            legend to explain (replaces the flash-calendar month grid). */}
+        <FlatList
+          horizontal
+          data={days}
+          keyExtractor={(d) => d.toISOString()}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={s.dateStrip}
+          renderItem={({ item }) => {
+            const isSelected = item.getTime() === selectedDay.getTime();
+            const isToday = item.getTime() === days[0].getTime();
+            return (
+              <TouchableOpacity
+                style={[s.dateChip, isSelected && s.dateChipSelected]}
+                onPress={() => setSelectedDay(item)}
+                activeOpacity={0.85}
+              >
+                <Text style={[s.dateChipWeekday, isSelected && s.dateChipTextSelected]}>
+                  {item.toLocaleDateString('en-NG', { weekday: 'short' })}
+                </Text>
+                <Text style={[
+                  s.dateChipDay,
+                  isSelected && s.dateChipTextSelected,
+                  !isSelected && isToday && s.dateChipDayToday,
+                ]}>
+                  {item.getDate()}
+                </Text>
+              </TouchableOpacity>
+            );
           }}
         />
 
@@ -302,10 +312,13 @@ function Step1({
                   );
                   ci += span;
                 } else if (role === 'covered') {
+                  let span = 1;
+                  while (ci + span < row.length && getSlotRole(row[ci + span].time) === 'covered') span++;
+                  const mergedW = CHIP_W * span + 8 * (span - 1);
                   cells.push(
-                    <View key={sl.time.toISOString()} style={[s.slot, s.slotCovered, { width: CHIP_W }]} />
+                    <View key={sl.time.toISOString()} style={[s.slot, s.slotCovered, { width: mergedW }]} />
                   );
-                  ci++;
+                  ci += span;
                 } else {
                   cells.push(
                     <TouchableOpacity
@@ -324,8 +337,12 @@ function Step1({
                   ci++;
                 }
               }
-              while (cells.length < 4) {
-                cells.push(<View key={`pad-${ri}-${cells.length}`} style={{ width: CHIP_W }} />);
+              // Pad only a genuinely short row (the last row of the day, when the
+              // slot count isn't a multiple of 4) — not based on cells.length, which
+              // undercounts once a merged multi-slot pill collapses several slots
+              // into a single element.
+              for (let p = row.length; p < 4; p++) {
+                cells.push(<View key={`pad-${ri}-${p}`} style={{ width: CHIP_W }} />);
               }
               return <View key={ri} style={s.slotRow}>{cells}</View>;
             })}
@@ -346,12 +363,14 @@ function Step1({
   );
 }
 
-// ── Step 2a: Review + access details ─────────────────────────
+// ── Step 2a: Review + details (recipient / location / other) ─
 function Step2Review({
   serviceSummary, totalDurationBlocks, totalServiceKobo,
   slot, isAutoAccept,
   access, setAccess,
-  onConfirmLocation, locating, locError,
+  recipient, setRecipient, onToggleForSelf, customerName,
+  coords, locAddress, onLocationConfirm,
+  onContinue,
 }: {
   serviceSummary: string;
   totalDurationBlocks: number;
@@ -360,13 +379,25 @@ function Step2Review({
   isAutoAccept: boolean;
   access: AccessDetails;
   setAccess: (a: AccessDetails) => void;
-  onConfirmLocation: () => void;
-  locating: boolean;
-  locError: string | null;
+  recipient: RecipientDetails;
+  setRecipient: (r: RecipientDetails) => void;
+  onToggleForSelf: (forSelf: boolean) => void;
+  customerName: string;
+  coords: { lat: number; lng: number } | null;
+  locAddress: string;
+  onLocationConfirm: (loc: ResolvedLocation) => void;
+  onContinue: () => void;
 }) {
-  const floorSheetRef = useRef<BottomSheetModal>(null);
   const { theme } = useVarsTheme();
   const s = useMemo(() => makeStyles(theme), [theme]);
+
+  const recipientReady = recipient.forSelf || (
+    recipient.name.trim().length > 0 && isValidPhone(recipient.phone, recipient.phoneCountry)
+  );
+  // Address details (full address/building/landmarks) are how the stylist
+  // actually finds the place — required. Gate/access code stays optional,
+  // most addresses don't have one.
+  const canContinue = !!coords && recipientReady && access.building.trim().length > 0;
 
   return (
     <>
@@ -382,91 +413,85 @@ function Step2Review({
           <Row label="Total" value={fmtPrice(totalServiceKobo)} bold s={s} />
         </VarsSurface>
 
-        <Text style={s.sectionHeading}>Access details <Text style={s.optionalTag}>(optional)</Text></Text>
-        <Text style={s.accessHint}>Help your stylist find you faster.</Text>
+        <Text style={s.sectionHeading}>Details (optional)</Text>
+
+        {/* ── Recipient ── */}
+        <Text style={s.subHeading}>Recipient</Text>
+        <VarsSwitch
+          theme={theme}
+          label="Booking for yourself?"
+          value={recipient.forSelf}
+          onChange={onToggleForSelf}
+        />
+        <VarsInput
+          theme={theme}
+          label="Name"
+          placeholder="Who's this booking for?"
+          value={recipient.forSelf ? customerName : recipient.name}
+          onChangeText={(t) => setRecipient({ ...recipient, name: sanitize(t, 60) })}
+          editable={!recipient.forSelf}
+          style={recipient.forSelf ? s.inputDisabled : undefined}
+          returnKeyType="next"
+        />
+        {!recipient.forSelf && (
+          <View>
+            <Text style={s.fieldLabel}>Phone number</Text>
+            <PhoneInput
+              value={recipient.phone}
+              country={recipient.phoneCountry}
+              onChangeValue={(digits) => setRecipient({ ...recipient, phone: digits })}
+              onChangeCountry={(c) => setRecipient({ ...recipient, phoneCountry: c })}
+            />
+          </View>
+        )}
+
+        {/* ── Location — pre-filled from the confirmed Discover location when
+            booking for yourself; tapping is the only way into the picker. ── */}
+        <Text style={s.subHeading}>Location</Text>
+        <LocationPicker
+          theme={theme}
+          value={coords ? { lat: coords.lat, lng: coords.lng, address: locAddress } : null}
+          placeholder={recipient.forSelf ? 'Set your location' : "Set the recipient's location"}
+          sheetTitle={recipient.forSelf ? 'Where should we send your stylist?' : "Where's this visit?"}
+          onConfirm={onLocationConfirm}
+        />
+
+        {/* ── Other details ── */}
+        <Text style={s.subHeading}>Other details</Text>
 
         <VarsInput
           theme={theme}
-          label="Building / estate name"
-          placeholder="e.g. Palm Spring Residences"
+          label="Address details"
+          placeholder="e.g. full address, building name, floor, landmarks"
           value={access.building}
-          onChangeText={(t) => setAccess({ ...access, building: sanitize(t, 60) })}
-          returnKeyType="next"
+          onChangeText={(t) => setAccess({ ...access, building: sanitize(t, 200) })}
+          multiline
+          style={s.addressDetailsInput}
         />
 
         <View>
-          <Text style={s.fieldLabel}>Floor</Text>
-          <TouchableOpacity
-            style={[s.textInput, s.pickerRow]}
-            onPress={() => floorSheetRef.current?.present()}
-            activeOpacity={0.8}
-          >
-            <Text style={access.floor ? s.pickerValue : s.pickerPlaceholder}>
-              {access.floor || 'Select floor'}
-            </Text>
-            <Text style={s.pickerChevron}>›</Text>
-          </TouchableOpacity>
-        </View>
-
-        <VarsInput
-          theme={theme}
-          label="Flat / unit number"
-          placeholder="e.g. 4B"
-          value={access.flat}
-          onChangeText={(t) => setAccess({ ...access, flat: sanitize(t, 20) })}
-          returnKeyType="next"
-        />
-
-        <VarsInput
-          theme={theme}
-          label="Gate / access code"
-          placeholder="e.g. 1234"
-          value={access.gateCode}
-          onChangeText={(t) => setAccess({ ...access, gateCode: sanitize(t, 20) })}
-          returnKeyType="done"
-        />
-
-        <View style={s.accessPrivacyNote}>
+          <VarsInput
+            theme={theme}
+            label="Gate / access code (if needed)"
+            placeholder="e.g. 1234"
+            value={access.gateCode}
+            onChangeText={(t) => setAccess({ ...access, gateCode: sanitize(t, 20) })}
+            returnKeyType="done"
+          />
           <Text style={s.accessPrivacyText}>
             Access details are only shared with your stylist 15 minutes before their arrival.
           </Text>
         </View>
-
-        {locError && (
-          <View style={s.errorBanner}>
-            <Text style={s.errorText}>{locError}</Text>
-          </View>
-        )}
       </ScrollView>
 
       <View style={s.payWrap}>
         <VarsButton
           theme={theme}
-          loading={locating}
-          onPress={onConfirmLocation}
-          label="Confirm location →"
+          disabled={!canContinue}
+          onPress={onContinue}
+          label="Continue →"
         />
       </View>
-
-      <BottomSheetModal ref={floorSheetRef} snapPoints={['50%']} enableDynamicSizing={false}>
-        <Text style={[s.pickerTitle, { paddingHorizontal: 16, paddingTop: 8 }]}>Select floor</Text>
-        <BottomSheetFlatList
-          data={FLOOR_OPTIONS}
-          keyExtractor={(item) => item}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={s.pickerOption}
-              onPress={() => { setAccess({ ...access, floor: item }); floorSheetRef.current?.dismiss(); }}
-              activeOpacity={0.7}
-            >
-              <Text style={[s.pickerOptionText, access.floor === item && s.pickerOptionSelected]}>
-                {item}
-              </Text>
-              {access.floor === item && <CheckIcon size={16} color={theme.color.accentBlue} />}
-            </TouchableOpacity>
-          )}
-        />
-      </BottomSheetModal>
     </>
   );
 }
@@ -475,7 +500,7 @@ function Step2Review({
 function Step2Location({
   serviceSummary, totalDurationBlocks, totalServiceKobo,
   slot, isAutoAccept,
-  coords, locAddress, access,
+  coords, locAddress, access, recipient,
   vendorZone,
   onPay, paying,
 }: {
@@ -487,6 +512,7 @@ function Step2Location({
   coords: { lat: number; lng: number };
   locAddress: string;
   access: AccessDetails;
+  recipient: RecipientDetails;
   vendorZone: { lat: number; lng: number } | null;
   onPay: () => void;
   paying: boolean;
@@ -495,7 +521,7 @@ function Step2Location({
   const s = useMemo(() => makeStyles(theme), [theme]);
   const [mapReady, setMapReady] = useState(false);
 
-  const hasAccess = access.building || access.floor || access.flat || access.gateCode;
+  const hasAccess = access.building || access.gateCode;
 
   const transportFeeKobo =
     vendorZone != null
@@ -531,12 +557,17 @@ function Step2Location({
             <Text style={s.addressText} numberOfLines={2}>{locAddress || 'Your current location'}</Text>
           </VarsSurface>
 
+          {!recipient.forSelf && (
+            <VarsSurface theme={theme} elevation={1} style={s.accessSummaryCard}>
+              <Text style={s.accessSummaryTitle}>Recipient</Text>
+              <AccessRow label="Name" value={recipient.name} s={s} />
+              <AccessRow label="Phone" value={`${recipient.phoneCountry} ${recipient.phone}`} s={s} />
+            </VarsSurface>
+          )}
+
           {hasAccess && (
             <VarsSurface theme={theme} elevation={1} style={s.accessSummaryCard}>
-              <Text style={s.accessSummaryTitle}>Access details</Text>
-              {access.building ? <AccessRow label="Building" value={access.building} s={s} /> : null}
-              {access.floor ? <AccessRow label="Floor" value={access.floor} s={s} /> : null}
-              {access.flat ? <AccessRow label="Flat/unit" value={access.flat} s={s} /> : null}
+              {access.building ? <AccessRow label="Address details" value={access.building} s={s} /> : null}
               {access.gateCode ? <AccessRow label="Gate code" value={access.gateCode} s={s} /> : null}
             </VarsSurface>
           )}
@@ -699,9 +730,15 @@ export default function BookingFlow() {
   const { theme } = useVarsTheme();
   const s = useMemo(() => makeStyles(theme), [theme]);
   const posthog = usePostHog();
+  const { profile } = useAuth();
 
   // Parse incoming params from vendor profile
   const serviceIds: string[] = serviceIdsParam ? JSON.parse(serviceIdsParam) : [];
+
+  // Whatever path got a guest here (direct, or via login → phone → terms),
+  // this is the screen they were trying to reach — consume it here so it
+  // doesn't linger for a future, unrelated login.
+  useEffect(() => { clearPendingReturnTo(); }, []);
 
   // Fetched service details
   const [loadingServices, setLoadingServices] = useState(true);
@@ -746,10 +783,27 @@ export default function BookingFlow() {
 
   const [step2View, setStep2View] = useState<'review' | 'location'>('review');
   const [access, setAccess] = useState<AccessDetails>(EMPTY_ACCESS);
-  const [locating, setLocating] = useState(false);
-  const [locError, setLocError] = useState<string | null>(null);
+  const [recipient, setRecipient] = useState<RecipientDetails>(EMPTY_RECIPIENT);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [locAddress, setLocAddress] = useState('');
+
+  // The location already confirmed on the Discover tab (profiles.session_location) —
+  // used to prefill Location here when booking for yourself. Booking for someone
+  // else starts empty on purpose (their location, not necessarily the customer's own).
+  const [defaultLocation, setDefaultLocation] = useState<ResolvedLocation | null>(null);
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await supabase.rpc('get_my_session_location').maybeSingle();
+        const data = res.data as { lat: number; lng: number } | null;
+        if (data?.lat == null || data?.lng == null) return;
+        const address = await reverseGeocode(data.lat, data.lng);
+        setDefaultLocation({ lat: data.lat, lng: data.lng, address });
+      } catch (err) {
+        console.warn('[BookingFlow] failed to load session location', err);
+      }
+    })();
+  }, []);
 
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -784,9 +838,14 @@ export default function BookingFlow() {
     setSlotIsAutoAccept(isAutoAccept);
     setStep2View('review');
     setAccess(EMPTY_ACCESS);
-    setLocError(null);
-    setCoords(null);
-    setLocAddress('');
+    setRecipient(EMPTY_RECIPIENT);
+    if (defaultLocation) {
+      setCoords({ lat: defaultLocation.lat, lng: defaultLocation.lng });
+      setLocAddress(defaultLocation.address);
+    } else {
+      setCoords(null);
+      setLocAddress('');
+    }
     setStep(2);
   };
 
@@ -799,33 +858,27 @@ export default function BookingFlow() {
     router.back();
   };
 
-  const handleConfirmLocation = async () => {
+  const handleLocationConfirm = (loc: ResolvedLocation) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setLocating(true);
-    setLocError(null);
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        setLocError('Location permission is required to book a visit. Please enable it in Settings.');
-        setLocating(false);
-        return;
-      }
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setCoords({ lat: loc.lat, lng: loc.lng });
+    setLocAddress(loc.address);
+  };
 
-      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      const { latitude, longitude } = pos.coords;
-
-      const [geo] = await Location.reverseGeocodeAsync({ latitude, longitude });
-      const parts = [geo?.name, geo?.street, geo?.city ?? geo?.region].filter(Boolean);
-      const address = parts.join(', ');
-
-      setCoords({ lat: latitude, lng: longitude });
-      setLocAddress(address);
-      setStep2View('location');
-    } catch {
-      setLocError('Could not get your location. Please try again.');
-    } finally {
-      setLocating(false);
+  const handleToggleForSelf = (forSelf: boolean) => {
+    setRecipient((prev) => ({ ...prev, forSelf }));
+    if (forSelf && defaultLocation) {
+      setCoords({ lat: defaultLocation.lat, lng: defaultLocation.lng });
+      setLocAddress(defaultLocation.address);
+    } else if (!forSelf) {
+      // Someone else's visit — don't assume it's at the customer's own location.
+      setCoords(null);
+      setLocAddress('');
     }
+  };
+
+  const handleContinueFromReview = () => {
+    setStep2View('location');
   };
 
   const submitBooking = useCallback(async () => {
@@ -846,9 +899,11 @@ export default function BookingFlow() {
           user_location_lng: coords.lng,
           user_location_address: locAddress || null,
           access_building: access.building || null,
-          access_floor: access.floor || null,
-          access_flat: access.flat || null,
+          access_floor: null,
+          access_flat: null,
           access_code: access.gateCode || null,
+          recipient_name: recipient.forSelf ? null : recipient.name || null,
+          recipient_phone: recipient.forSelf ? null : normalizePhone(recipient.phone, recipient.phoneCountry),
         }),
       });
 
@@ -864,7 +919,7 @@ export default function BookingFlow() {
     // posthog is deliberately excluded: this is the booking-creation function
     // (submitBooking) — not changing its dependency array in a lint-only pass.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slot, coords, serviceIds, locAddress, access, vendorId]);
+  }, [slot, coords, serviceIds, locAddress, access, recipient, vendorId]);
 
   const pollForCardVerify = useCallback(async () => {
     if (cardVerifyPollingRef.current) return;
@@ -972,6 +1027,7 @@ export default function BookingFlow() {
 
       <StepBar step={step} />
 
+      <View style={{ flex: 1, position: 'relative' }}>
       {error && (
         <View style={s.errorBanner}>
           <Text style={s.errorText}>{error}</Text>
@@ -1009,9 +1065,14 @@ export default function BookingFlow() {
               isAutoAccept={slotIsAutoAccept}
               access={access}
               setAccess={setAccess}
-              onConfirmLocation={handleConfirmLocation}
-              locating={locating}
-              locError={locError}
+              recipient={recipient}
+              setRecipient={setRecipient}
+              onToggleForSelf={handleToggleForSelf}
+              customerName={profile?.full_name ?? ''}
+              coords={coords}
+              locAddress={locAddress}
+              onLocationConfirm={handleLocationConfirm}
+              onContinue={handleContinueFromReview}
             />
           )}
           {step === 2 && slot && step2View === 'location' && coords && (
@@ -1024,6 +1085,7 @@ export default function BookingFlow() {
               coords={coords}
               locAddress={locAddress}
               access={access}
+              recipient={recipient}
               vendorZone={vendorZone}
               onPay={handlePay}
               paying={paying}
@@ -1031,6 +1093,7 @@ export default function BookingFlow() {
           )}
         </>
       )}
+      </View>
 
     </View>
   );
@@ -1049,21 +1112,39 @@ function makeStyles(theme: VarsTheme) {
     headerBackText: { fontSize: 28, color: theme.color.ink, lineHeight: 32 },
     headerTitle: { fontSize: 17, fontWeight: '700', color: theme.color.ink },
     stepTitle: { fontSize: 20, fontWeight: '800', color: theme.color.ink },
-    errorBanner: { backgroundColor: theme.color.accentRed + '15', paddingHorizontal: 16, paddingVertical: 10 },
+    // Overlay, not a flex sibling — unbounded error text must never push the
+    // active step's content down (see PhoneInput's Tier 1 treatment for why).
+    errorBanner: {
+      position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10,
+      backgroundColor: theme.color.accentRed + '15', paddingHorizontal: 16, paddingVertical: 10,
+    },
     errorText: { fontSize: 13, color: theme.color.accentRed, fontWeight: '500' },
+
+    // Date strip
+    dateStrip: { paddingHorizontal: 16, gap: 8 },
+    dateChip: {
+      width: 52, paddingVertical: 10,
+      borderRadius: 5, borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint,
+      alignItems: 'center', justifyContent: 'center', gap: 4,
+    },
+    dateChipSelected: { backgroundColor: theme.color.ink, borderColor: theme.color.ink },
+    dateChipWeekday: { fontSize: 11, fontWeight: '600', color: theme.color.inkMuted },
+    dateChipDay: { fontSize: 16, fontWeight: '800', color: theme.color.ink },
+    dateChipDayToday: { color: theme.color.accentBlue },
+    dateChipTextSelected: { color: theme.color.inverseInk },
 
     // Slots
     slotGrid: { paddingHorizontal: 16, gap: 8, marginTop: 16 },
     slotRow: { flexDirection: 'row', gap: 8 },
     slot: {
-      paddingVertical: 10,
+      height: 40,
       borderRadius: 5, borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint,
       alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 4,
     },
-    slotUnavailable: { borderColor: theme.color.inkFaint, backgroundColor: theme.color.surface2 },
+    slotUnavailable: { borderColor: theme.color.inkFaint, backgroundColor: theme.color.surface2, opacity: 0.4 },
     slotAutoAccept: { borderColor: Colors.pioneerGold, backgroundColor: Colors.pioneerGoldSurface },
     slotSelected: { backgroundColor: theme.color.ink, borderColor: theme.color.ink },
-    slotCovered: { backgroundColor: theme.color.ink + '15', borderColor: theme.color.ink + '40' },
+    slotCovered: { backgroundColor: theme.color.ink, borderColor: theme.color.ink },
     slotText: { fontSize: 13, fontWeight: '700', color: theme.color.ink },
     slotTextUnavailable: { color: theme.color.inkMuted },
     slotTextAutoAccept: { color: Colors.pioneerGoldDark },
@@ -1076,9 +1157,8 @@ function makeStyles(theme: VarsTheme) {
     autoAcceptLegendText: { fontSize: 12, color: Colors.pioneerGoldDark, fontWeight: '600' },
 
     // Review / summary
-    sectionHeading: { fontSize: 16, fontWeight: '700', color: theme.color.ink, marginBottom: -8 },
-    optionalTag: { fontSize: 13, fontWeight: '400', color: theme.color.inkMuted },
-    accessHint: { fontSize: 13, color: theme.color.inkMuted, marginTop: -8 },
+    sectionHeading: { fontSize: 16, fontWeight: '700', color: theme.color.ink },
+    subHeading: { fontSize: 12, fontWeight: '700', color: theme.color.inkMuted, textTransform: 'uppercase', marginTop: 4 },
     summaryCard: { padding: 16 },
     summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
     summaryLabel: { fontSize: 14, color: theme.color.inkMuted },
@@ -1086,28 +1166,13 @@ function makeStyles(theme: VarsTheme) {
     summaryValueBold: { fontSize: 16, fontWeight: '800', color: theme.color.accentBlue },
     divider: { height: BORDER_WIDTH.thin, backgroundColor: theme.color.inkFaint, marginVertical: 6 },
     fieldLabel: { fontSize: 14, fontWeight: '600', color: theme.color.ink, marginBottom: 6 },
-    textInput: {
-      backgroundColor: theme.color.surface2, borderRadius: 5,
-      borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint,
-      paddingHorizontal: 14, paddingVertical: 12,
-      fontSize: 15, color: theme.color.ink,
+    addressDetailsInput: {
+      height: 90, paddingTop: 12, paddingBottom: 12, lineHeight: 20,
+      textAlignVertical: 'top', includeFontPadding: false,
     },
-    pickerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    pickerValue: { fontSize: 15, color: theme.color.ink },
-    pickerPlaceholder: { fontSize: 15, color: theme.color.inkMuted },
-    pickerChevron: { fontSize: 20, color: theme.color.inkMuted },
-    accessPrivacyNote: { backgroundColor: Colors.primaryLight, borderRadius: 5, padding: 12 },
-    accessPrivacyText: { fontSize: 13, color: Colors.primary, lineHeight: 18 },
-    pickerTitle: {
-      fontSize: 16, fontWeight: '700', color: theme.color.ink,
-      marginBottom: 12, textAlign: 'center',
-    },
-    pickerOption: {
-      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-      paddingVertical: 14, borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
-    },
-    pickerOptionText: { fontSize: 16, color: theme.color.ink },
-    pickerOptionSelected: { color: theme.color.ink, fontWeight: '700' },
+    // Plain "VARS speaking" text — no border, no background (never a filled note box).
+    accessPrivacyText: { fontSize: 13, color: theme.color.accentBlue, lineHeight: 18, marginTop: 8 },
+    inputDisabled: { opacity: 0.5 },
 
     // Map + location
     mapThumb: { width: SCREEN_W, height: 200 },
@@ -1121,9 +1186,9 @@ function makeStyles(theme: VarsTheme) {
     accessDetailLabel: { fontSize: 13, color: theme.color.inkMuted },
     accessDetailValue: { fontSize: 13, fontWeight: '600', color: theme.color.ink },
     transportNote: { fontSize: 12, color: theme.color.inkMuted, marginTop: 6, lineHeight: 17 },
-    infoBox: { backgroundColor: Colors.primaryLight, borderRadius: 5, padding: 14 },
-    infoBoxAutoAccept: { backgroundColor: Colors.pioneerGoldSurface },
-    infoText: { fontSize: 13, color: Colors.primary, lineHeight: 19, fontWeight: '500' },
+    infoBox: { padding: 14 },
+    infoBoxAutoAccept: { backgroundColor: Colors.pioneerGoldSurface, borderRadius: 5 },
+    infoText: { fontSize: 13, color: theme.color.inkMuted, lineHeight: 19, fontWeight: '500' },
     infoTextAutoAccept: { color: Colors.pioneerGoldDark },
 
     // Slot confirm bar

@@ -28,14 +28,17 @@ export function BellIcon({ size = 16, color = '#1A1A1A' }: P) {
 export function HeartIcon({ size = 16, color = '#1A1A1A' }: P) {
   return <Svg {...base(size, color)}><Path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></Svg>;
 }
+export function HeartFilledIcon({ size = 16, color = '#1A1A1A' }: P) {
+  return <Svg width={size} height={size} viewBox="0 0 24 24"><Path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" fill={color} stroke={color} strokeWidth={sw} strokeLinejoin="round" /></Svg>;
+}
 export function EditIcon({ size = 16, color = '#1A1A1A' }: P) {
   return <Svg {...base(size, color)}><Path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><Path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></Svg>;
 }
 export function PenLineIcon({ size = 16, color = '#1A1A1A' }: P) {
   return <Svg {...base(size, color)}><Path d="M12 20h9" /><Path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></Svg>;
 }
-export function StarFilledIcon({ size = 16, color = '#1A1A1A' }: P) {
-  return <Svg width={size} height={size} viewBox="0 0 24 24"><Path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill={color} stroke={color} strokeWidth="1.5" strokeLinejoin="round" /></Svg>;
+export function StarFilledIcon({ size = 16, color = '#1A1A1A', strokeColor }: P & { strokeColor?: string }) {
+  return <Svg width={size} height={size} viewBox="0 0 24 24"><Path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill={color} stroke={strokeColor ?? color} strokeWidth={strokeColor ? 1 : 1.5} strokeLinejoin="round" /></Svg>;
 }
 export function StarEmptyIcon({ size = 16, color = '#1A1A1A' }: P) {
   return <Svg {...base(size, color)}><Path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></Svg>;

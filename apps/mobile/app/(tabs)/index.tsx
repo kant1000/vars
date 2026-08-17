@@ -1,14 +1,12 @@
 // ============================================================
 // VARS — Home / Discover screen
 // Single 30 km RPC fetch on mount; in-memory progressive slice.
-// Category and name filtering are both in-memory — no round-trip
-// on category switch or search.
+// Category filtering is in-memory — no round-trip on category switch.
 // ============================================================
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  AppState, FlatList, Linking, RefreshControl,
+  FlatList, RefreshControl,
   StyleSheet, Text, TouchableOpacity, View,
-  TextInput,
 } from 'react-native';
 import * as Location from 'expo-location';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,11 +15,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { VendorCard, VendorCardData } from '@/components/VendorCard';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { VarsSkeleton } from '@/components/ui';
-import { SearchIcon } from '@/components/icons';
 import { useVarsTheme } from '@/contexts/ThemeContext';
-import { Colors, BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
+import { BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
-import { CATEGORY_L2_LABELS } from '@vars/shared';
+import { LocationPicker, ResolvedLocation, reverseGeocode } from '@/components/LocationPicker';
 
 const SKELETON_ROWS = 6;
 
@@ -50,59 +47,103 @@ const RADIUS_KM       = 30;   // hard cap — never query beyond this
 const MAX_VENDORS     = 100;  // upper bound for the single fetch; revisit when online vendors exceed this
 const INITIAL_SLICE   = 20;
 const SLICE_INCREMENT = 10;
-const MIN_SEARCH_CHARS = 3;   // below this, search does nothing and the category filter alone applies
 
-// ── Hook: device location ──────────────────────────────────
-// Permission is requested during onboarding (Get Started CTA).
-// Home screen defaults to Lagos immediately so vendors load without delay,
-// then updates with real GPS if permission was granted.
-function useLocation() {
-  const [coords, setCoords] = useState<{ lat: number; lng: number }>({ lat: 6.4531, lng: 3.3958 });
-  const [permissionDenied, setPermissionDenied] = useState(false);
+const DEFAULT_COORDS = { lat: 6.4531, lng: 3.3958 }; // Lagos — used until a location is confirmed
 
-  const checkLocation = useCallback(async () => {
-    const { status } = await Location.getForegroundPermissionsAsync();
-    if (status !== 'granted') {
-      setPermissionDenied(true);
+// ── Hook: confirmed discovery location ─────────────────────
+// Vendor ranking/distance must reference a location the customer actually
+// confirmed, not whatever GPS reading happened to be on hand when the app
+// opened (see LocationPicker) — that's what got vendors surfaced/ranked
+// against a location that might have nothing to do with the real visit.
+// Persisted on profiles.session_location so it survives app restarts;
+// falls back to live GPS (unpersisted) or the Lagos default until then.
+function useConfirmedLocation(userId: string | undefined) {
+  const [coords, setCoords] = useState<{ lat: number; lng: number }>(DEFAULT_COORDS);
+  const [address, setAddress] = useState('Lagos (default)');
+  const [loaded, setLoaded] = useState(false);
+
+  // POINT(lng lat) — same WKT write pattern used for vendors.base_location.
+  // Any location this screen resolves — GPS or an explicit pick — becomes
+  // "the confirmed one" immediately, so other screens (e.g. the booking
+  // flow's default) see the same value via get_my_session_location().
+  // Uses the id already on hand from useAuth() rather than a fresh
+  // supabase.auth.getUser() round-trip — that call was racy on first
+  // mount and silently no-op'd the update (RLS matches zero rows on a
+  // mismatched/empty id, no error thrown), which is why session_location
+  // was never actually landing in the database.
+  const persist = useCallback(async (lat: number, lng: number) => {
+    if (!userId) return;
+    const { error, data } = await supabase
+      .from('profiles')
+      .update({ session_location: `POINT(${lng} ${lat})` })
+      .eq('id', userId)
+      .select('id');
+    if (error || !data?.length) {
+      console.warn('[useConfirmedLocation] failed to persist session_location', error);
+    }
+  }, [userId]);
+
+  const loadInitial = useCallback(async () => {
+    // 1. Previously confirmed location wins — same one used last session.
+    // Distinguishing a genuine "nothing saved yet" (data null, no error)
+    // from a failed read (error set) matters: treating a transient RPC
+    // hiccup as "no location on file" used to fall through to step 2 and
+    // silently overwrite a perfectly good saved location with a fresh GPS
+    // reading — exactly the "defaulted back to live location" bug.
+    const { data, error } = await supabase.rpc('get_my_session_location').maybeSingle() as
+      { data: { lat: number; lng: number } | null; error: unknown };
+    if (data?.lat != null && data?.lng != null) {
+      setCoords({ lat: data.lat, lng: data.lng });
+      setAddress(await reverseGeocode(data.lat, data.lng));
+      setLoaded(true);
       return;
     }
-    setPermissionDenied(false);
+    if (error) {
+      // Read failed — don't treat this as "nothing saved" and don't
+      // persist over it. Show the Lagos default for this one load; the
+      // real saved location will load correctly next time.
+      console.warn('[useConfirmedLocation] failed to read session_location', error);
+      setLoaded(true);
+      return;
+    }
+
+    // 2. No confirmed location yet — best-effort live GPS. Persisted as soon
+    // as it resolves so it's the same value the booking flow will see.
+    const { status } = await Location.getForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      setLoaded(true);
+      return;
+    }
     try {
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      // Keep the same object reference when the coords haven't actually moved, so
-      // re-checking on every app-foreground doesn't re-trigger the vendor fetch below.
-      setCoords((prev) =>
-        prev.lat === loc.coords.latitude && prev.lng === loc.coords.longitude
-          ? prev
-          : { lat: loc.coords.latitude, lng: loc.coords.longitude }
-      );
+      setCoords({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+      setAddress(await reverseGeocode(loc.coords.latitude, loc.coords.longitude));
+      await persist(loc.coords.latitude, loc.coords.longitude);
     } catch {
-      // keep default Lagos coords
+      // keep default Lagos coords/address — nothing to persist
     }
-  }, []);
+    setLoaded(true);
+  }, [persist]);
 
-  useEffect(() => { checkLocation(); }, [checkLocation]);
+  useEffect(() => { loadInitial(); }, [loadInitial]);
 
-  // Re-check when app returns to foreground (catches a permission grant made in Settings)
-  useEffect(() => {
-    const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') checkLocation();
-    });
-    return () => sub.remove();
-  }, [checkLocation]);
+  const confirm = useCallback(async (loc: ResolvedLocation) => {
+    setCoords({ lat: loc.lat, lng: loc.lng });
+    setAddress(loc.address || 'Current area');
+    await persist(loc.lat, loc.lng);
+  }, [persist]);
 
-  return { coords, permissionDenied };
+  return { coords, address, loaded, confirm };
 }
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const { theme } = useVarsTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const { coords, permissionDenied } = useLocation();
+  const { coords, address, loaded: locationLoaded, confirm: confirmLocation } = useConfirmedLocation(user?.id);
 
   const [activeCategory, setActiveCategory] = useState<string>('hair');
-  const [search, setSearch] = useState('');
   const [allVendors, setAllVendors] = useState<VendorCardData[]>([]);
   const [sliceCursor, setSliceCursor] = useState(INITIAL_SLICE);
   const [isLoadingInitial, setIsLoadingInitial] = useState(true);
@@ -110,35 +151,12 @@ export default function HomeScreen() {
 
   const firstName = profile?.full_name?.split(' ')[0] ?? 'there';
 
-  // ── In-memory filtering: category + service search ────────
-  // Both filters run on the already-fetched 30 km pool, so category
-  // switches and searches are instant with no additional RPC call.
-  // Search matches what a vendor offers, not who they are: subcategory
-  // (e.g. "Braids"), then service name, then description, in that
-  // priority order. A vendor's own name never factors into a match.
-  const filteredVendors = useMemo(() => {
-    const list = allVendors.filter((v) => v.category_names.includes(activeCategory));
-    const q = search.trim().toLowerCase();
-    if (q.length < MIN_SEARCH_CHARS) return list;
-
-    const scored = list
-      .map((v) => {
-        let bestScore = Infinity;
-        for (const svc of v.services ?? []) {
-          const subcategory = (CATEGORY_L2_LABELS[svc.category_l2] ?? svc.category_l2).toLowerCase();
-          const serviceName = svc.service_name.toLowerCase();
-          const description = (svc.description ?? '').toLowerCase();
-          if (subcategory.includes(q)) bestScore = Math.min(bestScore, 0);
-          else if (serviceName.includes(q)) bestScore = Math.min(bestScore, 1);
-          else if (description.includes(q)) bestScore = Math.min(bestScore, 2);
-        }
-        return { vendor: v, score: bestScore };
-      })
-      .filter((entry) => entry.score !== Infinity);
-
-    scored.sort((a, b) => a.score - b.score);
-    return scored.map((entry) => entry.vendor);
-  }, [allVendors, activeCategory, search]);
+  // ── In-memory filtering: category only ─────────────────────
+  // Runs on the already-fetched 30 km pool, so category switches are
+  // instant with no additional RPC call.
+  const filteredVendors = useMemo(() => (
+    allVendors.filter((v) => v.category_names.includes(activeCategory))
+  ), [allVendors, activeCategory]);
 
   const renderedVendors = filteredVendors.slice(0, sliceCursor);
   const hasMore = sliceCursor < filteredVendors.length;
@@ -146,7 +164,7 @@ export default function HomeScreen() {
   // Reset slice cursor whenever the visible filter set changes
   useEffect(() => {
     setSliceCursor(INITIAL_SLICE);
-  }, [activeCategory, search]);
+  }, [activeCategory]);
 
   // ── Single 30 km fetch with 3-attempt retry ───────────────
   // fetchWithRetry wraps raw HTTP — it can't wrap supabase.rpc(), so
@@ -197,8 +215,8 @@ export default function HomeScreen() {
   };
 
   const renderItem = useCallback(
-    ({ item }: { item: VendorCardData }) => <VendorCard vendor={item} />,
-    [],
+    ({ item }: { item: VendorCardData }) => <VendorCard vendor={item} activeCategory={activeCategory} />,
+    [activeCategory],
   );
 
   return (
@@ -207,22 +225,22 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <View>
           <Text style={styles.greeting}>Hey, {firstName} 👋</Text>
-          <Text style={styles.subGreeting}>Who's coming to you today?</Text>
+          <Text style={styles.subGreeting} numberOfLines={1}>
+            {locationLoaded ? `You're seeing stylists close to: ${address}` : 'Finding your area…'}
+          </Text>
         </View>
       </View>
 
-      {/* ── Search bar ── */}
-      <View style={styles.searchWrap}>
-        <View style={styles.searchInputWrap}>
-          <SearchIcon size={22} color={theme.color.inkMuted} />
-          <TextInput
-            style={styles.searchInput}
-            value={search}
-            onChangeText={setSearch}
-            returnKeyType="search"
-            clearButtonMode="while-editing"
-          />
-        </View>
+      {/* ── Confirmed location — every distance/ranking below comes from
+          this, not silent live GPS. Pre-filled; tap to change it. ── */}
+      <View style={styles.locationBar}>
+        <LocationPicker
+          theme={theme}
+          value={locationLoaded ? { lat: coords.lat, lng: coords.lng, address } : null}
+          placeholder="Finding your area…"
+          onConfirm={confirmLocation}
+          sheetSubtitle="Vendors and distances shown are based on this location."
+        />
       </View>
 
       {/* ── Category tabs ── */}
@@ -243,13 +261,6 @@ export default function HomeScreen() {
           );
         })}
       </View>
-
-      {/* ── Location permission banner ── */}
-      {permissionDenied && (
-        <TouchableOpacity style={styles.locBanner} onPress={() => Linking.openSettings()} activeOpacity={0.7}>
-          <Text style={styles.locBannerText}>Showing stylists in Lagos. Tap to enable location access.</Text>
-        </TouchableOpacity>
-      )}
 
       {/* ── Vendor list ── */}
       {isLoadingInitial ? (
@@ -286,7 +297,7 @@ export default function HomeScreen() {
             <View style={styles.empty}>
               <Text style={styles.emptyTitle}>No stylists nearby</Text>
               <Text style={styles.emptyBody}>
-                We're growing fast. Check back soon or try a wider search.
+                We're growing fast. Check back soon or try a different category.
               </Text>
             </View>
           }
@@ -310,17 +321,6 @@ function makeStyles(theme: VarsTheme) {
     },
     greeting: { fontSize: 22, fontWeight: '800', color: theme.color.ink },
     subGreeting: { fontSize: 14, color: theme.color.inkMuted, marginTop: 2 },
-    searchWrap: { paddingHorizontal: 16, paddingVertical: 10 },
-    searchInputWrap: {
-      flexDirection: 'row', alignItems: 'center', gap: 8,
-      backgroundColor: theme.color.surface2, borderRadius: BORDER_RADIUS,
-      paddingHorizontal: 16,
-      borderWidth: BORDER_WIDTH.regular, borderColor: theme.color.inkFaint,
-    },
-    searchInput: {
-      flex: 1, paddingVertical: 11,
-      fontSize: 15, color: theme.color.ink,
-    },
     tabs: { flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 12, gap: 8 },
     tab: {
       flex: 1, paddingVertical: 8, alignItems: 'center',
@@ -330,10 +330,8 @@ function makeStyles(theme: VarsTheme) {
     tabActive: { backgroundColor: theme.color.ink, borderColor: theme.color.ink },
     tabText: { fontSize: 14, fontWeight: '600', color: theme.color.inkMuted },
     tabTextActive: { color: theme.color.inverseInk },
-    locBanner: {
-      marginHorizontal: 16, marginBottom: 8,
-      backgroundColor: Colors.warning + '15',
-      borderRadius: 5, padding: 10,
+    locationBar: {
+      marginHorizontal: 20, marginBottom: 8,
     },
     skeletonCard: {
       flexDirection: 'row', gap: 14,
@@ -343,7 +341,6 @@ function makeStyles(theme: VarsTheme) {
       marginHorizontal: 16, marginBottom: 12,
     },
     skeletonInfo: { flex: 1, justifyContent: 'center', gap: 8 },
-    locBannerText: { fontSize: 12, color: Colors.warning, fontWeight: '500' },
     list: { paddingTop: 4, paddingBottom: 40 },
     centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60, gap: 10 },
     empty: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 40 },

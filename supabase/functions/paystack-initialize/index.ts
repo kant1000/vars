@@ -144,6 +144,8 @@ Deno.serve(async (req: Request) => {
       access_floor,
       access_flat,
       access_code,
+      recipient_name,
+      recipient_phone,
     } = body;
 
     if (
@@ -281,6 +283,8 @@ Deno.serve(async (req: Request) => {
         access_floor: access_floor ?? null,
         access_flat: access_flat ?? null,
         access_code: access_code ?? null,
+        recipient_name: recipient_name ?? null,
+        recipient_phone: recipient_phone ?? null,
         transport_fee_kobo: transportFeeKobo,
         distance_km: distanceKm,
         pre_transport_buffer_slots: preBufferSlots,

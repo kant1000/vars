@@ -379,6 +379,8 @@ function BookingBottomSheet({
       snapPoints={['65%', '92%']}
       enableDynamicSizing={false}
       onDismiss={onClose}
+      backgroundStyle={{ backgroundColor: theme.color.bg }}
+      handleIndicatorStyle={{ backgroundColor: theme.color.inkFaint }}
     >
       <BottomSheetScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
             {/* Header row */}
@@ -438,7 +440,7 @@ function BookingBottomSheet({
               {accessRevealed ? (
                 <>
                   {booking.client_phone && <DetailRow label="Phone" value={booking.client_phone} bs={bs} />}
-                  {booking.access_building && <DetailRow label="Building" value={booking.access_building} bs={bs} />}
+                  {booking.access_building && <DetailRow label="Address details" value={booking.access_building} bs={bs} />}
                   {booking.access_floor   && <DetailRow label="Floor"    value={booking.access_floor} bs={bs} />}
                   {booking.access_flat    && <DetailRow label="Flat"     value={booking.access_flat} bs={bs} />}
                   {booking.access_code    && <DetailRow label="Gate code" value={booking.access_code} bs={bs} />}
@@ -818,6 +820,8 @@ function BlockRangeSheet({
       snapPoints={['75%', '95%']}
       enableDynamicSizing={false}
       onDismiss={onClose}
+      backgroundStyle={{ backgroundColor: theme.color.bg }}
+      handleIndicatorStyle={{ backgroundColor: theme.color.inkFaint }}
     >
       <BottomSheetScrollView showsVerticalScrollIndicator={false} contentContainerStyle={br.scrollContent}>
 
@@ -916,8 +920,17 @@ function BlockRangeSheet({
                   untilDate ? [{ startId: toDateId(untilDate), endId: toDateId(untilDate) }] : []
                 }
                 onCalendarDayPress={(dateId: string) => setUntilDate(fromDateId(dateId))}
+                // Defaults to the device's OS light/dark setting, not our app theme —
+                // pin it to the app's own theme so it can't silently mismatch our colors.
+                calendarColorScheme={theme.appearance}
                 theme={{
                   itemDay: {
+                    // Library default assumes a light background — without this,
+                    // day numbers render in the library's default (dark) text
+                    // color and are invisible until `active` overrides it.
+                    base: () => ({
+                      content: { color: theme.color.ink },
+                    }),
                     active: () => ({
                       container: { backgroundColor: theme.color.ink },
                       content: { color: theme.color.inverseInk },
@@ -925,9 +938,15 @@ function BlockRangeSheet({
                     today: () => ({
                       content: { color: theme.color.ink, fontWeight: '700' },
                     }),
+                    disabled: () => ({
+                      content: { color: theme.color.inkFaint },
+                    }),
                   },
                   rowMonth: {
                     content: { color: theme.color.ink, fontWeight: '700', fontSize: 15 },
+                  },
+                  itemWeekName: {
+                    content: { color: theme.color.inkMuted, fontWeight: '600' },
                   },
                 }}
               />
@@ -1201,8 +1220,10 @@ export default function ScheduleScreen() {
     service_duration_blocks: b.service_duration_blocks,
     service_price_kobo: b.service_price_kobo,
     scheduled_at: b.scheduled_at,
-    client_name: b.profiles?.full_name ?? 'Client',
-    client_phone: b.profiles?.phone_number ?? null,
+    // A "booking for someone else" carries its own name/phone — show the
+    // actual recipient the vendor will meet, not the account holder's.
+    client_name: b.recipient_name || b.profiles?.full_name || 'Client',
+    client_phone: b.recipient_name ? b.recipient_phone : (b.profiles?.phone_number ?? null),
     phone_revealed: b.phone_revealed ?? false,
     user_location_lat: b.user_location_lat ?? null,
     user_location_lng: b.user_location_lng ?? null,
@@ -1235,7 +1256,7 @@ export default function ScheduleScreen() {
           id, status, service_name, service_duration_blocks, service_price_kobo,
           scheduled_at, suggested_scheduled_at, phone_revealed, user_location_lat, user_location_lng,
           user_location_address, access_building, access_floor, access_flat, access_code,
-          auto_accepted,
+          auto_accepted, recipient_name, recipient_phone,
           profiles:user_id(full_name, phone_number)
         `)
         .eq('vendor_id', vendorId)

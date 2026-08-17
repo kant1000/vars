@@ -9,7 +9,7 @@ import {
   StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
-import { router, useLocalSearchParams, type Href } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams, type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -111,7 +111,11 @@ export default function BookingsScreen() {
     setRefreshing(false);
   }, [user]);
 
-  useEffect(() => { load(); }, [load]);
+  // Tab screens stay mounted across tab switches — a plain mount-only effect
+  // would only ever fetch once and go stale (e.g. a booking made just now
+  // wouldn't show up on return to this tab). Reload on every focus instead,
+  // same pattern profile.tsx already uses for its bookings section.
+  useFocusEffect(useCallback(() => { load(); }, [load]));
 
   useEffect(() => {
     if (!user) return;

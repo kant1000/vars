@@ -13,14 +13,17 @@ import { VarsTheme } from '@/constants/visualSystem';
 import { useVarsTheme } from '@/contexts/ThemeContext';
 import { StarFilledIcon } from '@/components/icons';
 import { usePostHog, EVENTS } from '@/lib/analytics';
-import { CATEGORY_L1_LABELS } from '@vars/shared';
 import { StatusDot, VendorStatus } from '@/components/StatusDot';
+import { CATEGORY_L2_LABELS } from '@vars/shared';
+
+const AVATAR_SIZE = 60;
 
 export interface VendorCardData {
   id: string;
   full_name: string;
   bio: string | null;
   profile_image_url: string | null;
+  kyc_verified_at: string | null;
   distance_km: number;
   is_online: boolean;
   is_busy: boolean;
@@ -31,24 +34,57 @@ export interface VendorCardData {
   badge_verified: boolean;
   badge_new: boolean;
   pioneer: boolean;
-  price_from: number;       // kobo
+  price_from: number;       // kobo — cheapest service across every category (fallback only)
   category_names: string[];
-  services: { category_l2: string; service_name: string; description: string | null }[];
+  cheapest_by_category: { category_l1: string; category_l2: string; price_kobo: number; service_count: number }[];
 }
 
 interface Props {
   vendor: VendorCardData;
+  /** Which category tab this card is rendered under — drives the "{L2} from {price}" label. */
+  activeCategory: string;
   returnTo?: string;
+  /** Discover feed is location-sorted, so distance is always meaningful there.
+   * Screens with no location context (e.g. favorites) should hide it. */
+  showDistance?: boolean;
 }
 
-export function VendorCard({ vendor, returnTo }: Props) {
+// e.g. 18,000,000 kobo -> "180k". Never meant to show exact naira, just a
+// quick relative sense of price — see priceAmount below for the reasoning.
+function formatPriceK(priceKobo: number): string {
+  const naira = priceKobo / 100;
+  const k = naira / 1000;
+  return `${Number.isInteger(k) ? k : k.toFixed(1)}k`;
+}
+
+export function VendorCard({ vendor, activeCategory, returnTo, showDistance = true }: Props) {
   const { theme } = useVarsTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const posthog = usePostHog();
-  const displayPrice = `₦${Math.round(vendor.price_from / 100).toLocaleString('en-NG')}`;
-  const displayDist = vendor.distance_km < 1
-    ? `${Math.round(vendor.distance_km * 1000)}m`
-    : `${vendor.distance_km.toFixed(1)}km`;
+
+  // Section-aware price label: the cheapest subcategory+price *within the
+  // category tab this card is shown under* (e.g. "Weaves from 180k" under
+  // Hair, "Manicure from 100k" under Nails for the same vendor) — not one
+  // generic price that's the same regardless of which section you're
+  // browsing. Every vendor shown under a tab has at least one active
+  // service in that L1 by construction (that's why the card is there), so
+  // this should always find a match; price_from is a defensive fallback
+  // only, never expected to actually render.
+  // A trailing "+" signals more than one service relevant to this section
+  // (not just more than one subcategory) — e.g. two different Weaves
+  // services still gets "Weaves+".
+  const cheapest = vendor.cheapest_by_category.find((c) => c.category_l1 === activeCategory);
+  const l2Label = cheapest ? (CATEGORY_L2_LABELS[cheapest.category_l2] ?? cheapest.category_l2) : null;
+  const hasMore = !!cheapest && cheapest.service_count > 1;
+  const displayPrice = formatPriceK(cheapest?.price_kobo ?? vendor.price_from);
+
+  // Always km — no meters, so distance reads consistently across the app (e.g. 0.5km, not 500m).
+  // Screens with no location context (favorites) pass showDistance=false and
+  // get_favourite_vendors doesn't return distance_km at all, so this must
+  // not touch vendor.distance_km unless it's actually going to be shown.
+  const displayDist = showDistance
+    ? (vendor.distance_km < 0.05 ? '<0.1km' : `${vendor.distance_km.toFixed(1)}km`)
+    : null;
 
   return (
     <TouchableOpacity
@@ -65,7 +101,20 @@ export function VendorCard({ vendor, returnTo }: Props) {
       {/* Avatar */}
       <View style={styles.avatarWrap}>
         {vendor.profile_image_url ? (
-          <Image source={{ uri: vendor.profile_image_url }} style={styles.avatar} contentFit="cover" cachePolicy="memory-disk" />
+          <Image
+            // expo-image caches by URL — cache-bust with kyc_verified_at
+            // (only changes when the photo actually could), same as the
+            // vendor detail page, so a re-verified vendor's fresh photo
+            // isn't hidden behind a stale cached copy of the same storage path.
+            source={{
+              uri: vendor.kyc_verified_at
+                ? `${vendor.profile_image_url}?v=${encodeURIComponent(vendor.kyc_verified_at)}`
+                : vendor.profile_image_url,
+            }}
+            style={styles.avatar}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+          />
         ) : (
           <View style={[styles.avatar, styles.avatarFallback]}>
             <Text style={styles.avatarInitial}>
@@ -73,10 +122,16 @@ export function VendorCard({ vendor, returnTo }: Props) {
             </Text>
           </View>
         )}
+        {vendor.pioneer && (
+          <View style={styles.pioneerDotWrap}>
+            <StarFilledIcon size={16} color={Colors.badgePioneer} strokeColor={theme.color.ink} />
+          </View>
+        )}
         <View style={styles.statusDotWrap}>
           <StatusDot
             status={(vendor.is_busy ? 'busy' : vendor.is_online ? 'online' : 'offline') as VendorStatus}
             size={14}
+            bordered={false}
           />
         </View>
       </View>
@@ -85,19 +140,17 @@ export function VendorCard({ vendor, returnTo }: Props) {
       <View style={styles.info}>
         <View style={styles.nameRow}>
           <Text style={styles.name} numberOfLines={1}>{vendor.full_name}</Text>
-          <Text style={styles.distance}>{displayDist}</Text>
+          {showDistance && <Text style={styles.distance}>{displayDist}</Text>}
         </View>
 
-        {/* Badges */}
-        <BadgeRow vendor={vendor} styles={styles} />
-
-        {/* Category + rating */}
+        {/* Price + rating */}
         <View style={styles.metaRow}>
-          {vendor.category_names.length > 0 && (
-            <Text style={styles.category} numberOfLines={1}>
-              {vendor.category_names.map((n) => CATEGORY_L1_LABELS[n] ?? n).join(' · ')}
-            </Text>
-          )}
+          <View style={styles.priceRow}>
+            <Text style={styles.price} numberOfLines={1}>{l2Label ?? 'From'}</Text>
+            {hasMore && <Text style={styles.priceSuperscript}>+</Text>}
+            <Text style={styles.price} numberOfLines={1}>{l2Label ? ' from ' : ' '}</Text>
+            <Text style={styles.priceAmount}>{displayPrice}</Text>
+          </View>
           <View style={styles.ratingRow}>
             {vendor.total_reviews === 0 ? (
               <Text style={styles.newOnVars}>New on VARS</Text>
@@ -112,62 +165,45 @@ export function VendorCard({ vendor, returnTo }: Props) {
             )}
           </View>
         </View>
-
-        {/* Price from */}
-        <Text style={styles.price}>From <Text style={styles.priceAmount}>{displayPrice}</Text></Text>
       </View>
     </TouchableOpacity>
-  );
-}
-
-function BadgeRow({ vendor, styles }: { vendor: VendorCardData; styles: ReturnType<typeof makeStyles> }) {
-  const badges: { label: string; color: string }[] = [];
-  if (vendor.pioneer) badges.push({ label: '★ Pioneer', color: Colors.badgePioneer });
-  if (vendor.badge_vars_choice) badges.push({ label: 'VARS Choice', color: Colors.badgeVarsChoice });
-  if (vendor.badge_top_rated) badges.push({ label: 'Top Rated', color: Colors.badgeTopRated });
-  if (vendor.badge_verified) badges.push({ label: 'Verified', color: Colors.badgeVerified });
-  if (vendor.badge_new) badges.push({ label: 'New', color: Colors.badgeNew });
-  if (badges.length === 0) return null;
-
-  return (
-    <View style={styles.badgeRow}>
-      {badges.map((b) => (
-        <View key={b.label} style={[styles.badge, { backgroundColor: b.color + '1A' }]}>
-          <Text style={[styles.badgeText, { color: b.color }]}>{b.label}</Text>
-        </View>
-      ))}
-    </View>
   );
 }
 
 function makeStyles(theme: VarsTheme) {
   return StyleSheet.create({
     card: {
-      flexDirection: 'row', gap: 14,
+      flexDirection: 'row', gap: 12, alignItems: 'center',
       backgroundColor: theme.color.bg,
-      borderRadius: BORDER_RADIUS, padding: 14,
+      borderRadius: BORDER_RADIUS, padding: 12,
       borderWidth: BORDER_WIDTH.thin, borderColor: theme.color.inkFaint,
-      marginHorizontal: 16, marginBottom: 12,
+      marginHorizontal: 16, marginBottom: 10,
     },
-    avatarWrap: { width: 68, height: 68 },
-    avatar: { width: 68, height: 68, borderRadius: 34 },
-    statusDotWrap: { position: 'absolute', bottom: 0, right: 0 },
+    avatarWrap: { width: AVATAR_SIZE, height: AVATAR_SIZE },
+    avatar: { width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2 },
+    statusDotWrap: { position: 'absolute', bottom: 1, right: 1 },
+    pioneerDotWrap: { position: 'absolute', top: 1, right: 1 },
     avatarFallback: { backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
-    avatarInitial: { fontSize: 24, fontWeight: '700', color: Colors.primary },
-    info: { flex: 1, gap: 4 },
+    avatarInitial: { fontSize: 22, fontWeight: '700', color: Colors.primary },
+    info: { flex: 1, gap: 6 },
     nameRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
     name: { fontSize: 16, fontWeight: '700', color: theme.color.ink, flex: 1, marginRight: 6 },
     distance: { fontSize: 12, color: theme.color.inkMuted, marginTop: 2 },
-    badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
-    badge: { borderRadius: BORDER_RADIUS, paddingHorizontal: 6, paddingVertical: 2 },
-    badgeText: { fontSize: 12, fontWeight: '700' },
     metaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    category: { fontSize: 12, color: theme.color.inkMuted, flex: 1 },
     ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-    ratingText: { fontSize: 12, fontWeight: '600', color: theme.color.ink },
+    ratingText: { fontSize: 12, fontWeight: '600', color: theme.color.ink, includeFontPadding: false },
     reviewCount: { fontWeight: '400', color: theme.color.inkMuted },
     newOnVars: { fontSize: 12, fontWeight: '600', color: Colors.badgeNew },
+    priceRow: { flexDirection: 'row', alignItems: 'flex-start', flexShrink: 1 },
     price: { fontSize: 13, color: theme.color.inkMuted },
-    priceAmount: { fontWeight: '700', color: theme.color.ink },
+    // A real flex sibling (not a nested Text span) — nested inline Text
+    // ignores transform/position in RN's text-layout engine, which is why
+    // an earlier version of this (top: -4 on a nested span) never visibly
+    // rose above the baseline.
+    priceSuperscript: {
+      fontSize: 9, fontWeight: '700', color: theme.color.inkMuted,
+      transform: [{ translateY: -4 }],
+    },
+    priceAmount: { fontSize: 13, fontWeight: '700', color: theme.color.ink },
   });
 }
