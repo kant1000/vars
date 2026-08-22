@@ -1101,7 +1101,7 @@ export default function ScheduleScreen() {
     if (!vendorId) return;
     const { data } = await supabase
       .from('vendors')
-      .select('auto_accept_enabled, auto_accept_zone_confirmed_date, auto_accept_paused_due_to_drift, auto_accept_zone_lat, auto_accept_zone_radius_km, recurring_block_weekdays')
+      .select('auto_accept_enabled, auto_accept_zone_confirmed_date, auto_accept_paused_due_to_drift, auto_accept_zone_radius_km, recurring_block_weekdays')
       .eq('id', vendorId)
       .single();
     if (data) {
@@ -1110,7 +1110,8 @@ export default function ScheduleScreen() {
         confirmedDate: data.auto_accept_zone_confirmed_date ?? null,
         paused: data.auto_accept_paused_due_to_drift ?? false,
         radius_km: data.auto_accept_zone_radius_km ?? null,
-        zoneConfigured: data.auto_accept_zone_lat != null,
+        // Zone centre is base_location now; radius is the only zone setting.
+        zoneConfigured: data.auto_accept_zone_radius_km != null,
       });
       const days = ((data as any).recurring_block_weekdays ?? []) as number[];
       setRecurringDays(days);

@@ -84,6 +84,13 @@ export const GATE_PROXIMITY_KM = 1;
 /** How many minutes before scheduled_at the "On My Way" gate window opens. */
 export const GATE_WINDOW_MINUTES = 120;
 
+/** How old (minutes) vendor_current_lat/lng may be and still be trusted for the
+ *  proximity gate. The vendor app only pings while a booking is on_way, so
+ *  coordinates persist after a job ends; without this bound a leftover position
+ *  from an earlier job could satisfy the proximity check and charge a customer
+ *  before the vendor had set off. Comfortably above the app's 60s ping. */
+export const VENDOR_LOCATION_MAX_AGE_MINUTES = 10;
+
 // ── Document version constants ─────────────────────────────────
 // Mirror of apps/mobile/constants/terms.ts — keep in sync manually.
 // Bump a version string to trigger reacceptance on next cold start.

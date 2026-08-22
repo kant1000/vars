@@ -6,11 +6,10 @@
 // ============================================================
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity,
+  View, Text, StyleSheet,
   ScrollView, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -19,7 +18,7 @@ import { useVarsTheme } from '@/contexts/ThemeContext';
 import { BORDER_RADIUS, BORDER_WIDTH } from '@/constants/colors';
 import { VarsTheme } from '@/constants/visualSystem';
 import { sanitizeContent } from '@/lib/format';
-import { LAGOS_AREAS } from '@/constants/areas';
+import { LocationPicker, ResolvedLocation } from '@/components/LocationPicker';
 
 export default function Step1Profile() {
   const { user } = useAuth();
@@ -33,9 +32,6 @@ export default function Step1Profile() {
   const [locationLabel, setLocationLabel] = useState('');
   const [locationCoords, setLocationCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isLocating, setIsLocating] = useState(false);
-  const [hasTriedDetect, setHasTriedDetect] = useState(false);
-  const [showAreaPicker, setShowAreaPicker] = useState(false);
 
   // Pre-fill from vendor row — trigger copies data from vendor_leads at registration
   useEffect(() => {
@@ -52,52 +48,12 @@ export default function Step1Profile() {
       });
   }, [user]);
 
-  const handleDetectLocation = async () => {
-    if (isLocating) return;
-    setIsLocating(true);
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Please allow location access to set your base area.');
-        return;
-      }
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('timeout')), 10000)
-      );
-      const getPos = async () => {
-        const last = await Location.getLastKnownPositionAsync({ maxAge: 30000, requiredAccuracy: 200 });
-        if (last) return last;
-        return Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      };
-      const loc = await Promise.race([getPos(), timeoutPromise]);
-      const [geo] = await Location.reverseGeocodeAsync(loc.coords);
-      const label = [geo.district ?? geo.subregion, geo.city ?? geo.region]
-        .filter(Boolean).join(', ');
-      setLocationLabel(label || 'Current location');
-      setLocationCoords({ lat: loc.coords.latitude, lng: loc.coords.longitude });
-    } catch (err: any) {
-      Alert.alert('Error', err.message === 'timeout' ? 'Location timed out. Try again.' : 'Could not detect location.');
-    } finally {
-      setIsLocating(false);
-      setHasTriedDetect(true);
-    }
-  };
-
-  // First tap auto-detects via GPS. Once that's been tried (success or not),
-  // further taps open the area picker instead — lets a vendor correct a bad
-  // GPS read or set up from somewhere other than their actual base.
-  const handleLocationPress = () => {
-    if (!hasTriedDetect) {
-      handleDetectLocation();
-    } else {
-      setShowAreaPicker((v) => !v);
-    }
-  };
-
-  const handleSelectArea = (area: { name: string; lat: number; lng: number }) => {
-    setLocationLabel(area.name);
-    setLocationCoords({ lat: area.lat, lng: area.lng });
-    setShowAreaPicker(false);
+  // Held locally until Next, unlike the profile screen's bar which persists
+  // immediately: there is no zone confirmation to invalidate during
+  // onboarding, and base_location is written with the rest of the form below.
+  const handleLocationConfirm = (loc: ResolvedLocation) => {
+    setLocationLabel(loc.address || 'Current area');
+    setLocationCoords({ lat: loc.lat, lng: loc.lng });
   };
 
   const handleNext = async () => {
@@ -176,32 +132,21 @@ export default function Step1Profile() {
             </Text>
           </View>
 
-          {/* Base location */}
-          <VarsButton
-            theme={theme}
-            variant="secondary"
-            size="lg"
-            loading={isLocating}
-            onPress={handleLocationPress}
-            label={locationCoords ? `📍 ${locationLabel}` : 'Set your base location'}
-          />
-          <Text style={styles.locationHelper}>
-            Your primary operating area.
-          </Text>
-
-          {showAreaPicker && (
-            <VarsSurface theme={theme} elevation={1} style={styles.areaPicker}>
-              {LAGOS_AREAS.map((area) => (
-                <TouchableOpacity
-                  key={area.name}
-                  style={styles.areaRow}
-                  onPress={() => handleSelectArea(area)}
-                >
-                  <Text style={styles.areaRowText}>{area.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </VarsSurface>
-          )}
+          {/* Base location — same control the vendor gets later on their
+              profile, and the same one customers use to set theirs. */}
+          <View>
+            <LocationPicker
+              theme={theme}
+              value={locationCoords ? { ...locationCoords, address: locationLabel } : null}
+              onConfirm={handleLocationConfirm}
+              placeholder="Set where you work from"
+              sheetTitle="Where should clients find you?"
+              sheetSubtitle="This sets your place in search results and your travel fees."
+            />
+            <Text style={styles.locationHelper}>
+              Your primary operating area.
+            </Text>
+          </View>
 
           {/* Bio — optional, 150 char max per spec §4.3 */}
           <View>
@@ -262,12 +207,6 @@ function makeStyles(theme: VarsTheme) {
       textAlignVertical: 'top', includeFontPadding: false,
     },
     charCount: { fontSize: 12, color: theme.color.inkMuted, textAlign: 'right', marginTop: 4 },
-    locationHelper: { fontSize: 13, color: theme.color.inkMuted, marginTop: -4, marginLeft: 4 },
-    areaPicker: { marginTop: -4, overflow: 'hidden' },
-    areaRow: {
-      height: 48, paddingHorizontal: 16, justifyContent: 'center',
-      borderBottomWidth: BORDER_WIDTH.thin, borderBottomColor: theme.color.inkFaint,
-    },
-    areaRowText: { fontSize: 15, color: theme.color.ink },
+    locationHelper: { fontSize: 13, color: theme.color.inkMuted, marginTop: 6, marginLeft: 4 },
   });
 }

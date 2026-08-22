@@ -2,13 +2,17 @@
 // VARS — Vendor Zone Setup
 // Vendor sets their operating zone for Auto-Accept.
 //
-// • Map with draggable pin (react-native-maps)
-// • Radius selector: 1 / 2 / 3 / 5 / 10 km
+// • Map centred on the vendor's base location (read-only marker)
+// • Location is changed through the shared LocationPicker, the same
+//   control customers use — base_location is the single vendor location,
+//   so there is exactly one editor for it
+// • Radius selector: 1 / 1.5 km
 // • Toggle to enable/disable auto-accept
-// • Save calls vendor-set-zone edge function
+// • Save calls vendor-set-zone (radius + toggle only; the centre is owned
+//   by vendor-set-base-location)
 // • Circle overlay shows the zone boundary
 // ============================================================
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert, LayoutAnimation, StyleSheet, Text,
   TouchableOpacity, View, ScrollView,
@@ -17,13 +21,13 @@ import { ConfirmModal } from '@/components/ConfirmModal';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { VarsSwitch } from '@/components/ui';
 import MapView, { Circle, Marker, Region } from 'react-native-maps';
-import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { VarsTheme } from '@/constants/visualSystem';
 import { useVarsTheme } from '@/contexts/ThemeContext';
 import { BORDER_WIDTH } from '@/constants/colors';
+import { LocationPicker, ResolvedLocation, reverseGeocode } from '@/components/LocationPicker';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
@@ -68,45 +72,35 @@ export default function VendorZoneSetup() {
 
   const [pinLat, setPinLat]     = useState(LAGOS_DEFAULT.latitude);
   const [pinLng, setPinLng]     = useState(LAGOS_DEFAULT.longitude);
+  const [hasBaseLocation, setHasBaseLocation] = useState(false);
+  const [locationLabel, setLocationLabel] = useState('');
   const [radius, setRadius]     = useState<RadiusKm>(1);
   const [autoEnabled, setAutoEnabled] = useState(false);
 
-  // Load location and DB zone settings in parallel so GPS wait doesn't delay the form.
+  // The zone centre is base_location, so there is no GPS read here any more —
+  // the vendor's stored location is the single source, and changing it goes
+  // through the LocationPicker below like it does on their profile.
   useEffect(() => {
     (async () => {
-      const locationPromise = (async () => {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') return null;
-        let loc = await Location.getLastKnownPositionAsync({});
-        if (!loc) {
-          loc = await Promise.race([
-            Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
-            new Promise<null>(resolve => setTimeout(() => resolve(null), 4000)),
-          ]);
-        }
-        return loc;
-      })();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setLoading(false); return; }
 
-      const vendorPromise = (async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return null;
-        const { data } = await supabase
+      const [{ data: vendor }, { data: base }] = await Promise.all([
+        supabase
           .from('vendors')
-          .select('auto_accept_zone_lat, auto_accept_zone_lng, auto_accept_zone_radius_km, auto_accept_enabled')
+          .select('auto_accept_zone_radius_km, auto_accept_enabled')
           .eq('id', user.id)
-          .single();
-        return data;
-      })();
+          .single(),
+        supabase
+          .rpc('get_vendor_base_location', { p_vendor_id: user.id })
+          .maybeSingle() as Promise<{ data: { lat: number; lng: number } | null }>,
+      ]);
 
-      const [loc, vendor] = await Promise.all([locationPromise, vendorPromise]);
-
-      // DB zone centre takes precedence over GPS; only use GPS if no saved pin yet.
-      if (vendor?.auto_accept_zone_lat != null) {
-        setPinLat(vendor.auto_accept_zone_lat);
-        setPinLng(vendor.auto_accept_zone_lng);
-      } else if (loc) {
-        setPinLat(loc.coords.latitude);
-        setPinLng(loc.coords.longitude);
+      if (base?.lat != null && base?.lng != null) {
+        setPinLat(base.lat);
+        setPinLng(base.lng);
+        setHasBaseLocation(true);
+        setLocationLabel(await reverseGeocode(base.lat, base.lng));
       }
       if (vendor?.auto_accept_zone_radius_km) {
         setRadius(vendor.auto_accept_zone_radius_km as RadiusKm);
@@ -120,7 +114,38 @@ export default function VendorZoneSetup() {
     })();
   }, []);
 
+  // Persist immediately on confirm, same as the customer's location bar:
+  // the picked location is the stored one, no separate save step. The edge
+  // function also clears any daily zone confirmation, since the zone has moved.
+  const handleLocationConfirm = useCallback(async (loc: ResolvedLocation) => {
+    setPinLat(loc.lat);
+    setPinLng(loc.lng);
+    setHasBaseLocation(true);
+    setLocationLabel(loc.address || 'Current area');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/vendor-set-base-location`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ lat: loc.lat, lng: loc.lng }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Could not save your location');
+    } catch (err: any) {
+      Alert.alert('Location not saved', err.message ?? 'Please try again.');
+    }
+  }, []);
+
   const handleSave = () => {
+    // Auto-accept has no centre to work from without a stored location.
+    if (autoEnabled && !hasBaseLocation) {
+      Alert.alert('Set your location', 'Choose where you work from before turning on auto-accept.');
+      return;
+    }
     // Show the liability modal the first time a vendor turns auto-accept on.
     if (autoEnabled && !wasAlreadyEnabled.current) {
       setShowAutoAcceptModal(true);
@@ -142,8 +167,8 @@ export default function VendorZoneSetup() {
           Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          lat: pinLat,
-          lng: pinLng,
+          // No lat/lng: the zone centre is base_location, saved separately by
+          // handleLocationConfirm the moment the vendor picks it.
           radius_km: radius,
           auto_accept_enabled: autoEnabled,
           // Pass local date so confirmed_date is written atomically in the same
@@ -208,25 +233,33 @@ export default function VendorZoneSetup() {
               strokeColor={theme.color.ink}
               strokeWidth={BORDER_WIDTH.regular}
             />
-            {/* Draggable pin */}
+            {/* Read-only marker: the centre is base_location, changed through
+                the picker below so there is only ever one editor for it. */}
             <Marker
               coordinate={{ latitude: pinLat, longitude: pinLng }}
-              draggable
-              onDragEnd={(e) => {
-                setPinLat(e.nativeEvent.coordinate.latitude);
-                setPinLng(e.nativeEvent.coordinate.longitude);
-              }}
-              title="Zone centre"
-              description="Drag to reposition"
+              title="Your location"
               pinColor={theme.color.ink}
             />
           </MapView>
           <View style={s.mapHint}>
-            <Text style={s.mapHintText}>Drag the pin to set your zone centre</Text>
+            <Text style={s.mapHintText}>
+              {hasBaseLocation ? 'Your zone sits around where you work from' : 'Set where you work from below'}
+            </Text>
           </View>
         </View>
 
         <View style={s.controls}>
+          {/* Location — same control customers use to set theirs */}
+          <Text style={s.sectionLabel}>Where you work from</Text>
+          <LocationPicker
+            theme={theme}
+            value={hasBaseLocation ? { lat: pinLat, lng: pinLng, address: locationLabel } : null}
+            onConfirm={handleLocationConfirm}
+            placeholder="Set where you work from"
+            sheetTitle="Where should clients find you?"
+            sheetSubtitle="This sets your place in search results, your travel fees, and the centre of your auto-accept zone."
+          />
+
           {/* Active date */}
           <View style={s.dateRow}>
             <Text style={s.dateLabelText}>⚡ Auto-accept for</Text>

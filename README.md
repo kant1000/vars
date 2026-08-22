@@ -29,7 +29,7 @@ VARS is a mobile marketplace that connects customers in Lagos with verified beau
 |---|---|
 | Market | Lagos, Nigeria |
 | Services | Hair, Barber, Face, Nails (free-name taxonomy V2) |
-| Payment | Paystack (subaccount split model, test mode) |
+| Payment | Paystack (subaccount split model, live keys active since 3 Jul 2026) |
 | Backend | Supabase (Postgres + Auth + Realtime + Edge Functions) |
 | Mobile | Expo / React Native (iOS & Android) |
 | Admin | Next.js dashboard |
@@ -199,6 +199,7 @@ Twenty migration files build up the schema incrementally:
 | `20260816201838_phone_identity_registry` | Replaces the `20260816195403` trigger with `phone_identity_registry`, a table backed by a real PRIMARY KEY across `profiles` + `vendors` phone numbers — resolves duplicate-key inserts atomically (closes a race the trigger version had) and catches same-table and cross-table duplicates through one mechanism. Also fixes `normalise_nigerian_phone` not stripping separators from `+`-prefixed numbers, and makes `NIN_HASH_PEPPER` fail closed instead of defaulting to `''`. |
 | `20260816203310_phone_registry_message_and_updated_at` | Reworks the duplicate-phone exception message to be role-agnostic (was misleadingly worded for cross-role-only collisions); fixes `updated_at` never refreshing on a no-op re-save of the same phone by the same account |
 | `20260819060001_get_vendor_base_location` | Creates `get_vendor_base_location(p_vendor_id)`, extracting `vendors.base_location` (PostGIS geography) as plain lat/lng via `ST_Y`/`ST_X`, mirroring the same extraction already used by `get_nearby_vendors`. Fixes the transport-surcharge calc, which was reading the unrelated `auto_accept_zone_lat/lng` instead. |
+| `20260822000001_collapse_zone_onto_base_location` | Drops `auto_accept_zone_lat/lng`: the auto-accept zone is now centred on `base_location`, making it the single vendor location behind discovery sort, transport fees, and auto-accept. Removes the duplication that caused the wrong-field transport-fee bug. `auto_accept_zone_radius_km` survives as the only zone-specific setting, so "zone configured" now means *radius is set*. Also drops the dead `live_location` / `live_location_updated_at` columns (zero code references, zero rows), superseded by `vendor_current_lat/lng`. |
 
 ### Key Tables
 
@@ -287,7 +288,8 @@ All functions live in `supabase/functions/` and run on Deno.
 | `deliver-outreach` | POST | Picks up approved `vendor_lead_outreach` records and delivers via the appropriate channel (WhatsApp via 360dialog, email via Resend). Controlled by `DELIVERY_LIVE` secret — logs only when unset. Accepts optional `{ record_id }` or `{ lead_id }` to scope delivery |
 | `unsubscribe-lead` | GET | One-click email unsubscribe — verifies HMAC-SHA256 token, sets `email_unsubscribed = true` on `vendor_leads`. Linked from every outreach and marketing email footer |
 | `send-marketing-email` | POST | Sends a bulk HTML campaign email to a segment of vendor leads. Segmentation via Supabase (`service_type`, `pioneer`, `lead_state`, `converted`). Renders per-lead HTML with unsubscribe URL. Delivers via Resend Batch API (100/request). Called by admin marketing panel |
-| `vendor-set-zone` | POST | Saves vendor's auto-accept geographic zone; when `auto_accept_enabled = true`, also writes `auto_accept_zone_confirmed_date` atomically so no separate confirm-zone call is needed from zone setup |
+| `vendor-set-zone` | POST | Saves the vendor's auto-accept radius and toggle. Does **not** set the zone centre, which is `base_location` (see `vendor-set-base-location`). When `auto_accept_enabled = true`, also writes `auto_accept_zone_confirmed_date` atomically so no separate confirm-zone call is needed from zone setup, and rejects the enable if no `base_location` is set |
+| `vendor-set-base-location` | POST | Vendor updates the single location they operate from, from the profile or zone-setup screen. Writes `base_location` and clears `auto_accept_zone_confirmed_date` in the same update, since moving the location moves the auto-accept zone centre with it |
 | `vendor-confirm-zone` | GET/POST | GET: returns zone status; POST: marks zone confirmed for today (called from the home-screen daily confirmation prompt) |
 | `vendor-update-location` | POST | Called by vendor app in two contexts: every 60s while `on_way` (live tracking) and every 5 min while online (drift detection). Only writes `vendor_current_lat/lng` when the vendor has an active `on_way` booking; always writes `auto_accept_paused_due_to_drift`. |
 | `photo-consent-request` | POST | Vendor requests permission to use a booking photo in their portfolio — creates a consent record with 72-hour expiry, notifies customer |
@@ -648,7 +650,7 @@ Four conditions must all be true at the moment of booking creation (`paystack-in
 1. **Vendor settings active** — `auto_accept_enabled = true`, `auto_accept_paused_due_to_drift = false`
 2. **Zone confirmed for the booking day** — `auto_accept_zone_confirmed_date` matches either the UTC calendar date of the booking or the UTC calendar date of payment
 3. **Slot free** — no `unavailable` or `transport_buffer` block in `vendor_calendar` overlaps the booking window, and no active booking already occupies that time
-4. **User within zone** — the customer's location is within the vendor's zone radius (Haversine distance check)
+4. **User within zone** — the customer's location is within `auto_accept_zone_radius_km` of the vendor's `base_location` (Haversine distance check). The zone centre **is** `base_location`, the vendor's single location, so it can never drift out of step with the transport-fee origin. `paystack-initialize` fetches it once and uses it for both.
 
 There is **no per-slot auto-accept tagging**. All free slots on a confirmed day are eligible. The `auto_accept` block state in the DB enum is deprecated and no longer written or checked.
 
@@ -662,7 +664,9 @@ Confirmation is stored as `auto_accept_zone_confirmed_date`. The webhook accepts
 
 ### Zone Drift Detection
 
-While a vendor is online, the app pings their GPS location every 5 minutes (`vendor-update-location`). If they move more than `zone_radius + 3 km` from their zone centre, `auto_accept_paused_due_to_drift` is set to `true` and auto-accept suspends until they return to the zone or re-confirm.
+While a vendor is online, the app pings their GPS location every 5 minutes (`vendor-update-location`). If they move more than `zone_radius + 3 km` from their `base_location`, `auto_accept_paused_due_to_drift` is set to `true` and auto-accept suspends until they return to the zone or re-confirm.
+
+Each ping also stamps `vendor_location_updated_at` alongside `vendor_current_lat/lng`. Those coordinates are only written while a booking is `on_way` and are never cleared afterwards, so `send-reminders` rejects any position older than `VENDOR_LOCATION_MAX_AGE_MINUTES` before firing a proximity gate. Without that bound a leftover position from an earlier job could charge a customer before the vendor had set off.
 
 ### Grace Period
 
@@ -675,7 +679,7 @@ After an auto-accepted booking is created, the vendor has a **5-minute grace win
 
 ### Transport Surcharge (Distance-Based)
 
-When a customer's location exceeds the **base operating radius of 5 km** from the vendor's base location, a distance-based surcharge is added to the Paystack charge. The surcharge is calculated server-side in `paystack-initialize` using the Haversine formula against `vendors.base_location` (fetched via the `get_vendor_base_location` RPC, since it's a PostGIS geography column) and stored on the booking row (`transport_fee_kobo`, `distance_km`). The client never sends the surcharge — the server derives and stores it, and `paystack-webhook` reads it back from the booking row in the database. `base_location` is set once at vendor onboarding and is the same field the discovery feed uses for proximity sort — deliberately distinct from `auto_accept_zone_lat/lng`, an unrelated opt-in field for the Auto-Accept feature (see below) that used to be misread for this calculation (fixed 2026-08-18).
+When a customer's location exceeds the **base operating radius of 5 km** from the vendor's base location, a distance-based surcharge is added to the Paystack charge. The surcharge is calculated server-side in `paystack-initialize` using the Haversine formula against `vendors.base_location` (fetched via the `get_vendor_base_location` RPC, since it's a PostGIS geography column) and stored on the booking row (`transport_fee_kobo`, `distance_km`). The client never sends the surcharge — the server derives and stores it, and `paystack-webhook` reads it back from the booking row in the database. `base_location` is the vendor's single location: it drives the discovery proximity sort, this transport-fee distance, and the auto-accept zone centre. It is set at onboarding and editable afterwards from the vendor's profile screen, via the same `LocationPicker` customers use. Writes go through `vendor-set-base-location`, which clears `auto_accept_zone_confirmed_date` in the same update since the zone moves with it. The separate `auto_accept_zone_lat/lng` pair this calculation used to misread (fixed 2026-08-18) was removed entirely in `20260822000001_collapse_zone_onto_base_location`.
 
 | Distance over 5 km | Surcharge | Pre-buffer slots |
 |---|---|---|

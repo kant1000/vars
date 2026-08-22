@@ -91,6 +91,11 @@ export const GATE_PROXIMITY_KM = 1;
 /** How many minutes before scheduled_at the "On My Way" gate window opens. */
 export const GATE_WINDOW_MINUTES = 120;
 
+/** How old (minutes) vendor_current_lat/lng may be and still be trusted for the
+ * proximity gate. Coordinates persist after a job ends, so an unbounded read
+ * could fire a payment gate on a leftover position. */
+export const VENDOR_LOCATION_MAX_AGE_MINUTES = 10;
+
 /** Booking status values (mirrors DB enum) */
 export const BOOKING_STATUS = {
   PENDING: 'pending',

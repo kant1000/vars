@@ -1,13 +1,18 @@
 // ============================================================
 // VARS — vendor-set-zone
-// Saves the vendor's auto-accept operating zone.
+// Saves the vendor's auto-accept zone settings.
+//
+// The zone CENTRE is not set here: it is the vendor's base_location, owned
+// by vendor-set-base-location. This function owns only the radius around it
+// and the auto-accept toggle. Moving the centre (and therefore invalidating
+// a daily confirmation) is vendor-set-base-location's job.
 //
 // POST body:
-//   { lat, lng, radius_km, auto_accept_enabled }
+//   { radius_km, auto_accept_enabled, effective_date? }
 //   radius_km must be one of: 1, 1.5
 //
 // Returns:
-//   { success: true, zone: { lat, lng, radius_km }, auto_accept_enabled }
+//   { success: true, radius_km, auto_accept_enabled }
 // ============================================================
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
@@ -29,8 +34,6 @@ Deno.serve(async (req: Request) => {
   if (authError || !user) return errorResponse('Unauthorized', 401);
 
   let body: {
-    lat?: number;
-    lng?: number;
     radius_km?: number;
     auto_accept_enabled?: boolean;
     effective_date?: string;
@@ -42,15 +45,9 @@ Deno.serve(async (req: Request) => {
     return errorResponse('Invalid JSON body', 400);
   }
 
-  const { lat, lng, radius_km, auto_accept_enabled, effective_date } = body;
+  const { radius_km, auto_accept_enabled, effective_date } = body;
 
   // Validate
-  if (lat == null || typeof lat !== 'number' || lat < -90 || lat > 90) {
-    return errorResponse('lat must be a number between -90 and 90');
-  }
-  if (lng == null || typeof lng !== 'number' || lng < -180 || lng > 180) {
-    return errorResponse('lng must be a number between -180 and 180');
-  }
   if (!radius_km || !VALID_RADII.includes(radius_km)) {
     return errorResponse(`radius_km must be one of: ${VALID_RADII.join(', ')}`);
   }
@@ -60,18 +57,21 @@ Deno.serve(async (req: Request) => {
 
   const supabase = createAdminClient();
 
-  // Verify this user is a vendor and fetch current zone centre
+  // Verify this user is a vendor. Auto-accept cannot be enabled without a
+  // base_location to centre the zone on, so check that too.
   const { data: vendor } = await supabase
     .from('vendors')
-    .select('id, auto_accept_zone_lat, auto_accept_zone_lng')
+    .select('id, base_location')
     .eq('id', user.id)
     .single();
 
   if (!vendor) return errorResponse('Vendor not found', 404);
 
+  if (auto_accept_enabled === true && vendor.base_location == null) {
+    return errorResponse('Set your location before turning on auto-accept', 400);
+  }
+
   const update: Record<string, unknown> = {
-    auto_accept_zone_lat: lat,
-    auto_accept_zone_lng: lng,
     auto_accept_zone_radius_km: radius_km,
   };
 
@@ -94,16 +94,9 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  // Reset daily confirmation ONLY when the pin location actually changed AND
-  // we aren't already setting it above (enabling with a fresh confirmed date).
-  if (!('auto_accept_zone_confirmed_date' in update)) {
-    const PIN_EPSILON = 0.0001; // ~11m
-    const latChanged = Math.abs((vendor.auto_accept_zone_lat ?? 0) - lat) > PIN_EPSILON;
-    const lngChanged = Math.abs((vendor.auto_accept_zone_lng ?? 0) - lng) > PIN_EPSILON;
-    if (latChanged || lngChanged) {
-      update.auto_accept_zone_confirmed_date = null;
-    }
-  }
+  // No pin-moved reset here any more: the zone centre is base_location, and
+  // vendor-set-base-location clears auto_accept_zone_confirmed_date whenever
+  // it moves. Changing only the radius does not invalidate a confirmation.
 
   const { error } = await supabase
     .from('vendors')
@@ -117,7 +110,7 @@ Deno.serve(async (req: Request) => {
 
   return jsonResponse({
     success: true,
-    zone: { lat, lng, radius_km },
+    radius_km,
     auto_accept_enabled: auto_accept_enabled ?? null,
     needs_confirmation: auto_accept_enabled === true,
   });

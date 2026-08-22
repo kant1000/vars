@@ -8,7 +8,12 @@
 
 import { jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient } from '../_shared/supabase.ts';
-import { BOOKING_STATUS, GATE_WINDOW_MINUTES, GATE_PROXIMITY_KM } from '../_shared/constants.ts';
+import {
+  BOOKING_STATUS,
+  GATE_WINDOW_MINUTES,
+  GATE_PROXIMITY_KM,
+  VENDOR_LOCATION_MAX_AGE_MINUTES,
+} from '../_shared/constants.ts';
 import {
   sendNotification,
   msg_reminder24h,
@@ -256,7 +261,7 @@ Deno.serve(async (req: Request) => {
     .select(`
       id, vendor_id, user_id,
       user_location_lat, user_location_lng, scheduled_at,
-      vendors:vendor_id (vendor_current_lat, vendor_current_lng)
+      vendors:vendor_id (vendor_current_lat, vendor_current_lng, vendor_location_updated_at)
     `)
     .eq('status', BOOKING_STATUS.ACCEPTED)
     .eq('gate_fired', false)
@@ -277,12 +282,30 @@ Deno.serve(async (req: Request) => {
     const v = (booking as unknown as Record<string, unknown>).vendors as {
       vendor_current_lat: number | null;
       vendor_current_lng: number | null;
+      vendor_location_updated_at: string | null;
     } | null;
 
     if (
       v?.vendor_current_lat == null || v?.vendor_current_lng == null ||
       booking.user_location_lat == null || booking.user_location_lng == null
     ) continue;
+
+    // The vendor app only pings while a booking is on_way, and the coordinates
+    // are never cleared when a job ends — so without a freshness bound a
+    // leftover position from an earlier job could clear the proximity check
+    // and charge this customer before the vendor had set off. Missing
+    // timestamp means the coordinates predate this stamping, so treat as stale.
+    const locationAgeMs = v.vendor_location_updated_at
+      ? now.getTime() - new Date(v.vendor_location_updated_at).getTime()
+      : Infinity;
+
+    if (locationAgeMs > VENDOR_LOCATION_MAX_AGE_MINUTES * 60 * 1000) {
+      console.log(
+        `Proximity gate: vendor=${vendorId} skipped — location is stale ` +
+        `(${v.vendor_location_updated_at ?? 'never stamped'}), booking=${booking.id}`
+      );
+      continue;
+    }
 
     const distKm = haversineKm(
       v.vendor_current_lat, v.vendor_current_lng,

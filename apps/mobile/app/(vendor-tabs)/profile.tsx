@@ -24,6 +24,9 @@ import { CloseIcon, EditIcon, GearIcon } from '@/components/icons';
 import { CATEGORY_L2_LABELS, MAX_VENDOR_SERVICES, PIONEER_BOOKINGS_THRESHOLD } from '@vars/shared';
 import { useVendorOnline } from '@/contexts/VendorOnlineContext';
 import { StatusDot } from '@/components/StatusDot';
+import { LocationPicker, ResolvedLocation, reverseGeocode } from '@/components/LocationPicker';
+
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
 const PHOTO_SIZE = (Dimensions.get('window').width - 48 - 16) / 3;
 
@@ -57,6 +60,7 @@ export default function VendorProfileScreen() {
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const [vendorName, setVendorName] = useState('');
   const [kycLegalName, setKycLegalName] = useState<string | null>(null);
+  const [baseLocation, setBaseLocation] = useState<ResolvedLocation | null>(null);
 
   const [services, setServices] = useState<VendorServiceItem[]>([]);
   const [servicesLoading, setServicesLoading] = useState(true);
@@ -84,7 +88,7 @@ export default function VendorProfileScreen() {
       return;
     }
 
-    const [vendorRes, servicesRes, photosRes] = await Promise.all([
+    const [vendorRes, servicesRes, photosRes, baseLocationRes] = await Promise.all([
       supabase
         .from('vendors')
         .select('full_name, kyc_legal_name, profile_image_url, kyc_verified_at, pioneer, pioneer_bookings_completed')
@@ -104,6 +108,11 @@ export default function VendorProfileScreen() {
         .eq('vendor_id', user.id)
         .neq('consent_state', 'declined')
         .order('created_at', { ascending: false }),
+
+      // base_location is PostGIS geography — same RPC the booking flow uses.
+      supabase
+        .rpc('get_vendor_base_location', { p_vendor_id: user.id })
+        .maybeSingle() as Promise<{ data: { lat: number; lng: number } | null }>,
     ]);
 
     setVendorName(vendorRes.data?.full_name ?? '');
@@ -124,6 +133,12 @@ export default function VendorProfileScreen() {
     );
     setServices((servicesRes.data ?? []) as VendorServiceItem[]);
     setPhotos((photosRes.data ?? []) as PortfolioPhoto[]);
+
+    const base = baseLocationRes.data;
+    if (base?.lat != null && base?.lng != null) {
+      setBaseLocation({ lat: base.lat, lng: base.lng, address: await reverseGeocode(base.lat, base.lng) });
+    }
+
     setServicesLoading(false);
     setPhotosLoading(false);
   };
@@ -206,6 +221,33 @@ export default function VendorProfileScreen() {
       setAddingPhoto(false);
     }
   };
+
+  // Persist on confirm, same as the customer's location bar — the picked
+  // location is the stored one, no separate save step. The edge function
+  // also clears any daily auto-accept confirmation, since the zone centre
+  // moves with base_location.
+  const handleLocationConfirm = useCallback(async (loc: ResolvedLocation) => {
+    const previous = baseLocation;
+    setBaseLocation({ ...loc, address: loc.address || 'Current area' });
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/vendor-set-base-location`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ lat: loc.lat, lng: loc.lng }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Could not save your location');
+    } catch (err: any) {
+      // Roll the bar back so it never shows a location that did not save.
+      setBaseLocation(previous);
+      Alert.alert('Location not saved', err.message ?? 'Please try again.');
+    }
+  }, [baseLocation]);
 
   const handleDeletePhoto = (photo: PortfolioPhoto) => setDeletePhotoTarget(photo);
 
@@ -406,6 +448,22 @@ export default function VendorProfileScreen() {
               <Text style={s.heroLegalText} numberOfLines={1}>{titleCase(kycLegalName)}</Text>
             ) : null}
           </View>
+        </View>
+
+        {/* Where you work from — the single vendor location. Drives search
+            placement, travel fees, and the auto-accept zone centre. */}
+        <View style={s.section}>
+          <View style={s.sectionHeader}>
+            <Text style={s.sectionTitle}>Where you work from</Text>
+          </View>
+          <LocationPicker
+            theme={theme}
+            value={baseLocation}
+            onConfirm={handleLocationConfirm}
+            placeholder="Set where you work from"
+            sheetTitle="Where should clients find you?"
+            sheetSubtitle="This sets your place in search results, your travel fees, and the centre of your auto-accept zone."
+          />
         </View>
 
         {/* Portfolio */}
