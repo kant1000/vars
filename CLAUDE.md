@@ -118,7 +118,7 @@ These are the **only** hardcoded colour strings permitted in the mobile codebase
 
 ### Merge Discipline
 - Always `--no-ff` when merging branches. Preserve history.
-- Validate with `yarn workspace @vars/admin build`, `yarn workspace @vars/landing build`, and `yarn workspace @vars/mobile lint` before pushing main.
+- Validate with `yarn workspace @vars/admin build`, `yarn workspace @vars/landing build`, `yarn workspace @vars/mobile lint`, and `cd apps/mobile && ./node_modules/.bin/tsc.cmd --noEmit` before pushing main. Lint alone missed a real `ReferenceError` crash from a stripped import in 2026-08-22's session — ESLint doesn't catch undefined references the way the TS compiler does.
 - `git diff main origin/main` must be empty after every push.
 
 ### Mobile Device Testing
