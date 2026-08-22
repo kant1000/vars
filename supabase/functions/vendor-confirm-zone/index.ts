@@ -32,8 +32,6 @@ Deno.serve(async (req: Request) => {
     const { data: vendor, error } = await supabase
       .from('vendors')
       .select(`
-        auto_accept_zone_lat,
-        auto_accept_zone_lng,
         auto_accept_zone_radius_km,
         auto_accept_enabled,
         auto_accept_paused_due_to_drift,
@@ -44,9 +42,16 @@ Deno.serve(async (req: Request) => {
 
     if (error || !vendor) return errorResponse('Vendor not found', 404);
 
+    // Zone centre is base_location — PostGIS geography, so read via RPC.
+    const { data: baseLocation } = await supabase
+      .rpc('get_vendor_base_location', { p_vendor_id: user.id })
+      .maybeSingle() as { data: { lat: number; lng: number } | null };
+
     const confirmedToday = vendor.auto_accept_zone_confirmed_date === today;
-    const zoneConfigured = vendor.auto_accept_zone_lat != null &&
-                           vendor.auto_accept_zone_lng != null &&
+    // Radius is the only zone-specific setting now; the centre comes free
+    // with any vendor who has completed onboarding.
+    const zoneConfigured = baseLocation?.lat != null &&
+                           baseLocation?.lng != null &&
                            vendor.auto_accept_zone_radius_km != null;
 
     return jsonResponse({
@@ -58,8 +63,8 @@ Deno.serve(async (req: Request) => {
       needs_confirmation: zoneConfigured && vendor.auto_accept_enabled && !confirmedToday,
       zone: zoneConfigured
         ? {
-            lat: vendor.auto_accept_zone_lat,
-            lng: vendor.auto_accept_zone_lng,
+            lat: baseLocation!.lat,
+            lng: baseLocation!.lng,
             radius_km: vendor.auto_accept_zone_radius_km,
           }
         : null,

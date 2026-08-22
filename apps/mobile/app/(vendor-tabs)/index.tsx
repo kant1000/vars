@@ -829,7 +829,7 @@ export default function VendorJobsScreen() {
 
     const { data } = await supabase
       .from('vendors')
-      .select('pioneer, pioneer_bookings_completed, auto_accept_enabled, auto_accept_zone_confirmed_date, auto_accept_zone_lat, auto_accept_zone_lng, auto_accept_zone_radius_km, is_restricted, restriction_amount_owed_kobo, restriction_repayment_claimed_at')
+      .select('pioneer, pioneer_bookings_completed, auto_accept_enabled, auto_accept_zone_confirmed_date, auto_accept_zone_radius_km, is_restricted, restriction_amount_owed_kobo, restriction_repayment_claimed_at')
       .eq('id', user.id)
       .single();
 
@@ -841,17 +841,23 @@ export default function VendorJobsScreen() {
     setRepaymentClaimed(data.restriction_repayment_claimed_at != null);
 
     const today = new Date().toISOString().slice(0, 10);
-    const zoneConfigured = data.auto_accept_zone_lat != null;
+    // Radius is the only zone-specific setting now; the centre is
+    // base_location, read separately since it's a PostGIS geography.
+    const zoneConfigured = data.auto_accept_zone_radius_km != null;
     const confirmedToday = data.auto_accept_zone_confirmed_date === today;
     if (zoneConfigured && data.auto_accept_enabled && !confirmedToday) {
+      const { data: base } = await supabase
+        .rpc('get_vendor_base_location', { p_vendor_id: user.id })
+        .maybeSingle() as { data: { lat: number; lng: number } | null };
+      if (base?.lat == null || base?.lng == null) return;
       setZoneModal({
         zone_configured: true,
         auto_accept_enabled: true,
         confirmed_today: false,
         needs_confirmation: true,
         zone: {
-          lat: data.auto_accept_zone_lat,
-          lng: data.auto_accept_zone_lng,
+          lat: base.lat,
+          lng: base.lng,
           radius_km: data.auto_accept_zone_radius_km,
         },
       });

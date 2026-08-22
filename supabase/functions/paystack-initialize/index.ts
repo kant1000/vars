@@ -69,13 +69,19 @@ function buildServiceSummary(names: string[]): string {
 }
 
 // ── Auto-accept condition checker ───────────────────────────
+// The zone centre is the vendor's base_location, passed in by the caller
+// (which already fetched it for the transport surcharge) so one location
+// read serves both. It replaced a separate auto_accept_zone_lat/lng pair
+// whose duplication caused 991f6d6.
 async function checkAutoAccept(
   supabase: ReturnType<typeof createAdminClient>,
   vendorId: string,
   scheduledAt: string,
   durationBlocks: number,
   userLat: number,
-  userLng: number
+  userLng: number,
+  baseLat: number | null,
+  baseLng: number | null
 ): Promise<{ shouldAutoAccept: boolean }> {
   const { data: vendor } = await supabase
     .from('vendors')
@@ -83,8 +89,6 @@ async function checkAutoAccept(
       auto_accept_enabled,
       auto_accept_paused_due_to_drift,
       auto_accept_zone_confirmed_date,
-      auto_accept_zone_lat,
-      auto_accept_zone_lng,
       auto_accept_zone_radius_km
     `)
     .eq('id', vendorId)
@@ -98,17 +102,14 @@ async function checkAutoAccept(
   const confirmedDate = vendor.auto_accept_zone_confirmed_date;
   if (confirmedDate !== today && confirmedDate !== bookingDate) return { shouldAutoAccept: false };
 
+  // Radius is now the only zone-specific setting: non-null means configured.
   if (
-    vendor.auto_accept_zone_lat == null ||
-    vendor.auto_accept_zone_lng == null ||
+    baseLat == null ||
+    baseLng == null ||
     vendor.auto_accept_zone_radius_km == null
   ) return { shouldAutoAccept: false };
 
-  const userDistanceKm = haversineKm(
-    userLat, userLng,
-    vendor.auto_accept_zone_lat,
-    vendor.auto_accept_zone_lng
-  );
+  const userDistanceKm = haversineKm(userLat, userLng, baseLat, baseLng);
   if (userDistanceKm > vendor.auto_accept_zone_radius_km) return { shouldAutoAccept: false };
 
   const slotStart = new Date(scheduledAt);
@@ -230,7 +231,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // 5. Transport surcharge — measured against the vendor's base location,
-    // not the unrelated (optional, ephemeral) auto-accept zone pin.
+    // which is also the auto-accept zone centre used in step 6 below.
     const { data: vendorBaseLocation } = await supabase
       .rpc('get_vendor_base_location', { p_vendor_id: vendorIds[0] })
       .maybeSingle();
@@ -249,14 +250,17 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // 6. Auto-accept check
+    // 6. Auto-accept check — reuses the base location already fetched above,
+    // so the zone centre and the transport-fee origin cannot diverge.
     const autoAcceptResult = await checkAutoAccept(
       supabase,
       vendorIds[0],
       scheduled_at,
       totalDurationBlocks,
       user_location_lat as number,
-      user_location_lng as number
+      user_location_lng as number,
+      vendorBaseLocation?.lat ?? null,
+      vendorBaseLocation?.lng ?? null
     );
 
     // 7. Create booking
