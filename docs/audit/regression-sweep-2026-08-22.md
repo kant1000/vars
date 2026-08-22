@@ -22,16 +22,29 @@ So coordinates left over from a previous job can satisfy the proximity test for 
 
 ## Confirmed bug — OUT OF SCOPE, logged only
 
-### Reschedule drops pre-booking transport buffers and orphans the old ones
+### Reschedule drops the pre-booking transport buffer at the new time
 
-- `customer-accept-reschedule/index.ts:72` calls `createTransportBuffers` (post-booking) but never `createPreTransportBuffers`, while `paystack-initialize/index.ts:330` calls both. The booking row already carries `pre_transport_buffer_slots`.
-- `_shared/calendar.ts:25` only ever INSERTs. Nothing deletes buffers tied to the booking's *previous* time.
+**Correction (22 Aug, second pass):** the version of this finding written during the sweep also claimed old buffers get orphaned at the booking's previous time. That claim doesn't hold up and is retracted below — see "What does NOT happen" for why. Retracting it here rather than quietly fixing the doc, since the sweep's whole premise is catching stale assumptions, including my own.
 
-Net effect on an accepted reschedule: the 30–60 minute pre-travel buffer for distant customers is silently lost at the new time, and the old buffers stay in `vendor_calendar` blocking slots that are now free. A vendor can be booked back-to-back against a job needing an hour of travel, while separately losing availability they should have got back.
+**What actually happens:**
 
-Note on framing: the file's last touch (24 Jun) *postdates* the surcharge migration (31 May), so this is not a clean "older than the feature" case. The reschedule path was updated for the post-booking half of the feature and never picked up the pre-booking half. Same class of defect, different route in.
+- Reschedule is only reachable from `PENDING`: `vendor-suggest-reschedule/index.ts:44` hard-rejects any other status, both server-side (the real guard) and in the client UI.
+- A `PENDING` booking has never had transport buffers created for it. Buffer creation happens exactly twice in the codebase: `paystack-initialize` (only on the auto-accept path, which produces an `ACCEPTED` booking, never `PENDING`) and `paystack-capture` (vendor manually accepting a `PENDING` booking, which also produces `ACCEPTED`). Confirmed by reading every call site of `createTransportBuffers`/`createPreTransportBuffers` — there are only these two, plus the one in `customer-accept-reschedule` itself.
+- So a booking that reaches `RESCHEDULED_PENDING` carries zero rows in `vendor_calendar`. There is nothing at its "previous time" to orphan.
+- `customer-accept-reschedule/index.ts:73` is therefore the **first** time this booking's buffers are ever created — same moment `paystack-capture` would have done it on a non-rescheduled booking. It calls `createTransportBuffers` (post-booking) but never `createPreTransportBuffers`, even though the booking row already carries `pre_transport_buffer_slots` from the original `paystack-initialize` calculation (that value doesn't change on reschedule — it's driven by customer/vendor distance, not by time of day).
 
-**Not fixed here** — this is booking-lifecycle code, outside the location/auto-accept blast radius. It needs its own change and its own verification rather than being folded into a location feature.
+**What does NOT happen:** no orphaned buffers, no duplicate rows, no stale block left blocking a freed slot. `_shared/calendar.ts` only ever INSERTs, which is fine here specifically because there is nothing pre-existing to clean up on this path — the "nothing deletes old buffers" observation was true but not a defect, since it's never exercised.
+
+**Actual, narrower bug:** a rescheduled booking with `transport_fee_kobo > 0` (customer beyond the 5 km base radius) gets its post-service buffer but not its pre-service travel buffer at the new time. A vendor can be booked back-to-back right up against a job that needs 30–60 minutes of travel to reach. Same class of defect as `991f6d6` — code written for one half of the transport-surcharge feature, updated for the model change, but not extended to cover the second helper that shipped alongside it.
+
+**Not fixed here** — booking-lifecycle code, outside the location/auto-accept blast radius. Scoped separately below.
+
+### Proper scope for the fix (separate change, not this branch)
+
+1. `customer-accept-reschedule/index.ts`: select `pre_transport_buffer_slots` and `transport_fee_kobo` alongside the fields already fetched, and call `createPreTransportBuffers(supabase, booking.vendor_id, booking_id, booking.suggested_scheduled_at, booking.pre_transport_buffer_slots)` right after the existing `createTransportBuffers` call — same pattern `paystack-capture` already uses for a non-rescheduled accept. Guard on `pre_transport_buffer_slots > 0` isn't strictly needed since the helper already no-ops at 0, but matching `paystack-capture`'s call shape keeps the two paths visually identical for the next reader.
+2. No deletion logic needed (per the correction above) — keep the fix to the one missing call, don't add cleanup machinery for a case that doesn't occur.
+3. Verification: create a booking whose customer location is >5 km from the vendor (so `pre_transport_buffer_slots >= 1`), have the vendor suggest a reschedule, accept it as the customer, then assert `vendor_calendar` holds both a `transport_buffer` row before the new `scheduled_at` and one after — not just the post one. Also assert row count is exactly what's expected (no duplicates), since this path's whole risk profile is "did the second helper actually get called," not race conditions.
+4. Out of scope for that fix: whether pre-buffer slot count should be recalculated on reschedule if the vendor's `base_location` changed between the original booking and the reschedule (possible now that `base_location` is vendor-editable, see the location-bar branch). `pre_transport_buffer_slots` is a snapshot from booking creation and reschedule doesn't touch distance at all currently — worth a one-line note in that future change's context, not a reason to block it.
 
 ## Confirmed dead code — removed in this branch
 
