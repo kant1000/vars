@@ -29,7 +29,7 @@ VARS is a mobile marketplace that connects customers in Lagos with verified beau
 |---|---|
 | Market | Lagos, Nigeria |
 | Services | Hair, Barber, Face, Nails (free-name taxonomy V2) |
-| Payment | Paystack (subaccount split model, test mode) |
+| Payment | Paystack (subaccount split model, live keys active since 3 Jul 2026) |
 | Backend | Supabase (Postgres + Auth + Realtime + Edge Functions) |
 | Mobile | Expo / React Native (iOS & Android) |
 | Admin | Next.js dashboard |

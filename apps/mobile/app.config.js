@@ -20,7 +20,6 @@ module.exports = {
       },
       infoPlist: {
         NSLocationWhenInUseUsageDescription: 'VARS needs your location to show you vendors nearby.',
-        NSLocationAlwaysAndWhenInUseUsageDescription: 'VARS uses your location to find vendors near you.',
         NSCameraUsageDescription: 'VARS needs camera access to upload your profile photo.',
         NSPhotoLibraryUsageDescription: 'VARS needs photo library access to upload your profile photo.',
       },
@@ -63,7 +62,7 @@ module.exports = {
       [
         'expo-location',
         {
-          locationAlwaysAndWhenInUsePermission: 'VARS needs your location to show you vendors nearby.',
+          locationWhenInUsePermission: 'VARS needs your location to show you vendors nearby.',
         },
       ],
       [

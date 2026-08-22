@@ -181,10 +181,11 @@ This removes the last outstanding legal/compliance blocker referenced in the "Le
 | Privacy policy | EXISTS, /privacy | Needs NDPA audit before submission |
 | NDPC registration | **COMPLETE** | Registration ID NDPC/DCP/13824, certificate dated 3 Aug 2026. See NDPC Registration section above for ongoing obligations (annual audit filing, breach notification, renewal cadence to confirm) |
 | Data Safety form (Google) | COMPLETE | Filed 25 Jul 2026 |
-| Apple Privacy label | NOT STARTED | Complete in App Store Connect once account activates, must match Google Data Safety |
+| Apple Privacy label | NOT STARTED | Complete in App Store Connect once account activates, must match Google Data Safety. Verify PostHog analytics is reflected here as well as in Google Data Safety, not just Supabase/Paystack/Youverify |
 | Age rating (IARC) | COMPLETE | Filed via Play Console |
-| Apple age rating | NOT STARTED | Complete in App Store Connect |
+| Apple age rating | NOT STARTED | Complete in App Store Connect once account activates. Apple's Jan 2026 age-band overhaul deadline has already passed. **New wrinkle (added 20 Aug 2026):** Apple added a social-media capability question to this questionnaire (July 2026), required for submissions from Sept 2026. Trigger definition: "redistribute, amplify, or interact with user-generated content through a social feed or similar discovery method." VARS's vendor discovery feed (reviews + portfolio photos sorted by proximity) is a plausible match — answering yes forces a minimum 13+ rating. Needs a deliberate call before completing the questionnaire, not a default "no." |
 | Account deletion flow | EXISTS, /delete-account | Required by Google, already built |
+| PrivacyInfo.xcprivacy (iOS privacy manifest) | **NOT VERIFIED — see note** | Added 20 Aug 2026. VARS has no `ios/` folder and no custom native iOS code (fully managed Expo workflow), so an app-level `ios.privacyManifests` entry is likely unnecessary — but this can't be confirmed locally: `expo prebuild --platform ios` refuses to generate the iOS project on Windows (macOS/Linux only). Checked `node_modules` directly instead: `@react-native-async-storage/async-storage`, `expo-application`, `expo-constants`, `expo-device`, `expo-file-system`, `expo-notifications`, `react-native` core, and `react-native-maps` all ship their own `PrivacyInfo.xcprivacy` already, aggregated automatically by Expo's build system — no manual entry needed for those. Real verification only happens at the first `eas build --platform ios` / App Store Connect upload; Apple's own validation emails the specific missing reason if something is absent. Don't guess an entry into `app.config.js` without that signal. |
 
 ---
 
@@ -257,6 +258,7 @@ This removes the last outstanding legal/compliance blocker referenced in the "Le
 
 | Date | Event |
 |---|---|
+| 20 Aug 2026 | Fixed iOS location over-scope: `app.config.js` was requesting "Always" location access (`NSLocationAlwaysAndWhenInUseUsageDescription` + `expo-location`'s `locationAlwaysAndWhenInUsePermission`) despite no code anywhere calling `requestBackgroundPermissionsAsync` or running a background location task — tracking is foreground-only, tied to the app being open. Scoped down to "When In Use" only, a common Guideline 5.1.1 rejection avoided. Also audited iOS privacy-manifest readiness (see Legal & Compliance table) and flagged the Sept 2026 Apple social-media age-rating question as a real open judgment call for VARS's discovery feed. |
 | 12 Aug 2026 | Apple Developer Support (Roshitha) confirmed via email that enrollment B278PWKRGN is "Membership Status: Active." developer.apple.com/account portal still shows Pending and prompts repurchase, known Apple-side sync issue. Follow-up sent requesting manual account sync, no repurchase made. |
 | 12 Aug 2026 | Payment for Apple Developer Program charge posted successfully. |
 | 8 Aug 2026 | Apple Developer enrollment status regressed: still "Enrollment Pending" 2+ weeks after the 25 Jul "confirming within 48hrs" note, no activation. $99 fee shows charged on the founder's side but has not posted on Apple's side. Corrects the stale 25 Jul status line in the Current Status table and Apple App Store section above. |
