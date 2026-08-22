@@ -7,7 +7,7 @@
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createAdminClient, createAuthClient } from '../_shared/supabase.ts';
-import { createTransportBuffers } from '../_shared/calendar.ts';
+import { createTransportBuffers, createPreTransportBuffers } from '../_shared/calendar.ts';
 import { BOOKING_STATUS } from '../_shared/constants.ts';
 import {
   sendNotification,
@@ -39,7 +39,8 @@ Deno.serve(async (req: Request) => {
       .select(`
         id, status, user_id, vendor_id,
         service_name, service_price_kobo, service_duration_blocks,
-        scheduled_at, suggested_scheduled_at, paystack_reference
+        scheduled_at, suggested_scheduled_at, paystack_reference,
+        pre_transport_buffer_slots
       `)
       .eq('id', booking_id)
       .eq('user_id', user.id)
@@ -69,7 +70,10 @@ Deno.serve(async (req: Request) => {
 
     if (updateError) throw updateError;
 
-    // Create transport buffer blocks after the new booking end time
+    // Create transport buffer blocks after the new booking end time. This is
+    // the first time this booking gets buffers at all — reschedule is only
+    // reachable from PENDING, which never had any (buffers are created here
+    // or in paystack-capture, both producing ACCEPTED, never PENDING).
     await createTransportBuffers(
       supabase,
       booking.vendor_id,
@@ -77,6 +81,22 @@ Deno.serve(async (req: Request) => {
       booking.suggested_scheduled_at,
       booking.service_duration_blocks,
     );
+
+    // Pre-booking travel buffer at the new time, same as paystack-capture
+    // does for a non-rescheduled accept. pre_transport_buffer_slots was set
+    // once at paystack-initialize from customer/vendor distance — reschedule
+    // only moves the time, not the distance, so the stored value still
+    // applies. Missing this call meant a distant customer's vendor could be
+    // booked back-to-back against a job needing 30-60 minutes of travel.
+    if ((booking.pre_transport_buffer_slots ?? 0) > 0) {
+      await createPreTransportBuffers(
+        supabase,
+        booking.vendor_id,
+        booking_id,
+        booking.suggested_scheduled_at,
+        booking.pre_transport_buffer_slots,
+      );
+    }
 
     // Fetch profiles for notification
     const [{ data: vendorProfile }, { data: userProfile }] = await Promise.all([
