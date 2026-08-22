@@ -2,15 +2,15 @@
 // VARS — Vendor Zone Setup
 // Vendor sets their operating zone for Auto-Accept.
 //
-// • Map centred on the vendor's base location (read-only marker)
 // • Location is changed through the shared LocationPicker, the same
 //   control customers use — base_location is the single vendor location,
-//   so there is exactly one editor for it
+//   so there is exactly one editor for it. No map here any more: the
+//   circle-on-a-map view was redundant with the location bar + address
+//   text once the zone centre stopped being its own separately-set pin.
 // • Radius selector: 1 / 1.5 km
 // • Toggle to enable/disable auto-accept
 // • Save calls vendor-set-zone (radius + toggle only; the centre is owned
 //   by vendor-set-base-location)
-// • Circle overlay shows the zone boundary
 // ============================================================
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -20,7 +20,6 @@ import {
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { ScissorsLoader } from '@/components/ScissorsLoader';
 import { VarsSwitch } from '@/components/ui';
-import MapView, { Circle, Marker, Region } from 'react-native-maps';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
@@ -34,8 +33,12 @@ const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 const RADII = [1, 1.5] as const;
 type RadiusKm = typeof RADII[number];
 
-// Lagos default centre — used if location permission denied
-const LAGOS_DEFAULT = { latitude: 6.5244, longitude: 3.3792 };
+// See the comment beside where this is rendered for the assumptions behind
+// these figures — estimates, not routed times.
+const RADIUS_HELPER_TEXT: Record<RadiusKm, string> = {
+  1:   'About 6 minutes away by public transport',
+  1.5: 'About 9 minutes away by public transport',
+};
 
 // ── Effective-day helpers ─────────────────────────────────────
 // After the last slot ends at 22:00 the working day is over; treat
@@ -53,7 +56,6 @@ function toLocalDateStr(d: Date): string {
 
 export default function VendorZoneSetup() {
   const insets = useSafeAreaInsets();
-  const mapRef = useRef<MapView>(null);
   const { theme } = useVarsTheme();
   const s = useMemo(() => makeStyles(theme), [theme]);
 
@@ -70,8 +72,10 @@ export default function VendorZoneSetup() {
     weekday: 'long', day: 'numeric', month: 'long',
   });
 
-  const [pinLat, setPinLat]     = useState(LAGOS_DEFAULT.latitude);
-  const [pinLng, setPinLng]     = useState(LAGOS_DEFAULT.longitude);
+  // Meaningless until hasBaseLocation is true — nothing reads these before
+  // then, since handleSave blocks enabling auto-accept without a location.
+  const [pinLat, setPinLat]     = useState(0);
+  const [pinLng, setPinLng]     = useState(0);
   const [hasBaseLocation, setHasBaseLocation] = useState(false);
   const [locationLabel, setLocationLabel] = useState('');
   const [radius, setRadius]     = useState<RadiusKm>(1);
@@ -93,7 +97,7 @@ export default function VendorZoneSetup() {
           .single(),
         supabase
           .rpc('get_vendor_base_location', { p_vendor_id: user.id })
-          .maybeSingle() as Promise<{ data: { lat: number; lng: number } | null }>,
+          .maybeSingle() as unknown as Promise<{ data: { lat: number; lng: number } | null }>,
       ]);
 
       if (base?.lat != null && base?.lng != null) {
@@ -117,11 +121,23 @@ export default function VendorZoneSetup() {
   // Persist immediately on confirm, same as the customer's location bar:
   // the picked location is the stored one, no separate save step. The edge
   // function also clears any daily zone confirmation, since the zone has moved.
-  const handleLocationConfirm = useCallback(async (loc: ResolvedLocation) => {
-    setPinLat(loc.lat);
-    setPinLng(loc.lng);
-    setHasBaseLocation(true);
-    setLocationLabel(loc.address || 'Current area');
+  // Gated behind a confirm modal — same as the profile screen's bar, and for
+  // the same reason: this moves search placement, travel fees, and clears
+  // today's auto-accept confirmation, so a mis-tapped GPS read (easy indoors)
+  // shouldn't go live with no chance to catch it.
+  const [pendingLocation, setPendingLocation] = useState<ResolvedLocation | null>(null);
+  const [showLocationConfirm, setShowLocationConfirm] = useState(false);
+  const [savingLocation, setSavingLocation] = useState(false);
+
+  const handleLocationPick = useCallback((loc: ResolvedLocation) => {
+    setPendingLocation(loc);
+    setShowLocationConfirm(true);
+  }, []);
+
+  const commitLocationChange = useCallback(async () => {
+    if (!pendingLocation) return;
+    const loc = pendingLocation;
+    setSavingLocation(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
@@ -135,10 +151,25 @@ export default function VendorZoneSetup() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Could not save your location');
+      setPinLat(loc.lat);
+      setPinLng(loc.lng);
+      setHasBaseLocation(true);
+      setLocationLabel(loc.address || 'Current area');
+      setShowLocationConfirm(false);
+      setPendingLocation(null);
     } catch (err: any) {
+      setShowLocationConfirm(false);
       Alert.alert('Location not saved', err.message ?? 'Please try again.');
+    } finally {
+      setSavingLocation(false);
     }
-  }, []);
+  }, [pendingLocation]);
+
+  const dismissLocationConfirm = useCallback(() => {
+    if (savingLocation) return;
+    setShowLocationConfirm(false);
+    setPendingLocation(null);
+  }, [savingLocation]);
 
   const handleSave = () => {
     // Auto-accept has no centre to work from without a stored location.
@@ -196,13 +227,6 @@ export default function VendorZoneSetup() {
     );
   }
 
-  const region: Region = {
-    latitude: pinLat,
-    longitude: pinLng,
-    latitudeDelta: (radius * 2) / 111 * 1.8,
-    longitudeDelta: (radius * 2) / 111 * 1.8,
-  };
-
   return (
     <View style={[s.container, { paddingTop: insets.top }]}>
       {/* Header */}
@@ -215,49 +239,15 @@ export default function VendorZoneSetup() {
       </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-        {/* Map */}
-        <View style={s.mapWrap}>
-          <MapView
-            ref={mapRef}
-            style={s.map}
-            region={region}
-            onRegionChangeComplete={() => {
-              // Don't follow region changes — pin is draggable
-            }}
-          >
-            {/* Zone circle */}
-            <Circle
-              center={{ latitude: pinLat, longitude: pinLng }}
-              radius={radius * 1000} // metres
-              fillColor={theme.color.ink + '14'}
-              strokeColor={theme.color.ink}
-              strokeWidth={BORDER_WIDTH.regular}
-            />
-            {/* Read-only marker: the centre is base_location, changed through
-                the picker below so there is only ever one editor for it. */}
-            <Marker
-              coordinate={{ latitude: pinLat, longitude: pinLng }}
-              title="Your location"
-              pinColor={theme.color.ink}
-            />
-          </MapView>
-          <View style={s.mapHint}>
-            <Text style={s.mapHintText}>
-              {hasBaseLocation ? 'Your zone sits around where you work from' : 'Set where you work from below'}
-            </Text>
-          </View>
-        </View>
-
         <View style={s.controls}>
           {/* Location — same control customers use to set theirs */}
-          <Text style={s.sectionLabel}>Where you work from</Text>
           <LocationPicker
             theme={theme}
             value={hasBaseLocation ? { lat: pinLat, lng: pinLng, address: locationLabel } : null}
-            onConfirm={handleLocationConfirm}
+            onConfirm={handleLocationPick}
             placeholder="Set where you work from"
-            sheetTitle="Where should clients find you?"
-            sheetSubtitle="This sets your place in search results, your travel fees, and the centre of your auto-accept zone."
+            sheetTitle=""
+            sheetSubtitle="This sets your place in search results, your travel fees, and the centre of your auto-accept zone. Clients only see this general area, never your exact address."
           />
 
           {/* Active date */}
@@ -281,6 +271,13 @@ export default function VendorZoneSetup() {
               </TouchableOpacity>
             ))}
           </View>
+          {/* Estimate only: radius is straight-line distance, there's no routing
+              API involved. Assumes ~18km/h effective public-transport speed
+              (okada/keke/shared taxi — the realistic way a vendor with a kit
+              covers a short Lagos hop), ~2min boarding/hailing overhead, and a
+              1.3x road-circuity factor to convert the straight-line radius into
+              a realistic travel distance. */}
+          <Text style={s.radiusHelperText}>{RADIUS_HELPER_TEXT[radius]}</Text>
 
           {/* Auto-accept toggle */}
           <View style={s.toggleRow}>
@@ -330,6 +327,17 @@ export default function VendorZoneSetup() {
         onConfirm={() => { setShowAutoAcceptModal(false); commitSave(); }}
         onDismiss={() => setShowAutoAcceptModal(false)}
       />
+
+      <ConfirmModal
+        visible={showLocationConfirm}
+        title="Update your location?"
+        body="This changes where clients find you, your travel fees, and clears today's auto-accept confirmation if it's on."
+        confirmLabel="Yes, update"
+        dismissLabel="Cancel"
+        onConfirm={commitLocationChange}
+        onDismiss={dismissLocationConfirm}
+        confirmLoading={savingLocation}
+      />
     </View>
   );
 }
@@ -347,19 +355,6 @@ function makeStyles(theme: VarsTheme) {
     backBtn:     { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
     backText:    { fontSize: 28, color: theme.color.ink, lineHeight: 32 },
     headerTitle: { fontSize: 17, fontWeight: '700', color: theme.color.ink },
-
-    mapWrap: { position: 'relative' },
-    map: { width: '100%', height: 300 },
-    mapHint: {
-      position: 'absolute', bottom: 8, left: 0, right: 0,
-      alignItems: 'center',
-    },
-    mapHintText: {
-      backgroundColor: 'rgba(0,0,0,0.55)',
-      color: '#FFF', fontSize: 12, fontWeight: '600',
-      paddingHorizontal: 10, paddingVertical: 4, borderRadius: 5,
-      overflow: 'hidden',
-    },
 
     controls: { padding: 20, gap: 20 },
 
@@ -382,6 +377,7 @@ function makeStyles(theme: VarsTheme) {
     radiusChipActive: { backgroundColor: theme.color.ink, borderColor: theme.color.ink },
     radiusChipText:   { fontSize: 14, fontWeight: '700', color: theme.color.inkMuted },
     radiusChipTextActive: { color: theme.color.inverseInk },
+    radiusHelperText: { fontSize: 13, color: theme.color.inkMuted, marginTop: -4 },
 
     toggleRow: {
       flexDirection: 'row', alignItems: 'center', gap: 12,

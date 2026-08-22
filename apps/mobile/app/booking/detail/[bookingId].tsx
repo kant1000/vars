@@ -220,6 +220,20 @@ function makeStylesTl(theme: VarsTheme) {
   });
 }
 
+// Vendor position updates only ever arrive while the vendor's own app is
+// foregrounded — both pings are plain setIntervals with no background task
+// (confirmed elsewhere: nothing requests background location). A pin can go
+// stale the instant a vendor backgrounds mid-job, so this threshold decides
+// when to stop confidently calling it "Live" and say how long it's been.
+const STALE_AFTER_MS = 2 * 60 * 1000;
+
+function formatAge(ms: number): string {
+  const minutes = Math.floor(ms / 60_000);
+  if (minutes < 1) return 'Just now';
+  if (minutes === 1) return '1m ago';
+  return `${minutes}m ago`;
+}
+
 // ── Live tracking map (on_way status) ────────────────────────
 function LiveTrackingMap({
   vendorId, clientLat, clientLng,
@@ -233,6 +247,9 @@ function LiveTrackingMap({
   const mapRef = useRef<MapView>(null);
   const [vendorCoords, setVendorCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  // Pump only — forces a re-render so the "Xm ago" text and stale threshold
+  // advance even when no new location has arrived to trigger one naturally.
+  const [, setTick] = useState(0);
 
   const fetchVendorLocation = useCallback(async () => {
     const { data } = await supabase
@@ -246,12 +263,36 @@ function LiveTrackingMap({
     }
   }, [vendorId]);
 
-  // Fetch immediately, then every 30s
+  // Realtime is the primary path: pushes the instant vendor-update-location
+  // writes, instead of waiting on a fixed interval. The 60s poll below stays
+  // as a fallback only, for the known case where a Realtime channel silently
+  // drops (backgrounding, network hiccups) — matches the vendor's own on_way
+  // ping cadence rather than trying to be faster than the data source.
+  useEffect(() => {
+    const channel = supabase
+      .channel(`vendor-location:${vendorId}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'vendors',
+        filter: `id=eq.${vendorId}`,
+      }, () => { fetchVendorLocation(); })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [vendorId, fetchVendorLocation]);
+
   useEffect(() => {
     fetchVendorLocation();
-    const interval = setInterval(fetchVendorLocation, 30_000);
+    const interval = setInterval(fetchVendorLocation, 60_000);
     return () => clearInterval(interval);
   }, [fetchVendorLocation]);
+
+  // Re-render every 15s so the relative "Xm ago" label and the stale
+  // threshold advance on their own, not only when a new position arrives.
+  useEffect(() => {
+    const tick = setInterval(() => setTick((n) => n + 1), 15_000);
+    return () => clearInterval(tick);
+  }, []);
 
   // Fit both markers into view once vendor coords arrive
   useEffect(() => {
@@ -268,15 +309,18 @@ function LiveTrackingMap({
   const midLat = vendorCoords ? (vendorCoords.lat + clientLat) / 2 : clientLat;
   const midLng = vendorCoords ? (vendorCoords.lng + clientLng) / 2 : clientLng;
 
+  const ageMs = lastUpdated ? Date.now() - lastUpdated.getTime() : null;
+  const isStale = ageMs !== null && ageMs > STALE_AFTER_MS;
+
   return (
     <View>
       <View style={s.liveHeader}>
-        <View style={s.liveDot} />
-        <Text style={s.liveLabel}>Live · updates every 30s</Text>
-        {lastUpdated && (
-          <Text style={s.liveUpdated}>
-            {lastUpdated.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit', hour12: true })}
-          </Text>
+        <View style={[s.liveDot, isStale && s.liveDotStale]} />
+        <Text style={[s.liveLabel, isStale && s.liveLabelStale]}>
+          {isStale ? `Last seen ${formatAge(ageMs)}` : 'Live'}
+        </Text>
+        {lastUpdated && !isStale && (
+          <Text style={s.liveUpdated}>Updated {formatAge(ageMs!)}</Text>
         )}
       </View>
       <MapView
@@ -1086,7 +1130,9 @@ function makeStyles(theme: VarsTheme) {
       width: 8, height: 8, borderRadius: 4,
       backgroundColor: theme.color.accentGreen,
     },
+    liveDotStale: { backgroundColor: theme.color.inkMuted },
     liveLabel: { fontSize: 13, fontWeight: '600', color: theme.color.accentGreen, flex: 1 },
+    liveLabelStale: { color: theme.color.inkMuted },
     liveUpdated: { fontSize: 12, color: theme.color.inkMuted },
     liveMap: { width: '100%', height: 260, borderRadius: 5, overflow: 'hidden' },
     liveLoadingOverlay: {

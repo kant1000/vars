@@ -112,8 +112,15 @@ export function LocationPicker({
         handleIndicatorStyle={{ backgroundColor: theme.color.inkFaint }}
       >
         <BottomSheetView style={s.sheetContent}>
-          <Text style={s.sheetTitle}>{sheetTitle}</Text>
-          {sheetSubtitle && <Text style={s.sheetSubtitle}>{sheetSubtitle}</Text>}
+          {/* Title is optional: pass sheetTitle="" to omit it and let the
+              subtitle stand alone (used where the subtitle already carries
+              the full explanation, so a title above it is redundant). */}
+          {sheetTitle ? <Text style={s.sheetTitle}>{sheetTitle}</Text> : null}
+          {sheetSubtitle && (
+            <Text style={[s.sheetSubtitle, !sheetTitle && s.sheetSubtitleNoTitle]}>
+              {sheetSubtitle}
+            </Text>
+          )}
 
           <VarsButton
             theme={theme}
@@ -188,7 +195,12 @@ function useMemoStyles(theme: VarsTheme) {
     rowText: { flex: 1, fontSize: 15, fontWeight: '600', color: theme.color.ink },
     sheetContent: { padding: 20, gap: 12, paddingBottom: 40 },
     sheetTitle: { fontSize: 18, fontWeight: '800', color: theme.color.ink },
+    // marginTop:-8 tucks the subtitle close under the title (compensating
+    // sheetContent's gap:12). With no title, that negative margin would eat
+    // into the sheet's own top padding instead — cancel it so the subtitle
+    // sits with normal breathing room when it's the only text at the top.
     sheetSubtitle: { fontSize: 13, color: theme.color.inkMuted, marginTop: -8 },
+    sheetSubtitleNoTitle: { marginTop: 0 },
     orLabel: { fontSize: 12, fontWeight: '700', color: theme.color.inkMuted, textAlign: 'center' },
     // Same footprint AND same look as the "Use current location" secondary
     // VarsButton above it (height 56, radius VARS_RADIUS, ink border,

@@ -112,7 +112,7 @@ export default function VendorProfileScreen() {
       // base_location is PostGIS geography — same RPC the booking flow uses.
       supabase
         .rpc('get_vendor_base_location', { p_vendor_id: user.id })
-        .maybeSingle() as Promise<{ data: { lat: number; lng: number } | null }>,
+        .maybeSingle() as unknown as Promise<{ data: { lat: number; lng: number } | null }>,
     ]);
 
     setVendorName(vendorRes.data?.full_name ?? '');
@@ -222,13 +222,24 @@ export default function VendorProfileScreen() {
     }
   };
 
-  // Persist on confirm, same as the customer's location bar — the picked
-  // location is the stored one, no separate save step. The edge function
-  // also clears any daily auto-accept confirmation, since the zone centre
-  // moves with base_location.
-  const handleLocationConfirm = useCallback(async (loc: ResolvedLocation) => {
-    const previous = baseLocation;
-    setBaseLocation({ ...loc, address: loc.address || 'Current area' });
+  // Unlike the customer's location bar (low-stakes, expected to change often),
+  // this one is gated behind a confirmation: it moves where clients find this
+  // vendor, their travel fees, and silently clears today's auto-accept
+  // confirmation if it's on. A mis-tapped GPS read (easy indoors) shouldn't
+  // go live with no chance to catch it.
+  const [pendingLocation, setPendingLocation] = useState<ResolvedLocation | null>(null);
+  const [showLocationConfirm, setShowLocationConfirm] = useState(false);
+  const [savingLocation, setSavingLocation] = useState(false);
+
+  const handleLocationPick = useCallback((loc: ResolvedLocation) => {
+    setPendingLocation(loc);
+    setShowLocationConfirm(true);
+  }, []);
+
+  const commitLocationChange = useCallback(async () => {
+    if (!pendingLocation) return;
+    const loc = pendingLocation;
+    setSavingLocation(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
@@ -242,12 +253,22 @@ export default function VendorProfileScreen() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Could not save your location');
+      setBaseLocation({ ...loc, address: loc.address || 'Current area' });
+      setShowLocationConfirm(false);
+      setPendingLocation(null);
     } catch (err: any) {
-      // Roll the bar back so it never shows a location that did not save.
-      setBaseLocation(previous);
+      setShowLocationConfirm(false);
       Alert.alert('Location not saved', err.message ?? 'Please try again.');
+    } finally {
+      setSavingLocation(false);
     }
-  }, [baseLocation]);
+  }, [pendingLocation]);
+
+  const dismissLocationConfirm = useCallback(() => {
+    if (savingLocation) return;
+    setShowLocationConfirm(false);
+    setPendingLocation(null);
+  }, [savingLocation]);
 
   const handleDeletePhoto = (photo: PortfolioPhoto) => setDeletePhotoTarget(photo);
 
@@ -450,21 +471,31 @@ export default function VendorProfileScreen() {
           </View>
         </View>
 
-        {/* Where you work from — the single vendor location. Drives search
-            placement, travel fees, and the auto-accept zone centre. */}
-        <View style={s.section}>
-          <View style={s.sectionHeader}>
-            <Text style={s.sectionTitle}>Where you work from</Text>
-          </View>
+        {/* The single vendor location. Drives search placement, travel
+            fees, and the auto-accept zone centre. No section label and no
+            top divider — sits lean, directly under the profile hero; the
+            bar itself (pin + address) is self-explanatory. */}
+        <View style={s.sectionNoDivider}>
           <LocationPicker
             theme={theme}
             value={baseLocation}
-            onConfirm={handleLocationConfirm}
+            onConfirm={handleLocationPick}
             placeholder="Set where you work from"
-            sheetTitle="Where should clients find you?"
-            sheetSubtitle="This sets your place in search results, your travel fees, and the centre of your auto-accept zone."
+            sheetTitle=""
+            sheetSubtitle="This sets your place in search results, your travel fees, and the centre of your auto-accept zone. Clients only see this general area, never your exact address."
           />
         </View>
+
+        <ConfirmModal
+          visible={showLocationConfirm}
+          title="Update your location?"
+          body="This changes where clients find you, your travel fees, and clears today's auto-accept confirmation if it's on."
+          confirmLabel="Yes, update"
+          dismissLabel="Cancel"
+          onConfirm={commitLocationChange}
+          onDismiss={dismissLocationConfirm}
+          confirmLoading={savingLocation}
+        />
 
         {/* Portfolio */}
         <View style={s.section}>
@@ -627,14 +658,20 @@ function makeStyles(theme: VarsTheme) {
     heroAvatarText: { fontSize: 22, fontWeight: '800', color: theme.color.inverseInk },
     heroInfo: { flex: 1 },
     heroNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    heroName: { fontSize: 18, fontWeight: '700', color: theme.color.ink, flex: 1 },
+    heroName: { fontSize: 18, fontWeight: '700', color: theme.color.ink, flex: 1, includeFontPadding: false },
     heroEditBtn: { padding: 8 },
-    heroLegalText: { fontSize: 12, fontWeight: '600', color: theme.color.accentBlue, marginTop: 5 },
+    heroLegalText: { fontSize: 12, fontWeight: '600', color: theme.color.accentBlue, marginTop: 2, includeFontPadding: false },
 
     section: {
       marginTop: 8, borderTopWidth: BORDER_WIDTH.thin, borderTopColor: theme.color.inkFaint,
       paddingTop: 16, paddingHorizontal: 20,
     },
+    // Same as `section` minus the top divider — used directly under the
+    // profile hero, where a border would double up against the hero's own
+    // bottom edge.
+    // heroRow already contributes paddingVertical:20 below the hero content,
+    // so this only needs enough top padding to breathe, not a full repeat.
+    sectionNoDivider: { paddingTop: 4, paddingHorizontal: 20 },
     sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
     sectionTitle: {
       fontSize: 12, fontWeight: '700', color: theme.color.inkMuted,

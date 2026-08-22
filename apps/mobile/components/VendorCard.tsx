@@ -83,7 +83,7 @@ export function VendorCard({ vendor, activeCategory, returnTo, showDistance = tr
   // get_favourite_vendors doesn't return distance_km at all, so this must
   // not touch vendor.distance_km unless it's actually going to be shown.
   const displayDist = showDistance
-    ? (vendor.distance_km < 0.05 ? '<0.1km' : `${vendor.distance_km.toFixed(1)}km`)
+    ? (vendor.distance_km < 0.05 ? '<0.1km away' : `${vendor.distance_km.toFixed(1)}km away`)
     : null;
 
   return (
